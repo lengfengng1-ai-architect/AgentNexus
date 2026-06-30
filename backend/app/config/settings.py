@@ -16,5 +16,8 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
+    dashscope_api_key: str = ""
+    dashscope_model: str = "qwen-turbo"
+
 
 settings = Settings()

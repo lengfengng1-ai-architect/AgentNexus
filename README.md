@@ -12,6 +12,7 @@
 |------|------|
 | 后端 API | FastAPI (Python 3.14) |
 | Agent 框架 | LangGraph + DeepAgents |
+| LLM Provider | 阿里百炼（通义千问）|
 | 依赖管理 | uv |
 | 前端 | React + TypeScript（待定） |
 | 规范驱动 | OpenSpec |
@@ -205,6 +206,7 @@ uv run python -m app.main
 
 服务启动后访问：
 - 健康检查：`GET http://localhost:8000/api/v1/health`
+- 对话提取：`POST http://localhost:8000/api/v1/chat`，请求体 `{"message": "..."}`
 - API 文档：`http://localhost:8000/docs`
 
 ---
@@ -230,11 +232,18 @@ uv run python -m app.main
 已完成：
 - 项目骨架（FastAPI + uv + Python 3.14）
 - 健康检查端点 `/api/v1/health`
-- 测试基础设施
+- 对话式品牌需求提取 Agent：`POST /api/v1/chat`
+  - LangGraph + DeepAgents + 阿里百炼
+  - 提取字段：brand_name, category, city, budget, period
+  - 字段不完整时自动反问
+- 测试基础设施（7 个测试全部通过）
 - OpenSpec / CodeGraph / Git 工作流
 
 尚未实现：
-- 品牌需求录入（brand-input）
-- 数据查询、适配度评估、方案生成、文档导出
+- 品牌需求持久化录入（brand-input）
+- AllyGo 数据查询（data-query）
+- 品牌 × 运动适配度评估（fitness-engine）
+- 完整营销方案生成（plan-generation）
+- 方案文档导出（document-export）
 
-下一个推荐功能：**品牌需求录入（brand-input）**。
+下一个推荐功能：**品牌需求持久化录入（brand-input）**，把 chat agent 提取的结果保存下来。

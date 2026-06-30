@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 
 from app.config.settings import settings
-from app.routers import health
+from app.routers import chat, health
 
 
 def create_app() -> FastAPI:
@@ -11,6 +11,7 @@ def create_app() -> FastAPI:
         debug=settings.debug,
     )
     app.include_router(health.router, prefix="/api/v1")
+    app.include_router(chat.router, prefix="/api/v1")
     return app
 
 
