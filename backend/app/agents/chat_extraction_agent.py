@@ -1,5 +1,7 @@
 from jinja2 import Environment, FileSystemLoader
 from langchain.chat_models import init_chat_model
+from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.graph import END, StateGraph
 from pydantic import Field
 
 from app.config.settings import settings
@@ -37,24 +39,36 @@ def _build_model():
     )
 
 
-def _build_agent():
-    model = _build_model()
+def _build_structured_llm():
+    return _build_model().with_structured_output(ChatOutput)
 
-    from deepagents import create_deep_agent
 
-    return create_deep_agent(
-        model=model,
-        system_prompt=_load_system_prompt(),
-        response_format=ChatOutput,
-    )
+class _State(dict):
+    message: str
+    output: ChatOutput | None
+
+
+def _extract_node(state: _State) -> _State:
+    message = state["message"]
+    llm = _build_structured_llm()
+    result = llm.invoke([SystemMessage(content=_load_system_prompt()), HumanMessage(content=message)])
+    return {"output": result}
+
+
+def _build_graph():
+    graph = StateGraph(_State)
+    graph.add_node("extract", _extract_node)
+    graph.set_entry_point("extract")
+    graph.add_edge("extract", END)
+    return graph.compile()
+
+
+_graph = _build_graph()
 
 
 async def extract_brand_input(message: str) -> ChatResponse:
-    agent = _build_agent()
-    result = await agent.ainvoke({"messages": [{"role": "user", "content": message}]})
-    structured = result.get("structured_response") or result.get("raw")
-    if structured is None:
+    result = await _graph.ainvoke({"message": message})
+    output = result.get("output")
+    if output is None:
         raise ValueError("Agent did not return structured_response")
-    if isinstance(structured, ChatOutput):
-        return structured
-    return ChatOutput(**structured)
+    return output

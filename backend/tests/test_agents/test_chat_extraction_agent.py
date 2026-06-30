@@ -7,18 +7,17 @@ from app.schemas.chat import BrandInput
 
 
 @pytest.fixture
-def mock_agent():
-    with patch("app.agents.chat_extraction_agent._build_agent") as m:
-        agent = m.return_value
-        agent.ainvoke = AsyncMock()
-        yield agent
+def mock_graph():
+    with patch("app.agents.chat_extraction_agent._graph") as m:
+        m.ainvoke = AsyncMock()
+        yield m
 
 
 @pytest.mark.asyncio
-async def test_extract_brand_input__complete_input__returns_brand_input(mock_agent):
+async def test_extract_brand_input__complete_input__returns_brand_input(mock_graph):
     # Arrange
-    mock_agent.ainvoke.return_value = {
-        "structured_response": ChatOutput(
+    mock_graph.ainvoke.return_value = {
+        "output": ChatOutput(
             reply="已收到您的需求",
             brand_input=BrandInput(
                 brand_name="Nike",
@@ -42,10 +41,10 @@ async def test_extract_brand_input__complete_input__returns_brand_input(mock_age
 
 
 @pytest.mark.asyncio
-async def test_extract_brand_input__incomplete_input__returns_clarifying_response(mock_agent):
+async def test_extract_brand_input__incomplete_input__returns_clarifying_response(mock_graph):
     # Arrange
-    mock_agent.ainvoke.return_value = {
-        "structured_response": ChatOutput(
+    mock_graph.ainvoke.return_value = {
+        "output": ChatOutput(
             reply="请问您的目标城市和预算范围是多少？",
             brand_input=BrandInput(brand_name="Nike"),
             is_complete=False,
