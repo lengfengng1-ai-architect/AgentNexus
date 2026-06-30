@@ -14,7 +14,7 @@
 | Agent 框架 | LangGraph + DeepAgents |
 | LLM Provider | 阿里百炼（通义千问）|
 | 依赖管理 | uv |
-| 前端 | React + TypeScript（待定） |
+| 前端 | React + TypeScript + Vite + Tailwind CSS |
 | 规范驱动 | OpenSpec |
 | 代码索引 | CodeGraph |
 
@@ -190,6 +190,8 @@ AI 会把 delta spec sync 到 `openspec/specs/brand-input/spec.md`，然后把 c
 
 ## 快速开始
 
+### 后端
+
 ```bash
 # 1. 进入后端目录
 cd backend
@@ -208,6 +210,24 @@ uv run python -m app.main
 - 健康检查：`GET http://localhost:8000/api/v1/health`
 - 对话提取：`POST http://localhost:8000/api/v1/chat`，请求体 `{"message": "..."}`
 - API 文档：`http://localhost:8000/docs`
+
+### 前端
+
+```bash
+# 1. 进入前端目录
+cd frontend
+
+# 2. 安装依赖
+npm install
+
+# 3. 复制环境变量
+ cp .env.example .env
+
+# 4. 启动开发服务器
+npm run dev
+```
+
+开发服务器默认运行在 `http://localhost:5173`。确保后端已启动并配置了 `CORS_ORIGINS=http://localhost:5173`。
 
 ---
 
@@ -236,6 +256,10 @@ uv run python -m app.main
   - LangGraph + DeepAgents + 阿里百炼
   - 提取字段：brand_name, category, city, budget, period
   - 字段不完整时自动反问
+- 前端聊天界面（React + TypeScript + Vite + Tailwind）
+  - 自然语言对话录入
+  - 顶部"进度跑道"显示字段提取状态
+  - 场景卡片引导、错误重试、localStorage 历史
 - 测试基础设施（7 个测试全部通过）
 - OpenSpec / CodeGraph / Git 工作流
 

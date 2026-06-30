@@ -20,5 +20,7 @@ class Settings(BaseSettings):
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     dashscope_model: str = "qwen-turbo"
 
+    cors_origins: str = ""
+
 
 settings = Settings()
