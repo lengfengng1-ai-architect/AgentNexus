@@ -16,9 +16,15 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
+    llm_provider: str = "dashscope"  # dashscope | agnes
+
     dashscope_api_key: str = ""
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     dashscope_model: str = "qwen-turbo"
+
+    agnes_api_key: str = ""
+    agnes_base_url: str = "https://apihub.agnes-ai.com/v1"
+    agnes_model: str = "agnes-2.0-flash"
 
     cors_origins: str = ""
 

@@ -20,13 +20,25 @@ def _load_system_prompt() -> str:
     return template.render()
 
 
-def _build_agent():
-    model = init_chat_model(
+def _build_model():
+    if settings.llm_provider == "agnes":
+        return init_chat_model(
+            model=settings.agnes_model,
+            model_provider="openai",
+            api_key=settings.agnes_api_key,
+            base_url=settings.agnes_base_url,
+        )
+
+    return init_chat_model(
         model=settings.dashscope_model,
         model_provider="openai",
         api_key=settings.dashscope_api_key,
         base_url=settings.dashscope_base_url,
     )
+
+
+def _build_agent():
+    model = _build_model()
 
     from deepagents import create_deep_agent
 
