@@ -24,7 +24,8 @@ AI 的禁区（以下事项必须等人来做）：
 **技术栈约束（不可变更）**：
 - 后端 API 框架：FastAPI
 - Agent 实现框架：LangGraph + DeepAgents
-- AI 不得引入其他 Agent 框架或替换该技术选型
+- Python 依赖管理：uv
+- AI 不得引入其他 Agent 框架、包管理器或替换该技术选型
 
 **代码放置规则**：所有文件必须放入 `docs/conventions/directory-structure.md` 定义的目录位置，不要新建顶层目录。
 

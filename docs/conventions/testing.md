@@ -4,13 +4,13 @@
 
 | 场景 | 框架 | 说明 |
 |------|------|------|
-| 单元测试 | `pytest` + `pytest-asyncio` | 异步测试原生支持 |
+| 单元测试 | `pytest` + `pytest-asyncio` | 通过 `uv run pytest` 执行 |
 | HTTP 测试 | `httpx.AsyncClient` | FastAPI TestClient 底层 |
 | mock | `unittest.mock` / `pytest-mock` | 标准 mock 库即可 |
 | 覆盖率 | `pytest-cov` | 阈值：**80%** |
 | 数据校验 | Pydantic 自校验 | schemas 本身就是校验器 |
 
-必须安装的 dev 依赖：
+依赖由 uv 管理。dev 依赖声明在 `[dependency-groups] dev` 中：
 
 ```
 pytest>=8
@@ -19,6 +19,8 @@ pytest-cov
 httpx
 pytest-mock
 ```
+
+uv 会自动安装 `[dependency-groups] dev` 中的包（`tool.uv.default-groups = ["dev"]`）。
 
 ## 文件组织
 
@@ -122,11 +124,11 @@ async def test_data_query__by_city__returns_filtered_results():
 
 ```bash
 # 全量运行
-cd backend && pytest -v --cov=app --cov-report=term-missing
+cd backend && uv run pytest -v --cov=app --cov-report=term-missing
 
 # 单文件
-pytest -v tests/test_routers/test_brands.py
+uv run pytest -v tests/test_routers/test_brands.py
 
 # 按关键字
-pytest -v -k "fitness"
+uv run pytest -v -k "fitness"
 ```

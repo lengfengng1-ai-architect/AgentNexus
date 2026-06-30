@@ -23,6 +23,6 @@
 
 ## 5. OpenSpec 收尾
 
-- [ ] 5.1 运行 `openspec status --change bootstrap-project` 确认所有 artifact 完成
-- [ ] 5.2 按 `docs/conventions/git-workflow.md` 提交功能分支
-- [ ] 5.3 合并后运行 `codegraph update`
+- [x] 5.1 运行 `openspec status --change bootstrap-project` 确认所有 artifact 完成
+- [x] 5.2 按 `docs/conventions/git-workflow.md` 提交功能分支
+- [x] 5.3 合并后运行 `codegraph update`

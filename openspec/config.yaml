@@ -2,6 +2,7 @@ schema: spec-driven
 
 context: |
   Tech stack: FastAPI (Python) 后端, React (TypeScript) 前端
+  依赖管理: uv
   Agent 框架: LangGraph + DeepAgents（强制）
   开发模式: OpenSpec-driven — 人写 Spec → AI 填充实现 → 人 Review
   平台: AllyGo — 运动场景 × 品牌营销平台
