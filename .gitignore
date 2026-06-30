@@ -13,10 +13,6 @@ venv/
 .vscode/
 .idea/
 
-# Claude Code local skill cache
-.claude/commands/
-.claude/skills/
-
 # Testing
 .pytest_cache/
 .coverage
