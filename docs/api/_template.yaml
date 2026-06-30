@@ -1,0 +1,221 @@
+# OpenSpec 谱例模板
+
+> 所有 OpenAPI 3.1 YAML 文件必须遵循此模板结构。
+> 放一份在 `docs/api/_template.yaml` 供新 spec 作者参考。
+
+```yaml
+# ──────────────────────────────────────────────
+# OpenSpec: <模块名>
+# in_scope id: <对应 superpowers.yaml 的 id>
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "<模块名>"
+  description: "<一句话说明>"
+  version: "v0.1"
+  x-in-scope-ref: "<superpowers id>"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /{resource}:
+    get:
+      operationId: "{resource}_list"
+      summary: "<一句话>"
+      description: |
+        <详细说明，多行用 |>
+      parameters:
+        - name: "<param>"
+          in: query
+          required: false
+          description: "<字段说明>"
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "成功返回列表"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/{ResourceListResponse}"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+    post:
+      operationId: "{resource}_create"
+      summary: "<一句话>"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/{ResourceCreateRequest}"
+      responses:
+        "201":
+          description: "创建成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/{ResourceResponse}"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /{resource}/{resource_id}:
+    get:
+      operationId: "{resource}_get"
+      summary: "<一句话>"
+      parameters:
+        - name: "{resource}_id"
+          in: path
+          required: true
+          description: "<字段说明>"
+          schema:
+            type: string
+            format: uuid
+      responses:
+        "200":
+          description: "成功返回详情"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/{ResourceResponse}"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    # ── 请求体 ──
+    {ResourceCreateRequest}:
+      type: object
+      description: "<字段说明>"
+      required:
+        - <field1>
+        - <field2>
+      properties:
+        <field1>:
+          type: string
+          maxLength: 100
+          description: "<字段说明，中文>"
+          example: "示例值"
+        <field2>:
+          type: integer
+          minimum: 1
+          maximum: 1000000
+          description: "<字段说明>"
+        <enum_field>:
+          type: string
+          description: "<枚举说明>"
+          enum:
+            - option_one   # 注释：中文说明
+            - option_two
+
+    # ── 响应体 ──
+    {ResourceResponse}:
+      type: object
+      description: "<字段说明>"
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: "资源 ID"
+        <field1>:
+          type: string
+          description: "<字段说明>"
+      required:
+        - id
+
+    {ResourceListResponse}:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/{ResourceResponse}"
+        total:
+          type: integer
+          description: "总数"
+
+    # ── 共享错误模型 ──
+    APIError:
+      type: object
+      description: "统一错误响应"
+      properties:
+        detail:
+          type: string
+          description: "人类可读的错误描述"
+        code:
+          type: string
+          description: "错误码（如 'not_found', 'validation_error'）"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: "出错字段名"
+              message:
+                type: string
+                description: "字段级错误说明"
+      required:
+        - detail
+        - code
+
+  responses:
+    BadRequest:
+      description: "请求参数错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    NotFound:
+      description: "资源不存在"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    ValidationError:
+      description: "字段校验失败"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    InternalError:
+      description: "服务器内部错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+```
+
+## 命名规则
+
+| 元素 | 规则 | 示例 |
+|------|------|------|
+| operationId | `{resource}_{action}` | `brands_list`, `brand_create` |
+| schema 名 | PascalCase，Resource + 后缀 | `BrandCreateRequest`, `BrandResponse` |
+| path 参数 | snake_case | `brand_id`, `city_name` |
+| query 参数 | camelCase | `pageSize`, `sortBy` |
+| 枚举值 | snake_case 英文 | `running`, `basketball` |
+| 枚举注释 | 中文 | `# 跑步`, `# 篮球` |
+| 文件命名 | kebab-case | `brands.yaml`, `fitness.yaml` |
+
+## 风格约束
+
+- 每个 property 必须有 `description`，用中文写
+- `required` 列表显式写出，不依赖隐式
+- 数组长度/数字范围/字符串长度必须设 `min`/`max` 约束
+- 所有端点必须复用 `#/components/responses/` 中的共享错误响应
+- 不写 `nullable: true` ——用 omit 字段代替

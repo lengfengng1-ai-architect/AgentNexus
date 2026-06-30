@@ -1,0 +1,90 @@
+# 营销方案 Agent — 能力边界定义
+# AI 编码前必须读取此文件。
+# in_scope: 允许实现
+# out_scope: 禁止实现（AI 不得生成相关代码）
+# data_boundaries: 数据使用约束
+# llm_boundaries: LLM 生成约束
+---
+version: "v0.1"
+
+platform:
+  name: "AllyGo"
+  description: "运动场景 × 品牌营销平台"
+
+capabilities:
+  in_scope:
+    - id: "brand-input"
+      name: "品牌需求录入"
+      description: "接收品牌方填写的结构化需求（品类/城市/预算/周期）"
+      constraints: "字段由 OpenSpec 定义，动态增减需改 spec"
+
+    - id: "data-query"
+      name: "AllyGo 数据查询"
+      description: "按城市×运动类型查询平台数据（盟域/赛事/达人/经营社/活动）"
+      constraints: "MVP 阶段用 mock 数据，预留真实 API 切换钩子"
+
+    - id: "fitness-engine"
+      name: "品牌×运动适配度评估"
+      description: "计算品牌品类与运动场景的匹配度"
+      constraints: "规则矩阵版本用配置文件管理，不改代码"
+
+    - id: "plan-generation"
+      name: "营销方案生成"
+      description: "基于品牌需求和平台数据，LLM 生成 9 章营销方案"
+      constraints: |
+        数据引用必须来自 API/mock，LLM 不可编造厂商/赛事/达人名称。
+        LLM 可以做创意策划（赛事名称、活动形式、主题概念）。
+
+    - id: "document-export"
+      name: "方案文档导出"
+      description: "Markdown → PDF/Word 导出"
+      constraints: "主力格式保质量，备选格式基础可用即可"
+
+  out_scope:
+    - id: "campaign-execution"
+      name: "方案自动执行"
+      reason: "v1 只做到方案输出，不自动创建活动/发送达人邀约"
+
+    - id: "external-platform-data"
+      name: "跨平台数据接入"
+      reason: "不接入抖音/小红书等外部平台数据，合规风险高"
+
+    - id: "kpi-attribution"
+      name: "效果归因系统"
+      reason: "需要完整 Campaign 跟踪系统，P2 能力"
+
+    - id: "competitor-analysis"
+      name: "竞品分析功能"
+      reason: "竞品运动场景数据不在 AllyGo 体系内"
+
+    - id: "non-sport-brands"
+      name: "非运动类品牌支持"
+      reason: "数据底盘仅覆盖运动场景，非运动品牌提示暂不支持"
+
+    - id: "user-auth-system"
+      name: "用户认证系统"
+      reason: "身份认证使用 AllyGo 已有系统，本项目不做"
+
+    - id: "payment-integration"
+      name: "支付/订单功能"
+      reason: "本项目不出方案交易功能"
+
+data_boundaries:
+  can_use:
+    - "AllyGo 平台自有数据（活动/赛事/盟域/达人/经营社/人群画像聚合统计）"
+    - "行业公开报告摘录（人工整理+LLM辅助，非实时 API）"
+    - "品牌方自行填写的品牌信息"
+  cannot_use:
+    - "用户个人隐私数据（仅展示聚合统计，不暴露个人数据）"
+    - "第三方付费数据（尼尔森/欧睿等）"
+    - "未授权的外部平台数据"
+
+llm_boundaries:
+  can_generate:
+    - "创意策划内容（赛事名称、活动形式、主题概念、时间线规划）"
+    - "文案润色与叙事组织"
+    - "基于数据的推理结论"
+  cannot_generate:
+    - "厂商/赛事/达人名称（必须来自 API/mock）"
+    - "数据数值（人群规模、活动密度、成本参数）"
+    - "LLM 自己的 prompt（禁止 Agent 自修改 prompt）"

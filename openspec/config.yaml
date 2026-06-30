@@ -1,0 +1,65 @@
+schema: spec-driven
+
+context: |
+  Tech stack: FastAPI (Python) 后端, React (TypeScript) 前端
+  Agent 框架: LangGraph + DeepAgents（强制）
+  开发模式: OpenSpec-driven — 人写 Spec → AI 填充实现 → 人 Review
+  平台: AllyGo — 运动场景 × 品牌营销平台
+  版本: v0.1 (MVP)
+
+  Domain:
+    - 品牌需求录入 → 运动场景适配度评估 → 营销方案生成 → 文档导出
+    - 只支持运动类品牌，不支持非运动品牌
+    - 数据来源: MVP 阶段用本地 mock 数据，预留真实 API 切换钩子
+
+  Conventions:
+    目录结构: docs/conventions/directory-structure.md
+    Git 工作流: docs/conventions/git-workflow.md
+    测试规范: docs/conventions/testing.md
+    Mock 数据规范: docs/conventions/mock-data.md
+    Prompt 模板规范: docs/conventions/prompt-templates.md
+    能力边界: docs/superpowers.yaml
+
+  Naming:
+    Python 文件: snake_case
+    React 组件: PascalCase
+    Pydantic models: PascalCase
+    API YAML 文件: kebab-case
+    Mock JSON 文件: snake_case
+    API YAML operationId: {resource}_{action}
+
+  Out of scope (AI 绝不可实现):
+    - 方案自动执行（创建活动、发送达人邀约）
+    - 跨平台数据接入（抖音/小红书等）
+    - 效果归因系统
+    - 竞品分析功能
+    - 非运动类品牌支持
+    - 用户认证系统（使用 AllyGo 已有系统）
+    - 支付/订单功能
+    - 用户个人隐私数据使用
+    - 第三方付费数据接入
+
+rules:
+  proposal:
+    - 必须引用对应的 superpowers.yaml in_scope ID
+    - 每个 change 对应一个 in_scope 功能，不跨功能
+    - 必须说明 mock 数据如何覆盖
+    - 如果涉及 out_scope 的能力，必须在 "Non-goals" 中列出
+
+  design:
+    - 接口设计必须声明对应的 OpenSpec YAML 文件 (docs/api/*.yaml)
+    - 数据流必须标明是 mock 还是真实 API
+    - prompt 模板的设计必须引用 docs/conventions/prompt-templates.md
+    - 所有命名引用（厂商/赛事/达人）必须来自 mock 数据，不可 LLM 编造
+    - Agent 实现必须基于 LangGraph + DeepAgents，禁止引入其他 Agent 框架
+
+  specs:
+    - 每个 spec 对应一个 superpowers.yaml 的 in_scope ID
+    - 字段语义由人定义，AI 不可修改
+    - 枚举值用英文，注释写中文
+
+  tasks:
+    - 实现顺序: OpenSpec YAML → Pydantic schemas → services → routers → tests
+    - 每个端点必须写 200/400/422/500 四个状态的测试
+    - 每个 task 必须有验收条件
+    - 不要一个 task 跨多个文件类型
