@@ -1,88 +1,48 @@
-from typing import TypedDict
-
-from langchain_community.chat_models import ChatTongyi
-from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import END, StateGraph
+from jinja2 import Environment, FileSystemLoader
+from langchain.chat_models import init_chat_model
+from pydantic import Field
 
 from app.config.settings import settings
 from app.schemas.chat import BrandInput, ChatResponse
 
 
-class ChatExtractionState(TypedDict, total=False):
-    message: str
-    reply: str
-    brand_input: BrandInput | None
-    is_complete: bool
-    raw_output: str
+class ChatOutput(ChatResponse):
+    """Agent 内部结构化输出 schema，与 ChatResponse 保持字段兼容。"""
+
+    reply: str = Field(..., description="AI 回复文本")
+    brand_input: BrandInput = Field(default_factory=BrandInput, description="提取的品牌需求字段")
+    is_complete: bool = Field(False, description="字段是否完整")
 
 
-def _build_llm():
-    return ChatTongyi(
-        model=settings.dashscope_model,
-        dashscope_api_key=settings.dashscope_api_key,
-        temperature=0.1,
-    )
-
-
-def _render_prompt(message: str) -> str:
-    from jinja2 import Environment, FileSystemLoader
-
+def _load_system_prompt() -> str:
     env = Environment(loader=FileSystemLoader("app/prompt_templates"))
     template = env.get_template("chat_extraction.md.j2")
-    return template.render(message=message)
+    return template.render()
 
 
-def _parse_json_output(raw: str) -> ChatResponse:
-    import json
+def _build_agent():
+    model = init_chat_model(
+        model=settings.dashscope_model,
+        model_provider="openai",
+        api_key=settings.dashscope_api_key,
+        base_url=settings.dashscope_base_url,
+    )
 
-    cleaned = raw.strip()
-    if cleaned.startswith("```"):
-        lines = cleaned.splitlines()
-        if lines[0].startswith("```"):
-            lines = lines[1:]
-        if lines and lines[-1].startswith("```"):
-            lines = lines[:-1]
-        cleaned = "\n".join(lines).strip()
+    from deepagents import create_deep_agent
 
-    data = json.loads(cleaned)
-    return ChatResponse(**data)
-
-
-def extract_node(state: ChatExtractionState) -> ChatExtractionState:
-    message = state["message"]
-    llm = _build_llm()
-    prompt = _render_prompt(message)
-    response = llm.invoke([SystemMessage(content=prompt)])
-    raw_output = response.content if isinstance(response.content, str) else str(response.content)
-    return {"raw_output": raw_output}
-
-
-def parse_node(state: ChatExtractionState) -> ChatExtractionState:
-    parsed = _parse_json_output(state["raw_output"])
-    return {
-        "reply": parsed.reply,
-        "brand_input": parsed.brand_input,
-        "is_complete": parsed.is_complete,
-    }
-
-
-def build_chat_extraction_graph():
-    builder = StateGraph(ChatExtractionState)
-    builder.add_node("extract", extract_node)
-    builder.add_node("parse", parse_node)
-    builder.set_entry_point("extract")
-    builder.add_edge("extract", "parse")
-    builder.add_edge("parse", END)
-    return builder.compile()
-
-
-graph = build_chat_extraction_graph()
+    return create_deep_agent(
+        model=model,
+        system_prompt=_load_system_prompt(),
+        response_format=ChatOutput,
+    )
 
 
 async def extract_brand_input(message: str) -> ChatResponse:
-    result = await graph.ainvoke({"message": message})
-    return ChatResponse(
-        reply=result.get("reply", ""),
-        brand_input=result.get("brand_input"),
-        is_complete=result.get("is_complete", False),
-    )
+    agent = _build_agent()
+    result = await agent.ainvoke({"messages": [{"role": "user", "content": message}]})
+    structured = result.get("structured_response") or result.get("raw")
+    if structured is None:
+        raise ValueError("Agent did not return structured_response")
+    if isinstance(structured, ChatOutput):
+        return structured
+    return ChatOutput(**structured)

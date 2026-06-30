@@ -19,6 +19,7 @@ context: |
     测试规范: docs/conventions/testing.md
     Mock 数据规范: docs/conventions/mock-data.md
     Prompt 模板规范: docs/conventions/prompt-templates.md
+    Agent 框架规范: docs/conventions/agent-framework.md
     能力边界: docs/superpowers.yaml
 
   Naming:
@@ -53,6 +54,7 @@ rules:
     - prompt 模板的设计必须引用 docs/conventions/prompt-templates.md
     - 所有命名引用（厂商/赛事/达人）必须来自 mock 数据，不可 LLM 编造
     - Agent 实现必须基于 LangGraph + DeepAgents，禁止引入其他 Agent 框架
+    - Agent 实现必须引用并遵守 docs/conventions/agent-framework.md
 
   specs:
     - 每个 spec 对应一个 superpowers.yaml 的 in_scope ID

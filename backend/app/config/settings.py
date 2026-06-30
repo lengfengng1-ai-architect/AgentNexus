@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     port: int = 8000
 
     dashscope_api_key: str = ""
+    dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     dashscope_model: str = "qwen-turbo"
 
 

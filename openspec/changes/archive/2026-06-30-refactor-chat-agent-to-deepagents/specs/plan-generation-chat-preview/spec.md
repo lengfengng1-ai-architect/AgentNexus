@@ -1,26 +1,4 @@
-# Capability: plan-generation-chat-preview
-
-## Purpose
-
-Provide a conversational entry point for marketing plan generation. The agent extracts structured brand input fields from natural language messages and asks clarifying questions when information is missing.
-
-## Requirements
-
-### Requirement: Chat endpoint accepts natural language brand input
-The system SHALL expose a `POST /api/v1/chat` endpoint that accepts a user's natural language message and returns the AI reply along with extracted brand input fields.
-
-#### Scenario: Complete input returns structured brand input
-- **WHEN** the client sends a POST request to `/api/v1/chat` with body `{"message": "我们是 Nike，想在上海做跑步活动，预算 50 万，周期 3 个月"}`
-- **THEN** the system SHALL respond with HTTP status `200`
-- **AND** the response SHALL contain `is_complete: true`
-- **AND** the response SHALL contain `brand_input.brand_name: "Nike"`
-- **AND** the response SHALL contain `brand_input.city: "上海"`
-
-#### Scenario: Incomplete input asks clarifying question
-- **WHEN** the client sends a POST request to `/api/v1/chat` with body `{"message": "我们是 Nike"}`
-- **THEN** the system SHALL respond with HTTP status `200`
-- **AND** the response SHALL contain `is_complete: false`
-- **AND** the response SHALL contain a non-empty `reply` asking for missing fields
+## MODIFIED Requirements
 
 ### Requirement: Chat agent extracts brand input fields
 The system SHALL use a DeepAgents agent built on LangGraph to parse the user's message and extract the following fields: brand_name, category, city, budget, period.
@@ -56,15 +34,3 @@ The system SHALL constrain the LLM to return only valid JSON matching the ChatRe
 - **THEN** the agent SHALL produce output matching the `ChatResponse` Pydantic schema
 - **AND** the response SHALL contain `reply`, `brand_input`, and `is_complete` keys
 - **AND** the system SHALL NOT manually strip markdown code fences
-
-### Requirement: Chat endpoint handles errors gracefully
-The system SHALL return structured error responses for invalid input, LLM failures, and unexpected errors.
-
-#### Scenario: Missing message field returns 422
-- **WHEN** the client sends a POST request without a `message` field
-- **THEN** the system SHALL respond with HTTP status `422`
-
-#### Scenario: LLM failure returns 500
-- **WHEN** the LLM call fails or returns unparseable output after retries
-- **THEN** the system SHALL respond with HTTP status `500`
-- **AND** the error response SHALL use the `APIError` model
