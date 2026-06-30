@@ -2,7 +2,7 @@
 name = "allygo-marketing-agent"
 version = "0.1.0"
 description = "AllyGo 营销方案 Agent 后端"
-requires-python = ">=3.11"
+requires-python = ">=3.14"
 dependencies = [
     "fastapi>=0.111",
     "uvicorn[standard]>=0.30",
