@@ -1,0 +1,19 @@
+"""搜索结果筛选 prompt。
+
+从搜索结果列表中筛选出高质量、可信赖的页面用于深度读取。
+
+## 搜索结果
+{% for result in search_results %}
+- [{{ result.title }}]({{ result.url }})
+  {{ result.snippet }}
+{% endfor %}
+
+## 筛选规则
+请从以上结果中选出 {{ top_n }} 个最高质量的页面，规则：
+1. 优先选择官方网站（如 apple.com, xiaomi.com 等品牌官网）
+2. 其次选择权威百科（百度百科、Wikipedia）
+3. 再次选择知名科技媒体、评测网站
+4. 排除论坛、UGC 内容、低质量聚合站
+5. 确保覆盖产品名称、规格、参数等关键信息
+
+返回选中的 URL 列表，每个 URL 一行，不要额外文字。

@@ -1,0 +1,95 @@
+{
+  "basic": {
+    "product_name": {
+      "value": "汇源果汁",
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "brand": {
+      "value": "汇源果汁",
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "manufacturer": {
+      "value": "中国汇源果汁集团有限公司",
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "industry": {
+      "value": "制造业（果汁）",
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "category": {
+      "value": "果汁",
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "description": {
+      "value": "汇源果汁是总部位于中华人民共和国北京但在开曼群岛注册的果汁生产企业，创办人为朱新礼。该公司是中国大陆生产果汁的龙头企业之一，主要产品包括100%果汁、浓缩汁、果浆等。",
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "launch_date": {
+      "value": "1992",
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "status": {
+      "value": "unknown",
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "official_website": {
+      "value": "汇源果汁",
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "available_regions": {
+      "value": [
+        "中国大陆",
+        "中国"
+      ],
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    },
+    "specifications": {
+      "value": {},
+      "sources": [
+        "https://zh.wikipedia.org/zh-cn/匯源果汁",
+        "https://zh.wikipedia.org/zh-hans/匯源果汁",
+        "https://www.smzdm.com/ju/sp7r9z3/"
+      ]
+    }
+  }
+}
