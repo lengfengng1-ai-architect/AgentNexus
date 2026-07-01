@@ -177,3 +177,4 @@ Prompt 模板放在 `backend/app/prompt_templates/`，遵守 `docs/conventions/p
   - 无对应 OpenSpec 文件即开始编码
   - 无活跃 opsx change 即开始编码
   - 编码前未显式完成 Step 9 强制勾选
+
