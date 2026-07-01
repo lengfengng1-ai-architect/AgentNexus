@@ -61,13 +61,14 @@ codegraph explore "营销方案Agent <模块名>"
 
 所有 OpenSpec 文件放在 `docs/api/` 下，编写前参考 `docs/api/_template.yaml`。
 
-AI 在生成 FastAPI 代码时，必须遵守：
+AI 在生成 OpenSpec 文档（包括 capability spec、requirements、scenarios、design.md）和 OpenAPI YAML 时，必须遵守：
 
+- **文档使用中文编写**：spec.md、design.md、proposal.md、tasks.md 中的 Purpose、Requirements、Scenarios 以及 OpenAPI YAML 的 `summary` / `description` / 字段说明均使用中文。
+- 枚举值用英文，注释写中文。
 - Pydantic model 的字段名、类型、校验必须与 OpenAPI YAML 完全一致
 - 端点路径必须与 YAML paths 一致
 - `operationId` 必须与 FastAPI 方法名对应（如 `brand_create` → `async def brand_create()`）
 - 每个字段必须有 description，且内容来自 YAML 的 description
-- 枚举值用英文，注释写中文
 - 每个端点必须处理 200/400/422/500 响应
 - 错误响应统一用 `APIError` 模型
 

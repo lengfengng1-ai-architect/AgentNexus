@@ -30,6 +30,12 @@ context: |
     Mock JSON 文件: snake_case
     API YAML operationId: {resource}_{action}
 
+  Language:
+    OpenSpec 文档（包括 capability spec、requirements、scenarios、design.md）使用中文编写。
+    OpenAPI YAML 中的 summary / description / 字段说明使用中文。
+    枚举值用英文，注释写中文。
+    代码中的标识符、变量名、operationId 保持英文。
+
   Out of scope (AI 绝不可实现):
     - 方案自动执行（创建活动、发送达人邀约）
     - 跨平台数据接入（抖音/小红书等）
