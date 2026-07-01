@@ -1,0 +1,2054 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AllyGo 营销方案 Agent</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #f8fafc;
+      --surface: #ffffff;
+      --surface-hover: #f1f5f9;
+      --text-primary: #0f172a;
+      --text-secondary: #475569;
+      --text-muted: #94a3b8;
+      --border: #e2e8f0;
+      --border-light: #f1f5f9;
+      --accent: #1e40af;
+      --accent-hover: #1e3a8a;
+      --accent-light: #dbeafe;
+      --accent-pale: #eff6ff;
+      --success: #059669;
+      --success-light: #d1fae5;
+      --warning: #d97706;
+      --warning-light: #fef3c7;
+      --start: #f97316;
+      --start-light: #ffedd5;
+      --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.06), 0 2px 4px -2px rgb(0 0 0 / 0.04);
+      --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+      --radius-sm: 6px;
+      --radius: 10px;
+      --radius-lg: 14px;
+      --header-height: 64px;
+      --input-height: 72px;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Inter', 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: var(--bg);
+      color: var(--text-primary);
+      line-height: 1.6;
+      font-size: 14px;
+      overflow-x: hidden;
+    }
+
+    /* ========== Layout ========== */
+    .app {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .main-header {
+      height: var(--header-height);
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 24px;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .brand-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: var(--radius-sm);
+      background: linear-gradient(135deg, var(--accent) 0%, #3b82f6 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: white;
+      font-weight: 700;
+      font-size: 15px;
+    }
+
+    .brand-text {
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: -0.3px;
+    }
+
+    .brand-tag {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .main-actions {
+      display: flex;
+      gap: 10px;
+    }
+
+    .btn {
+      padding: 8px 14px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border: 1px solid transparent;
+    }
+
+    .btn-secondary {
+      background: var(--surface);
+      border-color: var(--border);
+      color: var(--text-secondary);
+    }
+
+    .btn-secondary:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-pale);
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: white;
+    }
+
+    .btn-primary:hover { background: var(--accent-hover); }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ========== Chat Stream ========== */
+    .chat-stream {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .chat-stream::-webkit-scrollbar { width: 6px; }
+    .chat-stream::-webkit-scrollbar-thumb {
+      background: rgba(15, 23, 42, 0.15);
+      border-radius: 3px;
+    }
+
+    .message {
+      display: flex;
+      gap: 12px;
+      max-width: 880px;
+      width: 100%;
+      margin: 0 auto;
+      animation: messageIn 0.3s ease forwards;
+    }
+
+    @keyframes messageIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .message.user { flex-direction: row-reverse; }
+
+    .message-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      background: var(--accent-pale);
+      color: var(--accent);
+    }
+
+    .message.user .message-avatar {
+      background: var(--start);
+      color: white;
+    }
+
+    .message-bubble {
+      padding: 14px 18px;
+      border-radius: var(--radius-lg);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      color: var(--text-secondary);
+      font-size: 14px;
+      line-height: 1.7;
+    }
+
+    .message.user .message-bubble {
+      background: var(--accent);
+      color: white;
+      border-color: var(--accent);
+    }
+
+    .message-bubble strong {
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .message.user .message-bubble strong {
+      color: white;
+    }
+
+    .message-time {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 6px;
+      text-align: right;
+    }
+
+    .message.user .message-time {
+      text-align: left;
+    }
+
+    /* ========== Typing Indicator ========== */
+    .typing {
+      display: flex;
+      gap: 4px;
+      padding: 8px 0;
+    }
+
+    .typing-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      animation: typing 1.4s infinite ease-in-out both;
+    }
+
+    .typing-dot:nth-child(1) { animation-delay: -0.32s; }
+    .typing-dot:nth-child(2) { animation-delay: -0.16s; }
+
+    @keyframes typing {
+      0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+      40% { transform: scale(1); opacity: 1; }
+    }
+
+    /* ========== Quick Chips ========== */
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .quick-chip {
+      padding: 6px 12px;
+      border-radius: 20px;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      color: var(--text-secondary);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .quick-chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-pale);
+    }
+
+    /* ========== Workflow Card in Chat ========== */
+    .workflow-card {
+      max-width: 880px;
+      width: 100%;
+      margin: 8px auto;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      animation: messageIn 0.4s ease forwards;
+    }
+
+    .workflow-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .workflow-controls {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    .workflow-controls .btn {
+      padding: 6px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      transition: all 0.2s;
+      border: 1px solid transparent;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .workflow-controls .btn-stop {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #dc2626;
+    }
+
+    .workflow-controls .btn-stop:hover {
+      background: #fee2e2;
+      border-color: #fca5a5;
+    }
+
+    .workflow-controls .btn-edit {
+      background: var(--accent-pale);
+      border-color: var(--accent-light);
+      color: var(--accent);
+    }
+
+    .workflow-controls .btn-edit:hover {
+      background: #dbeafe;
+    }
+
+    .workflow-stopped {
+      padding: 12px 20px;
+      background: #fef2f2;
+      border-top: 1px solid #fecaca;
+      color: #991b1b;
+      font-size: 13px;
+      display: none;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .workflow-stopped.show { display: flex; }
+
+    .workflow-header h2 {
+      font-size: 15px;
+      font-weight: 700;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .workflow-header h2 .icon {
+      width: 28px;
+      height: 28px;
+      border-radius: var(--radius-sm);
+      background: var(--accent-pale);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    .workflow-body {
+      padding: 20px;
+    }
+
+    .pipeline {
+      position: relative;
+      padding-left: 28px;
+    }
+
+    .pipeline::before {
+      content: '';
+      position: absolute;
+      left: 11px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: var(--border);
+    }
+
+    .pipeline-step {
+      position: relative;
+      margin-bottom: 4px;
+    }
+
+    .pipeline-step:last-child { margin-bottom: 0; }
+
+    .step-node {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+      padding: 12px 0;
+      cursor: pointer;
+      border-radius: var(--radius-sm);
+      transition: background 0.2s;
+    }
+
+    .step-node:hover { background: var(--surface-hover); }
+
+    .step-dot {
+      position: absolute;
+      left: -28px;
+      top: 14px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      background: var(--surface);
+      border: 2px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 11px;
+      color: var(--text-muted);
+      z-index: 2;
+      transition: all 0.3s;
+    }
+
+    .pipeline-step.completed .step-dot {
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
+    }
+
+    .pipeline-step.running .step-dot {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+    }
+
+    .pipeline-step.waiting .step-dot {
+      background: var(--warning);
+      border-color: var(--warning);
+      color: white;
+    }
+
+    .step-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .step-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .step-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .step-status {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 3px 8px;
+      border-radius: 10px;
+      white-space: nowrap;
+    }
+
+    .step-status.pending { background: var(--border-light); color: var(--text-muted); }
+    .step-status.running { background: var(--accent-light); color: var(--accent); }
+    .step-status.waiting { background: var(--warning-light); color: var(--warning); }
+    .step-status.completed { background: var(--success-light); color: var(--success); }
+
+    .step-desc {
+      font-size: 12px;
+      color: var(--text-secondary);
+      margin-top: 4px;
+    }
+
+    .step-detail {
+      margin-top: 12px;
+      padding: 12px;
+      background: var(--accent-pale);
+      border-radius: var(--radius-sm);
+      border-left: 3px solid var(--accent);
+      display: none;
+    }
+
+    .step-detail.open { display: block; }
+
+    .step-detail-title {
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 8px;
+    }
+
+    .step-detail-content {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .step-detail-content ul {
+      list-style: none;
+      padding-left: 0;
+    }
+
+    .step-detail-content li {
+      padding: 3px 0 3px 16px;
+      position: relative;
+    }
+
+    .step-detail-content li::before {
+      content: '•';
+      position: absolute;
+      left: 4px;
+      color: var(--accent);
+    }
+
+    /* ========== Step Trace Log ========== */
+    .step-trace {
+      margin-top: 14px;
+      padding-top: 12px;
+      border-top: 1px dashed rgba(30, 64, 175, 0.2);
+    }
+
+    .step-trace-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .step-trace-list {
+      max-height: 160px;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      padding: 10px;
+      background: #f8fafc;
+      border: 1px solid var(--border-light);
+      border-radius: var(--radius-sm);
+      font-size: 12px;
+      font-family: 'SF Mono', 'JetBrains Mono', monospace;
+    }
+
+    .step-trace-list::-webkit-scrollbar { width: 4px; }
+    .step-trace-list::-webkit-scrollbar-thumb {
+      background: rgba(15, 23, 42, 0.15);
+      border-radius: 2px;
+    }
+
+    .step-trace-log {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      line-height: 1.5;
+      opacity: 0;
+      transform: translateY(6px);
+      animation: traceLogIn 0.25s forwards;
+    }
+
+    @keyframes traceLogIn {
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .step-trace-log .log-time {
+      color: var(--text-muted);
+      flex-shrink: 0;
+      font-size: 11px;
+      width: 52px;
+    }
+
+    .step-trace-log .log-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .step-trace-log .log-message {
+      color: var(--text-secondary);
+    }
+
+    .step-trace-log .log-sources {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .step-trace-log .log-source {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      padding: 2px 8px;
+      border-radius: 4px;
+      background: var(--accent-pale);
+      border: 1px solid var(--accent-light);
+      color: var(--accent);
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.2s;
+      font-family: inherit;
+      line-height: inherit;
+    }
+
+    /* ========== Input Bar ========== */
+    .input-bar {
+      height: var(--input-height);
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      padding: 12px 24px;
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      flex-shrink: 0;
+      z-index: 100;
+    }
+
+    .input-wrap {
+      flex: 1;
+      position: relative;
+      max-width: 880px;
+      margin: 0 auto;
+      width: 100%;
+      display: flex;
+      gap: 10px;
+    }
+
+    .chat-input {
+      flex: 1;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: 14px;
+      font-family: inherit;
+      background: var(--bg);
+      color: var(--text-primary);
+      resize: none;
+      max-height: 120px;
+      min-height: 44px;
+      line-height: 1.5;
+    }
+
+    .chat-input:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+
+    .send-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: var(--radius);
+      border: none;
+      background: var(--start);
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+
+    .send-btn:hover { background: #ea580c; }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    /* ========== Modal ========== */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      display: none;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+      backdrop-filter: blur(4px);
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal {
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      width: 90%;
+      max-width: 480px;
+      max-height: 80vh;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+
+    .modal-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .modal-header h3 {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .modal-close {
+      width: 28px;
+      height: 28px;
+      border-radius: 50%;
+      border: none;
+      background: var(--border-light);
+      color: var(--text-secondary);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .modal-body {
+      padding: 20px;
+      overflow-y: auto;
+      max-height: 50vh;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: 6px;
+    }
+
+    .form-input,
+    .form-select {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-family: inherit;
+      background: var(--surface);
+      color: var(--text-primary);
+    }
+
+    .form-input:focus,
+    .form-select:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-light);
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .modal-footer {
+      padding: 16px 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      justify-content: flex-end;
+      gap: 10px;
+    }
+
+    /* ========== Toast ========== */
+    .toast {
+      position: fixed;
+      bottom: 90px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      background: var(--text-primary);
+      color: white;
+      padding: 12px 20px;
+      border-radius: var(--radius);
+      font-size: 13px;
+      font-weight: 500;
+      box-shadow: var(--shadow-lg);
+      z-index: 400;
+      opacity: 0;
+      transition: all 0.3s;
+    }
+
+    .toast.show {
+      transform: translateX(-50%) translateY(0);
+      opacity: 1;
+    }
+
+    /* ========== Empty State ========== */
+    .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: var(--text-secondary);
+    }
+
+    .empty-icon {
+      width: 64px;
+      height: 64px;
+      border-radius: 50%;
+      background: var(--accent-pale);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      margin: 0 auto 16px;
+    }
+
+    .empty-state h3 {
+      font-size: 16px;
+      font-weight: 700;
+      margin-bottom: 6px;
+      color: var(--text-primary);
+    }
+
+    /* ========== Plan Section in Chat ========== */
+    .plan-card {
+      max-width: 880px;
+      width: 100%;
+      margin: 8px auto;
+      background: var(--surface);
+      border-radius: var(--radius-lg);
+      border: 1px solid var(--border);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      animation: messageIn 0.4s ease forwards;
+    }
+
+    .plan-card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border-light);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .plan-card-header h2 {
+      font-size: 15px;
+      font-weight: 700;
+    }
+
+    .plan-card-body {
+      padding: 20px;
+    }
+
+    .chapter {
+      border-bottom: 1px solid var(--border-light);
+    }
+
+    .chapter:last-child { border-bottom: none; }
+
+    .chapter-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 14px 0;
+      cursor: pointer;
+    }
+
+    .chapter-title-group {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .chapter-num {
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius);
+      background: var(--accent-pale);
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 13px;
+      flex-shrink: 0;
+    }
+
+    .chapter-text h3 {
+      font-size: 14px;
+      font-weight: 700;
+    }
+
+    .chapter-text p {
+      font-size: 12px;
+      color: var(--text-secondary);
+    }
+
+    .chapter-body {
+      display: none;
+      padding: 0 0 18px 44px;
+      color: var(--text-secondary);
+      font-size: 13px;
+      line-height: 1.8;
+    }
+
+    .chapter.open .chapter-body { display: block; }
+
+    /* ========== Responsive ========== */
+    @media (max-width: 768px) {
+      .main-header { padding: 0 16px; }
+      .chat-stream { padding: 16px; }
+      .input-bar { padding: 10px 16px; }
+      .main-actions { display: none; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header class="main-header">
+      <div class="brand">
+        <div class="brand-logo">A</div>
+        <div>
+          <div class="brand-text">AllyGo 营销方案 Agent</div>
+          <div class="brand-tag">智能生成 · 数据驱动 · 可执行</div>
+        </div>
+      </div>
+      <div class="main-actions">
+        <button class="btn btn-secondary" id="btnPrintPdf">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+          导出 PDF
+        </button>
+        <button class="btn btn-secondary" id="btnExportWord">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+          导出 Word
+        </button>
+      </div>
+    </header>
+
+    <div class="chat-stream" id="chatStream"></div>
+
+    <div class="input-bar">
+      <div class="input-wrap">
+        <textarea class="chat-input" id="chatInput" placeholder="告诉我你想做什么，例如：我是娃哈哈，想在上海推广果汁，预算300万，周期3个月" rows="1"></textarea>
+        <button class="send-btn" id="sendBtn">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"></line><polygon points="22 2 15 22 11 13 2 9 22 2"></polygon></svg>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="infoModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h3>补充品牌信息</h3>
+        <button class="modal-close" id="modalClose">✕</button>
+      </div>
+      <div class="modal-body" id="modalBody"></div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" id="modalCancel">取消</button>
+        <button class="btn btn-primary" id="modalConfirm">确认</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast"></div>
+
+  <script>
+    // ========== Mock Data ==========
+    const mockData = {
+      cities: {
+        '上海': { population: '2,487万', sportIndex: 92, topSports: ['跑步','瑜伽','篮球','骑行','健身'], consumption: '高', weekendActive: '68%' },
+        '北京': { population: '2,184万', sportIndex: 89, topSports: ['跑步','篮球','羽毛球','骑行','滑雪'], consumption: '高', weekendActive: '65%' },
+        '成都': { population: '2,126万', sportIndex: 85, topSports: ['跑步','篮球','羽毛球','乒乓球','健身'], consumption: '中高', weekendActive: '70%' },
+        '杭州': { population: '1,237万', sportIndex: 88, topSports: ['跑步','骑行','瑜伽','网球','健身'], consumption: '高', weekendActive: '72%' },
+        '广州': { population: '1,882万', sportIndex: 86, topSports: ['篮球','跑步','羽毛球','足球','健身'], consumption: '中高', weekendActive: '69%' }
+      },
+      leagues: {
+        '上海': { count: 342, topLeagues: ['沪跑团','上海瑜伽联盟','魔都骑行社','外滩篮球盟'], avgMembers: 1280 },
+        '北京': { count: 318, topLeagues: ['北京跑者俱乐部','京北篮球联盟','奥森骑行团'], avgMembers: 1150 },
+        '成都': { count: 286, topLeagues: ['蓉城跑团','天府篮球盟','锦里瑜伽社'], avgMembers: 980 },
+        '杭州': { count: 198, topLeagues: ['西湖跑团','杭城骑行盟','钱塘瑜伽社'], avgMembers: 890 },
+        '广州': { count: 267, topLeagues: ['羊城篮球盟','珠江跑团','广州羽毛球联盟'], avgMembers: 1050 }
+      },
+      events: {
+        '上海': { monthly: 156, avgParticipants: 86, categories: ['城市马拉松','趣味跑','瑜伽节','篮球赛','骑行活动'] },
+        '北京': { monthly: 142, avgParticipants: 92, categories: ['奥森长跑','社区篮球赛','羽毛球公开赛','滑雪体验'] },
+        '成都': { monthly: 128, avgParticipants: 78, categories: ['绿道骑行','社区篮球赛','跑步活动','乒乓球赛'] },
+        '杭州': { monthly: 118, avgParticipants: 82, categories: ['西湖晨跑','骑行挑战赛','瑜伽公开课','网球体验'] },
+        '广州': { monthly: 134, avgParticipants: 88, categories: ['珠江夜跑','篮球邀请赛','羽毛球联赛','足球友谊赛'] }
+      },
+      influencers: {
+        '上海': { count: 568, tiers: { '至尊/大师': 12, '明星/精英': 48, '健将': 156, '达人': 352 }, avgQuote: '1.2万/条' },
+        '北京': { count: 524, tiers: { '至尊/大师': 10, '明星/精英': 42, '健将': 138, '达人': 334 }, avgQuote: '1.1万/条' },
+        '成都': { count: 412, tiers: { '至尊/大师': 6, '明星/精英': 28, '健将': 98, '达人': 280 }, avgQuote: '0.7万/条' },
+        '杭州': { count: 356, tiers: { '至尊/大师': 5, '明星/精英': 24, '健将': 86, '达人': 241 }, avgQuote: '0.8万/条' },
+        '广州': { count: 438, tiers: { '至尊/大师': 7, '明星/精英': 30, '健将': 108, '达人': 293 }, avgQuote: '0.75万/条' }
+      },
+      stores: {
+        '上海': { count: 89, categories: ['运动装备','健康食品','健身课程','运动康复','潮流服饰','户外用品'] },
+        '北京': { count: 76, categories: ['运动装备','健康食品','健身课程','运动康复','潮流服饰','户外用品'] },
+        '成都': { count: 62, categories: ['运动装备','健康食品','健身课程','运动康复','潮流服饰','户外用品'] },
+        '杭州': { count: 54, categories: ['运动装备','健康食品','健身课程','运动康复','潮流服饰','户外用品'] },
+        '广州': { count: 68, categories: ['运动装备','健康食品','健身课程','运动康复','潮流服饰','户外用品'] }
+      },
+      venues: {
+        '上海': { count: 234, types: ['综合体育馆','跑步公园','瑜伽馆','篮球场','骑行绿道'], capacity: '平均420人/场' },
+        '北京': { count: 218, types: ['综合体育馆','跑步公园','羽毛球馆','滑雪场','篮球场'], capacity: '平均450人/场' },
+        '成都': { count: 186, types: ['社区运动场','跑步公园','篮球馆','乒乓球馆','健身房'], capacity: '平均380人/场' },
+        '杭州': { count: 164, types: ['西湖沿线跑道','瑜伽馆','网球场','骑行绿道','健身房'], capacity: '平均350人/场' },
+        '广州': { count: 198, types: ['社区篮球场','珠江跑道','羽毛球馆','足球场','健身房'], capacity: '平均400人/场' }
+      },
+      personas: {
+        '上海': { age: '18-40岁占71%', gender: '女性54%', traits: ['注重健康','社交活跃','周末运动','品质消费'], peak: '周末 8:00-10:00, 18:00-21:00' },
+        '北京': { age: '22-42岁占68%', gender: '男性51%', traits: ['户外运动','竞技偏好','社群归属','理性消费'], peak: '周末 7:00-10:00, 19:00-22:00' },
+        '成都': { age: '18-38岁占74%', gender: '女性56%', traits: ['休闲社交','尝试新鲜','晚间活跃','性价比敏感'], peak: '周末 9:00-11:00, 20:00-22:00' },
+        '杭州': { age: '20-40岁占69%', gender: '女性52%', traits: ['精致生活','骑行热爱','健康管理','品牌意识'], peak: '周末 7:30-9:30, 18:30-20:30' },
+        '广州': { age: '18-42岁占72%', gender: '男性53%', traits: ['篮球文化','团队运动','夜跑习惯','社交消费'], peak: '周末 8:00-10:00, 19:30-22:00' }
+      }
+    };
+
+    // ========== State ==========
+    let messages = [];
+    let isRunning = false;
+    let currentStepIndex = -1;
+    let expandedSteps = new Set();
+    let stepResults = [];
+    let currentPlan = null;
+    let pendingContext = null;
+
+    window.autoContinue = true;
+
+    const agents = [
+      { id: 'collect', name: '需求收集 Agent', desc: '检查品牌信息完整性，识别缺失字段', icon: '📝' },
+      { id: 'market', name: '市场调研 Agent', desc: '收集行业趋势、竞品格局、消费洞察', icon: '📊' },
+      { id: 'audience', name: '人群洞察 Agent', desc: '分析目标城市运动人群画像', icon: '👥' },
+      { id: 'data', name: '数据查询 Agent', desc: '调取 AllyGo 盟域/赛事/达人/场馆/经营社数据', icon: '🔍' },
+      { id: 'fitness', name: '适配度分析 Agent', desc: '计算品牌品类 × 运动场景适配度', icon: '🎯' },
+      { id: 'strategy', name: '策略生成 Agent', desc: '制定营销策略、核心定位、4M+1C框架', icon: '💡' },
+      { id: 'execution', name: '执行规划 Agent', desc: '规划赛事/盟域/达人/内容/运营落地方案', icon: '🚀' },
+      { id: 'budget', name: '预算与 KPI Agent', desc: '测算预算分配、KPI预测、时间表', icon: '💰' },
+      { id: 'actions', name: '行动建议 Agent', desc: '生成可执行的系统操作指导', icon: '🎯' }
+    ];
+
+    const fieldLabels = {
+      brandName: '品牌名称',
+      category: '产品/品类',
+      city: '目标城市',
+      budget: '预算范围（万元）',
+      period: '执行周期（月）'
+    };
+
+    const fieldOrder = ['brandName', 'category', 'city', 'budget', 'period'];
+
+    // ========== DOM Elements ==========
+    const chatStream = document.getElementById('chatStream');
+    const chatInput = document.getElementById('chatInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const infoModal = document.getElementById('infoModal');
+    const modalBody = document.getElementById('modalBody');
+    const btnPrintPdf = document.getElementById('btnPrintPdf');
+    const btnExportWord = document.getElementById('btnExportWord');
+
+    // ========== Helpers ==========
+    function sleep(ms) {
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.textContent = message;
+      toast.classList.add('show');
+      setTimeout(() => toast.classList.remove('show'), 2500);
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/[&<>"']/g, m => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[m]));
+    }
+
+    function formatTime(date) {
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
+    }
+
+    function formatFullTime(date) {
+      return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}:${String(date.getSeconds()).padStart(2, '0')}`;
+    }
+
+    // ========== Chat Rendering ==========
+    function addMessage(role, content, options = {}) {
+      const time = formatTime(new Date());
+      messages.push({ role, content, time, ...options });
+      renderMessages();
+      scrollToBottom();
+    }
+
+    function addTyping() {
+      const el = document.createElement('div');
+      el.className = 'message ai typing-indicator';
+      el.innerHTML = `
+        <div class="message-avatar">🤖</div>
+        <div class="message-bubble">
+          <div class="typing"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>
+        </div>
+      `;
+      chatStream.appendChild(el);
+      scrollToBottom();
+      return el;
+    }
+
+    function removeTyping() {
+      const el = document.querySelector('.typing-indicator');
+      if (el) el.remove();
+    }
+
+    function renderMessages() {
+      // 增量渲染：只追加新增消息，保留已有 DOM 状态
+      for (let i = chatStream.childElementCount; i < messages.length; i++) {
+        const m = messages[i];
+        const el = document.createElement('div');
+        if (m.type === 'workflow' || m.type === 'plan') {
+          el.className = 'workflow-message-wrapper';
+          el.innerHTML = m.content;
+        } else {
+          const avatar = m.role === 'user' ? '👤' : '🤖';
+          el.className = `message ${m.role}`;
+          el.innerHTML = `
+            <div class="message-avatar">${avatar}</div>
+            <div>
+              <div class="message-bubble">${m.content}</div>
+              <div class="message-time">${m.time}</div>
+            </div>
+          `;
+        }
+        chatStream.appendChild(el);
+      }
+
+      // 若消息数量减少（不应发生），兜底重绘
+      if (chatStream.childElementCount > messages.length) {
+        chatStream.innerHTML = messages.map(m => {
+          if (m.type === 'workflow' || m.type === 'plan') return m.content;
+          const avatar = m.role === 'user' ? '👤' : '🤖';
+          return `
+            <div class="message ${m.role}">
+              <div class="message-avatar">${avatar}</div>
+              <div>
+                <div class="message-bubble">${m.content}</div>
+                <div class="message-time">${m.time}</div>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
+    }
+
+    function scrollToBottom() {
+      requestAnimationFrame(() => {
+        chatStream.scrollTop = chatStream.scrollHeight;
+      });
+    }
+
+    // ========== Intent Recognition ==========
+    function recognizeIntent(text) {
+      const lower = text.toLowerCase();
+
+      // 生成营销方案
+      if (/营销方案|生成方案|做方案|策划方案|推广方案|品牌方案/.test(lower)) {
+        return { intent: 'generate_plan', confidence: 0.95 };
+      }
+
+      // 数据查询
+      if (/查询|数据|市场|人群|盟域|赛事|达人|场馆|经营社/.test(lower)) {
+        return { intent: 'query_data', confidence: 0.7 };
+      }
+
+      // 简单对话 / 帮助
+      if (/你好|帮助|能做什么|介绍/.test(lower)) {
+        return { intent: 'chat', confidence: 0.8 };
+      }
+
+      // 默认：如果包含品牌/城市/预算等字段，尝试理解为生成方案
+      const hasBrand = /我是|我们是|品牌/.test(text);
+      const hasCity = /在[一-龥]{2,4}(?:做|推广|市场|做营销|做活动)/.test(text);
+      const hasBudget = /预算\d+/.test(text);
+      if (hasBrand && (hasCity || hasBudget)) {
+        return { intent: 'generate_plan', confidence: 0.75 };
+      }
+
+      return { intent: 'chat', confidence: 0.6 };
+    }
+
+    function extractBrandInfo(text, existing = {}) {
+      const info = { ...existing };
+
+      const brandMatch = text.match(/我是(.+?)[，,]/);
+      if (brandMatch) info.brandName = brandMatch[1].trim();
+
+      const productMatch = text.match(/(?:品牌|公司).*?(?:新推出|推出|推广|做|策划)(.+?)[，,]/);
+      if (productMatch) info.category = productMatch[1].trim();
+      else if (!info.category) {
+        const catMatch = text.match(/推广(.+?)[，,]/);
+        if (catMatch) info.category = catMatch[1].trim();
+      }
+
+      const cityMatch = text.match(/在(.+?)(?:做|推广|市场|做营销|做活动)/);
+      if (cityMatch && mockData.cities[cityMatch[1].trim()]) info.city = cityMatch[1].trim();
+
+      const budgetMatch = text.match(/预算(\d+)(?:万|万元)/);
+      if (budgetMatch) info.budget = parseInt(budgetMatch[1]);
+
+      const periodMatch = text.match(/周期(\d+)(?:个?月|个月)/);
+      if (periodMatch) info.period = parseInt(periodMatch[1]);
+
+      return info;
+    }
+
+    function getMissingFields(info) {
+      return fieldOrder.filter(f => !info[f]);
+    }
+
+    function buildMissingPrompt(missing) {
+      const labels = missing.map(f => fieldLabels[f]).join('、');
+      const examples = {
+        brandName: '我是xx品牌',
+        category: '推广xx产品',
+        city: '在上海',
+        budget: '预算300万',
+        period: '周期3个月'
+      };
+      const exampleText = missing.map(f => examples[f]).join('，');
+      return `为了生成营销方案，我还需要了解：<strong>${labels}</strong>。<br>你可以直接回复，例如：${exampleText}`;
+    }
+
+    function renderInfoForm(info, missing) {
+      const fields = {
+        brandName: { label: '品牌名称', type: 'text', placeholder: '例如：娃哈哈' },
+        category: { label: '产品/品类', type: 'text', placeholder: '例如：魅力系列果汁' },
+        city: { label: '目标城市', type: 'select', options: Object.keys(mockData.cities) },
+        budget: { label: '预算（万元）', type: 'number', placeholder: '例如：300' },
+        period: { label: '执行周期（月）', type: 'select', options: ['3', '6', '12'] }
+      };
+
+      modalBody.innerHTML = missing.map(f => {
+        const field = fields[f];
+        if (field.type === 'select') {
+          const opts = field.options.map(o => `<option value="${o}" ${info[f] === o || String(info[f]) === o ? 'selected' : ''}>${o}${f === 'period' ? ' 个月' : ''}</option>`).join('');
+          return `
+            <div class="form-group">
+              <label class="form-label">${field.label}</label>
+              <select class="form-select" data-field="${f}">${opts}</select>
+            </div>
+          `;
+        }
+        return `
+          <div class="form-group">
+            <label class="form-label">${field.label}</label>
+            <input type="${field.type}" class="form-input" data-field="${f}" value="${info[f] || ''}" placeholder="${field.placeholder}">
+          </div>
+        `;
+      }).join('');
+    }
+
+    // ========== Core Handler ==========
+    async function handleUserInput(text) {
+      if (!text.trim() || isRunning) return;
+
+      addMessage('user', escapeHtml(text));
+      chatInput.value = '';
+      chatInput.style.height = 'auto';
+      sendBtn.disabled = true;
+
+      const typing = addTyping();
+      await sleep(600);
+      removeTyping();
+
+      const intent = recognizeIntent(text);
+      pendingContext = pendingContext || {};
+
+      if (intent.intent === 'generate_plan') {
+        pendingContext.brandInfo = extractBrandInfo(text, pendingContext.brandInfo);
+        const missing = getMissingFields(pendingContext.brandInfo);
+
+        if (missing.length > 0) {
+          addMessage('ai', buildMissingPrompt(missing) + `<br><br>或者点击<b>补充信息</b>快速填写。`, { quickActions: ['补充信息'] });
+          attachQuickActions();
+        } else {
+          await runWorkflow(pendingContext.brandInfo);
+        }
+      } else if (intent.intent === 'query_data') {
+        const info = extractBrandInfo(text, {});
+        const city = info.city || '上海';
+        addMessage('ai', `已为你查询 <strong>${city}</strong> 的 AllyGo 平台数据：<br><br>
+          • 盟域资源：${mockData.leagues[city].count} 个盟<br>
+          • 赛事活动：月均 ${mockData.events[city].monthly} 场<br>
+          • 达人资源：${mockData.influencers[city].count} 位<br>
+          • 场馆资源：${mockData.venues[city].count} 个<br>
+          • 经营社：${mockData.stores[city].count} 家<br><br>
+          需要我基于这些数据生成完整营销方案吗？`);
+      } else {
+        addMessage('ai', `你好！我是 AllyGo 营销方案 Agent，可以帮你：<br><br>
+          1. <strong>生成营销方案</strong> — 告诉我品牌、城市、预算、周期<br>
+          2. <strong>查询 AllyGo 数据</strong> — 盟域、赛事、达人、场馆、经营社<br>
+          3. <strong>分析市场/人群/适配度</strong><br><br>
+          试试输入："我是娃哈哈，想在上海推广果汁，预算300万，周期3个月"`);
+      }
+
+      sendBtn.disabled = false;
+    }
+
+    function attachQuickActions() {
+      const bubbles = chatStream.querySelectorAll('.message-bubble');
+      const last = bubbles[bubbles.length - 1];
+      if (!last) return;
+
+      const wrap = document.createElement('div');
+      wrap.className = 'quick-chips';
+      wrap.innerHTML = `<button class="quick-chip" data-action="open-form">补充信息</button>`;
+      last.appendChild(wrap);
+
+      wrap.querySelector('[data-action="open-form"]').addEventListener('click', () => {
+        openInfoModal();
+      });
+    }
+
+    function openInfoModal() {
+      const info = (pendingContext && pendingContext.brandInfo) || {};
+      const missing = getMissingFields(info);
+      renderInfoForm(info, missing.length ? missing : fieldOrder);
+      infoModal.classList.add('open');
+    }
+
+    function closeInfoModal() {
+      infoModal.classList.remove('open');
+    }
+
+    async function confirmInfoModal() {
+      const wid = infoModal.dataset.workflowId;
+      const inputs = infoModal.querySelectorAll('[data-field]');
+      const info = (pendingContext && pendingContext.brandInfo) || {};
+      inputs.forEach(input => {
+        const field = input.dataset.field;
+        const value = input.value.trim();
+        if (value) {
+          if (field === 'budget' || field === 'period') info[field] = parseInt(value);
+          else info[field] = value;
+        }
+      });
+      pendingContext.brandInfo = info;
+      closeInfoModal();
+      infoModal.removeAttribute('data-workflow-id');
+
+      if (wid) {
+        // 修改条件后继续：清空当前工作流卡片状态，重新执行
+        const workflowCard = document.getElementById(wid);
+        if (workflowCard) {
+          const stopped = document.getElementById(`stopped-${wid}`);
+          if (stopped) stopped.classList.remove('show');
+          const controls = document.getElementById(`controls-${wid}`);
+          if (controls) controls.style.display = 'flex';
+        }
+        await runWorkflow(info);
+        return;
+      }
+
+      const missing = getMissingFields(info);
+      if (missing.length === 0) {
+        await runWorkflow(info);
+      } else {
+        addMessage('ai', buildMissingPrompt(missing) + `<br><br>或者点击<b>补充信息</b>继续填写。`, { quickActions: ['补充信息'] });
+        attachQuickActions();
+      }
+    }
+
+    // ========== Workflow ==========
+    async function runWorkflow(brandInfo) {
+      isRunning = true;
+      sendBtn.disabled = true;
+
+      const data = {
+        ...brandInfo,
+        productMatrix: `${brandInfo.category}系列产品`,
+        positioning: '健康活力，全家共享',
+        marketingGoal: 'brand-awareness',
+        targetAudience: '18-40岁都市白领及家庭用户',
+        history: '',
+        constraints: ''
+      };
+
+      addMessage('ai', `收到，开始为 <strong>${data.brandName}</strong> 生成 <strong>${data.city}</strong> 营销方案，预算 <strong>${data.budget}万</strong>，周期 <strong>${data.period}个月</strong>。`);
+
+      // 插入工作流卡片
+      const workflowId = 'workflow-' + Date.now();
+      messages.push({
+        role: 'ai',
+        type: 'workflow',
+        content: `
+          <div class="workflow-card" id="${workflowId}">
+            <div class="workflow-header">
+              <h2><span class="icon">🤖</span>Agent 执行流水线</h2>
+              <div class="workflow-controls" id="controls-${workflowId}">
+                <button class="btn btn-stop" onclick="window.stopWorkflow('${workflowId}')">⏹ 停止</button>
+                <button class="btn btn-edit" onclick="window.editWorkflowConditions('${workflowId}')">✏️ 修改条件</button>
+              </div>
+            </div>
+            <div class="workflow-body"><div class="pipeline" id="pipeline-${workflowId}"></div></div>
+            <div class="workflow-stopped" id="stopped-${workflowId}">
+              <span id="stopped-text-${workflowId}">已停止</span>
+              <button class="btn btn-edit" onclick="window.editWorkflowConditions('${workflowId}')">✏️ 修改条件后继续</button>
+            </div>
+          </div>
+        `,
+        time: formatTime(new Date())
+      });
+      renderMessages();
+      scrollToBottom();
+
+      currentStepIndex = 0;
+      stepResults = [];
+      expandedSteps.clear();
+
+      const pipelineEl = document.getElementById(`pipeline-${workflowId}`);
+
+      // 绑定并渲染本次工作流
+      renderPipeline = function() {
+        if (!pipelineEl) return;
+        pipelineEl.innerHTML = agents.map((agent, idx) => {
+          let statusClass = 'pending';
+          let statusText = '待执行';
+          let stepClass = '';
+          if (idx < currentStepIndex) { stepClass = 'completed'; statusClass = 'completed'; statusText = '已完成'; }
+          else if (idx === currentStepIndex) {
+            const result = stepResults[idx];
+            if (result && result.status === 'waiting') { stepClass = 'waiting'; statusClass = 'waiting'; statusText = '等待确认'; }
+            else { stepClass = 'running'; statusClass = 'running'; statusText = '执行中'; }
+          }
+
+          const detailOpen = expandedSteps.has(idx) ? 'open' : '';
+          const logs = stepResults[idx]?.logs || [];
+          const logsHtml = logs.map(log => renderAgentLogItem(log)).join('');
+          const hasDetail = !!stepResults[idx];
+          const detailContent = hasDetail ? `
+            <div class="step-detail ${detailOpen}">
+              <div class="step-detail-title">执行摘要</div>
+              <div class="step-detail-content">${stepResults[idx].summary || ''}</div>
+              <div class="step-trace">
+                <div class="step-trace-title">执行轨迹与数据引用</div>
+                <div class="step-trace-list" data-idx="${idx}">${logsHtml}</div>
+              </div>
+            </div>
+          ` : '';
+
+          return `
+            <div class="pipeline-step ${stepClass}" data-idx="${idx}">
+              <div class="step-dot">${agent.icon}</div>
+              <div class="step-body">
+                <div class="step-node" onclick="window.toggleStepDetail(${idx})">
+                  <div style="flex:1;min-width:0;">
+                    <div class="step-header">
+                      <div class="step-title">${agent.name}</div>
+                      <div class="step-status ${statusClass}">${statusText}</div>
+                    </div>
+                    <div class="step-desc">${agent.desc}</div>
+                  </div>
+                </div>
+                ${detailContent}
+              </div>
+            </div>
+          `;
+        }).join('');
+      };
+
+      window.toggleStepDetail = function(idx) {
+        if (expandedSteps.has(idx)) expandedSteps.delete(idx);
+        else expandedSteps.add(idx);
+        renderPipeline();
+      };
+
+      await runFromCurrentStep(data);
+
+      // 保存工作流卡片的最终 HTML，避免后续 renderMessages 把它重置为空
+      const workflowCard = document.getElementById(workflowId);
+      const workflowMsg = messages.find(m => m.type === 'workflow' && m.content.includes(workflowId));
+      if (workflowMsg && workflowCard) {
+        workflowMsg.content = workflowCard.outerHTML;
+      }
+
+      // 恢复为无操作函数
+      renderPipeline = function() {};
+
+      // 渲染最终方案
+      if (currentPlan) {
+        const planHtml = renderPlanCard(currentPlan);
+        messages.push({ role: 'ai', type: 'plan', content: planHtml, time: formatTime(new Date()) });
+        renderMessages();
+        scrollToBottom();
+        addMessage('ai', '营销方案已生成完成，你可以点击上方卡片查看各章节，或导出 PDF/Word。');
+      }
+
+      isRunning = false;
+      sendBtn.disabled = false;
+    }
+
+    // ========== Agent Logic ==========
+    function renderAgentLogItem(log) {
+      const sourcesHtml = log.sources.length ? `
+        <div class="log-sources">
+          ${log.sources.map(s => `<button type="button" class="log-source" title="${escapeHtml(s.detail || s.label)}">🔗 ${escapeHtml(s.label)}</button>`).join('')}
+        </div>
+      ` : '';
+      return `
+        <div class="step-trace-log">
+          <div class="log-time">${log.time}</div>
+          <div class="log-body">
+            <span class="log-message">${escapeHtml(log.msg)}</span>
+            ${sourcesHtml}
+          </div>
+        </div>
+      `;
+    }
+
+    function pushAgentLog(idx, msg, sources = []) {
+      const list = document.querySelector(`.step-trace-list[data-idx="${idx}"]`);
+      if (!list) return;
+      const log = { time: formatFullTime(new Date()), msg, sources: sources || [] };
+      const wrapper = document.createElement('div');
+      wrapper.innerHTML = renderAgentLogItem(log);
+      list.appendChild(wrapper.firstElementChild);
+      list.scrollTop = list.scrollHeight;
+      return log;
+    }
+
+    async function runAgent(idx, data) {
+      const agent = agents[idx];
+      const city = data.city;
+
+      currentStepIndex = idx;
+      expandedSteps.add(idx);
+      stepResults[idx] = { status: 'running', summary: '', sources: [], logs: [] };
+      renderPipeline();
+
+      const stepLogs = {
+        0: [
+          { msg: '开始解析品牌输入信息…', sources: [] },
+          { msg: `已识别品牌：${data.brandName}，品类：${data.category}`, sources: [{ label: '用户输入', detail: '品牌基础信息' }] },
+          { msg: `目标市场：${city}，预算 ${data.budget} 万，周期 ${data.period} 个月`, sources: [{ label: '用户输入', detail: '预算与周期' }] },
+          { msg: '品牌信息完整性校验通过', sources: [] }
+        ],
+        1: [
+          { msg: '开始收集行业市场数据…', sources: [] },
+          { msg: '读取果汁饮料行业趋势报告…', sources: [{ label: '行业知识库', detail: 'FMCG 行业趋势摘要' }] },
+          { msg: '分析运动场景饮品消费动机…', sources: [{ label: '行业知识库', detail: '运动后补给场景数据' }] },
+          { msg: `${city} 市场消费力评估为「${mockData.cities[city].consumption}」`, sources: [{ label: '城市经济数据', detail: `${city} 消费力等级` }] }
+        ],
+        2: [
+          { msg: '开始分析目标城市运动人群画像…', sources: [] },
+          { msg: `${city} 运动人群指数 ${mockData.cities[city].sportIndex}，周末活跃占比 ${mockData.cities[city].weekendActive}`, sources: [{ label: 'AllyGo 用户画像', detail: `${city} 运动活跃度数据` }] },
+          { msg: `Top5 运动场景：${mockData.cities[city].topSports.join('、')}`, sources: [{ label: 'AllyGo 运动偏好', detail: `${city} 运动类型分布` }] },
+          { msg: `人群特征：${mockData.personas[city].traits.join('、')}`, sources: [{ label: 'AllyGo 人群标签', detail: `${city} 用户画像标签` }] }
+        ],
+        3: [
+          { msg: '开始查询 AllyGo 平台数据…', sources: [] },
+          { msg: `盟域资源：${mockData.leagues[city].count} 个盟，平均 ${mockData.leagues[city].avgMembers} 人`, sources: [{ label: 'AllyGo 盟域数据', detail: `${city} 盟域数量与规模` }] },
+          { msg: `赛事活动：月均 ${mockData.events[city].monthly} 场，平均单场 ${mockData.events[city].avgParticipants} 人`, sources: [{ label: 'AllyGo 赛事数据', detail: `${city} 赛事频次与规模` }] },
+          { msg: `达人资源：${mockData.influencers[city].count} 位认证达人`, sources: [{ label: 'AllyGo 达人数据', detail: `${city} 健将达人分级统计` }] },
+          { msg: `场馆资源：${mockData.venues[city].count} 个运动场馆，${mockData.venues[city].capacity}`, sources: [{ label: 'AllyGo 场馆数据', detail: `${city} 运动场馆分布` }] },
+          { msg: `经营社：${mockData.stores[city].count} 家合作商家`, sources: [{ label: 'AllyGo 经营社数据', detail: `${city} 六类货架商家` }] }
+        ],
+        4: [
+          { msg: '开始计算品牌品类 × 运动场景适配度…', sources: [] },
+          { msg: `主品类「${data.category}」与跑步场景适配度 96 分`, sources: [{ label: '适配度引擎', detail: '品类×运动规则矩阵' }] },
+          { msg: `与瑜伽场景适配度 91 分，与篮球场景适配度 87 分`, sources: [{ label: '适配度引擎', detail: '品类×运动规则矩阵' }] },
+          { msg: `推荐双核驱动：${mockData.cities[city].topSports[0]} + ${mockData.cities[city].topSports[1]}`, sources: [{ label: 'AllyGo 城市运动热度', detail: `${city} Top 运动场景` }] }
+        ],
+        5: [
+          { msg: '开始制定营销策略…', sources: [] },
+          { msg: `核心定位：${data.positioning || '健康活力'}`, sources: [{ label: '用户输入', detail: '品牌定位' }] },
+          { msg: '构建 4M+1C 策略框架：Motion / Member / Media / Merchant / Community', sources: [{ label: '策略知识库', detail: '营销模型模板' }] },
+          { msg: `差异化打法：绑定 ${city} 头部盟域打造品牌 IP`, sources: [{ label: 'AllyGo 盟域数据', detail: `${city} 头部盟列表` }] }
+        ],
+        6: [
+          { msg: '开始规划落地执行方案…', sources: [] },
+          { msg: `赛事规划：${mockData.events[city].categories.slice(0,3).join('、')} 等核心赛事`, sources: [{ label: 'AllyGo 赛事数据', detail: `${city} 可合作赛事类型` }] },
+          { msg: `盟域共建：${mockData.leagues[city].topLeagues.slice(0,2).join('、')} 等头部盟`, sources: [{ label: 'AllyGo 盟域数据', detail: `${city} 头部盟列表` }] },
+          { msg: `达人矩阵：至尊/大师 ${mockData.influencers[city].tiers['至尊/大师']} 位 + 明星/精英 ${mockData.influencers[city].tiers['明星/精英']} 位`, sources: [{ label: 'AllyGo 达人数据', detail: `${city} 达人分级统计` }] },
+          { msg: `经营社联动：${mockData.stores[city].count} 家商家上架产品`, sources: [{ label: 'AllyGo 经营社数据', detail: `${city} 合作商家` }] }
+        ],
+        7: [
+          { msg: '开始测算预算分配与 KPI…', sources: [] },
+          { msg: `总预算 ${data.budget} 万，按历史同类活动数据拆分`, sources: [{ label: '成本参数库', detail: '赛事/达人/物料单价参考' }] },
+          { msg: `赛事/活动 28% · 达人合作 30% · 内容制作 15% · 数字化运营 12%`, sources: [{ label: '成本参数库', detail: '预算分配比例模板' }] },
+          { msg: `预期 KPI：总曝光 ≥ ${(data.budget * 0.8).toFixed(0)} 万 · 活动参与 ≥ ${(data.budget * 0.12).toFixed(0)} 人次`, sources: [{ label: 'AllyGo 历史 KPI', detail: '同类活动转化基准' }] }
+        ],
+        8: [
+          { msg: '开始生成可执行动作建议…', sources: [] },
+          { msg: `创建「${data.brandName}${city}运动健康季」专属盟`, sources: [{ label: 'AllyGo 盟域模块', detail: '盟创建接口' }] },
+          { msg: `发布 ${data.period} 场品牌定制赛事/活动`, sources: [{ label: 'AllyGo 赛事模块', detail: '赛事发布接口' }] },
+          { msg: `筛选并邀约 ${mockData.influencers[city].count} 位达人中的头部账号`, sources: [{ label: 'AllyGo 合作圈', detail: '达人邀约接口' }] },
+          { msg: '生成正式方案文档，支持 PDF/Word 导出', sources: [{ label: '文档导出', detail: '方案导出功能' }] }
+        ]
+      };
+
+      const logs = stepLogs[idx] || [
+        { msg: '开始执行…', sources: [] },
+        { msg: '正在读取输入参数…', sources: [] },
+        { msg: '正在分析关联数据…', sources: [] },
+        { msg: '正在整理输出摘要…', sources: [] }
+      ];
+
+      logs.push(
+        { msg: '正在建立分析框架与约束条件…', sources: [] },
+        { msg: '正在交叉验证多源数据一致性…', sources: [] },
+        { msg: '关键洞察已提取，准备输出摘要', sources: [] }
+      );
+
+      for (const log of logs) {
+        if (!window.autoContinue && !isRunning) return;
+        const entry = pushAgentLog(idx, log.msg, log.sources);
+        if (entry) stepResults[idx].logs.push(entry);
+        await sleep(400 + Math.random() * 300);
+      }
+
+      if (!window.autoContinue && !isRunning) return;
+
+      const summaries = [
+        generateCollectSummary,
+        generateMarketSummary,
+        generateAudienceSummary,
+        generateDataSummary,
+        generateFitnessSummary,
+        generateStrategySummary,
+        generateExecutionSummary,
+        generateBudgetSummary,
+        generateActionsSummary
+      ];
+
+      const summary = summaries[idx](data);
+      const allSources = logs.filter(l => l.sources && l.sources.length).flatMap(l => l.sources);
+      const doneEntry = pushAgentLog(idx, '执行完成');
+      if (doneEntry) stepResults[idx].logs.push(doneEntry);
+
+      stepResults[idx] = { status: 'waiting', summary, sources: allSources, logs: stepResults[idx].logs };
+      renderPipeline();
+      expandedSteps.add(idx);
+      renderPipeline();
+
+      if (window.autoContinue) {
+        await sleep(600);
+        if (!window.autoContinue && !isRunning) return;
+        expandedSteps.delete(idx);
+        currentStepIndex = idx + 1;
+        renderPipeline();
+      }
+    }
+
+    async function runFromCurrentStep(data) {
+      generateBtn && (generateBtn.disabled = true);
+
+      for (let i = currentStepIndex; i < agents.length; i++) {
+        if (i < 0) continue;
+        await runAgent(i, data);
+        if (!window.autoContinue) {
+          generateBtn && (generateBtn.disabled = false);
+          return;
+        }
+      }
+
+      generateBtn && (generateBtn.disabled = false);
+      if (currentStepIndex >= agents.length) {
+        currentPlan = buildPlan(data);
+      }
+    }
+
+    let renderPipeline = function() {};
+    let generateBtn = null;
+
+    window.stopWorkflow = function(wid) {
+      if (!isRunning) return;
+      window.autoContinue = false;
+      isRunning = false;
+      sendBtn.disabled = false;
+
+      const controls = document.getElementById(`controls-${wid}`);
+      if (controls) controls.style.display = 'none';
+      const stopped = document.getElementById(`stopped-${wid}`);
+      if (stopped) stopped.classList.add('show');
+
+      const workflowMsg = messages.find(m => m.type === 'workflow' && m.content.includes(wid));
+      const workflowCard = document.getElementById(wid);
+      if (workflowMsg && workflowCard) {
+        workflowMsg.content = workflowCard.outerHTML;
+      }
+    };
+
+    window.editWorkflowConditions = function(wid) {
+      const info = (pendingContext && pendingContext.brandInfo) || {};
+      renderInfoForm(info, fieldOrder);
+      infoModal.dataset.workflowId = wid;
+      infoModal.classList.add('open');
+    };
+
+    const originalConfirmInfoModal = confirmInfoModal;
+    confirmInfoModal = async function() {
+      const wid = infoModal.dataset.workflowId;
+      const inputs = infoModal.querySelectorAll('[data-field]');
+      const info = (pendingContext && pendingContext.brandInfo) || {};
+      inputs.forEach(input => {
+        const field = input.dataset.field;
+        const value = input.value.trim();
+        if (value) {
+          if (field === 'budget' || field === 'period') info[field] = parseInt(value);
+          else info[field] = value;
+        }
+      });
+      pendingContext.brandInfo = info;
+      closeInfoModal();
+
+      if (wid) {
+        // 修改条件后继续：清空当前工作流卡片状态，重新执行
+        const workflowCard = document.getElementById(wid);
+        if (workflowCard) {
+          const stopped = document.getElementById(`stopped-${wid}`);
+          if (stopped) stopped.classList.remove('show');
+          const controls = document.getElementById(`controls-${wid}`);
+          if (controls) controls.style.display = 'flex';
+        }
+        await runWorkflow(info);
+        return;
+      }
+
+      const missing = getMissingFields(info);
+      if (missing.length === 0) {
+        await runWorkflow(info);
+      } else {
+        addMessage('ai', buildMissingPrompt(missing) + `<br><br>或者点击<b>补充信息</b>继续填写。`, { quickActions: ['补充信息'] });
+        attachQuickActions();
+      }
+    };
+
+    // ========== Summary Generators ==========
+    function generateCollectSummary(data) {
+      return `
+        <ul>
+          <li>✓ 品牌信息完整</li>
+          <li>品牌：${data.brandName} · ${data.category}</li>
+          <li>目标市场：${data.city} · ${data.period}个月 · 预算${data.budget}万</li>
+        </ul>
+      `;
+    }
+
+    function generateMarketSummary(data) {
+      return `
+        <ul>
+          <li>果汁饮料市场规模持续增长，健康化、高端化、场景多元化成为三大趋势</li>
+          <li>100%纯果汁品类年增速约 15%</li>
+          <li>运动场景饮用需求上升，运动后补水/补充维生素成为新兴消费动机</li>
+          <li>${data.city}市场消费力${mockData.cities[data.city].consumption}，适合中高端果汁渗透</li>
+        </ul>
+      `;
+    }
+
+    function generateAudienceSummary(data) {
+      const city = mockData.cities[data.city];
+      const persona = mockData.personas[data.city];
+      return `
+        <ul>
+          <li>${data.city}运动人群指数 <strong>${city.sportIndex}</strong>，Top5 运动：${city.topSports.join('、')}</li>
+          <li>运动人群画像：${persona.age}，${persona.gender}，${persona.traits.join('、')}</li>
+          <li>活跃高峰：${persona.peak}，周末活跃占比 ${city.weekendActive}</li>
+        </ul>
+      `;
+    }
+
+    function generateDataSummary(data) {
+      const city = data.city;
+      return `
+        <ul>
+          <li>盟域资源：${mockData.leagues[city].count} 个盟，平均 ${mockData.leagues[city].avgMembers} 人</li>
+          <li>赛事活动：月均 ${mockData.events[city].monthly} 场，平均单场 ${mockData.events[city].avgParticipants} 人</li>
+          <li>达人资源：${mockData.influencers[city].count} 位认证达人</li>
+          <li>场馆资源：${mockData.venues[city].count} 个运动场馆，${mockData.venues[city].capacity}</li>
+          <li>经营社：${mockData.stores[city].count} 家商家</li>
+        </ul>
+      `;
+    }
+
+    function generateFitnessSummary(data) {
+      const city = mockData.cities[data.city];
+      const topSports = city.topSports.slice(0, 5);
+      const scores = [96, 91, 87, 83, 78];
+      const reasons = {
+        '跑步': '运动后补水补糖需求强，适合即饮果汁',
+        '瑜伽': '健康生活方式重叠，轻食饮品场景契合',
+        '篮球': '团队运动后分享饮用，大瓶装适合',
+        '骑行': '长距离运动需补充能量，便携装契合',
+        '健身': '增肌减脂人群关注成分，可推无糖/低糖线'
+      };
+      return `
+        <ul>
+          <li>基于品牌品类「${data.category}」与城市运动热度计算适配度</li>
+          ${topSports.map((sport, i) => `<li>${sport}：适配度 <strong>${scores[i]}分</strong> — ${reasons[sport] || '运动人群与健康饮品消费重叠'}</li>`).join('')}
+          <li>主推场景：<strong>${topSports[0]}</strong> + <strong>${topSports[1]}</strong> 双核驱动</li>
+        </ul>
+      `;
+    }
+
+    function generateStrategySummary(data) {
+      return `
+        <ul>
+          <li>核心定位：以「${data.positioning || '健康活力'}」为传播主张</li>
+          <li>4M+1C 策略框架：Motion（运动场景绑定）、Member（会员沉淀）、Media（内容媒体）、Merchant（商户联盟）、Community（社群运营）</li>
+          <li>差异化打法：绑定${data.city}头部盟域，打造「${data.brandName}${data.city}运动健康季」IP</li>
+        </ul>
+      `;
+    }
+
+    function generateExecutionSummary(data) {
+      const city = data.city;
+      return `
+        <ul>
+          <li>赛事规划：联合 ${mockData.events[city].categories.slice(0,3).join('、')} 等核心赛事</li>
+          <li>盟域共建：在${mockData.leagues[city].topLeagues.slice(0,2).join('、')}等头部盟设立品牌专区</li>
+          <li>达人矩阵：头部 ${mockData.influencers[city].tiers['至尊/大师'] + mockData.influencers[city].tiers['明星/精英']} 位 + 健将 ${mockData.influencers[city].tiers['健将']} 位 + 达人 ${mockData.influencers[city].tiers['达人']} 位分层合作</li>
+          <li>经营社联动：${mockData.stores[city].count} 家商家上架品牌产品</li>
+        </ul>
+      `;
+    }
+
+    function generateBudgetSummary(data) {
+      const budget = data.budget;
+      return `
+        <ul>
+          <li>总预算：${budget}万元 · 周期：${data.period}个月</li>
+          <li>赛事/活动：${Math.round(budget * 0.28)}万（28%）| 达人合作：${Math.round(budget * 0.30)}万（30%）</li>
+          <li>内容制作：${Math.round(budget * 0.15)}万（15%）| 数字化运营：${Math.round(budget * 0.12)}万（12%）</li>
+          <li>盟域共建：${Math.round(budget * 0.10)}万（10%）| 机动费用：${Math.round(budget * 0.05)}万（5%）</li>
+          <li>预期 KPI：总曝光 ≥ ${(budget * 0.8).toFixed(0)}万 · 活动参与 ≥ ${(budget * 0.12).toFixed(0)}人次</li>
+        </ul>
+      `;
+    }
+
+    function generateActionsSummary(data) {
+      return `
+        <ul>
+          <li>创建「${data.brandName}${data.city}运动健康季」盟域</li>
+          <li>发布 3-5 场品牌定制赛事/活动</li>
+          <li>筛选并邀约${mockData.influencers[data.city].count}位达人中的头部账号</li>
+          <li>在经营社配置品牌产品货架</li>
+          <li>生成正式方案文档并导出 PDF/Word</li>
+        </ul>
+      `;
+    }
+
+    // ========== Plan Generation ==========
+    function buildPlan(data) {
+      const city = data.city;
+      const cityData = mockData.cities[city];
+      const topSports = cityData.topSports.slice(0, 5);
+      const budget = data.budget;
+      const period = data.period;
+
+      return [
+        { title: '项目概述', subtitle: '品牌背景、产品矩阵、合作目标', content: `
+          <h4>1.1 品牌与合作背景</h4>
+          <p><strong>${data.brandName}</strong> 作为国内知名饮料品牌，拥有广泛的渠道基础和消费认知。本次合作聚焦「${data.category}」，希望通过 AllyGo 运动生态触达高活跃、高消费力的运动人群。</p>
+          <h4>1.2 项目目标</h4>
+          <ul>
+            <li>提升${data.brandName}在${data.city}运动人群中的品牌认知度</li>
+            <li>通过盟域、赛事、达人触达目标用户，沉淀会员</li>
+            <li>周期：${period}个月 · 预算：${budget}万元</li>
+          </ul>
+        ` },
+        { title: '市场分析', subtitle: '行业趋势、目标市场、竞争格局', content: `
+          <h4>2.1 行业趋势</h4>
+          <p>果汁饮料行业呈现健康化、场景化、高端化三大趋势。</p>
+          <h4>2.2 目标市场：${data.city}</h4>
+          <p>常住人口约 ${cityData.population}，运动人群指数 ${cityData.sportIndex}，消费力${cityData.consumption}。Top5 运动场景：${topSports.join('、')}。</p>
+        ` },
+        { title: '集群营销策略', subtitle: '策略定位、营销目标、核心框架', content: `
+          <h4>3.1 策略定位</h4>
+          <p>以「${data.positioning || '健康活力'}」为核心主张，将${data.category}嵌入${data.city}运动人群日常运动场景。</p>
+          <h4>3.2 4M+1C 框架</h4>
+          <ul>
+            <li>Motion：绑定${topSports[0]}、${topSports[1]}等高热度运动</li>
+            <li>Member：通过赛事报名、盟域加入沉淀会员</li>
+            <li>Media：达人种草 + UGC + 赛事直播</li>
+            <li>Merchant：经营社商家上架产品</li>
+            <li>Community：在头部盟域建立品牌专属社群</li>
+          </ul>
+        ` },
+        { title: '集群营销执行方案', subtitle: '盟域建设、赛事定制、达人合作', content: `
+          <h4>4.1 运动盟域共建</h4>
+          <p>在${data.city}与${mockData.leagues[city].topLeagues.slice(0,3).join('、')}等头部盟域合作。</p>
+          <h4>4.2 赛事/活动规划</h4>
+          <p>围绕${topSports[0]}、${topSports[1]}策划核心赛事矩阵。</p>
+          <h4>4.3 达人合作矩阵</h4>
+          <p>基于${data.city}达人资源构建三级矩阵，覆盖头部、腰部、中长尾达人。</p>
+        ` },
+        { title: '数字化运营方案', subtitle: 'APP功能、短视频、私域联动', content: `
+          <h4>5.1 APP 内运营</h4>
+          <ul>
+            <li>首页 Banner 与推荐流曝光品牌活动</li>
+            <li>赛事详情页嵌入产品信息与试饮入口</li>
+            <li>盟动态板块发起话题挑战，激励 UGC</li>
+          </ul>
+          <h4>5.2 短视频内容矩阵</h4>
+          <p>品牌 TVC、达人测评、赛事集锦、用户 UGC 四线并进。</p>
+        ` },
+        { title: '合作中心与达人体系', subtitle: '达人代言、代理商合作、个人加盟', content: `
+          <h4>6.1 达人代言体系</h4>
+          <p>基于 AllyGo 健将等级体系筛选${data.city}运动达人。</p>
+          <h4>6.2 代理商/商户合作</h4>
+          <p>在经营社上架${data.category}，覆盖${mockData.stores[city].count}家合作商家。</p>
+        ` },
+        { title: '时间规划与里程碑', subtitle: '四阶段执行节奏', content: `
+          <h4>7.1 阶段规划</h4>
+          <ul>
+            <li>筹备期（第1月）：盟域搭建、达人筛选、物料准备</li>
+            <li>预热期（第${period > 3 ? '2' : '1-2'}月）：达人种草、话题预热</li>
+            <li>爆发期（第${period > 3 ? '3-4' : '2-3'}月）：核心赛事落地</li>
+            <li>收割期（第${period}月）：数据复盘、会员转化</li>
+          </ul>
+        ` },
+        { title: '预期成果与 KPI', subtitle: '品牌/用户/销售四维指标', content: `
+          <h4>8.1 品牌传播指标</h4>
+          <ul>
+            <li>总曝光：≥ ${(budget * 0.8).toFixed(0)}万</li>
+            <li>短视频播放：≥ ${(budget * 0.35).toFixed(0)}万</li>
+          </ul>
+          <h4>8.2 用户增长指标</h4>
+          <ul>
+            <li>活动参与：≥ ${(budget * 0.12).toFixed(0)}人次</li>
+            <li>新增会员：≥ ${(budget * 0.15).toFixed(0)}人</li>
+          </ul>
+        ` },
+        { title: '预算概览', subtitle: '费用拆分与分配逻辑', content: `
+          <h4>9.1 总预算</h4>
+          <p>本次营销方案总预算为 <strong>${budget}万元</strong>，执行周期 ${period}个月。</p>
+          <h4>9.2 预算分配</h4>
+          <ul>
+            <li>赛事/活动费用：${Math.round(budget * 0.28)}万（28%）</li>
+            <li>达人合作费用：${Math.round(budget * 0.30)}万（30%）</li>
+            <li>内容制作费用：${Math.round(budget * 0.15)}万（15%）</li>
+            <li>数字化运营：${Math.round(budget * 0.12)}万（12%）</li>
+            <li>盟域共建费用：${Math.round(budget * 0.10)}万（10%）</li>
+            <li>机动费用：${Math.round(budget * 0.05)}万（5%）</li>
+          </ul>
+        ` }
+      ];
+    }
+
+    function renderPlanCard(plan) {
+      const chaptersHtml = plan.map((chapter, idx) => `
+        <div class="chapter ${idx < 2 ? 'open' : ''}" data-chapter-idx="${idx}">
+          <div class="chapter-header" onclick="toggleChapter(${idx})">
+            <div class="chapter-title-group">
+              <div class="chapter-num">${idx + 1}</div>
+              <div class="chapter-text">
+                <h3>${chapter.title}</h3>
+                <p>${chapter.subtitle}</p>
+              </div>
+            </div>
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </div>
+          <div class="chapter-body">${chapter.content}</div>
+        </div>
+      `).join('');
+
+      return `
+        <div class="plan-card">
+          <div class="plan-card-header">
+            <h2>📋 营销方案预览</h2>
+            <div style="display:flex;gap:8px;">
+              <button class="btn btn-secondary" onclick="expandAllChapters()" style="padding:6px 12px;font-size:12px;">展开全部</button>
+              <button class="btn btn-secondary" onclick="collapseAllChapters()" style="padding:6px 12px;font-size:12px;">折叠全部</button>
+            </div>
+          </div>
+          <div class="plan-card-body">${chaptersHtml}</div>
+        </div>
+      `;
+    }
+
+    window.toggleChapter = function(idx) {
+      const chapter = document.querySelector(`[data-chapter-idx="${idx}"]`);
+      if (chapter) chapter.classList.toggle('open');
+    };
+
+    window.expandAllChapters = function() {
+      document.querySelectorAll('.chapter').forEach(c => c.classList.add('open'));
+    };
+
+    window.collapseAllChapters = function() {
+      document.querySelectorAll('.chapter').forEach(c => c.classList.remove('open'));
+    };
+
+    // ========== Event Listeners ==========
+    sendBtn.addEventListener('click', () => {
+      handleUserInput(chatInput.value);
+    });
+
+    chatInput.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        handleUserInput(chatInput.value);
+      }
+    });
+
+    chatInput.addEventListener('input', () => {
+      chatInput.style.height = 'auto';
+      chatInput.style.height = Math.min(chatInput.scrollHeight, 120) + 'px';
+    });
+
+    document.getElementById('modalClose').addEventListener('click', closeInfoModal);
+    document.getElementById('modalCancel').addEventListener('click', closeInfoModal);
+    document.getElementById('modalConfirm').addEventListener('click', confirmInfoModal);
+    infoModal.addEventListener('click', (e) => { if (e.target === infoModal) closeInfoModal(); });
+
+    btnPrintPdf.addEventListener('click', () => {
+      if (!currentPlan) { showToast('请先生成方案'); return; }
+      window.print();
+    });
+
+    btnExportWord.addEventListener('click', () => {
+      if (!currentPlan) { showToast('请先生成方案'); return; }
+      const mainTitle = `${messages.find(m => m.role === 'user')?.content?.split('，')[0] || '营销方案'}`;
+      const html = `
+        <html xmlns:o='urn:schemas-microsoft-com:office:office' xmlns:w='urn:schemas-microsoft-com:office:word' xmlns='http://www.w3.org/TR/REC-html40'>
+        <head><meta charset='utf-8'><title>${mainTitle}</title></head>
+        <body>${currentPlan.map((c, i) => `<h1>${i+1}. ${c.title}</h1><p>${c.subtitle}</p>${c.content}`).join('')}</body>
+        </html>
+      `;
+      const blob = new Blob(['﻿', html], { type: 'application/msword' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${mainTitle}.doc`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      showToast('Word 文档已导出（演示格式）');
+    });
+
+    // ========== Init ==========
+    addMessage('ai', '你好！我是 AllyGo 营销方案 Agent 👋<br><br>你可以直接告诉我：<br>• <strong>生成营销方案</strong>：「我是娃哈哈，想在上海推广果汁，预算300万，周期3个月」<br>• <strong>查询数据</strong>：「查询上海的运动人群数据」<br><br>我会通过意图识别 Agent 判断你想做什么，然后自动推进。');
+  </script>
+</body>
+</html>

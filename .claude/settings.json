@@ -1,0 +1,11 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "/bin/bash /Users/hxq/Desktop/AgentNexus/.claude/hooks/check-opsx-change.sh \"$FILE_PATH\"",
+        "description": "Block code edits without active opsx change"
+      }
+    ]
+  }
+}

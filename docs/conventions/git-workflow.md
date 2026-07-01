@@ -18,6 +18,8 @@ main              # 稳定发布
 | `fix/*` | develop | 修复完成即删 | squash + merge |  |
 | `chore/*` | develop | 完成即删 | squash + merge | 配置文件、依赖更新、文档 |
 
+**AI 分支操作约束**：AI 不得自动切换或创建新分支。如果当前不在合适分支上，必须显式询问用户是否切到新分支，并获得明确确认后方可执行 `git checkout -b` 或 `git checkout`。
+
 ## Commit 约定
 
 ### 格式
