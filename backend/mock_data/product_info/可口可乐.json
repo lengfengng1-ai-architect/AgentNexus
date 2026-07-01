@@ -1,0 +1,104 @@
+{
+  "basic": {
+    "product_name": {
+      "value": "可口可乐",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "brand": {
+      "value": "可口可乐",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "manufacturer": {
+      "value": "可口可乐公司",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "industry": {
+      "value": "食品饮料",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "category": {
+      "value": "汽水/可乐型软饮料",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "description": {
+      "value": "由可口可乐公司生产出品的一种汽水饮料，始创于1886年，是全球销量领先的可乐品牌，具有独特的焦糖色外观和甜味口感。",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "launch_date": {
+      "value": "1886-05-08",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "status": {
+      "value": "在售",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "official_website": {
+      "value": "www.coca-cola.com",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "available_regions": {
+      "value": [
+        "全球200多个国家和地区",
+        "美国",
+        "中国",
+        "大中华区"
+      ],
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    },
+    "specifications": {
+      "value": {
+        "主要成分": "碳酸水、高果糖糖浆、蔗糖、焦糖、磷酸以及香料",
+        "热量": "42大卡/100毫升",
+        "糖含量": "10.6克/100毫升（约38克/355毫升罐装）",
+        "钠含量": "4毫克/100毫升",
+        "颜色": "焦糖色",
+        "起源地": "美国乔治亚州亚特兰大市"
+      },
+      "sources": [
+        "https://zh.wikipedia.org/zh-hans/可口可乐",
+        "https://en.wikipedia.org/wiki/可口可乐",
+        "https://en.wikipedia.org/wiki/Coca-Cola"
+      ]
+    }
+  }
+}

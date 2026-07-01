@@ -1,0 +1,81 @@
+{
+  "basic": {
+    "product_name": {
+      "value": "健力宝",
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "brand": {
+      "value": "健力宝",
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "manufacturer": {
+      "value": "健力宝集团",
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "industry": {
+      "value": "食品饮料",
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "category": {
+      "value": "健康果饮/功能性饮料",
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "description": {
+      "value": "添加碱性电解质的饮料品牌，1984年诞生，隶属于健力宝集团。健力宝集团拥有多个知名品牌：健力宝、第五季、爆果汽、爱运动、A8、宝丰等，其中健力宝是饮料品牌的核心品牌。",
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "launch_date": {
+      "value": "1984-01-01",
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "status": {
+      "value": "在售",
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "official_website": {
+      "value": "",
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "available_regions": {
+      "value": [],
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    },
+    "specifications": {
+      "value": {},
+      "sources": [
+        "https://pinpai.m.smzdm.com/jiankangguoyin/",
+        "https://sdjinquan.com.cn/lists/20.html"
+      ]
+    }
+  }
+}
