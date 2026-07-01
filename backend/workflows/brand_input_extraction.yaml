@@ -1,0 +1,13 @@
+id: brand_input_extraction
+name: 品牌需求提取
+version: "0.1"
+nodes:
+  - id: extract
+    agent: chat_extraction
+    input_mapping:
+      message: "$.input.message"
+    output_mapping: {}
+
+edges:
+  - from: extract
+    to: __end__

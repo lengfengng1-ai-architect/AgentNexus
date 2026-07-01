@@ -4,6 +4,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from pydantic import Field
 
+from app.agents.registry import register
 from app.config.settings import settings
 from app.schemas.chat import BrandInput, ChatResponse
 
@@ -72,3 +73,18 @@ async def extract_brand_input(message: str) -> ChatResponse:
     if output is None:
         raise ValueError("Agent did not return structured_response")
     return output
+
+
+async def run_chat_extraction(state: dict) -> dict:
+    """适配编排底座的入口函数。
+
+    期望 state 中包含 key ``message``，与 input_mapping ``$.input.message`` 对应。
+    """
+    message = state.get("message")
+    if not message:
+        raise ValueError("Missing required input: message")
+    response = await extract_brand_input(message)
+    return response.model_dump()
+
+
+register("chat_extraction", run_chat_extraction)
