@@ -39,6 +39,7 @@ export function PlanPage() {
   const { seed, save } = usePlanSession()
   const [autoContinue, setAutoContinue] = useState(true)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(status !== 'idle')
+  useEffect(() => { if (status !== 'idle') setSidebarCollapsed(true) }, [status])
   const contentRef = useRef<HTMLDivElement>(null)
 
   const handleStart = useCallback((data: PlanFormData) => {
