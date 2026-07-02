@@ -93,7 +93,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case 'STREAM_REASONING': {
       const msgs = state.messages
-      const lastAi = msgs.findLast(m => m.role === 'ai')
+      const lastAi = [...msgs].reverse().find(m => m.role === 'ai')
       if (!lastAi) return state
       return {
         ...state,
@@ -105,7 +105,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case 'STREAM_REPLY': {
       const msgs = state.messages
-      const lastAi = msgs.findLast(m => m.role === 'ai')
+      const lastAi = [...msgs].reverse().find(m => m.role === 'ai')
       if (!lastAi) return state
       return {
         ...state,
@@ -320,8 +320,7 @@ export function useChat() {
     latestBrandInput,
     isComplete: state.messages.some(m => m.canGeneratePlan),
     setInputValue,
-    sendMessage,
-    sendStreamMessage,
+    sendMessage: sendStreamMessage,
     retryMessage,
     prefillInput,
   }

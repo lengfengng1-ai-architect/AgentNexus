@@ -20,7 +20,6 @@ export function ChatContainer() {
     isComplete,
     setInputValue,
     sendMessage,
-    sendStreamMessage,
     retryMessage,
     prefillInput,
   } = useChat()
@@ -35,7 +34,7 @@ export function ChatContainer() {
 
   function handleSend() {
     if (inputValue.trim()) {
-      sendStreamMessage(inputValue)
+      sendMessage(inputValue)
     }
   }
 
