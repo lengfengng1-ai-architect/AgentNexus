@@ -26,6 +26,14 @@ nodes:
     input_mapping:
       reply: "$.outputs.intent.reply"
 
+  - id: reply_builder
+    agent: reply_builder
+    depends_on: [extract, data_query, end_reply]
+    input_mapping:
+      message: "$.input.message"
+      intent: "$.outputs.intent"
+      branch_output: "$.state.outputs"
+
 edges:
   - from: intent
     to: extract
@@ -34,8 +42,10 @@ edges:
   - from: intent
     to: end_reply
   - from: extract
-    to: __end__
+    to: reply_builder
   - from: data_query
-    to: __end__
+    to: reply_builder
   - from: end_reply
+    to: reply_builder
+  - from: reply_builder
     to: __end__

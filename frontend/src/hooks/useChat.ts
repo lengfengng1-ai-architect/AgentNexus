@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { sendChatMessage } from '../api/chat'
+import { runChatPipeline } from '../api/workflow'
 import type { BrandInput, ChatMessage } from '../types/chat'
 
 const STORAGE_KEY = 'allygo_chat_history'
@@ -14,7 +14,13 @@ interface ChatState {
 type ChatAction =
   | { type: 'SET_INPUT'; value: string }
   | { type: 'SEND_MESSAGE'; content: string }
-  | { type: 'RECEIVE_MESSAGE'; reply: string; brandInput: BrandInput; isComplete: boolean }
+  | {
+      type: 'RECEIVE_MESSAGE'
+      reply: string
+      brandInput: BrandInput
+      intent?: ChatMessage['intent']
+      isComplete: boolean
+    }
   | { type: 'LOADING_MESSAGE' }
   | { type: 'REMOVE_LOADING' }
   | { type: 'SET_ERROR'; error: string }
@@ -69,6 +75,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         role: 'ai',
         content: action.reply,
         brandInput: action.brandInput,
+        intent: action.intent,
         isComplete: action.isComplete,
       }
       return {
@@ -172,12 +179,24 @@ export function useChat() {
       dispatch({ type: 'LOADING_MESSAGE' })
 
       try {
-        const response = await sendChatMessage(content.trim())
+        const response = await runChatPipeline(content.trim())
+        const intent = response.outputs?.intent
+        const reply = response.outputs?.reply_builder?.reply
+        if (!reply) {
+          throw new Error('后端未返回有效回复')
+        }
         dispatch({
           type: 'RECEIVE_MESSAGE',
-          reply: response.reply,
-          brandInput: response.brand_input,
-          isComplete: response.is_complete,
+          reply,
+          brandInput: intent?.brand_input ?? {
+            brand_name: null,
+            category: null,
+            city: null,
+            budget: null,
+            period: null,
+          },
+          intent: intent?.intent,
+          isComplete: intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
         })
       } catch (error) {
         const message = error instanceof Error ? error.message : '发送失败，请重试'
@@ -196,12 +215,24 @@ export function useChat() {
     dispatch({ type: 'LOADING_MESSAGE' })
 
     try {
-      const response = await sendChatMessage(messageToRetry.content)
+      const response = await runChatPipeline(messageToRetry.content)
+      const intent = response.outputs?.intent
+      const reply = response.outputs?.reply_builder?.reply
+      if (!reply) {
+        throw new Error('后端未返回有效回复')
+      }
       dispatch({
         type: 'RECEIVE_MESSAGE',
-        reply: response.reply,
-        brandInput: response.brand_input,
-        isComplete: response.is_complete,
+        reply,
+        brandInput: intent?.brand_input ?? {
+          brand_name: null,
+          category: null,
+          city: null,
+          budget: null,
+          period: null,
+        },
+        intent: intent?.intent,
+        isComplete: intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : '发送失败，请重试'

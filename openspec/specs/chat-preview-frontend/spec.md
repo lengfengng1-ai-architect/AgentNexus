@@ -32,7 +32,8 @@ The system SHALL provide a fixed bottom input area where users can type and send
 #### Scenario: User sends a message
 - **WHEN** the user types "我们是 Nike，想在上海做跑步活动" and presses Enter
 - **THEN** the message SHALL appear in the message stream
-- **AND** the system SHALL call `POST /api/v1/chat`
+- **AND** the system SHALL call `POST /api/v1/workflows/chat_pipeline/run`
+- **AND** the request body SHALL contain `{ input: { message } }`
 
 #### Scenario: Shift+Enter inserts a newline
 - **WHEN** the user holds Shift and presses Enter
@@ -42,13 +43,15 @@ The system SHALL provide a fixed bottom input area where users can type and send
 The system SHALL display AI replies along with the extracted brand input fields.
 
 #### Scenario: AI returns a complete response
-- **WHEN** the backend responds with `is_complete=true`
-- **THEN** the message stream SHALL show the AI reply
+- **WHEN** the backend responds with `outputs.intent.intent="generate_plan"`
+- **AND** `outputs.reply_builder.reply` is present
+- **THEN** the message stream SHALL show the AI reply from `outputs.reply_builder.reply`
 - **AND** the progress track SHALL mark all five slots as confirmed
 
 #### Scenario: AI asks a clarifying question
-- **WHEN** the backend responds with `is_complete=false`
-- **THEN** the message stream SHALL show the AI clarifying reply
+- **WHEN** the backend responds with `outputs.intent.intent="clarify"`
+- **AND** `outputs.intent.missing_fields` is non-empty
+- **THEN** the message stream SHALL show the clarifying reply from `outputs.reply_builder.reply`
 - **AND** the progress track SHALL only confirm the extracted fields
 
 ### Requirement: Loading and error states are handled
@@ -87,7 +90,7 @@ The system SHALL persist the full message array to localStorage so users can res
 #### Scenario: Page reload
 - **WHEN** the user reloads the page after a conversation
 - **THEN** the previous messages SHALL be restored
-- **AND** the progress track SHALL reflect the latest extracted fields
+- **AND** the progress track SHALL reflect the latest `brand_input` from `outputs.intent.brand_input`
 
 ### Requirement: Interface is responsive
 The system SHALL adapt the chat layout for mobile and desktop viewports.
