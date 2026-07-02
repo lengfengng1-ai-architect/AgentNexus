@@ -237,28 +237,14 @@ export function useChat() {
     dispatch({ type: 'LOADING_MESSAGE' })
 
     try {
-      const response = await runChatPipeline(messageToRetry.content)
-      const intent = response.outputs?.intent
-      const reply = response.outputs?.reply_builder?.reply
-      if (!reply) {
-        throw new Error('后端未返回有效回复')
+      for await (const chunk of streamChat(messageToRetry.content)) {
+        if (chunk.reasoning) {
+          dispatch({ type: 'STREAM_REASONING', content: chunk.reasoning, full: chunk.reasoningFull || '' })
+        }
+        if (chunk.reply) {
+          dispatch({ type: 'STREAM_REPLY', text: chunk.reply })
+        }
       }
-      dispatch({
-        type: 'RECEIVE_MESSAGE',
-        reply,
-        brandInput: intent?.brand_input ?? {
-          brand_name: null,
-          category: null,
-          city: null,
-          budget: null,
-          period: null,
-        },
-        intent: intent?.intent,
-        isComplete: intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
-        canGeneratePlan:
-          intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
-        reasoning: intent?.reasoning || response.outputs?.reply_builder?.reasoning || '',
-      })
     } catch (error) {
       const message = error instanceof Error ? error.message : '发送失败，请重试'
       dispatch({ type: 'SET_ERROR', error: message })
