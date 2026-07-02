@@ -1,0 +1,39 @@
+{
+  "data": [
+    {"store_name": "沪跑团运动装备", "league_name": "沪跑团", "store_type": "盟商品", "city": "上海", "description": "跑步鞋服装备团购"},
+    {"store_name": "沪跑团训练营", "league_name": "沪跑团", "store_type": "盟课程", "city": "上海", "description": "专业跑步训练课程"},
+    {"store_name": "沪跑团团购站", "league_name": "沪跑团", "store_type": "盟团购", "city": "上海", "description": "联盟会员专属团购"},
+    {"store_name": "瑜伽联盟精品课", "league_name": "上海瑜伽联盟", "store_type": "盟课程", "city": "上海", "description": "瑜伽进阶课程"},
+    {"store_name": "瑜伽用品社", "league_name": "上海瑜伽联盟", "store_type": "盟商品", "city": "上海", "description": "瑜伽垫/服装备品"},
+    {"store_name": "骑行社装备站", "league_name": "魔都骑行社", "store_type": "盟商品", "city": "上海", "description": "骑行装备团购"},
+    {"store_name": "外滩篮球训练课", "league_name": "外滩篮球盟", "store_type": "盟课程", "city": "上海", "description": "篮球基础/进阶训练"},
+    {"store_name": "外滩篮球团购", "league_name": "外滩篮球盟", "store_type": "盟团购", "city": "上海", "description": "球场包场团购"},
+    {"store_name": "健身联盟营养站", "league_name": "沪上健身联盟", "store_type": "盟商品", "city": "上海", "description": "运动营养补剂"},
+    {"store_name": "健身联盟私教课", "league_name": "沪上健身联盟", "store_type": "盟课程", "city": "上海", "description": "私教/团课"},
+    {"store_name": "跑者俱乐部装备", "league_name": "北京跑者俱乐部", "store_type": "盟商品", "city": "北京", "description": "跑步装备"},
+    {"store_name": "跑者训练营", "league_name": "北京跑者俱乐部", "store_type": "盟课程", "city": "北京", "description": "马拉松训练课程"},
+    {"store_name": "篮球联盟课程", "league_name": "京北篮球联盟", "store_type": "盟课程", "city": "北京", "description": "篮球培训"},
+    {"store_name": "奥森骑行团购", "league_name": "奥森骑行团", "store_type": "盟团购", "city": "北京", "description": "骑行活动团购"},
+    {"store_name": "滑雪俱乐部装备", "league_name": "长城滑雪俱乐部", "store_type": "盟商品", "city": "北京", "description": "滑雪装备"},
+    {"store_name": "滑雪训练营", "league_name": "长城滑雪俱乐部", "store_type": "盟课程", "city": "北京", "description": "滑雪培训课程"},
+    {"store_name": "蓉城跑团装备店", "league_name": "蓉城跑团", "store_type": "盟商品", "city": "成都", "description": "跑步装备"},
+    {"store_name": "蓉城跑团训练营", "league_name": "蓉城跑团", "store_type": "盟课程", "city": "成都", "description": "跑步训练"},
+    {"store_name": "天府篮球训练课", "league_name": "天府篮球盟", "store_type": "盟课程", "city": "成都", "description": "篮球培训"},
+    {"store_name": "西湖跑团装备店", "league_name": "西湖跑团", "store_type": "盟商品", "city": "杭州", "description": "跑步鞋服"},
+    {"store_name": "西湖跑团训练营", "league_name": "西湖跑团", "store_type": "盟课程", "city": "杭州", "description": "跑步训练营"},
+    {"store_name": "骑行盟团购站", "league_name": "杭城骑行盟", "store_type": "盟团购", "city": "杭州", "description": "骑行活动团购"},
+    {"store_name": "网球会私教课", "league_name": "杭州网球会", "store_type": "盟课程", "city": "杭州", "description": "网球私教/陪练"},
+    {"store_name": "篮球盟装备站", "league_name": "羊城篮球盟", "store_type": "盟商品", "city": "广州", "description": "篮球装备"},
+    {"store_name": "篮球盟团购", "league_name": "羊城篮球盟", "store_type": "盟团购", "city": "广州", "description": "球场团购"},
+    {"store_name": "珠江跑团团购", "league_name": "珠江跑团", "store_type": "盟团购", "city": "广州", "description": "跑步活动团购"},
+    {"store_name": "羽毛球社课程", "league_name": "广州羽毛球联盟", "store_type": "盟课程", "city": "广州", "description": "羽毛球培训"},
+    {"store_name": "越秀足球训练课", "league_name": "越秀足球俱乐部", "store_type": "盟课程", "city": "广州", "description": "足球训练"},
+    {"store_name": "天河健身营养站", "league_name": "天河健身会", "store_type": "盟商品", "city": "广州", "description": "运动营养补剂"}
+  ],
+  "meta": {
+    "total": 29,
+    "last_updated": "2026-07-02",
+    "source": "manual",
+    "version": "v0.1"
+  }
+}

@@ -19,6 +19,10 @@ nodes:
     condition: "$.outputs.intent.intent == 'query_data'"
     input_mapping:
       city: "$.outputs.intent.brand_input.city"
+      brand_name: "$.outputs.intent.brand_input.brand_name"
+      category: "$.outputs.intent.brand_input.category"
+      budget: "$.outputs.intent.brand_input.budget"
+      period: "$.outputs.intent.brand_input.period"
 
   - id: end_reply
     agent: end_reply
