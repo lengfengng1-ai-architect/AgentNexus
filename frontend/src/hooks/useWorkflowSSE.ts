@@ -3,6 +3,7 @@ import { controlPlanRun, getPlanRunStatus, resumePlanRun, startPlanRun } from '.
 import type { PlanLogEvent, PlanNode, PlanNodeStatus, PlanOutputs, WorkflowControlAction } from '../types/plan'
 
 const PIPELINE_NODES: { id: string; label: string }[] = [
+  { id: 'product_research', label: '产品调研' },
   { id: 'market_research', label: '市场研究' },
   { id: 'audience_insight', label: '人群洞察' },
   { id: 'plan_data_query', label: '平台资源' },

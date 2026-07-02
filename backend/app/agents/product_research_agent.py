@@ -19,6 +19,7 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from app.config.settings import settings
+from app.agents.registry import register
 from app.schemas.product_info import (
     ProductResearchResult,
     SourcedStr,
@@ -281,3 +282,21 @@ async def research_product(product_name: str) -> ProductResearchResult:
     if output is None:
         raise ValueError("Agent did not return structured output")
     return output
+
+
+async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
+    """Product research adapter for the workflow orchestrator.
+
+    Expects state keys: brand_name, category.
+    Uses brand_name as the product to research.
+    """
+    brand_name = state.get("brand_name", "")
+    if not brand_name:
+        raise ValueError("Missing required input: brand_name")
+    if settings.use_mock_data:
+        return {"product_name": brand_name, "summary": f"Mock research for {brand_name}"}
+    result = await research_product(brand_name)
+    return result.model_dump()
+
+
+register("product_research", run_product_research)

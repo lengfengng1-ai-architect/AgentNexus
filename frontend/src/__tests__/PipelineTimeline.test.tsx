@@ -15,8 +15,9 @@ describe('PipelineTimeline', () => {
     expect(screen.getByText('Agent 执行流水线')).toBeInTheDocument()
   })
 
-  test('renders all 9 agent names', () => {
+  test('renders all 10 agent names', () => {
     render(<PipelineTimeline nodes={[]} failedNode={null} />)
+    expect(screen.getByText('产品调研 Agent')).toBeInTheDocument()
     expect(screen.getByText('市场调研 Agent')).toBeInTheDocument()
     expect(screen.getByText('人群洞察 Agent')).toBeInTheDocument()
     expect(screen.getByText('数据查询 Agent')).toBeInTheDocument()
@@ -42,6 +43,6 @@ describe('PipelineTimeline', () => {
     render(<PipelineTimeline nodes={[]} failedNode={null} />)
     // All 9 agents show 待执行 when no nodes match
     const pendingLabels = screen.getAllByText('待执行')
-    expect(pendingLabels.length).toBe(9)
+    expect(pendingLabels.length).toBe(10)
   })
 })

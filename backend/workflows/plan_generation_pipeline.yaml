@@ -2,6 +2,12 @@ id: plan_generation_pipeline
 name: 营销方案生成流水线
 version: "0.1"
 nodes:
+  - id: product_research
+    agent: product_research
+    input_mapping:
+      brand_name: "$.input.brand_input.brand_name"
+      category: "$.input.brand_input.category"
+
   - id: market_research
     agent: market_research
     input_mapping:
@@ -10,26 +16,29 @@ nodes:
 
   - id: audience_insight
     agent: audience_insight
+    depends_on: [product_research]
     input_mapping:
       city: "$.input.brand_input.city"
 
   - id: plan_data_query
     agent: plan_data_query
+    depends_on: [product_research]
     input_mapping:
       city: "$.input.brand_input.city"
 
   - id: fitness_analysis
     agent: fitness_analysis
-    depends_on: [audience_insight]
+    depends_on: [product_research, audience_insight]
     input_mapping:
       category: "$.input.brand_input.category"
       city: "$.input.brand_input.city"
 
   - id: strategy_generation
     agent: strategy_generation
-    depends_on: [market_research, audience_insight, fitness_analysis]
+    depends_on: [product_research, market_research, audience_insight, fitness_analysis]
     input_mapping:
       brand_input: "$.input.brand_input"
+      product_research: "$.outputs.product_research"
       market_research: "$.outputs.market_research"
       audience_insight: "$.outputs.audience_insight"
       fitness_analysis: "$.outputs.fitness_analysis"
@@ -60,9 +69,10 @@ nodes:
 
   - id: plan_generator
     agent: plan_generator
-    depends_on: [market_research, audience_insight, plan_data_query, fitness_analysis, strategy_generation, execution_planning, budget_kpi, action_recommendations]
+    depends_on: [product_research, market_research, audience_insight, plan_data_query, fitness_analysis, strategy_generation, execution_planning, budget_kpi, action_recommendations]
     input_mapping:
       brand_input: "$.input.brand_input"
+      product_research: "$.outputs.product_research"
       market_research: "$.outputs.market_research"
       audience_insight: "$.outputs.audience_insight"
       plan_data_query: "$.outputs.plan_data_query"
@@ -73,6 +83,8 @@ nodes:
       action_recommendations: "$.outputs.action_recommendations"
 
 edges:
+  - from: product_research
+    to: market_research
   - from: market_research
     to: audience_insight
   - from: audience_insight

@@ -14,6 +14,7 @@ interface AgentMeta {
 }
 
 const agents: AgentMeta[] = [
+  { id: 'product_research', name: '产品调研 Agent', desc: '搜索并分析品牌产品信息与市场定位', icon: '\u{1F50E}' },
   { id: 'market', name: '市场调研 Agent', desc: '收集行业趋势、竞品格局、消费洞察', icon: '\u{1F4CA}' },
   { id: 'audience', name: '人群洞察 Agent', desc: '分析目标城市运动人群画像', icon: '\u{1F465}' },
   { id: 'data', name: '数据查询 Agent', desc: '调取 AllyGo 盟域/赛事/达人/场馆/经营社数据', icon: '\u{1F50D}' },

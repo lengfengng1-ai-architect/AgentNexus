@@ -16,7 +16,7 @@ describe('useWorkflowSSE reducer', () => {
     const { result } = renderHook(() => useWorkflowSSE())
     expect(result.current.status).toBe('idle')
     expect(result.current.runId).toBeNull()
-    expect(result.current.nodes).toHaveLength(9)
+    expect(result.current.nodes).toHaveLength(10)
     expect(result.current.nodes.every((n) => n.status === 'pending')).toBe(true)
     expect(result.current.logs).toEqual([])
     expect(result.current.isConnected).toBe(false)

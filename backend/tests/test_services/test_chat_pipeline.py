@@ -73,6 +73,7 @@ def patch_chat_pipeline_agents(monkeypatch):
     registry.register("audience_insight", lambda state: {"city": "", "sport_index": 0, "top_sports": [], "persona_summary": "", "traits": [], "peak_hours": ""})
     registry.register("plan_data_query", lambda state: {"city": "", "population": "", "sport_index": 0, "consumption": "", "weekend_active": "", "leagues": {"count": 0, "top_leagues": [], "avg_members": 0}, "events": {"monthly": 0, "avg_participants": 0, "categories": []}, "influencers": {"count": 0, "tiers": {"supreme": 0, "star": 0, "elite": 0, "influencer": 0}, "avg_quote": ""}, "stores": {"count": 0, "categories": []}, "venues": {"count": 0, "types": [], "capacity": ""}})
     registry.register("fitness_analysis", lambda state: {"category": "", "city": "", "sport_fitness_scores": [], "primary_sport": "", "secondary_sport": ""})
+    registry.register("product_research", lambda state: {"product_name": state.get("brand_name", ""), "summary": "mock"})
     registry.register("strategy_generation", lambda state: {"positioning": "", "marketing_goal": "", "strategy_framework": "", "key_messages": []})
     registry.register("execution_planning", lambda state: {"leagues_plan": "", "events_plan": "", "influencer_plan": "", "content_plan": "", "store_plan": ""})
     registry.register("budget_kpi", lambda state: {"total_budget": 0, "period_months": 0, "allocations": [], "kpis": {}, "timeline": []})
