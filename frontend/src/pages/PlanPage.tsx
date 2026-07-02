@@ -105,17 +105,23 @@ export function PlanPage() {
 
   return (
     <div className="app" style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: '#fafbfc' }}>
-      <aside style={{ width: 360, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <div style={{ width: 34, height: 34, borderRadius: 6, background: 'linear-gradient(135deg, #1e40af, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15 }}>A</div>
-            <div>
-              <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.3px', color: '#0f172a' }}>AllyGo 营销方案 Agent</div>
-              <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>智能生成 · 数据驱动 · 可执行</div>
+      <aside style={{ width: 360, minWidth: 360, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+        <div style={{ padding: '20px 22px 12px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <div style={{ width: 34, height: 34, borderRadius: 6, background: 'linear-gradient(135deg, #1e40af, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15 }}>A</div>
+              <div>
+                <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.3px', color: '#0f172a' }}>AllyGo 营销方案 Agent</div>
+                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>智能生成 · 数据驱动 · 可执行</div>
+              </div>
             </div>
           </div>
+          <a href="/chat" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12, color: '#1e40af', fontWeight: 500, textDecoration: 'none' }} onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')} onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}>
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+            返回聊天
+          </a>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '20px 22px 24px' }}>
+        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px 24px', minHeight: 0 }}>
           <PlanForm initial={seed} onSubmit={handleStart} isLoading={status === 'running'} />
         </div>
       </aside>
