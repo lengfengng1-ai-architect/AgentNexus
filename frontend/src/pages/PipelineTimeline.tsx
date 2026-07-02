@@ -4,6 +4,7 @@ import type { PlanNode } from '../types/plan'
 interface PipelineTimelineProps {
   nodes: PlanNode[]
   failedNode: string | null
+  nodeLogs?: Record<string, string[]>
 }
 
 interface AgentMeta {
@@ -81,7 +82,7 @@ function dotClass(status: PlanNode['status']): string {
   }
 }
 
-export function PipelineTimeline({ nodes, failedNode }: PipelineTimelineProps) {
+export function PipelineTimeline({ nodes, failedNode, nodeLogs }: PipelineTimelineProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
   const [autoContinue, setAutoContinue] = useState(false)
 
@@ -172,15 +173,21 @@ export function PipelineTimeline({ nodes, failedNode }: PipelineTimelineProps) {
                     <div className="mb-3 mt-0 rounded-md border-l-[3px] border-[#1e40af] bg-blue-50/50 p-3">
                       <div className="mb-2 text-xs font-bold text-[#1e40af]">执行摘要</div>
                       <div className="text-xs leading-relaxed text-gray-600">
-                        {node.startedAt ? (
-                          <p>开始时间: {new Date(node.startedAt).toLocaleString('zh-CN')}</p>
-                        ) : null}
-                        {node.completedAt ? (
-                          <p>完成时间: {new Date(node.completedAt).toLocaleString('zh-CN')}</p>
-                        ) : null}
-                        {!node.startedAt && !node.completedAt && (
-                          <p>暂无摘要信息</p>
-                        )}
+                        {(() => {
+                          const logs = nodeLogs?.[node.id]
+                          if (logs && logs.length > 0) {
+                            return logs.map((msg, i) => (
+                              <p key={i}>{'•'} {msg}</p>
+                            ))
+                          }
+                          if (node.id === failedNode || node.status === 'failed') {
+                            return <p>执行失败</p>
+                          }
+                          if (node.status === 'running') {
+                            return <p>执行中...</p>
+                          }
+                          return <p>执行完成</p>
+                        })()}
                       </div>
                     </div>
                   )}

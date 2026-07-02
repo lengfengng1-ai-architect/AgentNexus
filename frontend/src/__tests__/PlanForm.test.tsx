@@ -15,7 +15,7 @@ describe('PlanForm', () => {
 
   test('renders required fields', () => {
     render(<PlanForm onSubmit={() => {}} />)
-    expect(screen.getByText('基础信息')).toBeInTheDocument()
+    expect(screen.getByText('品牌信息')).toBeInTheDocument()
   })
 
   test('submit button is disabled when fields are empty', () => {

@@ -22,6 +22,19 @@ _RUN_WORKFLOW: dict[str, str] = {}
 _RUN_HISTORY: dict[str, list[dict[str, Any]]] = {}
 _RUN_LOCKS: dict[str, asyncio.Lock] = {}
 
+_NODE_LOGS: dict[str, list[str]] = {
+    "product_research": ["正在搜索品牌产品信息…", "正在读取品牌官方网站…", "正在提取产品规格参数…", "完成产品信息调研"],
+    "market_research": ["正在分析行业趋势数据…", "正在研究竞品格局…", "正在生成消费洞察…", "完成市场调研"],
+    "audience_insight": ["正在加载城市运动数据…", "正在分析人群画像…", "正在计算运动指数…", "完成人群洞察"],
+    "plan_data_query": ["正在查询盟域数据…", "正在查询赛事资源…", "正在查询达人资源…", "正在查询场馆数据…", "完成平台数据查询"],
+    "fitness_analysis": ["正在计算品类适配度…", "正在对比运动场景…", "正在生成适配度评分…", "完成适配度分析"],
+    "strategy_generation": ["正在制定营销策略…", "正在构建4M+1C框架…", "正在确定核心定位…", "完成策略制定"],
+    "execution_planning": ["正在规划赛事方案…", "正在规划达人矩阵…", "正在规划内容策略…", "正在规划经营社联动…", "完成执行规划"],
+    "budget_kpi": ["正在测算预算分配…", "正在预测KPI指标…", "正在生成时间表…", "完成预算KPI计算"],
+    "action_recommendations": ["正在分析优先级…", "正在生成可执行动作…", "完成行动建议"],
+    "plan_generator": ["正在汇总上游数据…", "正在生成方案章节…", "正在格式化文档…", "完成方案生成"],
+}
+
 _MOCK_DIR = Path(__file__).parent.parent.parent / "mock_data"
 _NODE_MOCK_FILES: dict[str, str] = {
     "collect": "plan_requirement_collector.json",
@@ -118,6 +131,13 @@ async def _execute_nodes(
             continue
 
         yield await _emit(history, "node.start", run_id, node_id=node_id)
+
+        # Before running the node, emit progress logs
+        logs_for_node = _NODE_LOGS.get(node_id, ["执行中…"])
+        for log_msg in logs_for_node:
+            yield await _emit(history, "node.log", run_id, node_id=node_id, message=log_msg)
+            await asyncio.sleep(0.1)  # slight delay so logs stream in
+
         try:
             output = await _run_node(node, state)
         except Exception as exc:

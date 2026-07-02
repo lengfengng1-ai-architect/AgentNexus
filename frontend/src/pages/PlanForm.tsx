@@ -21,6 +21,7 @@ interface PlanFormProps {
   initial?: BrandInput
   onSubmit: (data: PlanFormData) => void
   isLoading?: boolean
+  status?: 'idle' | 'running' | 'failed' | 'completed'
 }
 
 // ─── Scene templates ─────────────────────────────────────────────────────────
@@ -195,7 +196,7 @@ const DEFAULT_FORM: PlanFormData = {
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
-export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
+export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps) {
   const [intent, setIntent] = useState('')
   const [form, setForm] = useState<PlanFormData>(() => ({
     ...DEFAULT_FORM,
@@ -238,6 +239,8 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
 
   // ── Derived ────────────────────────────────────────────────────────────
 
+  const isRunning = status !== 'idle' && status !== undefined
+
   const requiredOk =
     form.brandName.trim() !== '' &&
     form.category.trim() !== '' &&
@@ -250,6 +253,7 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       {/* ── Intent input ── */}
+      {!isRunning && (
       <div>
         <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.5px] text-slate-600">
           用一句话描述需求
@@ -299,12 +303,14 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
           ))}
         </div>
       </div>
+      )}
 
       {/* ── Required fields ── */}
       <div>
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-[13px] font-bold text-slate-900">基础信息</span>
-          <span className="text-[11px] text-orange-500">* 必填</span>
+          <span className="text-[13px] font-bold text-slate-900">品牌信息</span>
+          {isRunning && <span className="text-xs text-slate-400">（方案生成中）</span>}
+          {!isRunning && <span className="text-[11px] text-orange-500">* 必填</span>}
         </div>
 
         <div className="space-y-2.5">
@@ -402,7 +408,7 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
           </svg>
         </button>
 
-        {advancedOpen && (
+        {(!isRunning && advancedOpen) && (
           <div className="space-y-2.5 pt-2.5">
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-600">产品矩阵</label>

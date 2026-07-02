@@ -258,6 +258,7 @@ export function useChat() {
     isLoading: state.isLoading,
     error: state.error,
     latestBrandInput,
+    isComplete: state.messages.some(m => m.canGeneratePlan),
     setInputValue,
     sendMessage,
     retryMessage,

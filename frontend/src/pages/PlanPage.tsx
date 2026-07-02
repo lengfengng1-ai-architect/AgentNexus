@@ -35,7 +35,7 @@ interface PlanFormData {
 }
 
 export function PlanPage() {
-  const { runId, status, nodes, logs, outputs, failedNode, error, isConnected, start, control, reset } = useWorkflowSSE()
+  const { runId, status, nodes, logs, outputs, failedNode, error, isConnected, nodeLogs, start, control, reset } = useWorkflowSSE()
   const { seed, save } = usePlanSession()
   const [autoContinue, setAutoContinue] = useState(true)
   const contentRef = useRef<HTMLDivElement>(null)
@@ -122,7 +122,7 @@ export function PlanPage() {
           </a>
         </div>
         <div className="sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 22px 24px', minHeight: 0 }}>
-          <PlanForm initial={seed} onSubmit={handleStart} isLoading={status === 'running'} />
+          <PlanForm initial={seed} onSubmit={handleStart} isLoading={status === 'running'} status={status} />
         </div>
       </aside>
 
@@ -146,7 +146,7 @@ export function PlanPage() {
         {/* Only this area scrolls */}
         <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#fafbfc' }}>
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
-            <PipelineTimeline nodes={nodes} failedNode={failedNode} />
+            <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} />
             {chapters.length > 0 && <PlanPreview chapters={chapters} />}
             {actionItems && actionItems.length > 0 && (
               <div id="actions-anchor"><PlanActionCards actions={actionItems} /></div>
