@@ -59,6 +59,7 @@ export function PlanPage() {
 
   const [activeTab, setActiveTab] = useState(0)
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
+  const scrollTicking = useRef(false)
 
   const scrollToChapter = useCallback((idx: number) => {
     setActiveTab(idx)
@@ -71,6 +72,36 @@ export function PlanPage() {
       el.scrollTo({ top: target.offsetTop - el.offsetTop - 16, behavior: 'smooth' })
     }
   }, [])
+
+  // Sync active tab with scroll position
+  useEffect(() => {
+    const el = contentRef.current
+    if (!el) return
+    const handleScroll = () => {
+      if (scrollTicking.current) return
+      scrollTicking.current = true
+      requestAnimationFrame(() => {
+        scrollTicking.current = false
+        const scrollTop = el!.scrollTop + 120 // offset so heading is near top
+        let bestIdx = 0
+        let bestDist = Infinity
+        for (let i = 1; i <= 9; i++) {
+          const target = el!.querySelector<HTMLElement>(`[data-chapter-idx="${i}"]`)
+          if (target) {
+            const d = Math.abs(target.offsetTop - el!.offsetTop - scrollTop)
+            if (d < bestDist) { bestDist = d; bestIdx = i }
+          }
+        }
+        // Also check if scrolled near top → activeTab=0
+        if (el!.scrollTop < 100) bestIdx = 0
+        if (bestIdx !== activeTab) setActiveTab(bestIdx)
+      })
+    }
+    el.addEventListener('scroll', handleScroll, { passive: true })
+    return () => el.removeEventListener('scroll', handleScroll)
+  }, [activeTab])
+
+  const TABS = [{ idx: 0, label: '概览' }, { idx: 1, label: '1. 项目概述' }, { idx: 2, label: '2. 市场分析' }, { idx: 3, label: '3. 营销策略' }, { idx: 4, label: '4. 执行方案' }, { idx: 5, label: '5. 数字化运营' }, { idx: 6, label: '6. 达人体系' }, { idx: 7, label: '7. 时间规划' }, { idx: 8, label: '8. KPI' }, { idx: 9, label: '9. 预算' }]
 
   return (
     <div className="app" style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: '#fafbfc' }}>
@@ -100,8 +131,8 @@ export function PlanPage() {
         </header>
 
         <nav style={{ height: 52, background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', gap: 4, padding: '0 28px', flexShrink: 0 }}>
-          {[{ idx: 0, label: '概览' }, { idx: 1, label: '1. 项目概述' }, { idx: 2, label: '2. 市场分析' }, { idx: 3, label: '3. 营销策略' }, { idx: 4, label: '4. 执行方案' }, { idx: 5, label: '5. 数字化运营' }, { idx: 6, label: '6. 达人体系' }, { idx: 7, label: '7. 时间规划' }, { idx: 8, label: '8. KPI' }, { idx: 9, label: '9. 预算' }].map(t => (
-            <button key={t.idx} ref={el => { tabRefs.current[t.idx] = el }} onClick={() => scrollToChapter(t.idx)} style={{ padding: '8px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', border: 'none', background: activeTab === t.idx ? '#1e40af' : 'transparent', color: activeTab === t.idx ? '#fff' : '#475569' }}>{t.label}</button>
+          {TABS.map(t => (
+            <button key={t.idx} ref={el => { (tabRefs.current as (HTMLButtonElement | null)[])[t.idx] = el }} onClick={() => { setActiveTab(t.idx); scrollToChapter(t.idx) }} style={{ padding: '8px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap', border: 'none', background: activeTab === t.idx ? '#1e40af' : 'transparent', color: activeTab === t.idx ? '#fff' : '#475569' }}>{t.label}</button>
           ))}
         </nav>
 
