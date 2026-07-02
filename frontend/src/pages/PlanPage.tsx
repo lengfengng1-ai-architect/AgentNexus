@@ -116,11 +116,11 @@ export function PlanPage() {
   )
 
   return (
-    <div className="app" style={{ display: 'flex', minHeight: '100vh', backgroundColor: '#fafbfc' }}>
+    <div className="app" style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: '#fafbfc' }}>
       {/* Sidebar — fixed width 360px, sticky full-height */}
       <aside style={{
         width: 360, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0',
-        height: '100vh', position: 'sticky', top: 0, display: 'flex', flexDirection: 'column', overflow: 'hidden', zIndex: 100,
+        height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden',
       }}>
         <div style={{ padding: '20px 22px 16px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -142,7 +142,7 @@ export function PlanPage() {
       </aside>
 
       {/* Main area — scrolls as one unit */}
-      <main style={{ flex: 1, minWidth: 0, height: '100vh', overflowY: 'auto', display: 'flex', flexDirection: 'column' }}>
+      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
         {/* Main header */}
         <header style={{
           height: 64, background: '#fff', borderBottom: '1px solid #e2e8f0',
@@ -193,10 +193,12 @@ export function PlanPage() {
         </nav>
 
         {/* Log stream */}
-        <PlanLogStream logs={logs} />
+        <div style={{ flexShrink: 0 }}>
+          <PlanLogStream logs={logs} />
+        </div>
 
-        {/* Content — fills remaining space, scrolls within main */}
-        <div style={{ flex: 1, padding: 28, background: '#fafbfc' }}>
+        {/* Content — fills remaining space, scrolls within */}
+        <div style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#fafbfc' }}>
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             {/* Pipeline section */}
             <section style={{
