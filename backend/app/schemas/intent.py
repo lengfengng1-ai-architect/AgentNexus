@@ -30,6 +30,9 @@ class IntentRecognitionOutput(BaseModel):
     updated_fields: dict[str, Any] = Field(
         default_factory=dict, description="update_context 时更新的字段"
     )
+    reasoning: str = Field(
+        default="", description="模型思考过程，用于聊天框展示"
+    )
 
 
 class IntentRecognitionRequest(BaseModel):

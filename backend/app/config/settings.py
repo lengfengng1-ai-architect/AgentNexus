@@ -28,7 +28,9 @@ class Settings(BaseSettings):
 
     myself_api_key: str = ""
     myself_base_url: str = ""
-    myself_model: str = ""
+    myself_model: str = "deepseek-v4-flash"
+
+    enable_thinking: bool = False
 
     use_mock_data: bool = False
 

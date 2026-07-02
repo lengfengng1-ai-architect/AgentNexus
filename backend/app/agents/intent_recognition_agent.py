@@ -102,8 +102,23 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
 
     context = state.get("context") or {}
     prompt = _load_system_prompt(message, context)
-    llm = _build_structured_llm()
-    result = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=message)])
+    if settings.enable_thinking:
+        import openai
+        import os
+        client = openai.OpenAI(api_key=settings.myself_api_key, base_url=settings.myself_base_url)
+        resp = client.chat.completions.create(
+            model=settings.myself_model,
+            messages=[{"role": "system", "content": prompt}, {"role": "user", "content": message}],
+            extra_body={"enable_thinking": True},
+            response_format={"type": "json_object"},
+        )
+        raw = resp.choices[0].message.content or ""
+        reasoning = getattr(resp.choices[0].message, "reasoning_content", "") or ""
+        result = IntentRecognitionOutput.model_validate(json.loads(raw))
+        result.reasoning = reasoning
+    else:
+        llm = _build_structured_llm()
+        result = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=message)])
 
     if result.intent == "update_context":
         result = _merge_context(context, result)

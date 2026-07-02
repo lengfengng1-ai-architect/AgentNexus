@@ -17,3 +17,4 @@ class ChatResponse(BaseModel):
     reply: str = Field(..., description="AI 回复文本")
     brand_input: BrandInput = Field(default_factory=BrandInput, description="提取的品牌需求字段")
     is_complete: bool = Field(False, description="字段是否完整")
+    reasoning: str = Field("", description="模型思考过程")

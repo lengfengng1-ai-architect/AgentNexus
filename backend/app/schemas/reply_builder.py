@@ -11,3 +11,4 @@ class ReplyBuilderOutput(BaseModel):
     """reply_builder 节点的结构化输出"""
 
     reply: str = Field(..., description="面向用户的口语化自然语言回复")
+    reasoning: str = Field("", description="模型思考过程")

@@ -4,6 +4,7 @@ Corresponding OpenSpec: openspec/changes/add-reply-builder-to-chat-pipeline/spec
 Corresponding in_scope ID: workflow-orchestration
 """
 
+import json
 import logging
 from typing import Any
 
@@ -105,8 +106,22 @@ async def run_reply_builder(state: dict[str, Any]) -> dict[str, Any]:
     effective_branch = _resolve_branch_output(intent, branch_output)
 
     prompt = _load_system_prompt(message, intent, effective_branch)
-    llm = _build_structured_llm()
-    result = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=message)])
+    if settings.enable_thinking:
+        import openai
+        client = openai.OpenAI(api_key=settings.myself_api_key, base_url=settings.myself_base_url)
+        resp = client.chat.completions.create(
+            model=settings.myself_model,
+            messages=[{"role": "system", "content": prompt}, {"role": "user", "content": message}],
+            extra_body={"enable_thinking": True},
+            response_format={"type": "json_object"},
+        )
+        raw = resp.choices[0].message.content or ""
+        reasoning = getattr(resp.choices[0].message, "reasoning_content", "") or ""
+        result = ReplyBuilderOutput.model_validate(json.loads(raw))
+        result.reasoning = reasoning
+    else:
+        llm = _build_structured_llm()
+        result = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=message)])
 
     logger.info("Reply built for intent '%s'", intent.get("intent"))
     return result.model_dump()
