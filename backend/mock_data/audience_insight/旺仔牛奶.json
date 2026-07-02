@@ -1,0 +1,74 @@
+{
+  "demographics": {
+    "age_groups": [
+      "6-12岁（主要消费群体，小朋友居多）",
+      "成年人（许多大人也会选择此款产品）"
+    ],
+    "source": "https://www.wjx.cn/m/11185365.aspx"
+  },
+  "purchase_motivations": [
+    {
+      "text": "情感怀旧/童年记忆（产品形象在消费者心中带有童年记忆）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    },
+    {
+      "text": "礼品赠送/社交分享（旺仔牛奶礼袋轻量装，是赠送亲朋好友的理想选择）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    },
+    {
+      "text": "家庭共享/聚会消费（更易于家庭整箱消费，是合家共享之佳品；选择大瓶装证明有聚会等消费情况）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    }
+  ],
+  "decision_factors": [
+    {
+      "text": "外观/包装设计（消费者心中带有童年记忆，不愿更换包装）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    },
+    {
+      "text": "价格（家长认为价格还算能接受）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    },
+    {
+      "text": "包装规格（大多数消费者选择大瓶包装）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    }
+  ],
+  "usage_scenarios": [
+    {
+      "text": "儿童成长辅助（对小孩子的成长具有促进作用，有增食欲、促睡眠、祛疲劳等多项保健功能）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    },
+    {
+      "text": "礼品赠送（赠送亲朋好友）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    },
+    {
+      "text": "家庭日常消费（家庭整箱消费，合家共享）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    },
+    {
+      "text": "聚会/餐饮场合（从餐饮方入手，大瓶装适合聚会）",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    }
+  ],
+  "descriptions": [
+    {
+      "text": "旺仔牛奶的消费者群体大多数为6-12岁的人群，是小朋友居多的产品，但同时许多大人也会选择此款产品。",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    },
+    {
+      "text": "许多的家长认为旺仔牛奶对小朋友的成长时没有帮助的，且价格还算能接受的",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    },
+    {
+      "text": "旺仔牛奶的产品形象在消费者的心中是带有童年记忆的且大多数对旺仔牛奶的包装改进还是不愿更换的。",
+      "source": "https://www.wjx.cn/m/11185365.aspx"
+    }
+  ],
+  "sources": [
+    "https://www.wjx.cn/m/11185365.aspx",
+    "https://www.docin.com/p-4913104598.html",
+    "https://www.design006.com/homepage-671868"
+  ]
+}

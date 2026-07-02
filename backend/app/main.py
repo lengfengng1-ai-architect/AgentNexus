@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from app.config.settings import settings
-from app.routers import chat, health, market_analysis, product_info, workflows
+from app.routers import audience_insight, chat, health, market_analysis, product_info, workflows
 
 
 def create_app() -> FastAPI:
@@ -27,6 +27,7 @@ def create_app() -> FastAPI:
     app.include_router(market_analysis.router, prefix="/api/v1")
     app.include_router(workflows.router, prefix="/api/v1")
     app.include_router(product_info.router, prefix="/api/v1")
+    app.include_router(audience_insight.router, prefix="/api/v1")
     return app
 
 

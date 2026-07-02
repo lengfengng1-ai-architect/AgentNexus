@@ -73,7 +73,10 @@ def _llm_json(system_prompt: str, user_msg: str) -> dict:
         if raw.endswith("```"):
             raw = raw[:-3]
         raw = raw.strip()
-    return json.loads(raw)
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {}  # fallback to empty dict on parse failure
 
 
 # ── Public node functions (extracted for streaming) ──

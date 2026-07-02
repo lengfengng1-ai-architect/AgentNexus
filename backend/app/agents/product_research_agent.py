@@ -25,6 +25,7 @@ from app.schemas.product_info import (
     SourcedDict,
     SourcedStrList,
 )
+from app.agents.registry import register
 
 # ── 搜索和抓取常量 ──────────────────────────────────────────
 SEARCH_MAX_RESULTS = 10
@@ -213,7 +214,7 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
     product = state.product_name
     # 如果已有官网值且看起来不像通用首页，跳过
     existing = output.identity.product_name.value
-    if existing and "product" in existing.lower() or "shop" in existing.lower():
+    if existing and ("product" in existing.lower() or "shop" in existing.lower()):
         return {}
 
     try:
@@ -274,3 +275,18 @@ async def research_product(product_name: str) -> ProductResearchResult:
     if output is None:
         raise ValueError("Agent did not return structured output")
     return output
+
+
+# ── Registry entry (for workflow orchestration) ──
+
+
+async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
+    """Workflow-compatible handler: input dict → output dict."""
+    pn = state.get("product_name") or state.get("brand_name")
+    if not pn:
+        raise ValueError("Missing required input: product_name")
+    result = await research_product(pn)
+    return result.model_dump()
+
+
+register("product_research", run_product_research)
