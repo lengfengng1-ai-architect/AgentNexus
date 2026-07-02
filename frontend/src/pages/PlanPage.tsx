@@ -38,6 +38,7 @@ export function PlanPage() {
   const { runId, status, nodes, logs, outputs, failedNode, error, isConnected, nodeLogs, start, control, reset } = useWorkflowSSE()
   const { seed, save } = usePlanSession()
   const [autoContinue, setAutoContinue] = useState(true)
+  const [sidebarCollapsed, setSidebarCollapsed] = useState(status !== 'idle')
   const contentRef = useRef<HTMLDivElement>(null)
 
   const handleStart = useCallback((data: PlanFormData) => {
@@ -105,25 +106,36 @@ export function PlanPage() {
 
   return (
     <div className="app" style={{ display: 'flex', height: 'var(--app-height)', overflow: 'hidden', backgroundColor: '#fafbfc' }}>
-      <aside style={{ width: 360, minWidth: 360, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', height: 'var(--app-height)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
-        <div style={{ padding: '20px 22px 12px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
+      <aside style={{ width: sidebarCollapsed ? 48 : 360, minWidth: sidebarCollapsed ? 48 : 360, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', height: 'var(--app-height)', display: 'flex', flexDirection: 'column', overflow: 'hidden', transition: 'width 0.25s, min-width 0.25s' }}>
+        <div style={{ padding: sidebarCollapsed ? '12px 8px' : '20px 22px 12px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-              <div style={{ width: 34, height: 34, borderRadius: 6, background: 'linear-gradient(135deg, #1e40af, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15 }}>A</div>
-              <div>
-                <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.3px', color: '#0f172a' }}>AllyGo 营销方案 Agent</div>
-                <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>智能生成 · 数据驱动 · 可执行</div>
+            {sidebarCollapsed ? (
+              <div style={{ width: 34, height: 34, borderRadius: 6, background: 'linear-gradient(135deg, #1e40af, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15, cursor: 'pointer' }} onClick={() => setSidebarCollapsed(false)}>A</div>
+            ) : (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 6, background: 'linear-gradient(135deg, #1e40af, #3b82f6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 15 }}>A</div>
+                <div>
+                  <div style={{ fontWeight: 700, fontSize: 16, letterSpacing: '-0.3px', color: '#0f172a' }}>AllyGo 营销方案 Agent</div>
+                  <div style={{ fontSize: 11, color: '#94a3b8', marginTop: 2 }}>智能生成 · 数据驱动 · 可执行</div>
+                </div>
+                <button type="button" onClick={() => setSidebarCollapsed(true)} style={{ border: 'none', background: 'none', cursor: 'pointer', color: '#94a3b8', padding: 2, marginLeft: 4, display: 'flex' }}>
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="15" y1="18" x2="9" y2="12" /><line x1="9" y1="12" x2="15" y2="6" /></svg>
+                </button>
               </div>
-            </div>
+            )}
           </div>
-          <a href="/chat" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12, color: '#1e40af', fontWeight: 500, textDecoration: 'none' }} onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')} onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}>
-            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
-            返回聊天
-          </a>
+          {!sidebarCollapsed && (
+            <a href="/chat" style={{ display: 'inline-flex', alignItems: 'center', gap: 4, marginTop: 8, fontSize: 12, color: '#1e40af', fontWeight: 500, textDecoration: 'none' }} onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')} onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><line x1="19" y1="12" x2="5" y2="12" /><polyline points="12 19 5 12 12 5" /></svg>
+              返回聊天
+            </a>
+          )}
         </div>
-        <div className="sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 22px 24px', minHeight: 0 }}>
-          <PlanForm initial={seed} onSubmit={handleStart} isLoading={status === 'running'} status={status} />
-        </div>
+        {!sidebarCollapsed && (
+          <div className="sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 22px 24px', minHeight: 0 }}>
+            <PlanForm initial={seed} onSubmit={handleStart} isLoading={status === 'running'} status={status} />
+          </div>
+        )}
       </aside>
 
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: 'var(--app-height)', overflow: 'hidden' }}>
