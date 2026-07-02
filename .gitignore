@@ -18,5 +18,8 @@ venv/
 .coverage
 htmlcov/
 
+# Vite
+.vite/
+
 # OpenSpec / CodeGraph
 .codegraph/
