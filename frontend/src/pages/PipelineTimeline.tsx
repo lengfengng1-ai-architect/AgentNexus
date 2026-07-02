@@ -14,7 +14,6 @@ interface AgentMeta {
 }
 
 const agents: AgentMeta[] = [
-  { id: 'collect', name: '需求收集 Agent', desc: '检查品牌信息完整性，识别缺失字段', icon: '\u{1F4DD}' },
   { id: 'market', name: '市场调研 Agent', desc: '收集行业趋势、竞品格局、消费洞察', icon: '\u{1F4CA}' },
   { id: 'audience', name: '人群洞察 Agent', desc: '分析目标城市运动人群画像', icon: '\u{1F465}' },
   { id: 'data', name: '数据查询 Agent', desc: '调取 AllyGo 盟域/赛事/达人/场馆/经营社数据', icon: '\u{1F50D}' },
@@ -23,6 +22,7 @@ const agents: AgentMeta[] = [
   { id: 'execution', name: '执行规划 Agent', desc: '规划赛事/盟域/达人/内容/运营落地方案', icon: '\u{1F680}' },
   { id: 'budget', name: '预算与 KPI Agent', desc: '测算预算分配、KPI预测、时间表', icon: '\u{1F4B0}' },
   { id: 'actions', name: '行动建议 Agent', desc: '生成可执行的系统操作指导', icon: '\u{1F3AF}' },
+  { id: 'plan_generator', name: '方案生成 Agent', desc: '汇总上游输出为 9 章 Markdown 方案', icon: '\u{1F4CB}' },
 ]
 
 function statusLabel(status: PlanNode['status']): string {

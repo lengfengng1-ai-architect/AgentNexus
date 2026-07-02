@@ -6,7 +6,6 @@ interface PlanLogStreamProps {
 }
 
 const AGENT_NAMES: Record<string, string> = {
-  collect: '需求收集 Agent',
   market_research: '市场调研 Agent',
   audience_insight: '人群洞察 Agent',
   plan_data_query: '数据查询 Agent',

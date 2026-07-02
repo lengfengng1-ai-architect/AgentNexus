@@ -4,8 +4,8 @@ import type { PlanLogEvent } from '../types/plan'
 
 const sampleLogs: PlanLogEvent[] = [
   { id: 1, event: 'workflow.start', runId: 'run-1' },
-  { id: 2, event: 'node.start', runId: 'run-1', nodeId: 'collect' },
-  { id: 3, event: 'node.complete', runId: 'run-1', nodeId: 'collect', message: '完成' },
+  { id: 2, event: 'node.start', runId: 'run-1', nodeId: 'market_research' },
+  { id: 3, event: 'node.complete', runId: 'run-1', nodeId: 'market_research', message: '完成' },
 ]
 
 describe('PlanLogStream', () => {
@@ -17,7 +17,7 @@ describe('PlanLogStream', () => {
 
   test('renders formatted log event when logs present', () => {
     render(<PlanLogStream logs={sampleLogs} />)
-    // The latest log event (index 2) is node.complete for collect agent
-    expect(screen.getByText(/需求收集 Agent/)).toBeInTheDocument()
+    // The latest log event (index 2) is node.complete for market_research agent
+    expect(screen.getByText(/市场调研 Agent/)).toBeInTheDocument()
   })
 })

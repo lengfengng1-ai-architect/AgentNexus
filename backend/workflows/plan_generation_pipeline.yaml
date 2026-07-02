@@ -2,33 +2,25 @@ id: plan_generation_pipeline
 name: 营销方案生成流水线
 version: "0.1"
 nodes:
-  - id: collect
-    agent: requirement_collector
-    input_mapping:
-      brand_input: "$.input.brand_input"
-
   - id: market_research
     agent: market_research
-    depends_on: [collect]
     input_mapping:
       brand_name: "$.input.brand_input.brand_name"
       category: "$.input.brand_input.category"
 
   - id: audience_insight
     agent: audience_insight
-    depends_on: [collect]
     input_mapping:
       city: "$.input.brand_input.city"
 
   - id: plan_data_query
     agent: plan_data_query
-    depends_on: [collect]
     input_mapping:
       city: "$.input.brand_input.city"
 
   - id: fitness_analysis
     agent: fitness_analysis
-    depends_on: [collect, audience_insight]
+    depends_on: [audience_insight]
     input_mapping:
       category: "$.input.brand_input.category"
       city: "$.input.brand_input.city"
@@ -81,8 +73,6 @@ nodes:
       action_recommendations: "$.outputs.action_recommendations"
 
 edges:
-  - from: collect
-    to: market_research
   - from: market_research
     to: audience_insight
   - from: audience_insight

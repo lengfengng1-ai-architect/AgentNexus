@@ -142,7 +142,7 @@ export function PlanPage() {
         <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#fafbfc' }}>
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             <PipelineTimeline nodes={nodes} failedNode={failedNode} />
-            <PlanPreview chapters={chapters} />
+            {chapters.length > 0 && <PlanPreview chapters={chapters} />}
             {actionItems && actionItems.length > 0 && (
               <div id="actions-anchor"><PlanActionCards actions={actionItems} /></div>
             )}

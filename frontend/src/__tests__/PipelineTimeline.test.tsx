@@ -4,7 +4,6 @@ import { PipelineTimeline } from '../pages/PipelineTimeline'
 import type { PlanNode } from '../types/plan'
 
 const sampleNodes: PlanNode[] = [
-  { id: 'collect', label: '需求收集 Agent', status: 'pending' },
   { id: 'market', label: '市场调研 Agent', status: 'running', startedAt: Date.now() },
   { id: 'audience', label: '人群洞察 Agent', status: 'complete', startedAt: Date.now(), completedAt: Date.now() },
   { id: 'strategy', label: '策略生成 Agent', status: 'failed', startedAt: Date.now() },
@@ -18,7 +17,6 @@ describe('PipelineTimeline', () => {
 
   test('renders all 9 agent names', () => {
     render(<PipelineTimeline nodes={[]} failedNode={null} />)
-    expect(screen.getByText('需求收集 Agent')).toBeInTheDocument()
     expect(screen.getByText('市场调研 Agent')).toBeInTheDocument()
     expect(screen.getByText('人群洞察 Agent')).toBeInTheDocument()
     expect(screen.getByText('数据查询 Agent')).toBeInTheDocument()

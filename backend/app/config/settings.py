@@ -16,7 +16,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
 
-    llm_provider: str = "dashscope"  # dashscope | agnes
+    llm_provider: str = "dashscope"  # dashscope | agnes | myself
 
     dashscope_api_key: str = ""
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
@@ -25,6 +25,10 @@ class Settings(BaseSettings):
     agnes_api_key: str = ""
     agnes_base_url: str = "https://apihub.agnes-ai.com/v1"
     agnes_model: str = "agnes-2.0-flash"
+
+    myself_api_key: str = ""
+    myself_base_url: str = ""
+    myself_model: str = ""
 
     use_mock_data: bool = False
 
