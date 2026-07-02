@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useWorkflowSSE } from '../hooks/useWorkflowSSE'
 import type { BrandInput } from '../types/chat'
 import { PlanActionCards } from './PlanActionCards'
@@ -69,6 +69,15 @@ export function PlanPage() {
     },
     [save, start],
   )
+
+  // auto-start when seed loads and no run has started yet
+  const startedRef = useRef(false)
+  useEffect(() => {
+    if (seed && status === 'idle' && !startedRef.current) {
+      startedRef.current = true
+      handleStart(seed)
+    }
+  }, [seed, status, handleStart])
 
   const chapters = outputs.plan_generator?.chapters || []
   const actions = outputs.action_recommendations

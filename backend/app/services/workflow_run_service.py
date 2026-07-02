@@ -130,10 +130,10 @@ async def _execute_nodes(
             return
 
         state.outputs[node_id] = output
-        yield await _emit(history, "node.complete", run_id, node_id=node_id, data={"node": node_id})
+        yield await _emit(history, "node.complete", run_id, node_id=node_id, data=output)
 
     state.status = "completed"
-    yield await _emit(history, "workflow.complete", run_id, data={"outputs": list(state.outputs.keys())})
+    yield await _emit(history, "workflow.complete", run_id, data={"outputs": state.outputs})
 
 
 async def create_stream(

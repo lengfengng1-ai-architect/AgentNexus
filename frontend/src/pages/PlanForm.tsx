@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { BrandInput } from '../types/chat'
 
 const FIELDS: { key: keyof BrandInput; label: string; placeholder: string; type?: string }[] = [
@@ -16,6 +16,7 @@ interface PlanFormProps {
 }
 
 export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
+  // sync from parent prop (e.g. localStorage seed loaded async)
   const [values, setValues] = useState<BrandInput>({
     brand_name: initial?.brand_name ?? null,
     category: initial?.category ?? null,
@@ -23,6 +24,19 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
     budget: initial?.budget ?? null,
     period: initial?.period ?? null,
   })
+  const prevInitialRef = useRef(initial)
+  useEffect(() => {
+    if (initial !== prevInitialRef.current) {
+      prevInitialRef.current = initial
+      setValues({
+        brand_name: initial?.brand_name ?? null,
+        category: initial?.category ?? null,
+        city: initial?.city ?? null,
+        budget: initial?.budget ?? null,
+        period: initial?.period ?? null,
+      })
+    }
+  }, [initial])
 
   function handleChange(key: keyof BrandInput, value: string) {
     setValues((prev: BrandInput) => ({
