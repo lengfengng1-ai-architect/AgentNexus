@@ -39,3 +39,65 @@ export async function runChatPipeline(
     throw new Error(extractErrorMessage(error))
   }
 }
+
+export interface StreamChunk {
+  reasoning?: string
+  reasoningFull?: string
+  reply?: string
+}
+
+export async function* streamChat(
+  message: string,
+): AsyncGenerator<StreamChunk> {
+  const response = await fetch(
+    `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'}/chat/stream`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ message }),
+    },
+  )
+  if (!response.ok || !response.body) {
+    throw new Error('流式请求失败')
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() ?? ''
+
+    let currentEvent = ''
+    let currentData = ''
+
+    for (const line of lines) {
+      const trimmed = line.trim()
+      if (!trimmed) continue
+      if (trimmed.startsWith('event:')) {
+        currentEvent = trimmed.slice(6).trim()
+      } else if (trimmed.startsWith('data:')) {
+        currentData = trimmed.slice(5).trim()
+      } else if (trimmed.startsWith('id:')) {
+        // ignore
+      }
+    }
+
+    if (currentEvent && currentData) {
+      try {
+        const parsed = JSON.parse(currentData)
+        if (currentEvent === 'reasoning') {
+          yield { reasoning: parsed.text, reasoningFull: parsed.full }
+        } else if (currentEvent === 'reply') {
+          yield { reply: parsed.text }
+        }
+      } catch {
+        // skip malformed
+      }
+    }
+  }
+}

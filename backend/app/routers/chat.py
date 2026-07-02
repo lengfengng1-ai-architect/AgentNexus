@@ -1,19 +1,57 @@
-from fastapi import APIRouter, HTTPException, status
+import json
 
-from app.schemas.chat import ChatRequest, ChatResponse
-from app.schemas.common import APIError
-from app.services.chat_service import chat
+from fastapi import APIRouter, Request
+from fastapi.responses import StreamingResponse
+from openai import OpenAI
+
+from app.config.settings import settings
 
 router = APIRouter(tags=["chat"])
 
 
-@router.post("/chat", response_model=ChatResponse)
-async def chat_endpoint(request: ChatRequest):
-    """接收用户自然语言输入，返回提取的品牌需求字段。"""
-    try:
-        return await chat(request.message)
-    except Exception as exc:
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=APIError(detail=str(exc), code="llm_error").model_dump(),
+@router.post("/chat/stream")
+async def chat_stream(request: Request):
+    """SSE 流式聊天，实时推送 thinking + reply。"""
+    body = await request.json()
+    message = body.get("message", "")
+
+    client = OpenAI(api_key=settings.myself_api_key, base_url=settings.myself_base_url)
+
+    async def event_stream():
+        stream = client.chat.completions.create(
+            model=settings.myself_model,
+            messages=[{"role": "user", "content": message}],
+            extra_body={"enable_thinking": True},
+            stream=True,
+            stream_options={"include_usage": True},
         )
+        reasoning_buffer = ""
+        event_id = 0
+
+        for chunk in stream:
+            if not chunk.choices:
+                continue
+            delta = chunk.choices[0].delta
+
+            # thinking content
+            if hasattr(delta, "reasoning_content") and delta.reasoning_content:
+                reasoning_buffer += delta.reasoning_content
+                yield f"id: {event_id}\nevent: reasoning\ndata: {json.dumps({'text': delta.reasoning_content, 'full': reasoning_buffer})}\n\n"
+                event_id += 1
+
+            # reply content
+            if hasattr(delta, "content") and delta.content:
+                yield f"id: {event_id}\nevent: reply\ndata: {json.dumps({'text': delta.content})}\n\n"
+                event_id += 1
+
+        yield f"id: {event_id}\nevent: done\ndata: {{}}\n\n"
+
+    return StreamingResponse(
+        event_stream(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )

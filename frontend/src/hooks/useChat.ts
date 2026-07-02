@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { runChatPipeline } from '../api/workflow'
+import { runChatPipeline, streamChat } from '../api/workflow'
 import type { BrandInput, ChatMessage } from '../types/chat'
 
 const STORAGE_KEY = 'allygo_chat_history'
@@ -29,6 +29,8 @@ type ChatAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'RETRY_MESSAGE'; messageId: string }
   | { type: 'LOAD_HISTORY'; messages: ChatMessage[] }
+  | { type: 'STREAM_REASONING'; content: string; full: string }
+  | { type: 'STREAM_REPLY'; text: string }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
   return {
@@ -86,6 +88,33 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         ...state,
         isLoading: false,
         messages: [...state.messages.filter((m) => !m.isLoading), aiMessage],
+      }
+    }
+
+    case 'STREAM_REASONING': {
+      const msgs = state.messages
+      const lastAi = msgs.findLast(m => m.role === 'ai')
+      if (!lastAi) return state
+      return {
+        ...state,
+        messages: msgs.map(m =>
+          m.id === lastAi.id ? { ...m, reasoning: action.full } : m
+        ),
+      }
+    }
+
+    case 'STREAM_REPLY': {
+      const msgs = state.messages
+      const lastAi = msgs.findLast(m => m.role === 'ai')
+      if (!lastAi) return state
+      return {
+        ...state,
+        isLoading: false,
+        messages: msgs.map(m =>
+          m.id === lastAi.id
+            ? { ...m, content: m.content + action.text, isLoading: false }
+            : m
+        ),
       }
     }
 
@@ -215,6 +244,33 @@ export function useChat() {
     [],
   )
 
+  const sendStreamMessage = useCallback(
+    async (content: string) => {
+      if (isProcessingRef.current || !content.trim()) return
+      isProcessingRef.current = true
+      dispatch({ type: 'CLEAR_ERROR' })
+      dispatch({ type: 'SEND_MESSAGE', content: content.trim() })
+      dispatch({ type: 'LOADING_MESSAGE' })
+
+      try {
+        for await (const chunk of streamChat(content.trim())) {
+          if (chunk.reasoning) {
+            dispatch({ type: 'STREAM_REASONING', content: chunk.reasoning, full: chunk.reasoningFull || '' })
+          }
+          if (chunk.reply) {
+            dispatch({ type: 'STREAM_REPLY', text: chunk.reply })
+          }
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : '发送失败，请重试'
+        dispatch({ type: 'SET_ERROR', error: message })
+      } finally {
+        isProcessingRef.current = false
+      }
+    },
+    [],
+  )
+
   const retryMessage = useCallback(async (messageId: string) => {
     const messageToRetry = state.messages.find((m) => m.id === messageId)
     if (!messageToRetry || messageToRetry.role !== 'user') return
@@ -265,6 +321,7 @@ export function useChat() {
     isComplete: state.messages.some(m => m.canGeneratePlan),
     setInputValue,
     sendMessage,
+    sendStreamMessage,
     retryMessage,
     prefillInput,
   }
