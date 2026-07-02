@@ -42,10 +42,7 @@ export function PlanPreview({ chapters }: PlanPreviewProps) {
     const indices = chapters.slice(0, 3).map((_, i) => i)
     return new Set(indices)
   })
-  const [activeTab, setActiveTab] = useState(0)
-  const sectionRef = useRef<HTMLElement>(null)
   const chapterRefs = useRef<Map<number, HTMLElement>>(new Map())
-  const pipelineRef = useRef<HTMLDivElement>(null)
 
   const toggleChapter = useCallback((index: number) => {
     setOpenSet((prev) => {
@@ -62,24 +59,6 @@ export function PlanPreview({ chapters }: PlanPreviewProps) {
   const collapseAll = useCallback(() => {
     setOpenSet(new Set())
   }, [])
-
-  const scrollToChapter = useCallback(
-    (tabIndex: number) => {
-      setActiveTab(tabIndex)
-      if (tabIndex === 0) {
-        pipelineRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-        return
-      }
-      const chapterIndex = tabIndex - 1
-      const el = chapterRefs.current.get(chapterIndex)
-      if (el) {
-        // Auto-open when navigating via tab
-        setOpenSet((prev) => new Set(prev).add(chapterIndex))
-        el.scrollIntoView({ behavior: 'smooth', block: 'start' })
-      }
-    },
-    [],
-  )
 
   if (chapters.length === 0) {
     return (
@@ -107,7 +86,7 @@ export function PlanPreview({ chapters }: PlanPreviewProps) {
   }
 
   return (
-    <section ref={sectionRef} className="rounded-xl border border-line bg-white p-6 shadow-sm">
+    <section className="rounded-xl border border-line bg-white p-6 shadow-sm">
       {/* Section heading */}
       <div className="mb-4 flex items-center justify-between">
         <h2 className="flex items-center gap-2 text-base font-bold text-track">
@@ -131,27 +110,6 @@ export function PlanPreview({ chapters }: PlanPreviewProps) {
           </button>
         </div>
       </div>
-
-      {/* Tab bar */}
-      <nav className="mb-6 flex flex-wrap gap-1.5 border-b border-line pb-3">
-        {TAB_LABELS.map((label, i) => (
-          <button
-            key={label}
-            type="button"
-            onClick={() => scrollToChapter(i)}
-            className={`rounded-md px-3 py-1.5 text-xs font-medium transition-colors ${
-              activeTab === i
-                ? 'bg-blue-700 text-white'
-                : 'bg-mist text-slate-600 hover:bg-slate-200'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </nav>
-
-      {/* Pipeline anchor */}
-      <div ref={pipelineRef} />
 
       {/* Chapters */}
       <div>

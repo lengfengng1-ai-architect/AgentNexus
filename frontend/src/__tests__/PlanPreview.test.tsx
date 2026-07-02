@@ -28,14 +28,6 @@ describe('PlanPreview', () => {
     expect(screen.getByText('市场内容概述')).toBeVisible()
   })
 
-  test('renders tab bar with all tabs', () => {
-    render(<PlanPreview chapters={chapters} />)
-    expect(screen.getByText('概览')).toBeInTheDocument()
-    expect(screen.getByText('1. 项目概述')).toBeInTheDocument()
-    expect(screen.getByText('2. 市场分析')).toBeInTheDocument()
-    expect(screen.getByText('9. 预算')).toBeInTheDocument()
-  })
-
   test('expand all opens every chapter', () => {
     const many = [
       ...chapters,
@@ -43,8 +35,6 @@ describe('PlanPreview', () => {
       { title: '第四章', subtitle: 'sub4', content: 'content4' },
     ]
     render(<PlanPreview chapters={many} />)
-    // chapters 3 and 4 start closed (only first 3 open by default, so chapter 3 = index 2 is open)
-    // chapter 4 (index 3) starts closed
     expect(screen.queryByText('content4')).not.toBeInTheDocument()
     fireEvent.click(screen.getByText('展开全部'))
     expect(screen.getByText('content4')).toBeVisible()
@@ -52,18 +42,8 @@ describe('PlanPreview', () => {
 
   test('collapse all closes every chapter', () => {
     render(<PlanPreview chapters={chapters} />)
-    // first chapter starts open (index 0 < 3)
     expect(screen.getByText('市场内容概述')).toBeVisible()
     fireEvent.click(screen.getByText('折叠全部'))
     expect(screen.queryByText('市场内容概述')).not.toBeInTheDocument()
-  })
-
-  test('tab click scrolls chapter into view', () => {
-    // scrollIntoView is not implemented in jsdom, mock it
-    const scrollMock = vi.fn()
-    Element.prototype.scrollIntoView = scrollMock
-    render(<PlanPreview chapters={chapters} />)
-    fireEvent.click(screen.getByText('2. 市场分析'))
-    expect(scrollMock).toHaveBeenCalled()
   })
 })
