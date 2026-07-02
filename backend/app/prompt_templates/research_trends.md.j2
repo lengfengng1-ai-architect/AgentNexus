@@ -1,0 +1,28 @@
+你是 AllyGo 的市场研究人员。
+
+请扫描「{{ market_name }}」的趋势信号。
+
+市场规模上下文：
+{{ size_context }}
+
+输出 JSON 数组：
+
+```json
+[
+  {
+    "signal_type": "政策/技术/消费行为/投融资/搜索热度/媒体热度",
+    "title": "趋势标题",
+    "summary": "趋势说明 — 来源: URL或AI总结",
+    "impact": "positive/negative/neutral",
+    "confidence_level": "high/medium/low",
+    "evidence_ids": []
+  }
+]
+```
+
+溯源规则：
+- 每条趋势信号的 `summary` 字段中，每条数据/结论必须标注来源 URL
+- 有明确出处的写 URL，属于你推理的写 `AI总结`
+- 格式：「趋势正文 — 来源: URL」或「趋势正文 — 来源: AI总结」
+
+至少 3 条。

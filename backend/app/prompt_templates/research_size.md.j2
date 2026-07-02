@@ -1,0 +1,29 @@
+你是 AllyGo 的市场研究人员。
+
+请估算「{{ market_name }}」的市场规模。
+
+```
+tam: 总体市场规模
+sam: 可服务市场规模
+som: 可获得市场规模
+```
+
+输出纯 JSON：
+
+```json
+{
+  "tam": { "value": 数值, "year": 年份, "calculation_method": "简述 — 来源: URL或AI总结", "confidence_level": "high/medium/low" },
+  "sam": { "value": 数值, "year": 年份, "calculation_method": "简述 — 来源: URL或AI总结", "confidence_level": "high/medium/low" },
+  "som": { "value": 数值, "year": 年份, "calculation_method": "简述 — 来源: URL或AI总结", "confidence_level": "high/medium/low" },
+  "cagr": 0.0,
+  "cagr_period": "年份区间",
+  "cagr_confidence": "high/medium/low",
+  "conflict_notes": "（可选）不同来源的冲突说明"
+}
+```
+
+溯源规则：
+- 所有数值必须标注来源 URL，格式 `calculation_method` 末尾加「 — 来源: URL」
+- 如果数值是你根据公开信息推算的，写 `推算 — 来源: AI总结`
+- 没有数据就写 null，不要编造
+- 如果引用第三方机构数据（如艾瑞、中商、欧睿），写出机构名和出处 URL
