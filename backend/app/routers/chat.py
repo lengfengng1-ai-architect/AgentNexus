@@ -18,13 +18,11 @@ async def chat_stream(request: Request):
     client = OpenAI(api_key=settings.myself_api_key, base_url=settings.myself_base_url)
 
     async def event_stream():
-        from app.agents.intent_recognition_agent import _load_system_prompt
-        prompt = _load_system_prompt(message, {})
         stream = client.chat.completions.create(
             model=settings.myself_model,
             messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": message + "\n\n请按 JSON 格式输出 intent、reply、brand_input 等字段。"},
+                {"role": "system", "content": "你是 AllyGo 营销方案 Agent，帮助用户生成营销方案或回答平台能力问题。回复简洁友好，用中文。不要输出 JSON。"},
+                {"role": "user", "content": message},
             ],
             extra_body={"enable_thinking": True},
             stream=True,
