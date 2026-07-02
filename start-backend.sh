@@ -2,4 +2,4 @@
 set -e
 
 cd "$(dirname "$0")/backend"
-uv run python -m app.main
+uv run uvicorn app.main:app --port 8000 --reload

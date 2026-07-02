@@ -2,4 +2,4 @@
 set -e
 
 cd "$(dirname "$0")/frontend"
-npm run dev
+npm install --no-audit --no-fund && npm run dev
