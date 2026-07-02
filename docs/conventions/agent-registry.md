@@ -69,7 +69,7 @@ from app.agents import market_research_agent  # noqa: F401
 
 主流程 `backend/app/agents/orchestrator.py` 会在运行时从 `registry` 查找 Agent 名称，不需要你修改 orchestrator。
 
-工作流 YAML 示例：
+### 2.1 串行节点示例
 
 ```yaml
 id: brand_research_pipeline
@@ -93,6 +93,61 @@ edges:
   - from: market_research
     to: __end__
 ```
+
+### 2.2 条件分支示例（意图识别后路由）
+
+意图识别 Agent 通常作为工作流入口，根据输出把对话路由到不同分支：
+
+```yaml
+id: chat_pipeline
+name: 对话意图识别流水线
+version: "0.1"
+nodes:
+  - id: intent
+    agent: intent_recognition
+    input_mapping:
+      message: "$.input.message"
+      context: "$.input.context"
+
+  - id: extract
+    agent: chat_extraction
+    condition: "$.outputs.intent.intent == 'generate_plan'"
+    input_mapping:
+      message: "$.input.message"
+
+  - id: data_query
+    agent: data_query
+    condition: "$.outputs.intent.intent == 'query_data'"
+    input_mapping:
+      city: "$.outputs.intent.brand_input.city"
+
+  - id: end_reply
+    agent: end_reply
+    condition: "$.outputs.intent.intent in ['chat', 'clarify', 'update_context']"
+    input_mapping:
+      reply: "$.outputs.intent.reply"
+
+edges:
+  - from: intent
+    to: extract
+  - from: intent
+    to: data_query
+  - from: intent
+    to: end_reply
+  - from: extract
+    to: __end__
+  - from: data_query
+    to: __end__
+  - from: end_reply
+    to: __end__
+```
+
+规则：
+
+- 一个节点的多条出边要么**全部带 condition**，要么**全部不带 condition**。
+- condition 使用 JSONPath 风格的指针（`$.input.x`、`$.outputs.node_id.field`）加比较运算符。
+- 支持 `==`、`!=`、`in`、`and`、`or`；列表用 `['a', 'b']` 形式。
+- 条件都不满足时，该分支直接结束（不会报错）。
 
 ---
 

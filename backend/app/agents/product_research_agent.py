@@ -9,7 +9,7 @@ superpowers in_scope ID: product-research
 import asyncio
 
 from bs4 import BeautifulSoup
-from ddgs import DDGS
+from duckduckgo_search import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
 from langchain.chat_models import init_chat_model
