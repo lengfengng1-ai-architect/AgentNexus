@@ -1,0 +1,14 @@
+id: market_analysis
+name: 市场分析
+version: "0.1"
+nodes:
+  - id: analyze
+    agent: market_analysis
+    input_mapping:
+      market_name: "$.input.market_name"
+      category: "$.input.category"
+    output_mapping: {}
+
+edges:
+  - from: analyze
+    to: __end__
