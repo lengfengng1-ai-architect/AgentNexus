@@ -121,13 +121,12 @@ export function PlanPage() {
             返回聊天
           </a>
         </div>
-        <div style={{ flex: 1, overflowY: 'auto', padding: '16px 22px 24px', minHeight: 0 }}>
+        <div className="sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 22px 24px', minHeight: 0 }}>
           <PlanForm initial={seed} onSubmit={handleStart} isLoading={status === 'running'} />
         </div>
       </aside>
 
       <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
-        {/* These three bars are fixed / do not scroll */}
         <header style={{ height: 64, background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', flexShrink: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', color: '#0f172a' }}>营销方案工作台</div>
           <div style={{ display: 'flex', gap: 10 }}>

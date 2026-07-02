@@ -36,6 +36,17 @@ body,
   flex-direction: column;
 }
 
+@media (max-width: 1024px) {
+  .app { flex-direction: column !important; height: auto !important; }
+  .app > aside { width: 100% !important; min-width: 0 !important; height: auto !important; position: relative !important; }
+  .app > main { height: auto !important; }
+}
+
+/* Hide sidebar scrollbar but keep scrollable */
+.sidebar-scroll::-webkit-scrollbar { width: 4px; }
+.sidebar-scroll::-webkit-scrollbar-thumb { background: #e2e8f0; border-radius: 2px; }
+.sidebar-scroll::-webkit-scrollbar-track { background: transparent; }
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
