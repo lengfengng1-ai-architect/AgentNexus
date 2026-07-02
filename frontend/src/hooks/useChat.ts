@@ -212,47 +212,6 @@ export function useChat() {
       dispatch({ type: 'LOADING_MESSAGE' })
 
       try {
-        const response = await runChatPipeline(content.trim())
-        const intent = response.outputs?.intent
-        const reply = response.outputs?.reply_builder?.reply
-        if (!reply) {
-          throw new Error('后端未返回有效回复')
-        }
-        dispatch({
-          type: 'RECEIVE_MESSAGE',
-          reply,
-          brandInput: intent?.brand_input ?? {
-            brand_name: null,
-            category: null,
-            city: null,
-            budget: null,
-            period: null,
-          },
-          intent: intent?.intent,
-          isComplete: intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
-          canGeneratePlan:
-            intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
-          reasoning: intent?.reasoning || response.outputs?.reply_builder?.reasoning || '',
-        })
-      } catch (error) {
-        const message = error instanceof Error ? error.message : '发送失败，请重试'
-        dispatch({ type: 'SET_ERROR', error: message })
-      } finally {
-        isProcessingRef.current = false
-      }
-    },
-    [],
-  )
-
-  const sendStreamMessage = useCallback(
-    async (content: string) => {
-      if (isProcessingRef.current || !content.trim()) return
-      isProcessingRef.current = true
-      dispatch({ type: 'CLEAR_ERROR' })
-      dispatch({ type: 'SEND_MESSAGE', content: content.trim() })
-      dispatch({ type: 'LOADING_MESSAGE' })
-
-      try {
         for await (const chunk of streamChat(content.trim())) {
           if (chunk.reasoning) {
             dispatch({ type: 'STREAM_REASONING', content: chunk.reasoning, full: chunk.reasoningFull || '' })
@@ -320,7 +279,7 @@ export function useChat() {
     latestBrandInput,
     isComplete: state.messages.some(m => m.canGeneratePlan),
     setInputValue,
-    sendMessage: sendStreamMessage,
+    sendMessage,
     retryMessage,
     prefillInput,
   }
