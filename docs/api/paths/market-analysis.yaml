@@ -1,0 +1,329 @@
+# OpenSpec: 市场分析
+# in_scope id: market-analysis
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "市场分析"
+  description: "基于品牌名称和品类，进行行业趋势、趋势信号、消费者洞察和竞争格局四维市场分析。支持同步查询和 SSE 流式进度推送。"
+  version: "v0.1"
+  x-in-scope-ref: "market-analysis"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /market-analysis:
+    post:
+      operationId: "market_analysis_create"
+      summary: "同步市场分析"
+      description: |
+        接收品牌名称和品类，同步返回四维市场分析报告。
+        支持 mock 模式（USE_MOCK_DATA=true）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarketAnalysisRequest"
+      responses:
+        "200":
+          description: "成功返回市场分析报告"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MarketAnalysisResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /market-analysis/stream:
+    post:
+      operationId: "market_analysis_stream"
+      summary: "SSE 流式市场分析"
+      description: |
+        接收品牌名称和品类，以 Server-Sent Events 方式逐步推送分析进度。
+        每次完成一个维度搜索后 push progress 事件，最后 push result 事件。
+        支持 mock 模式（USE_MOCK_DATA=true）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/MarketAnalysisRequest"
+      responses:
+        "200":
+          description: "SSE 流式响应"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "SSE 事件流，包含 progress 和 result 事件"
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: "no-cache"
+            Connection:
+              schema:
+                type: string
+                example: "keep-alive"
+            X-Accel-Buffering:
+              schema:
+                type: string
+                example: "no"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    # ── 请求体 ──
+    MarketAnalysisRequest:
+      type: object
+      description: "市场分析请求"
+      required:
+        - brand_name
+        - category
+      properties:
+        brand_name:
+          type: string
+          minLength: 1
+          maxLength: 100
+          description: "品牌名称"
+          example: "AllyGo"
+        category:
+          type: string
+          minLength: 1
+          maxLength: 50
+          description: "品牌品类，英文 snake_case"
+          example: "运动饮料"
+
+    # ── 分析维度模型 ──
+    IndustryTrends:
+      type: object
+      description: "行业趋势分析"
+      required:
+        - gdp_change
+        - market_scale
+        - summary
+      properties:
+        gdp_change:
+          type: string
+          description: "过去 5 年 GDP/市场规模变化描述"
+          example: "中国功能饮料市场规模从 2020 年约 800 亿元增长至 2025 年约 1200 亿元，CAGR 约 8.5%"
+        market_scale:
+          type: string
+          description: "当前市场规模描述"
+          example: "2025 年运动饮料细分市场约 400 亿元"
+        summary:
+          type: string
+          description: "行业整体叙事总结"
+          example: "运动饮料行业处于快速增长期，受益于全民健身政策推动和健康消费意识提升"
+
+    TrendSignal:
+      type: object
+      description: "趋势信号"
+      required:
+        - signal
+        - assessment
+        - source
+      properties:
+        signal:
+          type: string
+          description: "政策/市场方向信号描述"
+          example: "国务院《全民健身计划（2021-2025）》明确提出支持运动营养产业发展"
+        assessment:
+          type: string
+          description: "信号评估"
+          enum:
+            - positive    # 正面
+            - neutral     # 中性
+            - negative    # 负面
+        source:
+          type: string
+          description: "信息来源 URL 或 'LLM 推理'"
+
+    ConsumerInsight:
+      type: object
+      description: "消费者洞察"
+      required:
+        - shift
+        - changes
+        - source
+      properties:
+        shift:
+          type: string
+          description: "消费行为变化描述"
+          example: "消费者从含糖运动饮料向低糖/无糖产品迁移"
+        changes:
+          type: array
+          description: "具体变化表现（至少 2-3 条）"
+          items:
+            type: string
+            example: "无糖运动饮料线上销售额同比增长 45%"
+          minItems: 2
+        source:
+          type: string
+          description: "信息来源 URL 或 'LLM 推理'"
+
+    Competitor:
+      type: object
+      description: "竞争对手"
+      required:
+        - brand_name
+        - product_highlights
+        - pricing
+        - source
+      properties:
+        brand_name:
+          type: string
+          description: "竞争品牌名称"
+          example: "佳得乐"
+        product_highlights:
+          type: string
+          description: "产品亮点"
+          example: "经典电解质配方，NBA 官方合作伙伴"
+        pricing:
+          type: string
+          description: "定价策略描述"
+          example: "主流 500ml 售价 5-7 元"
+        source:
+          type: string
+          description: "信息来源 URL 或 'LLM 推理'"
+
+    CompetitiveLandscape:
+      type: object
+      description: "竞争格局"
+      required:
+        - competitors
+      properties:
+        competitors:
+          type: array
+          description: "竞争对手列表（至少 2-3 个品牌）"
+          items:
+            $ref: "#/components/schemas/Competitor"
+          minItems: 2
+
+    # ── 响应体 ──
+    MarketAnalysisReport:
+      type: object
+      description: "市场分析报告"
+      required:
+        - industry_trends
+        - trend_signals
+        - consumer_insights
+        - competitive_landscape
+        - full_report
+      properties:
+        industry_trends:
+          $ref: "#/components/schemas/IndustryTrends"
+        trend_signals:
+          type: array
+          description: "趋势信号列表"
+          items:
+            $ref: "#/components/schemas/TrendSignal"
+        consumer_insights:
+          type: array
+          description: "消费者洞察列表"
+          items:
+            $ref: "#/components/schemas/ConsumerInsight"
+        competitive_landscape:
+          $ref: "#/components/schemas/CompetitiveLandscape"
+        full_report:
+          type: string
+          description: "完整的市场分析报告（markdown 格式，LLM 撰写）"
+
+    MarketAnalysisResponse:
+      type: object
+      description: "市场分析响应"
+      required:
+        - report
+        - confidence
+      properties:
+        report:
+          $ref: "#/components/schemas/MarketAnalysisReport"
+        confidence:
+          type: string
+          description: "分析置信度"
+          enum:
+            - high    # 高置信度
+            - medium  # 中等置信度
+            - low     # 低置信度
+
+    # ── SSE 事件模型 ──
+    MarketAnalysisProgressEvent:
+      type: object
+      description: "SSE 进度事件"
+      required:
+        - stage
+        - progress
+      properties:
+        stage:
+          type: string
+          description: "分析阶段"
+          enum:
+            - searching_industry        # 搜索行业趋势
+            - searching_trend           # 搜索趋势信号
+            - searching_consumer        # 搜索消费者洞察
+            - searching_competitive     # 搜索竞争格局
+            - analyzing                 # LLM 综合分析
+        progress:
+          type: integer
+          description: "进度百分比"
+          minimum: 0
+          maximum: 100
+
+    # ── 共享错误模型 ──
+    APIError:
+      type: object
+      description: "统一错误响应"
+      properties:
+        detail:
+          type: string
+          description: "人类可读的错误描述"
+        code:
+          type: string
+          description: "错误码（如 'search_error', 'llm_error'）"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: "出错字段名"
+              message:
+                type: string
+                description: "字段级错误说明"
+      required:
+        - detail
+        - code
+
+  responses:
+    BadRequest:
+      description: "请求参数错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    NotFound:
+      description: "资源不存在"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    ValidationError:
+      description: "字段校验失败"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    InternalError:
+      description: "服务器内部错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"

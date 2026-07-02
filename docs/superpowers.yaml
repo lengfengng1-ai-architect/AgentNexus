@@ -35,6 +35,15 @@ capabilities:
         数据引用必须来自 API/mock，LLM 不可编造厂商/赛事/达人名称。
         LLM 可以做创意策划（赛事名称、活动形式、主题概念）。
 
+    - id: "market-analysis"
+      name: "市场分析"
+      description: "基于品牌名称和品类，进行行业趋势、趋势信号、消费者洞察和竞争格局四维市场分析"
+      constraints: |
+        网络搜索使用 Bing 搜索（已替换 DuckDuckGo）。
+        SSE 流式推送分析进度。
+        数据引用必须来自搜索或 mock，LLM 不可编造厂商/赛事/达人名称。
+        MVP 阶段支持 mock 模式（USE_MOCK_DATA=true）。
+
     - id: "document-export"
       name: "方案文档导出"
       description: "Markdown → PDF/Word 导出"

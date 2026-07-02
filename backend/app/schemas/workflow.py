@@ -34,6 +34,7 @@ class WorkflowNode(BaseModel):
     depends_on: list[str] | None = Field(None, description="前置节点 ID 列表")
     input_mapping: dict[str, str] | None = Field(None, description="输入映射，JSONPath 风格")
     output_mapping: dict[str, str] | None = Field(None, description="输出映射，JSONPath 风格")
+    condition: str | None = Field(None, description="节点执行条件，JSONPath 布尔表达式")
 
 
 class WorkflowEdge(BaseModel):

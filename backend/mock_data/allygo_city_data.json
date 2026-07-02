@@ -1,0 +1,187 @@
+{
+  "上海": {
+    "population": "2487万",
+    "sport_index": 92,
+    "top_sports": ["跑步", "瑜伽", "篮球", "骑行", "健身"],
+    "consumption": "高",
+    "weekend_active": "68%",
+    "leagues": {
+      "count": 342,
+      "top_leagues": ["沪跑团", "上海瑜伽联盟", "魔都骑行社", "外滩篮球盟"],
+      "avg_members": 1280
+    },
+    "events": {
+      "monthly": 156,
+      "avg_participants": 86,
+      "categories": ["城市马拉松", "趣味跑", "瑜伽节", "篮球赛", "骑行活动"]
+    },
+    "influencers": {
+      "count": 568,
+      "tiers": { "至尊/大师": 12, "明星/精英": 48, "健将": 156, "达人": 352 },
+      "avg_quote": "1.2万/条"
+    },
+    "stores": {
+      "count": 89,
+      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+    },
+    "venues": {
+      "count": 234,
+      "types": ["综合体育馆", "跑步公园", "瑜伽馆", "篮球场", "骑行绿道"],
+      "capacity": "平均420人/场"
+    },
+    "personas": {
+      "age": "18-40岁占71%",
+      "gender": "女性54%",
+      "traits": ["注重健康", "社交活跃", "周末运动", "品质消费"],
+      "peak": "周末 8:00-10:00, 18:00-21:00"
+    }
+  },
+  "北京": {
+    "population": "2184万",
+    "sport_index": 89,
+    "top_sports": ["跑步", "篮球", "羽毛球", "骑行", "滑雪"],
+    "consumption": "高",
+    "weekend_active": "65%",
+    "leagues": {
+      "count": 318,
+      "top_leagues": ["北京跑者俱乐部", "京北篮球联盟", "奥森骑行团"],
+      "avg_members": 1150
+    },
+    "events": {
+      "monthly": 142,
+      "avg_participants": 92,
+      "categories": ["奥森长跑", "社区篮球赛", "羽毛球公开赛", "滑雪体验"]
+    },
+    "influencers": {
+      "count": 524,
+      "tiers": { "至尊/大师": 10, "明星/精英": 42, "健将": 138, "达人": 334 },
+      "avg_quote": "1.1万/条"
+    },
+    "stores": {
+      "count": 76,
+      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+    },
+    "venues": {
+      "count": 218,
+      "types": ["综合体育馆", "跑步公园", "羽毛球馆", "滑雪场", "篮球场"],
+      "capacity": "平均450人/场"
+    },
+    "personas": {
+      "age": "22-42岁占68%",
+      "gender": "男性51%",
+      "traits": ["户外运动", "竞技偏好", "社群归属", "理性消费"],
+      "peak": "周末 7:00-10:00, 19:00-22:00"
+    }
+  },
+  "成都": {
+    "population": "2126万",
+    "sport_index": 85,
+    "top_sports": ["跑步", "篮球", "羽毛球", "乒乓球", "健身"],
+    "consumption": "中高",
+    "weekend_active": "70%",
+    "leagues": {
+      "count": 286,
+      "top_leagues": ["蓉城跑团", "天府篮球盟", "锦里瑜伽社"],
+      "avg_members": 980
+    },
+    "events": {
+      "monthly": 128,
+      "avg_participants": 78,
+      "categories": ["绿道骑行", "社区篮球赛", "跑步活动", "乒乓球赛"]
+    },
+    "influencers": {
+      "count": 412,
+      "tiers": { "至尊/大师": 6, "明星/精英": 28, "健将": 98, "达人": 280 },
+      "avg_quote": "0.7万/条"
+    },
+    "stores": {
+      "count": 62,
+      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+    },
+    "venues": {
+      "count": 186,
+      "types": ["社区运动场", "跑步公园", "篮球馆", "乒乓球馆", "健身房"],
+      "capacity": "平均380人/场"
+    },
+    "personas": {
+      "age": "18-38岁占74%",
+      "gender": "女性56%",
+      "traits": ["休闲社交", "尝试新鲜", "晚间活跃", "性价比敏感"],
+      "peak": "周末 9:00-11:00, 20:00-22:00"
+    }
+  },
+  "杭州": {
+    "population": "1237万",
+    "sport_index": 88,
+    "top_sports": ["跑步", "骑行", "瑜伽", "网球", "健身"],
+    "consumption": "高",
+    "weekend_active": "72%",
+    "leagues": {
+      "count": 198,
+      "top_leagues": ["西湖跑团", "杭城骑行盟", "钱塘瑜伽社"],
+      "avg_members": 890
+    },
+    "events": {
+      "monthly": 118,
+      "avg_participants": 82,
+      "categories": ["西湖晨跑", "骑行挑战赛", "瑜伽公开课", "网球体验"]
+    },
+    "influencers": {
+      "count": 356,
+      "tiers": { "至尊/大师": 5, "明星/精英": 24, "健将": 86, "达人": 241 },
+      "avg_quote": "0.8万/条"
+    },
+    "stores": {
+      "count": 54,
+      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+    },
+    "venues": {
+      "count": 164,
+      "types": ["西湖沿线跑道", "瑜伽馆", "网球场", "骑行绿道", "健身房"],
+      "capacity": "平均350人/场"
+    },
+    "personas": {
+      "age": "20-40岁占69%",
+      "gender": "女性52%",
+      "traits": ["精致生活", "骑行热爱", "健康管理", "品牌意识"],
+      "peak": "周末 7:30-9:30, 18:30-20:30"
+    }
+  },
+  "广州": {
+    "population": "1882万",
+    "sport_index": 86,
+    "top_sports": ["篮球", "跑步", "羽毛球", "足球", "健身"],
+    "consumption": "中高",
+    "weekend_active": "69%",
+    "leagues": {
+      "count": 267,
+      "top_leagues": ["羊城篮球盟", "珠江跑团", "广州羽毛球联盟"],
+      "avg_members": 1050
+    },
+    "events": {
+      "monthly": 134,
+      "avg_participants": 88,
+      "categories": ["珠江夜跑", "篮球邀请赛", "羽毛球联赛", "足球友谊赛"]
+    },
+    "influencers": {
+      "count": 438,
+      "tiers": { "至尊/大师": 7, "明星/精英": 30, "健将": 108, "达人": 293 },
+      "avg_quote": "0.75万/条"
+    },
+    "stores": {
+      "count": 68,
+      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+    },
+    "venues": {
+      "count": 198,
+      "types": ["社区篮球场", "珠江跑道", "羽毛球馆", "足球场", "健身房"],
+      "capacity": "平均400人/场"
+    },
+    "personas": {
+      "age": "18-42岁占72%",
+      "gender": "男性53%",
+      "traits": ["篮球文化", "团队运动", "夜跑习惯", "社交消费"],
+      "peak": "周末 8:00-10:00, 19:30-22:00"
+    }
+  }
+}

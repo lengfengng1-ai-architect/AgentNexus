@@ -1,0 +1,140 @@
+# OpenSpec: 意图识别
+# in_scope id: workflow-orchestration
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "意图识别"
+  description: "识别用户输入意图并返回结构化结果，作为工作流入口节点使用。"
+  version: "v0.1"
+  x-in-scope-ref: "workflow-orchestration"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /workflows/chat-pipeline/run:
+    post:
+      operationId: "chat_pipeline_run"
+      summary: "运行对话流水线"
+      description: |
+        运行 chat-pipeline 工作流，自动完成意图识别并路由到下游节点。
+        输入需包含 `message` 和可选的 `context`，输出包含意图、回复及下游节点结果。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ChatPipelineRunRequest"
+      responses:
+        "200":
+          description: "工作流执行完成"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ChatPipelineRunResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    ChatPipelineRunRequest:
+      type: object
+      description: "对话流水线运行请求"
+      required:
+        - input
+      properties:
+        input:
+          type: object
+          description: "工作流初始输入"
+          required:
+            - message
+          properties:
+            message:
+              type: string
+              description: "用户输入消息"
+              maxLength: 2000
+            context:
+              type: object
+              description: "当前对话上下文，如已确认的品牌字段"
+              additionalProperties: true
+
+    ChatPipelineRunResponse:
+      type: object
+      description: "对话流水线运行响应"
+      required:
+        - workflow_id
+        - status
+        - outputs
+      properties:
+        workflow_id:
+          type: string
+          description: "工作流唯一标识"
+        status:
+          type: string
+          description: "执行状态"
+          enum:
+            - completed
+            - failed
+        outputs:
+          type: object
+          description: "各节点输出字典"
+          additionalProperties: true
+
+    # ── 共享错误模型 ──
+    APIError:
+      type: object
+      description: "统一错误响应"
+      properties:
+        detail:
+          type: string
+          description: "人类可读的错误描述"
+        code:
+          type: string
+          description: "错误码"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: "出错字段名"
+              message:
+                type: string
+                description: "字段级错误说明"
+      required:
+        - detail
+        - code
+
+  responses:
+    BadRequest:
+      description: "请求参数错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    NotFound:
+      description: "资源不存在"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    ValidationError:
+      description: "字段校验失败"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    InternalError:
+      description: "服务器内部错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"

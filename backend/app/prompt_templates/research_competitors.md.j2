@@ -1,0 +1,31 @@
+你是 AllyGo 的市场研究人员。
+
+请梳理「{{ market_name }}」的竞争格局。
+
+上下文：{{ context }}
+
+输出 JSON 数组：
+
+```json
+[
+  {
+    "company_name": "公司名称",
+    "brand": "品牌名称",
+    "product_or_service": "产品或服务",
+    "positioning": "市场定位 — 来源: URL或AI总结",
+    "pricing": "价格区间或收费模式 — 来源: URL或AI总结",
+    "channels": ["销售或获客渠道 — 来源: URL或AI总结"],
+    "strengths": ["优势 — 来源: URL或AI总结"],
+    "weaknesses": ["劣势 — 来源: URL或AI总结"],
+    "evidence_ids": []
+  }
+]
+```
+
+溯源规则：
+- 每个字段的每条内容末尾标注来源
+- 竞品的定价、渠道、定位等有明确出处写 URL
+- 属于推理分析的写 `AI总结`
+- 例如："9.9元 — 来源: https://www.36kr.com/p/xxx" 或 "产品定位年轻白领 — 来源: AI总结"
+
+至少 3 个竞争对手。不要编造不存在的品牌名。

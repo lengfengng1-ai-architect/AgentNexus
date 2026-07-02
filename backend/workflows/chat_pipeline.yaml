@@ -1,0 +1,51 @@
+id: chat_pipeline
+name: 对话意图识别流水线
+version: "0.1"
+nodes:
+  - id: intent
+    agent: intent_recognition
+    input_mapping:
+      message: "$.input.message"
+      context: "$.input.context"
+
+  - id: extract
+    agent: chat_extraction
+    condition: "$.outputs.intent.intent == 'generate_plan'"
+    input_mapping:
+      message: "$.input.message"
+
+  - id: data_query
+    agent: data_query
+    condition: "$.outputs.intent.intent == 'query_data'"
+    input_mapping:
+      city: "$.outputs.intent.brand_input.city"
+
+  - id: end_reply
+    agent: end_reply
+    condition: "$.outputs.intent.intent in ['chat', 'clarify', 'update_context']"
+    input_mapping:
+      reply: "$.outputs.intent.reply"
+
+  - id: reply_builder
+    agent: reply_builder
+    depends_on: [extract, data_query, end_reply]
+    input_mapping:
+      message: "$.input.message"
+      intent: "$.outputs.intent"
+      branch_output: "$.state.outputs"
+
+edges:
+  - from: intent
+    to: extract
+  - from: intent
+    to: data_query
+  - from: intent
+    to: end_reply
+  - from: extract
+    to: reply_builder
+  - from: data_query
+    to: reply_builder
+  - from: end_reply
+    to: reply_builder
+  - from: reply_builder
+    to: __end__
