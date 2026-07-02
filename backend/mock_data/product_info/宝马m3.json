@@ -1,0 +1,122 @@
+{
+  "basic": {
+    "product_name": {
+      "value": "宝马M3",
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "brand": {
+      "value": "宝马",
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "manufacturer": {
+      "value": "BMW M GmbH",
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "industry": {
+      "value": "汽车制造",
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "category": {
+      "value": "高性能紧凑型豪华轿车",
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "description": {
+      "value": "宝马M3是宝马3系的高性能版本，由宝马内部的赛车部门BMW M GmbH开发。该车型自1986年以来每代3系均有推出，旨在满足赛道 homologation 规则并提供卓越的操控与驾驶体验。",
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "launch_date": {
+      "value": "1986-03",
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "status": {
+      "value": "在售",
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "official_website": {
+      "value": "https://db.auto.sina.cn/photo/c106523-99-1.html",
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "available_regions": {
+      "value": [
+        "欧洲",
+        "北美",
+        "瑞士",
+        "中国"
+      ],
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    },
+    "specifications": {
+      "value": {
+        "dimensions": {
+          "height": "1,370 mm",
+          "length": "4,345 mm",
+          "width": "1,680 mm",
+          "wheelbase": "2,562 mm"
+        },
+        "engine": {
+          "displacement": "2.3—2.5 L",
+          "type": "S14 I4 (E30代)"
+        },
+        "layout": "前置发动机后轮驱动 (FRR)",
+        "transmission": "5速手动变速箱",
+        "weight": "1,165–1,360 kg"
+      },
+      "sources": [
+        "https://m.ithome.com/tags/宝马m3",
+        "https://en.wikipedia.org/wiki/BMW_M3",
+        "https://chejiahao.m.autohome.com.cn/info/12270635",
+        "https://db.auto.sina.cn/photo/c106523-99-1.html"
+      ]
+    }
+  }
+}

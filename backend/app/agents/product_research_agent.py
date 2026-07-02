@@ -1,8 +1,9 @@
 """产品信息调研 Agent
 
 通过 Web 搜索和深度读页，提取产品的结构化基础信息。
+输出按 identity / official_description / features / specifications / availability 五大模块组织。
 
-OpenSpec: (本次新增，暂无对应的 OpenSpec YAML 文件)
+OpenSpec: changes/product-research-v2
 superpowers in_scope ID: product-research
 """
 
@@ -18,20 +19,24 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from app.config.settings import settings
-from app.schemas.product_info import BasicInfo, ProductInfo, SourcedStr
+from app.schemas.product_info import (
+    ProductResearchResult,
+    SourcedStr,
+    SourcedDict,
+    SourcedStrList,
+)
 
 # ── 搜索和抓取常量 ──────────────────────────────────────────
 SEARCH_MAX_RESULTS = 10
 FETCH_TOP_N = 5
-FETCH_TIMEOUT = 15  # 每个页面超时秒数
-MAX_PAGE_CHARS = 8000  # 单页最多保留字符数
+FETCH_TIMEOUT = 15
+MAX_PAGE_CHARS = 8000
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/120.0.0.0 Safari/537.36"
 )
 
-# 高优先级域名——优先选取
 PRIORITY_DOMAINS = {
     "apple.com", "xiaomi.com", "huawei.com", "vivo.com", "oppo.com",
     "mi.com", "honor.com", "samsung.com", "oneplus.com",
@@ -42,14 +47,12 @@ PRIORITY_DOMAINS = {
 
 
 class SearchResult(BaseModel):
-    """搜索结果条目。"""
     url: str
     title: str
     snippet: str
 
 
 class FetchedPage(BaseModel):
-    """已获取内容的网页。"""
     url: str
     title: str | None
     content: str
@@ -57,18 +60,16 @@ class FetchedPage(BaseModel):
 
 
 class ProductResearchState(BaseModel):
-    """LangGraph 状态。"""
     product_name: str
     search_results: list[SearchResult] = Field(default_factory=list)
     fetched_pages: list[FetchedPage] = Field(default_factory=list)
-    output: ProductInfo | None = None
+    output: ProductResearchResult | None = None
 
 
 # ── 辅助函数 ────────────────────────────────────────────────
 
 
 def _build_model():
-    """初始化 LLM。"""
     if settings.llm_provider == "agnes":
         return init_chat_model(
             model=settings.agnes_model,
@@ -91,7 +92,6 @@ def _load_prompt(product_name: str, fetched_pages: list[FetchedPage]) -> str:
 
 
 def _domain_priority(url: str) -> int:
-    """返回域名优先级分数，越高越优先。"""
     from urllib.parse import urlparse
     hostname = urlparse(url).hostname or ""
     for domain in PRIORITY_DOMAINS:
@@ -101,26 +101,34 @@ def _domain_priority(url: str) -> int:
 
 
 def _extract_text_from_html(html: str) -> str:
-    """从 HTML 提取纯文本。"""
     soup = BeautifulSoup(html, "lxml")
-    # 移除脚本和样式
     for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
         tag.decompose()
     text = soup.get_text(separator="\n", strip=True)
-    # 合并多余空行
     lines = [line.strip() for line in text.split("\n") if line.strip()]
     return "\n".join(lines)
+
+
+def _fill_sourced_fields(result: ProductResearchResult, all_urls: list[str]) -> None:
+    """填充所有 SourcedStr/SourcedStrList/SourcedDict 的 sources。"""
+    for field in result.identity.model_fields:
+        getattr(result.identity, field).sources = all_urls
+    for field in result.official_description.model_fields:
+        getattr(result.official_description, field).sources = all_urls
+    for field in result.availability.model_fields:
+        if field == "pricing":
+            continue
+        getattr(result.availability, field).sources = all_urls
+    result.specifications.sources = all_urls
 
 
 # ── LangGraph 节点 ──────────────────────────────────────────
 
 
 async def search_node(state: ProductResearchState) -> dict:
-    """搜索产品信息，返回高质量结果列表。"""
+    """搜索产品信息。"""
     product = state.product_name
     all_results: list[SearchResult] = []
-
-    # 用中英文分别搜索
     keywords = [product, f"{product} 产品规格", product]
     seen_urls: set[str] = set()
 
@@ -138,17 +146,15 @@ async def search_node(state: ProductResearchState) -> dict:
                             snippet=item.get("body", ""),
                         ))
         except Exception:
-            continue  # 某个关键词失败不影响其他
+            continue
 
-    # 按域名优先级排序 + 去重，取 TOP N
     all_results.sort(key=lambda r: (_domain_priority(r.url), r.title), reverse=True)
     top = all_results[:FETCH_TOP_N]
-
     return {"search_results": top}
 
 
 async def fetch_node(state: ProductResearchState) -> dict:
-    """并发读取搜索结果中的页面内容。"""
+    """并发读取页面内容。"""
     urls = [r.url for r in state.search_results]
 
     async def fetch_one(url: str) -> FetchedPage:
@@ -158,93 +164,82 @@ async def fetch_node(state: ProductResearchState) -> dict:
                 resp.raise_for_status()
                 content_type = resp.headers.get("content-type", "")
                 if "text/html" not in content_type and "application/xhtml" not in content_type:
-                    return FetchedPage(url=url, title=None, content="[非 HTML 页面，跳过]", fetched=False)
-
+                    return FetchedPage(url=url, title=None, content="", fetched=False)
                 raw = resp.text
                 text = _extract_text_from_html(raw)
                 if len(text) > MAX_PAGE_CHARS:
                     text = text[:MAX_PAGE_CHARS] + "\n...[内容截断]"
-
-                # 从标题提取
                 soup = BeautifulSoup(raw, "lxml")
                 title = soup.title.string.strip() if soup.title and soup.title.string else None
                 return FetchedPage(url=url, title=title, content=text)
         except (TimeoutException, HTTPError, Exception):
-            return FetchedPage(url=url, title=None, content="[页面读取失败]", fetched=False)
+            return FetchedPage(url=url, title=None, content="", fetched=False)
 
     tasks = [fetch_one(url) for url in urls]
     results = await asyncio.gather(*tasks)
-
     return {"fetched_pages": list(results)}
 
 
 async def extract_node(state: ProductResearchState) -> dict:
-    """LLM 提取结构化产品信息。"""
-    # 过滤掉读取失败的页面
-    valid_pages = [p for p in state.fetched_pages if p.fetched and p.content and "页面读取失败" not in p.content and "非 HTML 页面" not in p.content]
+    """LLM 提取结构化产品信息（五大模块）。"""
+    valid_pages = [
+        p for p in state.fetched_pages
+        if p.fetched and p.content
+    ]
+    all_urls = [p.url for p in valid_pages]
 
     if not valid_pages:
-        return {"output": ProductInfo(
-            basic=BasicInfo(product_name=SourcedStr(value=state.product_name)),
-            sources=[],
-        )}
+        return {"output": ProductResearchResult()}
 
     prompt = _load_prompt(state.product_name, valid_pages)
-    llm = _build_model().with_structured_output(ProductInfo)
+    llm = _build_model().with_structured_output(ProductResearchResult)
 
-    result: ProductInfo = await llm.ainvoke([
+    result: ProductResearchResult = await llm.ainvoke([
         SystemMessage(content=prompt),
-        HumanMessage(content=f"请提取产品「{state.product_name}」的基础信息。"),
+        HumanMessage(content=f"请提取产品「{state.product_name}」的结构化信息。"),
     ])
 
-    # 将所有有效页面的 URL 填入每个字段的 sources
-    all_urls = [p.url for p in valid_pages]
-    for field_name in result.basic.model_fields:
-        field = getattr(result.basic, field_name)
-        field.sources = all_urls
+    _fill_sourced_fields(result, all_urls)
 
     return {"output": result}
 
 
 async def enrich_website_node(state: ProductResearchState) -> dict:
-    """搜索并补充官方网站（不管已有值都尝试找更精确的产品页）。"""
+    """补充官网 URL 到 identity。"""
     output = state.output
     if output is None:
         return {}
 
     product = state.product_name
+    # 如果已有官网值且看起来不像通用首页，跳过
+    existing = output.identity.product_name.value
+    if existing and "product" in existing.lower() or "shop" in existing.lower():
+        return {}
+
     try:
         with DDGS() as ddgs:
             results = list(ddgs.text(f"{product} 官方网站", max_results=5))
     except Exception:
         return {}
 
-    best_url = None
     for item in results:
         url = item.get("href", "")
-        title = item.get("title", "")
-        snippet = item.get("body", "")
         if not url:
             continue
-        # 优先找标题包含产品名的官网页面
-        if "官方" not in title + snippet and "官网" not in title + snippet:
+        if "官方" not in item.get("title", "") + item.get("body", "") and "官网" not in item.get("title", "") + item.get("body", ""):
             continue
         try:
             async with AsyncClient(timeout=FETCH_TIMEOUT) as client:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
                 resp.raise_for_status()
                 text = _extract_text_from_html(resp.text)
-                # 确认页面标题包含产品名（避免通用目录页）
                 if product.lower() in text.lower()[:800]:
-                    best_url = url
+                    # 将官网 URL 存到 identity.product_name 的 sources
+                    if url not in output.identity.product_name.sources:
+                        output.identity.product_name.sources.append(url)
                     break
         except Exception:
             continue
-
-    if best_url:
-        output.basic.official_website.value = best_url
-        if best_url not in output.basic.official_website.sources:
-            output.basic.official_website.sources.append(best_url)
 
     return {"output": output}
 
@@ -272,7 +267,7 @@ def _build_graph():
 _graph = _build_graph()
 
 
-async def research_product(product_name: str) -> ProductInfo:
+async def research_product(product_name: str) -> ProductResearchResult:
     """执行产品信息调研。"""
     result = await _graph.ainvoke({"product_name": product_name})
     output = result.get("output")

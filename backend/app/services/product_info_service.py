@@ -18,7 +18,7 @@ from app.agents.product_research_agent import (
     research_product,
     search_node,
 )
-from app.schemas.product_info import ProductInfo, ProductInfoResponse
+from app.schemas.product_info import ProductResearchResult, ProductInfoResponse
 
 MOCK_DATA_DIR = Path("mock_data") / "product_info"
 
@@ -37,13 +37,13 @@ def _load_from_cache(product_name: str) -> ProductInfoResponse | None:
     if path.exists():
         data = json.loads(path.read_text(encoding="utf-8"))
         return ProductInfoResponse(
-            product_info=ProductInfo.model_validate(data),
+            product_info=ProductResearchResult.model_validate(data),
             from_cache=True,
         )
     return None
 
 
-def _save_to_cache(product_name: str, info: ProductInfo) -> None:
+def _save_to_cache(product_name: str, info: ProductResearchResult) -> None:
     MOCK_DATA_DIR.mkdir(parents=True, exist_ok=True)
     path = _cache_path(product_name)
     path.write_text(info.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")

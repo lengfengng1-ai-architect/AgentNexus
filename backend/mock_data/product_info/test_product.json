@@ -1,0 +1,190 @@
+{
+  "identity": {
+    "product_name": {
+      "value": "Tryable",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "quoted",
+      "quote": "Tryable"
+    },
+    "brand": {
+      "value": "Tryable",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "extracted",
+      "quote": ""
+    },
+    "manufacturer": {
+      "value": "Tryable",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "extracted",
+      "quote": ""
+    },
+    "industry": {
+      "value": "Market Research / E-commerce",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "extracted",
+      "quote": ""
+    },
+    "category": {
+      "value": "Product Testing Platform / Consumer Feedback Service",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "extracted",
+      "quote": ""
+    }
+  },
+  "official_description": {
+    "description": {
+      "value": "Tryable is one of the largest product testing communities in the world. Test exciting new products and services, and share your honest feedback.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "quoted",
+      "quote": "Tryable is one of the largest product testing communities in the world. Test exciting new products and services, and share your honest feedback."
+    },
+    "tagline": {
+      "value": "Try Products, Share Opinions, Get Rewarded",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "quoted",
+      "quote": "Try Products, Share Opinions, Get Rewarded"
+    },
+    "statement": {
+      "value": null,
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "extracted",
+      "quote": ""
+    }
+  },
+  "features": [
+    {
+      "name": "Product Testing Community",
+      "category": "Community & Participation",
+      "description": "Provides a platform for users to join a community of product testers, try new products, and share honest feedback.",
+      "evidence": [
+        "https://www.tryable.com/"
+      ]
+    },
+    {
+      "name": "Free Trials & Rewards",
+      "category": "Incentives",
+      "description": "Users can try products for free and get rewarded for sharing opinions.",
+      "evidence": [
+        "https://www.tryable.com/"
+      ]
+    },
+    {
+      "name": "Corporate Product Testing",
+      "category": "Brand Services",
+      "description": "Allows companies to run product tests on new items and services to gather consumer insights.",
+      "evidence": [
+        "https://www.tryable.com/"
+      ]
+    },
+    {
+      "name": "Diverse Product Catalog",
+      "category": "Variety",
+      "description": "Offers a wide range of testable products including baby care, energy bars, skincare, electronics, and home appliances.",
+      "evidence": [
+        "https://www.tryable.com/"
+      ]
+    }
+  ],
+  "specifications": {
+    "value": {
+      "Test Volume": "5000+ Products tested",
+      "Participant Network": "Available via community joining (specifically linked to UserTesting's network of 7M+ participants in related context, though Tryable itself lists specific open spots per item)"
+    },
+    "sources": [
+      "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+      "https://en.wikipedia.org/wiki/Product_testing",
+      "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+      "https://www.usertesting.com/",
+      "https://www.tryable.com/"
+    ],
+    "method": "extracted"
+  },
+  "availability": {
+    "status": {
+      "value": "active",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "extracted",
+      "quote": ""
+    },
+    "pricing": [],
+    "available_regions": {
+      "value": [
+        "34 countries"
+      ],
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "extracted"
+    },
+    "access_model": {
+      "value": "Online community platform for product testing",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Tea_production_in_Sri_Lanka",
+        "https://en.wikipedia.org/wiki/Product_testing",
+        "https://veeps.com/whiskeyhour/77f3c81f-c4e9-4e0d-aba3-9fff6693ec9e",
+        "https://www.usertesting.com/",
+        "https://www.tryable.com/"
+      ],
+      "method": "extracted",
+      "quote": ""
+    }
+  }
+}
