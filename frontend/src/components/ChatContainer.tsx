@@ -10,6 +10,43 @@ import { WelcomeCard } from './WelcomeCard'
 
 const PLAN_SESSION_KEY = 'allygo_plan_session'
 
+function BrandConfirmCard({ brandInput, onConfirm, onCancel }: { brandInput: BrandInput; onConfirm: () => void; onCancel: () => void }) {
+  return (
+    <div className="mx-auto w-full max-w-3xl rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+      <h3 className="mb-3 text-sm font-semibold text-blue-800">确认品牌信息</h3>
+      <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
+        {brandInput.brand_name && (
+          <div><span className="text-gray-500">品牌：</span><span className="font-medium">{brandInput.brand_name}</span></div>
+        )}
+        {brandInput.category && (
+          <div><span className="text-gray-500">品类：</span><span className="font-medium">{brandInput.category}</span></div>
+        )}
+        {brandInput.city && (
+          <div><span className="text-gray-500">城市：</span><span className="font-medium">{brandInput.city}</span></div>
+        )}
+        {brandInput.budget && (
+          <div><span className="text-gray-500">预算：</span><span className="font-medium">{brandInput.budget}万</span></div>
+        )}
+        {brandInput.period && (
+          <div><span className="text-gray-500">周期：</span><span className="font-medium">{brandInput.period}个月</span></div>
+        )}
+      </div>
+      <div className="flex gap-2">
+        <button type="button" onClick={onConfirm} className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-800">确认，开始生成方案</button>
+        <button type="button" onClick={onCancel} className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50">取消</button>
+      </div>
+    </div>
+  )
+}
+import { ChatBubble } from './ChatBubble'
+import { ChatInput } from './ChatInput'
+import { ErrorBar } from './ErrorBar'
+import { LoadingBubble } from './LoadingBubble'
+import { ProgressTrack, getFieldEditPrompt } from './ProgressTrack'
+import { WelcomeCard } from './WelcomeCard'
+
+const PLAN_SESSION_KEY = 'allygo_plan_session'
+
 export function ChatContainer() {
   const {
     messages,
@@ -61,47 +98,6 @@ export function ChatContainer() {
     setShowConfirm(null)
   }
 
-  function BrandConfirmCard({ brandInput }: { brandInput: BrandInput }) {
-    return (
-      <div className="mx-auto w-full max-w-3xl rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-        <h3 className="mb-3 text-sm font-semibold text-blue-800">确认品牌信息</h3>
-        <div className="mb-3 grid grid-cols-2 gap-2 text-sm">
-          {brandInput.brand_name && (
-            <div><span className="text-gray-500">品牌：</span><span className="font-medium">{brandInput.brand_name}</span></div>
-          )}
-          {brandInput.category && (
-            <div><span className="text-gray-500">品类：</span><span className="font-medium">{brandInput.category}</span></div>
-          )}
-          {brandInput.city && (
-            <div><span className="text-gray-500">城市：</span><span className="font-medium">{brandInput.city}</span></div>
-          )}
-          {brandInput.budget && (
-            <div><span className="text-gray-500">预算：</span><span className="font-medium">{brandInput.budget}万</span></div>
-          )}
-          {brandInput.period && (
-            <div><span className="text-gray-500">周期：</span><span className="font-medium">{brandInput.period}个月</span></div>
-          )}
-        </div>
-        <div className="flex gap-2">
-          <button
-            type="button"
-            onClick={handleConfirmGenerate}
-            className="rounded-lg bg-blue-700 px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-blue-800"
-          >
-            确认，开始生成方案
-          </button>
-          <button
-            type="button"
-            onClick={handleCancelConfirm}
-            className="rounded-lg border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-          >
-            取消
-          </button>
-        </div>
-      </div>
-    )
-  }
-
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3 sm:px-6">
@@ -139,6 +135,13 @@ export function ChatContainer() {
                   onGeneratePlan={message.canGeneratePlan ? handleGeneratePlan : undefined}
                 />
               ),
+            )}
+            {showConfirm === 'plan' && latestBrandInput && (
+              <BrandConfirmCard
+                brandInput={latestBrandInput}
+                onConfirm={handleConfirmGenerate}
+                onCancel={handleCancelConfirm}
+              />
             )}
             <div ref={messagesEndRef} />
           </div>
