@@ -4,6 +4,9 @@ import type { BrandInput, ChatMessage } from '../types/chat'
 
 const STORAGE_KEY = 'allygo_chat_history'
 
+// ─── Streaming ID counter ────────────────────────────────────────────
+let _streamIdCounter = 0
+
 interface ChatState {
   messages: ChatMessage[]
   inputValue: string
@@ -14,22 +17,15 @@ interface ChatState {
 type ChatAction =
   | { type: 'SET_INPUT'; value: string }
   | { type: 'SEND_MESSAGE'; content: string }
-  | {
-      type: 'RECEIVE_MESSAGE'
-      reply: string
-      brandInput: BrandInput
-      intent?: ChatMessage['intent']
-      isComplete: boolean
-      canGeneratePlan: boolean
-      reasoning?: string
-    }
+  | { type: 'RECEIVE_MESSAGE'; reply: string; brandInput: BrandInput; intent?: ChatMessage['intent']; isComplete: boolean; canGeneratePlan: boolean; reasoning?: string }
   | { type: 'LOADING_MESSAGE' }
   | { type: 'REMOVE_LOADING' }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RETRY_MESSAGE'; messageId: string }
   | { type: 'LOAD_HISTORY'; messages: ChatMessage[] }
-  | { type: 'STREAM_REASONING'; content: string; full: string }
+  | { type: 'STREAM_START' }
+  | { type: 'STREAM_REASONING'; full: string }
   | { type: 'STREAM_REPLY'; text: string }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
@@ -40,6 +36,14 @@ function createMessage(content: string, role: ChatMessage['role']): ChatMessage 
   }
 }
 
+function getLatestBrandInput(messages: ChatMessage[]): BrandInput | undefined {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const b = messages[i].brandInput
+    if (b && (b.brand_name || b.category || b.city || b.budget || b.period)) return b
+  }
+  return undefined
+}
+
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case 'SET_INPUT':
@@ -47,12 +51,38 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case 'SEND_MESSAGE': {
       const userMessage = createMessage(action.content, 'user')
-      return {
-        ...state,
-        messages: [...state.messages, userMessage],
-        inputValue: '',
-        error: null,
+      return { ...state, messages: [...state.messages, userMessage], inputValue: '', error: null }
+    }
+
+    case 'STREAM_START': {
+      const sid = `stream-${++_streamIdCounter}`
+      const streamMsg: ChatMessage = {
+        id: sid,
+        role: 'ai',
+        content: '',
+        isLoading: false,
+        reasoning: '',
       }
+      return { ...state, isLoading: true, messages: [...state.messages.filter(m => !m.isLoading), streamMsg] }
+    }
+
+    case 'STREAM_REASONING': {
+      const msgs = state.messages
+      const idx = msgs.findLastIndex(m => m.id.startsWith('stream-'))
+      if (idx < 0) return state
+      const m = { ...msgs[idx], reasoning: action.full }
+      const next = [...msgs]; next[idx] = m
+      return { ...state, messages: next }
+    }
+
+    case 'STREAM_REPLY': {
+      const msgs = state.messages
+      const idx = msgs.findLastIndex(m => m.id.startsWith('stream-'))
+      if (idx < 0) return state
+      const cur = msgs[idx]
+      const m = { ...cur, content: cur.content + action.text, reasoning: '' }
+      const next = [...msgs]; next[idx] = m
+      return { ...state, isLoading: false, messages: next }
     }
 
     case 'LOADING_MESSAGE': {
@@ -66,11 +96,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     }
 
     case 'REMOVE_LOADING': {
-      return {
-        ...state,
-        isLoading: false,
-        messages: state.messages.filter((m) => !m.isLoading),
-      }
+      return { ...state, isLoading: false, messages: state.messages.filter((m) => !m.isLoading) }
     }
 
     case 'RECEIVE_MESSAGE': {
@@ -84,71 +110,25 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         canGeneratePlan: action.canGeneratePlan,
         reasoning: action.reasoning,
       }
-      return {
-        ...state,
-        isLoading: false,
-        messages: [...state.messages.filter((m) => !m.isLoading), aiMessage],
-      }
-    }
-
-    case 'STREAM_REASONING': {
-      const msgs = state.messages
-      const lastAi = [...msgs].reverse().find(m => m.role === 'ai')
-      if (!lastAi) return state
-      return {
-        ...state,
-        messages: msgs.map(m =>
-          m.id === lastAi.id ? { ...m, reasoning: action.full } : m
-        ),
-      }
-    }
-
-    case 'STREAM_REPLY': {
-      const msgs = state.messages
-      const lastAi = [...msgs].reverse().find(m => m.role === 'ai')
-      if (!lastAi) return state
-      return {
-        ...state,
-        isLoading: false,
-        messages: msgs.map(m =>
-          m.id === lastAi.id
-            ? { ...m, content: m.content + action.text, isLoading: false }
-            : m
-        ),
-      }
+      return { ...state, isLoading: false, messages: [...state.messages.filter((m) => !m.isLoading), aiMessage] }
     }
 
     case 'SET_ERROR': {
-      const lastUserMessage = [...state.messages]
-        .reverse()
-        .find((m) => m.role === 'user' && !m.isError)
+      const lastUserMessage = [...state.messages].reverse().find((m) => m.role === 'user' && !m.isError)
       const updatedMessages = lastUserMessage
-        ? state.messages.map((m) =>
-            m.id === lastUserMessage.id ? { ...m, isError: true, retryable: true } : m,
-          )
+        ? state.messages.map((m) => (m.id === lastUserMessage.id ? { ...m, isError: true, retryable: true } : m))
         : state.messages
-      return {
-        ...state,
-        isLoading: false,
-        error: action.error,
-        messages: updatedMessages.filter((m) => !m.isLoading),
-      }
+      return { ...state, error: action.error, messages: updatedMessages, isLoading: false }
     }
 
     case 'CLEAR_ERROR':
       return { ...state, error: null }
 
     case 'RETRY_MESSAGE': {
-      const messageToRetry = state.messages.find((m) => m.id === action.messageId)
-      if (!messageToRetry || messageToRetry.role !== 'user') return state
-      const cleanedMessages = state.messages
-        .filter((m) => m.id !== action.messageId)
-        .map((m) => (m.role === 'user' && m.isError ? { ...m, isError: false, retryable: false } : m))
-      return {
-        ...state,
-        error: null,
-        messages: [...cleanedMessages, createMessage(messageToRetry.content, 'user')],
-      }
+      const updatedMessages = state.messages.map((m) =>
+        m.id === action.messageId ? { ...m, isError: false, retryable: false } : m,
+      )
+      return { ...state, messages: updatedMessages, isLoading: false }
     }
 
     case 'LOAD_HISTORY':
@@ -159,24 +139,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
   }
 }
 
-function getLatestBrandInput(messages: ChatMessage[]): BrandInput | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i]
-    if (message.role === 'ai' && message.brandInput) {
-      return message.brandInput
-    }
-  }
-  return undefined
-}
-
 export function useChat() {
-  const [state, dispatch] = useReducer(chatReducer, {
-    messages: [],
-    inputValue: '',
-    isLoading: false,
-    error: null,
-  })
-
+  const [state, dispatch] = useReducer(chatReducer, { messages: [], inputValue: '', isLoading: false, error: null })
   const isProcessingRef = useRef(false)
 
   useEffect(() => {
@@ -186,60 +150,49 @@ export function useChat() {
         const parsed = JSON.parse(raw) as ChatMessage[]
         dispatch({ type: 'LOAD_HISTORY', messages: parsed })
       }
-    } catch {
-      // ignore corrupted storage
-    }
+    } catch { /* ignore */ }
   }, [])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.messages))
-    } catch {
-      // ignore storage errors
-    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.messages)) } catch { /* ignore */ }
   }, [state.messages])
 
-  const setInputValue = useCallback((value: string) => {
-    dispatch({ type: 'SET_INPUT', value })
-  }, [])
+  const setInputValue = useCallback((value: string) => { dispatch({ type: 'SET_INPUT', value }) }, [])
 
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (isProcessingRef.current || !content.trim()) return
-      isProcessingRef.current = true
-      dispatch({ type: 'CLEAR_ERROR' })
-      dispatch({ type: 'SEND_MESSAGE', content: content.trim() })
-      dispatch({ type: 'LOADING_MESSAGE' })
+  const sendMessage = useCallback(async (content: string) => {
+    if (isProcessingRef.current || !content.trim()) return
+    isProcessingRef.current = true
+    dispatch({ type: 'CLEAR_ERROR' })
+    dispatch({ type: 'SEND_MESSAGE', content: content.trim() })
+    dispatch({ type: 'STREAM_START' })
 
-      try {
-        for await (const chunk of streamChat(content.trim())) {
-          if (chunk.reasoning) {
-            dispatch({ type: 'STREAM_REASONING', content: chunk.reasoning, full: chunk.reasoningFull || '' })
-          }
-          if (chunk.reply) {
-            dispatch({ type: 'STREAM_REPLY', text: chunk.reply })
-          }
+    try {
+      for await (const chunk of streamChat(content.trim())) {
+        if (chunk.reasoning) {
+          dispatch({ type: 'STREAM_REASONING', full: chunk.reasoningFull || '' })
         }
-      } catch (error) {
-        const message = error instanceof Error ? error.message : '发送失败，请重试'
-        dispatch({ type: 'SET_ERROR', error: message })
-      } finally {
-        isProcessingRef.current = false
+        if (chunk.reply) {
+          dispatch({ type: 'STREAM_REPLY', text: chunk.reply })
+        }
       }
-    },
-    [],
-  )
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '发送失败，请重试'
+      dispatch({ type: 'SET_ERROR', error: message })
+    } finally {
+      isProcessingRef.current = false
+    }
+  }, [])
 
   const retryMessage = useCallback(async (messageId: string) => {
     const messageToRetry = state.messages.find((m) => m.id === messageId)
     if (!messageToRetry || messageToRetry.role !== 'user') return
     dispatch({ type: 'RETRY_MESSAGE', messageId })
-    dispatch({ type: 'LOADING_MESSAGE' })
+    dispatch({ type: 'STREAM_START' })
 
     try {
       for await (const chunk of streamChat(messageToRetry.content)) {
         if (chunk.reasoning) {
-          dispatch({ type: 'STREAM_REASONING', content: chunk.reasoning, full: chunk.reasoningFull || '' })
+          dispatch({ type: 'STREAM_REASONING', full: chunk.reasoningFull || '' })
         }
         if (chunk.reply) {
           dispatch({ type: 'STREAM_REPLY', text: chunk.reply })
@@ -251,9 +204,7 @@ export function useChat() {
     }
   }, [state.messages])
 
-  const prefillInput = useCallback((text: string) => {
-    dispatch({ type: 'SET_INPUT', value: text })
-  }, [])
+  const prefillInput = useCallback((text: string) => { dispatch({ type: 'SET_INPUT', value: text }) }, [])
 
   const latestBrandInput = getLatestBrandInput(state.messages)
 

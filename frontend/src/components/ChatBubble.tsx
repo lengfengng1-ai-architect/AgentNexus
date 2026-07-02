@@ -1,3 +1,4 @@
+import { useRef, useEffect } from 'react'
 import type { ChatMessage } from '../types/chat'
 
 interface ChatBubbleProps {
@@ -8,6 +9,14 @@ interface ChatBubbleProps {
 
 export function ChatBubble({ message, onRetry, onGeneratePlan }: ChatBubbleProps) {
   const isUser = message.role === 'user'
+  const reasoningRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll reasoning box
+  useEffect(() => {
+    if (reasoningRef.current) {
+      reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight
+    }
+  })
 
   return (
     <div className={['flex w-full', isUser ? 'justify-end' : 'justify-start'].join(' ')}>
@@ -20,8 +29,11 @@ export function ChatBubble({ message, onRetry, onGeneratePlan }: ChatBubbleProps
           message.isError ? 'ring-2 ring-start/50' : '',
         ].join(' ')}
       >
-        {!isUser && message.reasoning && (
-          <div className="mb-2 max-h-24 overflow-y-auto rounded-lg bg-amber-50/80 border border-amber-200/50 p-2 text-xs leading-relaxed text-amber-700 whitespace-pre-wrap">
+        {!isUser && message.reasoning && !message.content && (
+          <div
+            ref={reasoningRef}
+            className="mb-2 max-h-24 overflow-y-auto rounded-lg bg-amber-50 border border-amber-200 p-2.5 text-xs leading-relaxed text-amber-800 whitespace-pre-wrap"
+          >
             {message.reasoning}
           </div>
         )}
