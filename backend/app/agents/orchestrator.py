@@ -7,6 +7,7 @@ Corresponding in_scope ID: workflow-orchestration
 import asyncio
 import functools
 import inspect
+import logging
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
 
@@ -15,6 +16,8 @@ from pydantic import BaseModel, Field
 
 from app.agents.registry import AgentHandler, get_handler
 from app.schemas.workflow import WorkflowDefinition, WorkflowEdge, WorkflowNode
+
+logger = logging.getLogger(__name__)
 
 
 def _merge_outputs(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
@@ -54,6 +57,172 @@ def _resolve_pointer(state: WorkflowState, pointer: str) -> Any:
         else:
             return None
     return current
+
+
+def _tokenize_condition(condition: str) -> list[str]:
+    """Tokenize a condition expression into operators and operands.
+
+    ponytail: naive regex-free tokenizer; sufficient for MVP expressions.
+    Upgrade path: replace with a proper parser if expressions become complex.
+    """
+    import re
+
+    pattern = r"(==|!=|<=|>=|<|>|in|and|or|\(|\)|'[^']*'|\"[^\"]*\"|\[|\]|[A-Za-z0-9_$.]+)"
+    tokens = [t for t in re.findall(pattern, condition) if t.strip()]
+    return tokens
+
+
+def _parse_value(token: str, state: WorkflowState) -> Any:
+    """Parse a token into a concrete value: string literal or resolved pointer."""
+    token = token.strip()
+    if (token.startswith("'") and token.endswith("'")) or (
+        token.startswith('"') and token.endswith('"')
+    ):
+        return token[1:-1]
+
+    if token.startswith("[") and token.endswith("]"):
+        inner = token[1:-1]
+        if not inner:
+            return []
+        # Tokenize inner content respecting string literals so commas inside quotes are not split.
+        import re
+
+        inner_tokens = re.findall(r"'[^']*'|\"[^\"]*\"|[^,]+", inner)
+        return [_parse_value(part.strip(), state) for part in inner_tokens if part.strip()]
+
+    if token.startswith("$"):
+        return _resolve_pointer(state, token)
+
+    if token in ("True", "true"):
+        return True
+    if token in ("False", "false"):
+        return False
+    if token in ("None", "null"):
+        return None
+
+    # Try numeric literal
+    try:
+        if "." in token:
+            return float(token)
+        return int(token)
+    except ValueError:
+        pass
+
+    return token
+
+
+def _evaluate_simple_condition(condition: str, state: WorkflowState) -> bool:
+    """Evaluate a simple condition without and/or grouping.
+
+    ponytail: supports ==, in, and basic comparisons. Parentheses and mixed
+    logic are handled by the recursive evaluator below.
+    """
+    tokens = _tokenize_condition(condition)
+    if not tokens:
+        raise ValueError(f"Empty condition: {condition}")
+
+    # Handle unary parentheses stripping
+    if tokens[0] == "(" and tokens[-1] == ")":
+        tokens = tokens[1:-1]
+
+    for op in ("==", "!=", "<=", ">=", "<", ">", "in"):
+        try:
+            idx = tokens.index(op)
+        except ValueError:
+            continue
+
+        left = _parse_value("".join(tokens[:idx]), state)
+        right = _parse_value("".join(tokens[idx + 1 :]), state)
+
+        if op == "==":
+            return left == right
+        if op == "!=":
+            return left != right
+        if op == "<=":
+            return bool(left is not None and right is not None and left <= right)
+        if op == ">=":
+            return bool(left is not None and right is not None and left >= right)
+        if op == "<":
+            return bool(left is not None and right is not None and left < right)
+        if op == ">":
+            return bool(left is not None and right is not None and left > right)
+        if op == "in":
+            if not isinstance(right, list):
+                raise ValueError(f"'in' requires a list on the right side, got {type(right)}")
+            return left in right
+
+    # Single token treated as truthiness
+    value = _parse_value(tokens[0], state)
+    return bool(value)
+
+
+def _evaluate_condition(condition: str, state: WorkflowState) -> bool:
+    """Evaluate a condition expression supporting and/or grouping.
+
+    ponytail: splits on top-level and/or. Parenthesized sub-expressions are
+    evaluated recursively. This is sufficient for MVP conditions like:
+    $.outputs.intent.intent == 'generate_plan' and len($.outputs.intent.missing_fields) == 0
+    """
+    condition = condition.strip()
+
+    # Find top-level and/or (not inside parentheses)
+    depth = 0
+    for i, char in enumerate(condition):
+        if char == "(":
+            depth += 1
+        elif char == ")":
+            depth -= 1
+        elif depth == 0:
+            if condition[i : i + 3] == " or":
+                left = condition[:i].strip()
+                right = condition[i + 3 :].strip()
+                if not left or not right:
+                    continue
+                return _evaluate_condition(left, state) or _evaluate_condition(right, state)
+            if condition[i : i + 4] == " and":
+                left = condition[:i].strip()
+                right = condition[i + 4 :].strip()
+                if not left or not right:
+                    continue
+                return _evaluate_condition(left, state) and _evaluate_condition(right, state)
+
+    # Strip outer parentheses
+    if condition.startswith("(") and condition.endswith(")"):
+        return _evaluate_condition(condition[1:-1], state)
+
+    # Handle len(...) == N helpers
+    if condition.startswith("len("):
+        end = condition.find(")")
+        if end == -1:
+            raise ValueError(f"Unclosed len() in condition: {condition}")
+        pointer = condition[4:end].strip()
+        rest = condition[end + 1 :].strip()
+        value = _resolve_pointer(state, pointer)
+        length = len(value) if isinstance(value, (list, dict, str)) else 0
+        if not rest:
+            return bool(length)
+        # expect == N or != N
+        import re
+
+        match = re.match(r"^(==|!=|<=|>=|<|>)\s*(.+)$", rest)
+        if not match:
+            raise ValueError(f"Unsupported len() comparison: {rest}")
+        op, num_token = match.groups()
+        num = _parse_value(num_token, state)
+        if op == "==":
+            return length == num
+        if op == "!=":
+            return length != num
+        if op == "<=":
+            return length <= num
+        if op == ">=":
+            return length >= num
+        if op == "<":
+            return length < num
+        if op == ">":
+            return length > num
+
+    return _evaluate_simple_condition(condition, state)
 
 
 def _apply_mappings(state: WorkflowState, mappings: dict[str, str] | None) -> dict[str, Any]:
@@ -120,7 +289,7 @@ def _topological_sort(nodes: list[WorkflowNode], edges: list[WorkflowEdge]) -> l
 def build_graph(workflow: WorkflowDefinition) -> Any:
     """Build a compiled LangGraph from a workflow definition.
 
-    MVP 实现按边做拓扑排序，串行执行每个节点。
+    MVP 实现按边做拓扑排序，串行执行每个节点。支持带 condition 的条件边。
     """
     order = _topological_sort(workflow.nodes, workflow.edges)
     node_map = {node.id: node for node in workflow.nodes}
@@ -137,18 +306,63 @@ def build_graph(workflow: WorkflowDefinition) -> Any:
     if order:
         graph.set_entry_point(order[0])
 
-    # Add edges: prefer explicit edges, fall back to topological order.
-    explicit_edges = {(edge.from_, edge.to) for edge in workflow.edges}
-    for i, node_id in enumerate(order):
-        if (node_id, "__end__") in explicit_edges:
+    # Build adjacency and route edges.
+    adjacency: dict[str, list[str]] = {node_id: [] for node_id in order}
+    for edge in workflow.edges:
+        if edge.from_ in adjacency and edge.to in adjacency:
+            adjacency[edge.from_].append(edge.to)
+
+    for node_id in order:
+        targets = adjacency.get(node_id, [])
+        if not targets:
             graph.add_edge(node_id, END)
-        elif i + 1 < len(order):
-            next_id = order[i + 1]
-            if (node_id, next_id) in explicit_edges or not explicit_edges:
-                graph.add_edge(node_id, next_id)
+            continue
+
+        # Separate unconditional targets from conditional targets.
+        unconditional_targets: list[str] = []
+        conditional_targets: list[tuple[str, str]] = []
+        for target_id in targets:
+            target_node = node_map[target_id]
+            if target_node.condition:
+                conditional_targets.append((target_id, target_node.condition))
             else:
-                graph.add_edge(node_id, next_id)
+                unconditional_targets.append(target_id)
+
+        if conditional_targets:
+            # All outgoing edges from this node are conditional.
+            if unconditional_targets:
+                raise ValueError(
+                    f"Node '{node_id}' has both conditional and unconditional outgoing edges"
+                )
+
+            def _make_router(conditions: list[tuple[str, str]]) -> Callable[[WorkflowState], str]:
+                def router(state: WorkflowState) -> str:
+                    for target_id, condition in conditions:
+                        try:
+                            result = _evaluate_condition(condition, state)
+                        except Exception as exc:
+                            raise ValueError(
+                                f"Failed to evaluate condition for node '{target_id}': {exc}"
+                            ) from exc
+                        if result:
+                            logger.info("Workflow node '%s' condition satisfied -> '%s'", node_id, target_id)
+                            return target_id
+                    logger.info("Workflow node '%s' no condition satisfied, ending branch", node_id)
+                    return END
+
+                return router
+
+            router = _make_router(conditional_targets)
+            graph.add_conditional_edges(node_id, router, {t: t for t, _ in conditional_targets} | {"__end__": END})
         else:
-            graph.add_edge(node_id, END)
+            # Unconditional edges: first target is the next node, remaining targets are parallel.
+            # ponytail: MVP supports single unconditional target. Multiple targets would require
+            # parallel Send support, deferred to future change.
+            if len(unconditional_targets) > 1:
+                raise ValueError(
+                    f"Node '{node_id}' has multiple unconditional outgoing edges (not supported in MVP)"
+                )
+            next_id = unconditional_targets[0]
+            graph.add_edge(node_id, next_id)
 
     return graph.compile()

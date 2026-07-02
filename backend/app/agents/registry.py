@@ -31,6 +31,17 @@ def list_agents() -> list[str]:
     return sorted(_AGENT_REGISTRY.keys())
 
 
+def snapshot() -> dict[str, AgentHandler]:
+    """Return a shallow copy of the current registry."""
+    return dict(_AGENT_REGISTRY)
+
+
+def restore(snapshot: dict[str, AgentHandler]) -> None:
+    """Restore the registry from a snapshot."""
+    _AGENT_REGISTRY.clear()
+    _AGENT_REGISTRY.update(snapshot)
+
+
 def clear() -> None:
     """Clear all registered agents. Mainly for tests."""
     _AGENT_REGISTRY.clear()

@@ -197,6 +197,10 @@ components:
           description: "输出映射，JSONPath 风格"
           additionalProperties:
             type: string
+        condition:
+          type: string
+          description: "节点执行条件，JSONPath 布尔表达式，如 $.outputs.intent.intent == 'generate_plan'"
+          maxLength: 256
 
     WorkflowEdge:
       type: object

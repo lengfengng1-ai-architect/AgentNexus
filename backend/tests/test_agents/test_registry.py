@@ -5,9 +5,10 @@ from app.agents import registry
 
 @pytest.fixture(autouse=True)
 def clear_registry():
+    original = registry.snapshot()
     registry.clear()
     yield
-    registry.clear()
+    registry.restore(original)
 
 
 @pytest.mark.asyncio
