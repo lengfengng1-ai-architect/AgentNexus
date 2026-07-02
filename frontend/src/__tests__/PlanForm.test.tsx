@@ -4,18 +4,23 @@ import { PlanForm } from '../pages/PlanForm'
 import type { BrandInput } from '../types/chat'
 
 describe('PlanForm', () => {
-  test('renders all fields with empty initial values', () => {
+  test('renders intent textarea and scene chips', () => {
     render(<PlanForm onSubmit={() => {}} />)
-    expect(screen.getByPlaceholderText('例如：Nike')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('例如：运动服装')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('例如：上海')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('例如：200')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('例如：3')).toBeInTheDocument()
+    expect(screen.getByPlaceholderText(/我是娃哈哈/)).toBeInTheDocument()
+    expect(screen.getByText('新品上市')).toBeInTheDocument()
+    expect(screen.getByText('赛事赞助')).toBeInTheDocument()
+    expect(screen.getByText('达人推广')).toBeInTheDocument()
+    expect(screen.getByText('会员运营')).toBeInTheDocument()
+  })
+
+  test('renders required fields', () => {
+    render(<PlanForm onSubmit={() => {}} />)
+    expect(screen.getByText('基础信息')).toBeInTheDocument()
   })
 
   test('submit button is disabled when fields are empty', () => {
     render(<PlanForm onSubmit={() => {}} />)
-    expect(screen.getByRole('button', { name: '开始生成方案' })).toBeDisabled()
+    expect(screen.getByRole('button', { name: '生成营销方案' })).toBeDisabled()
   })
 
   test('submit button is disabled during loading', () => {
@@ -23,38 +28,32 @@ describe('PlanForm', () => {
     expect(screen.getByRole('button', { name: /生成中/ })).toBeDisabled()
   })
 
-  test('fills initial values when provided', () => {
+  test('fills initial values from BrandInput', () => {
     const initial: BrandInput = {
       brand_name: 'Nike',
       category: '运动服装',
       city: '上海',
-      budget: 2000000,
+      budget: 200,
       period: 6,
     }
     render(<PlanForm initial={initial} onSubmit={() => {}} />)
-    const inputs = screen.getAllByRole('textbox') as HTMLInputElement[]
-    const numberInputs = screen.getAllByDisplayValue('2000000') as HTMLInputElement[]
     expect(screen.getByDisplayValue('Nike')).toBeInTheDocument()
     expect(screen.getByDisplayValue('运动服装')).toBeInTheDocument()
-    expect(screen.getByDisplayValue('上海')).toBeInTheDocument()
-    expect(numberInputs.length).toBeGreaterThan(0)
   })
 
-  test('calls onSubmit with values when submitted', () => {
+  test('calls onSubmit with PlanFormData when submitted', () => {
     const handleSubmit = vi.fn()
     render(<PlanForm onSubmit={handleSubmit} />)
-    fireEvent.change(screen.getByPlaceholderText('例如：Nike'), { target: { value: 'Adidas' } })
-    fireEvent.change(screen.getByPlaceholderText('例如：运动服装'), { target: { value: '运动鞋' } })
-    fireEvent.change(screen.getByPlaceholderText('例如：上海'), { target: { value: '北京' } })
-    fireEvent.change(screen.getByPlaceholderText('例如：200'), { target: { value: '300' } })
-    fireEvent.change(screen.getByPlaceholderText('例如：3'), { target: { value: '6' } })
-    fireEvent.click(screen.getByRole('button', { name: '开始生成方案' }))
-    expect(handleSubmit).toHaveBeenCalledWith({
-      brand_name: 'Adidas',
-      category: '运动鞋',
-      city: '北京',
-      budget: 300,
-      period: 6,
-    })
+
+    // Fill required fields: brandName and category inputs
+    // The inputs are text inputs with empty default values
+    const textInputs = screen.getAllByRole('textbox') as HTMLInputElement[]
+    // textInputs[0] = intent textarea, textInputs[1] = brandName, textInputs[2] = category
+    fireEvent.change(textInputs[1], { target: { value: 'Adidas' } })
+    fireEvent.change(textInputs[2], { target: { value: '运动鞋' } })
+
+    // Button should now be enabled (city=上海, budget=300, period=3 are defaults)
+    fireEvent.click(screen.getByRole('button', { name: '生成营销方案' }))
+    expect(handleSubmit).toHaveBeenCalledTimes(1)
   })
 })

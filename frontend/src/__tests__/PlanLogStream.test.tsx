@@ -11,20 +11,13 @@ const sampleLogs: PlanLogEvent[] = [
 describe('PlanLogStream', () => {
   test('shows placeholder when empty', () => {
     render(<PlanLogStream logs={[]} />)
-    expect(screen.getByText('等待流水线启动…')).toBeInTheDocument()
+    expect(screen.getByText(/等待输入品牌信息/)).toBeInTheDocument()
+    expect(screen.getByText(/生成营销方案/)).toBeInTheDocument()
   })
 
-  test('renders log events', () => {
+  test('renders formatted log event when logs present', () => {
     render(<PlanLogStream logs={sampleLogs} />)
-    expect(screen.getByText(/workflow.start/)).toBeInTheDocument()
-    expect(screen.getByText(/node.start/)).toBeInTheDocument()
-    expect(screen.getByText(/node.complete/)).toBeInTheDocument()
-  })
-
-  test('shows nodeId and message in formatted event', () => {
-    render(<PlanLogStream logs={sampleLogs} />)
-    const collectItems = screen.getAllByText(/\[collect\]/)
-    expect(collectItems.length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/- 完成/)).toBeInTheDocument()
+    // The latest log event (index 2) is node.complete for collect agent
+    expect(screen.getByText(/需求收集 Agent/)).toBeInTheDocument()
   })
 })
