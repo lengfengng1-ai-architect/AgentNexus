@@ -26,6 +26,7 @@ export interface ChatMessage {
   isError?: boolean
   isLoading?: boolean
   retryable?: boolean
+  canGeneratePlan?: boolean
 }
 
 export type FieldKey = keyof BrandInput

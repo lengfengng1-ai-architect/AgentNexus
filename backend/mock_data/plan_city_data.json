@@ -1,0 +1,31 @@
+{
+  "city": "上海",
+  "population": "2487万",
+  "sport_index": 92,
+  "consumption": "高",
+  "weekend_active": "68%",
+  "leagues": {
+    "count": 342,
+    "top_leagues": ["沪跑团", "上海瑜伽联盟", "魔都骑行社", "外滩篮球盟"],
+    "avg_members": 1280
+  },
+  "events": {
+    "monthly": 156,
+    "avg_participants": 86,
+    "categories": ["城市马拉松", "趣味跑", "瑜伽节", "篮球赛", "骑行活动"]
+  },
+  "influencers": {
+    "count": 568,
+    "tiers": { "supreme": 12, "star": 48, "elite": 156, "influencer": 352 },
+    "avg_quote": "1.2万/条"
+  },
+  "stores": {
+    "count": 89,
+    "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+  },
+  "venues": {
+    "count": 234,
+    "types": ["综合体育馆", "跑步公园", "瑜伽馆", "篮球场", "骑行绿道"],
+    "capacity": "平均420人/场"
+  }
+}

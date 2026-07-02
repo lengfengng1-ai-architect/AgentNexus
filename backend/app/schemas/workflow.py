@@ -1,6 +1,6 @@
 """Workflow orchestration schemas.
 
-Corresponding OpenSpec: docs/api/workflows.yaml
+Corresponding OpenSpec: docs/api/paths/workflows.yaml
 """
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -62,3 +62,40 @@ class WorkflowRunResponse(BaseModel):
     workflow_id: str = Field(..., description="工作流唯一标识")
     status: str = Field(..., description="执行状态", pattern="^(completed|failed)$")
     outputs: dict = Field(..., description="各节点输出字典，key 为节点 ID")
+
+
+class WorkflowRunSSEEvent(BaseModel):
+    """SSE 流式事件"""
+
+    event: str = Field(..., description="事件类型")
+    run_id: str = Field(..., description="运行实例 ID")
+    node_id: str | None = Field(None, description="相关节点 ID")
+    data: dict = Field(default_factory=dict, description="事件载荷")
+    message: str | None = Field(None, description="日志或错误信息")
+
+
+class WorkflowRunControlRequest(BaseModel):
+    """工作流运行控制请求"""
+
+    action: str = Field(..., description="控制动作：retry/skip/abort")
+    node_id: str | None = Field(None, description="目标节点 ID")
+
+
+class WorkflowRunControlResponse(BaseModel):
+    """工作流运行控制响应"""
+
+    run_id: str = Field(..., description="运行实例 ID")
+    status: str = Field(..., description="运行状态")
+    failed_node: str | None = Field(None, description="当前失败节点 ID")
+    outputs: dict = Field(default_factory=dict, description="当前已完成的节点输出")
+
+
+class WorkflowRunStatusResponse(BaseModel):
+    """工作流运行状态响应"""
+
+    run_id: str = Field(..., description="运行实例 ID")
+    workflow_id: str = Field(..., description="工作流唯一标识")
+    status: str = Field(..., description="运行状态")
+    outputs: dict = Field(default_factory=dict, description="当前已完成的节点输出")
+    failed_node: str | None = Field(None, description="失败节点 ID")
+    error: str | None = Field(None, description="错误信息")

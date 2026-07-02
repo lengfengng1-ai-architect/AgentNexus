@@ -1,0 +1,68 @@
+"""Market research agent for plan generation pipeline.
+
+Corresponding OpenSpec: openspec/changes/add-plan-generation-workbench/specs/plan-generation-pipeline/spec.md
+Corresponding in_scope ID: plan-generation
+"""
+
+import json
+from pathlib import Path
+from typing import Any
+
+from app.agents.market_analysis_agent import (
+    call_node_assess,
+    call_node_competitors,
+    call_node_define,
+    call_node_size,
+    call_node_synthesize,
+    call_node_trends,
+    call_node_users,
+)
+from app.agents.registry import register
+from app.config.settings import settings
+from app.schemas.plan_generation import MarketResearchOutput, MarketTrend
+
+_MOCK_PATH = Path(__file__).parent.parent.parent / "mock_data" / "plan_market_research.json"
+
+
+def _load_mock() -> MarketResearchOutput:
+    with _MOCK_PATH.open("r", encoding="utf-8") as f:
+        return MarketResearchOutput.model_validate(json.load(f))
+
+
+def _build_output(brand_name: str, category: str, d3: Any, d6: dict, report: str) -> MarketResearchOutput:
+    d3_list = d3 if isinstance(d3, list) else d3.get("trend_signals", [])
+    d6_opportunities = d6.get("key_opportunities", []) if isinstance(d6, dict) else []
+
+    return MarketResearchOutput(
+        market_summary=f"{brand_name} 所在的 {category} 市场分析：" + report[:300],
+        trends=[MarketTrend.model_validate({
+            "title": t.get("title", ""),
+            "description": t.get("summary", ""),
+        }) for t in d3_list[:5]],
+        opportunities=d6_opportunities[:5],
+    )
+
+
+async def run_market_research(state: dict[str, Any]) -> dict[str, Any]:
+    """Run market research for plan generation and return structured output."""
+    brand_name = state.get("brand_name") or state.get("brand_input", {}).get("brand_name")
+    category = state.get("category") or state.get("brand_input", {}).get("category")
+    if not brand_name or not category:
+        raise ValueError("Missing required inputs: brand_name and category")
+
+    if settings.use_mock_data:
+        return _load_mock().model_dump()
+
+    d1 = call_node_define(brand_name, category)
+    d2 = call_node_size(brand_name, d1)
+    d3 = call_node_trends(brand_name, d2)
+    d4 = call_node_users(brand_name, d3)
+    d5 = call_node_competitors(brand_name, d4)
+    d6 = call_node_assess(brand_name, d5)
+    report = call_node_synthesize(brand_name, d1, d2, d3, d4, d5, d6)
+
+    output = _build_output(brand_name, category, d3, d6, report)
+    return output.model_dump()
+
+
+register("market_research", run_market_research)

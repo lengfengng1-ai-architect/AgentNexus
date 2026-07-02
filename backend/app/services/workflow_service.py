@@ -17,6 +17,7 @@ from app.schemas.workflow import (
     WorkflowNode,
     WorkflowSummary,
 )
+from app.services import workflow_run_service
 
 _WORKFLOWS_DIR = Path(__file__).parent.parent.parent / "workflows"
 _workflows: dict[str, WorkflowDefinition] | None = None
@@ -103,6 +104,26 @@ async def run_workflow(workflow_id: str, initial_input: dict[str, Any]) -> dict[
         "status": "completed" if final_state.status != "failed" else "failed",
         "outputs": final_state.outputs,
     }
+
+
+async def create_run(workflow_id: str, initial_input: dict[str, Any]) -> tuple[str, Any]:
+    """Create a new SSE stream run for a workflow."""
+    return await workflow_run_service.create_stream(workflow_id, initial_input)
+
+
+def get_run_status(run_id: str) -> dict[str, Any]:
+    """Return the status of a cached workflow run."""
+    return workflow_run_service.get_run_status(run_id)
+
+
+def control_run(run_id: str, action: str, node_id: str | None = None) -> dict[str, Any]:
+    """Apply a control action to a workflow run."""
+    return workflow_run_service.control_run(run_id, action, node_id)
+
+
+async def resume_run(run_id: str, last_event_id: int | None = None) -> Any:
+    """Resume an existing workflow run SSE stream."""
+    return await workflow_run_service.resume_stream(run_id, last_event_id)
 
 
 def reload_workflows() -> None:

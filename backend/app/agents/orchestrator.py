@@ -33,6 +33,8 @@ class WorkflowState(BaseModel):
         default_factory=dict, description="各节点输出"
     )
     status: str = Field(default="running", description="执行状态")
+    failed_node: str | None = Field(default=None, description="失败的节点 ID")
+    error: str | None = Field(default=None, description="失败错误信息")
 
 
 def _resolve_pointer(state: WorkflowState, pointer: str) -> Any:
@@ -225,7 +227,7 @@ def _evaluate_condition(condition: str, state: WorkflowState) -> bool:
     return _evaluate_simple_condition(condition, state)
 
 
-def _apply_mappings(state: WorkflowState, mappings: dict[str, str] | None) -> dict[str, Any]:
+def apply_mappings(state: WorkflowState, mappings: dict[str, str] | None) -> dict[str, Any]:
     """Build node input from input_mapping."""
     if not mappings:
         return {}
@@ -251,14 +253,14 @@ def _build_node_wrapper(
     effective_handler = handler if inspect.iscoroutinefunction(handler) else _wrap_sync_handler(handler)
 
     async def node_wrapper(state: WorkflowState) -> dict[str, Any]:
-        node_input = _apply_mappings(state, node.input_mapping)
+        node_input = apply_mappings(state, node.input_mapping)
         output = await effective_handler(node_input)
         return {"outputs": {node.id: output}}
 
     return node_wrapper
 
 
-def _topological_sort(nodes: list[WorkflowNode], edges: list[WorkflowEdge]) -> list[str]:
+def topological_sort(nodes: list[WorkflowNode], edges: list[WorkflowEdge]) -> list[str]:
     """Return a topological order of node IDs based on edges."""
     node_ids = {node.id for node in nodes}
     adjacency: dict[str, list[str]] = {node_id: [] for node_id in node_ids}
@@ -291,7 +293,7 @@ def build_graph(workflow: WorkflowDefinition) -> Any:
 
     MVP 实现按边做拓扑排序，串行执行每个节点。支持带 condition 的条件边。
     """
-    order = _topological_sort(workflow.nodes, workflow.edges)
+    order = topological_sort(workflow.nodes, workflow.edges)
     node_map = {node.id: node for node in workflow.nodes}
 
     graph = StateGraph(WorkflowState)

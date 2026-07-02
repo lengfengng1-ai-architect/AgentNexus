@@ -94,6 +94,114 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /workflows/{workflow_id}/run:
+    post:
+      operationId: "workflows_run_stream"
+      summary: "流式运行工作流（SSE）"
+      description: |
+        按指定工作流 ID 执行 LangGraph 编排流程，并以 SSE 流式推送节点执行状态。
+        前端可通过 EventSource 或 fetch + ReadableStream 消费事件。
+      parameters:
+        - name: "workflow_id"
+          in: path
+          required: true
+          description: "工作流唯一标识"
+          schema:
+            type: string
+            maxLength: 64
+        - name: "stream"
+          in: query
+          required: false
+          description: "是否以 SSE 流式返回；传入 true 时返回 text/event-stream"
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowRunRequest"
+      responses:
+        "200":
+          description: "SSE 流式工作流执行状态"
+          content:
+            text/event-stream:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunSSEEvent"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workflows/runs/{run_id}/control:
+    post:
+      operationId: "workflows_run_control"
+      summary: "控制工作流运行实例"
+      description: |
+        当工作流因节点失败阻塞或用户关闭自动继续而暂停时，通过该接口控制流程继续。
+        支持 retry（重试指定节点）、skip（跳过指定节点）、abort（终止工作流）。
+      parameters:
+        - name: "run_id"
+          in: path
+          required: true
+          description: "运行实例唯一标识"
+          schema:
+            type: string
+            maxLength: 128
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowRunControlRequest"
+      responses:
+        "200":
+          description: "控制指令已接受"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunControlResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workflows/runs/{run_id}/status:
+    get:
+      operationId: "workflows_run_status"
+      summary: "查询工作流运行实例状态"
+      description: |
+        返回指定运行实例的当前状态、已完成节点输出、失败节点信息。
+        用于 SSE 断线重连后恢复状态。
+      parameters:
+        - name: "run_id"
+          in: path
+          required: true
+          description: "运行实例唯一标识"
+          schema:
+            type: string
+            maxLength: 128
+      responses:
+        "200":
+          description: "成功返回运行实例状态"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunStatusResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   schemas:
     # ── 请求体 ──
@@ -237,6 +345,104 @@ components:
           type: object
           description: "各节点输出字典，key 为节点 ID"
           additionalProperties: true
+
+    WorkflowRunSSEEvent:
+      type: object
+      description: "SSE 流式工作流事件"
+      required:
+        - event
+        - data
+      properties:
+        event:
+          type: string
+          description: "事件类型"
+          enum:
+            - workflow.start
+            - node.start
+            - node.log
+            - node.complete
+            - node.failed
+            - node.waiting
+            - workflow.complete
+            - workflow.failed
+        data:
+          type: object
+          description: "事件载荷"
+          additionalProperties: true
+
+    WorkflowRunControlRequest:
+      type: object
+      description: "工作流运行控制请求"
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          description: "控制动作"
+          enum:
+            - retry
+            - skip
+            - abort
+        node_id:
+          type: string
+          description: "目标节点 ID，retry/skip 时必填"
+
+    WorkflowRunControlResponse:
+      type: object
+      description: "工作流运行控制响应"
+      required:
+        - run_id
+        - status
+      properties:
+        run_id:
+          type: string
+          description: "运行实例唯一标识"
+        status:
+          type: string
+          description: "控制后的运行状态"
+          enum:
+            - running
+            - skipped
+            - aborted
+
+    WorkflowRunStatusResponse:
+      type: object
+      description: "工作流运行状态查询响应"
+      required:
+        - run_id
+        - workflow_id
+        - status
+        - outputs
+      properties:
+        run_id:
+          type: string
+          description: "运行实例唯一标识"
+        workflow_id:
+          type: string
+          description: "工作流唯一标识"
+        status:
+          type: string
+          description: "运行状态"
+          enum:
+            - running
+            - waiting
+            - completed
+            - failed
+            - aborted
+        outputs:
+          type: object
+          description: "已完成节点输出字典"
+          additionalProperties: true
+        failed_node:
+          type: object
+          description: "失败节点信息"
+          properties:
+            node_id:
+              type: string
+              description: "失败节点 ID"
+            error:
+              type: string
+              description: "错误信息"
 
     # ── 共享错误模型 ──
     APIError:
