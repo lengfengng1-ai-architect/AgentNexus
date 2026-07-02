@@ -37,6 +37,8 @@ class WorkflowState(BaseModel):
         default_factory=dict, description="各节点输出"
     )
     status: str = Field(default="running", description="执行状态")
+    failed_node: str | None = Field(default=None, description="失败的节点 ID")
+    error: str | None = Field(default=None, description="失败错误信息")
 
 
 def _resolve_pointer(state: WorkflowState, pointer: str) -> Any:
@@ -208,7 +210,7 @@ def _evaluate_condition(condition: str, state: WorkflowState) -> bool:
     return _evaluate_simple_condition(condition, state)
 
 
-def _apply_mappings(state: WorkflowState, mappings: dict[str, str] | None) -> dict[str, Any]:
+def apply_mappings(state: WorkflowState, mappings: dict[str, str] | None) -> dict[str, Any]:
     """Build node input from input_mapping."""
     if not mappings:
         return {}
@@ -247,7 +249,7 @@ def _build_node_wrapper(
                     logger.info("Fan-in barrier: '%s' waiting for '%s'", node.id, dep)
                     return {}
 
-        node_input = _apply_mappings(state, node.input_mapping)
+        node_input = apply_mappings(state, node.input_mapping)
         output = await effective_handler(node_input)
         return {"outputs": {node.id: output}}
 

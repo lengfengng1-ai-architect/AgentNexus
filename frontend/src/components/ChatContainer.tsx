@@ -8,6 +8,8 @@ import { LoadingBubble } from './LoadingBubble'
 import { ProgressTrack, getFieldEditPrompt } from './ProgressTrack'
 import { WelcomeCard } from './WelcomeCard'
 
+const PLAN_SESSION_KEY = 'allygo_plan_session'
+
 export function ChatContainer() {
   const {
     messages,
@@ -38,6 +40,16 @@ export function ChatContainer() {
     prefillInput(getFieldEditPrompt(label))
   }
 
+  function handleGeneratePlan() {
+    if (!latestBrandInput) return
+    try {
+      localStorage.setItem(PLAN_SESSION_KEY, JSON.stringify({ brandInput: latestBrandInput }))
+      window.location.href = '/plan'
+    } catch {
+      // ignore storage errors
+    }
+  }
+
   return (
     <div className="flex h-full flex-col">
       <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3 sm:px-6">
@@ -47,7 +59,12 @@ export function ChatContainer() {
             MVP
           </span>
         </div>
-        <span className="text-xs text-track/50 sm:text-sm">营销方案 Agent</span>
+        <a
+          href="/plan"
+          className="text-sm font-medium text-start hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
+        >
+          工作台
+        </a>
       </header>
 
       <ProgressTrack brandInput={latestBrandInput} onFieldClick={handleFieldClick} />
@@ -67,6 +84,7 @@ export function ChatContainer() {
                   key={message.id}
                   message={message}
                   onRetry={message.retryable ? retryMessage : undefined}
+                  onGeneratePlan={message.canGeneratePlan ? handleGeneratePlan : undefined}
                 />
               ),
             )}

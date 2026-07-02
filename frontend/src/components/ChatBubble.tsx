@@ -3,9 +3,10 @@ import type { ChatMessage } from '../types/chat'
 interface ChatBubbleProps {
   message: ChatMessage
   onRetry?: (messageId: string) => void
+  onGeneratePlan?: () => void
 }
 
-export function ChatBubble({ message, onRetry }: ChatBubbleProps) {
+export function ChatBubble({ message, onRetry, onGeneratePlan }: ChatBubbleProps) {
   const isUser = message.role === 'user'
 
   return (
@@ -22,6 +23,15 @@ export function ChatBubble({ message, onRetry }: ChatBubbleProps) {
         <p className="whitespace-pre-wrap text-sm leading-relaxed sm:text-base">
           {message.content}
         </p>
+        {!isUser && message.canGeneratePlan && onGeneratePlan && (
+          <button
+            type="button"
+            onClick={onGeneratePlan}
+            className="mt-3 rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
+          >
+            生成方案
+          </button>
+        )}
         {message.isError && onRetry && (
           <button
             type="button"

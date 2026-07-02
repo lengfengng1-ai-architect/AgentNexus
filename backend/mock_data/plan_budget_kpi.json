@@ -1,0 +1,23 @@
+{
+  "total_budget": 200,
+  "period_months": 3,
+  "allocations": [
+    {"category": "达人合作", "amount": 60, "percentage": 30},
+    {"category": "内容制作", "amount": 30, "percentage": 15},
+    {"category": "活动执行", "amount": 50, "percentage": 25},
+    {"category": "平台投放", "amount": 40, "percentage": 20},
+    {"category": "运营资源", "amount": 20, "percentage": 10}
+  ],
+  "kpis": {
+    "曝光量": "500万+",
+    "互动量": "20万+",
+    "线索数": "1万+",
+    "转化率": "3%-5%",
+    "销售额": "300万元"
+  },
+  "timeline": [
+    "第1月：完成达人签约、盟域合作洽谈和内容排期",
+    "第2月：启动赛事活动和达人内容投放，积累用户反馈",
+    "第3月：放大高转化内容和活动，复盘优化并沉淀可复用打法"
+  ]
+}
