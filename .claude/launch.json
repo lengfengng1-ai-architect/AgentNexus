@@ -5,15 +5,15 @@
       "name": "frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "${workspaceFolder}/frontend",
+      "cwd": "/Users/hxq/Desktop/AgentNexus/frontend",
       "port": 5173,
       "autoPort": true
     },
     {
       "name": "backend",
       "runtimeExecutable": "uv",
-      "runtimeArgs": ["run", "uvicorn", "app.main:app", "--port", "8000"],
-      "cwd": "${workspaceFolder}/backend",
+      "runtimeArgs": ["run", "uvicorn", "app.main:app", "--port", "8000", "--reload"],
+      "cwd": "/Users/hxq/Desktop/AgentNexus/backend",
       "port": 8000
     }
   ]
