@@ -18,7 +18,7 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from app.config.settings import settings
-from app.schemas.product_info import BasicInfo, ProductInfo
+from app.schemas.product_info import BasicInfo, ProductInfo, SourcedStr
 
 # ── 搜索和抓取常量 ──────────────────────────────────────────
 SEARCH_MAX_RESULTS = 10
@@ -185,7 +185,7 @@ async def extract_node(state: ProductResearchState) -> dict:
 
     if not valid_pages:
         return {"output": ProductInfo(
-            basic=BasicInfo(product_name=state.product_name),
+            basic=BasicInfo(product_name=SourcedStr(value=state.product_name)),
             sources=[],
         )}
 

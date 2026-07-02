@@ -21,6 +21,7 @@ export interface ChatMessage {
   role: 'user' | 'ai'
   content: string
   brandInput?: BrandInput
+  intent?: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context'
   isComplete?: boolean
   isError?: boolean
   isLoading?: boolean
