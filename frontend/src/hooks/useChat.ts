@@ -20,6 +20,7 @@ type ChatAction =
       brandInput: BrandInput
       intent?: ChatMessage['intent']
       isComplete: boolean
+      canGeneratePlan: boolean
     }
   | { type: 'LOADING_MESSAGE' }
   | { type: 'REMOVE_LOADING' }
@@ -77,6 +78,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         brandInput: action.brandInput,
         intent: action.intent,
         isComplete: action.isComplete,
+        canGeneratePlan: action.canGeneratePlan,
       }
       return {
         ...state,
@@ -197,6 +199,8 @@ export function useChat() {
           },
           intent: intent?.intent,
           isComplete: intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
+          canGeneratePlan:
+            intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
         })
       } catch (error) {
         const message = error instanceof Error ? error.message : '发送失败，请重试'
@@ -233,6 +237,8 @@ export function useChat() {
         },
         intent: intent?.intent,
         isComplete: intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
+        canGeneratePlan:
+          intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
       })
     } catch (error) {
       const message = error instanceof Error ? error.message : '发送失败，请重试'

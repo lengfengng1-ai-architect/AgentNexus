@@ -1,0 +1,103 @@
+id: plan_generation_pipeline
+name: 营销方案生成流水线
+version: "0.1"
+nodes:
+  - id: collect
+    agent: requirement_collector
+    input_mapping:
+      brand_input: "$.input.brand_input"
+
+  - id: market_research
+    agent: market_research
+    depends_on: [collect]
+    input_mapping:
+      brand_name: "$.input.brand_input.brand_name"
+      category: "$.input.brand_input.category"
+
+  - id: audience_insight
+    agent: audience_insight
+    depends_on: [collect]
+    input_mapping:
+      city: "$.input.brand_input.city"
+
+  - id: plan_data_query
+    agent: plan_data_query
+    depends_on: [collect]
+    input_mapping:
+      city: "$.input.brand_input.city"
+
+  - id: fitness_analysis
+    agent: fitness_analysis
+    depends_on: [collect, audience_insight]
+    input_mapping:
+      category: "$.input.brand_input.category"
+      city: "$.input.brand_input.city"
+
+  - id: strategy_generation
+    agent: strategy_generation
+    depends_on: [market_research, audience_insight, fitness_analysis]
+    input_mapping:
+      brand_input: "$.input.brand_input"
+      market_research: "$.outputs.market_research"
+      audience_insight: "$.outputs.audience_insight"
+      fitness_analysis: "$.outputs.fitness_analysis"
+
+  - id: execution_planning
+    agent: execution_planning
+    depends_on: [strategy_generation, plan_data_query]
+    input_mapping:
+      brand_input: "$.input.brand_input"
+      strategy_generation: "$.outputs.strategy_generation"
+      plan_data_query: "$.outputs.plan_data_query"
+
+  - id: budget_kpi
+    agent: budget_kpi
+    depends_on: [execution_planning]
+    input_mapping:
+      brand_input: "$.input.brand_input"
+      execution_planning: "$.outputs.execution_planning"
+
+  - id: action_recommendations
+    agent: action_recommendations
+    depends_on: [strategy_generation, fitness_analysis, budget_kpi]
+    input_mapping:
+      brand_input: "$.input.brand_input"
+      strategy_generation: "$.outputs.strategy_generation"
+      fitness_analysis: "$.outputs.fitness_analysis"
+      budget_kpi: "$.outputs.budget_kpi"
+
+  - id: plan_generator
+    agent: plan_generator
+    depends_on: [market_research, audience_insight, plan_data_query, fitness_analysis, strategy_generation, execution_planning, budget_kpi, action_recommendations]
+    input_mapping:
+      brand_input: "$.input.brand_input"
+      market_research: "$.outputs.market_research"
+      audience_insight: "$.outputs.audience_insight"
+      plan_data_query: "$.outputs.plan_data_query"
+      fitness_analysis: "$.outputs.fitness_analysis"
+      strategy_generation: "$.outputs.strategy_generation"
+      execution_planning: "$.outputs.execution_planning"
+      budget_kpi: "$.outputs.budget_kpi"
+      action_recommendations: "$.outputs.action_recommendations"
+
+edges:
+  - from: collect
+    to: market_research
+  - from: market_research
+    to: audience_insight
+  - from: audience_insight
+    to: plan_data_query
+  - from: plan_data_query
+    to: fitness_analysis
+  - from: fitness_analysis
+    to: strategy_generation
+  - from: strategy_generation
+    to: execution_planning
+  - from: execution_planning
+    to: budget_kpi
+  - from: budget_kpi
+    to: action_recommendations
+  - from: action_recommendations
+    to: plan_generator
+  - from: plan_generator
+    to: __end__

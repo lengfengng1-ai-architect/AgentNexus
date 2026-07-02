@@ -1,0 +1,431 @@
+# OpenSpec: 工作流编排
+# in_scope id: workflow-orchestration
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "工作流编排"
+  description: "工作流定义、运行、SSE 流式执行、运行控制和状态查询。"
+  version: "v0.1"
+  x-in-scope-ref: "workflow-orchestration"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /workflows:
+    get:
+      operationId: "workflows_list"
+      summary: "列出已注册工作流"
+      description: "返回所有已加载的工作流摘要。"
+      responses:
+        "200":
+          description: "工作流列表"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowListResponse"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workflows/{workflow_id}:
+    get:
+      operationId: "workflows_get"
+      summary: "获取工作流定义"
+      description: "返回指定工作流的完整定义。"
+      parameters:
+        - name: workflow_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "工作流定义"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowDefinition"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workflows/{workflow_id}/run:
+    post:
+      operationId: "workflows_run"
+      summary: "运行指定工作流"
+      description: |
+        运行工作流。默认返回同步结果；当 `stream=true` 时返回 Server-Sent Events，
+        事件类型包括 `workflow.start`、`node.start`、`node.log`、`node.complete`、
+        `node.failed`、`node.waiting`、`workflow.complete`、`workflow.failed`。
+      parameters:
+        - name: workflow_id
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: stream
+          in: query
+          required: false
+          schema:
+            type: boolean
+            default: false
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowRunRequest"
+      responses:
+        "200":
+          description: "同步执行完成"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workflows/runs/{run_id}/control:
+    post:
+      operationId: "workflows_run_control"
+      summary: "控制运行中的工作流"
+      description: |
+        对失败的节点执行控制操作：`retry` 重新执行失败节点，`skip` 跳过失败节点并使用默认输出继续，
+        `abort` 终止工作流。
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WorkflowRunControlRequest"
+      responses:
+        "200":
+          description: "控制操作已接受"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunControlResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /workflows/runs/{run_id}/status:
+    get:
+      operationId: "workflows_run_status"
+      summary: "查询工作流运行状态"
+      description: "返回指定运行实例的当前状态、已完成输出和失败节点信息。"
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "运行状态"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WorkflowRunStatusResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    WorkflowSummary:
+      type: object
+      required:
+        - id
+        - name
+        - version
+      properties:
+        id:
+          type: string
+          description: "工作流唯一标识"
+        name:
+          type: string
+          description: "工作流中文名称"
+        version:
+          type: string
+          description: "工作流版本号"
+
+    WorkflowListResponse:
+      type: object
+      required:
+        - items
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowSummary"
+
+    WorkflowNode:
+      type: object
+      required:
+        - id
+        - agent
+      properties:
+        id:
+          type: string
+          description: "节点唯一标识"
+        agent:
+          type: string
+          description: "节点使用的已注册 Agent 名称"
+        depends_on:
+          type: array
+          items:
+            type: string
+          description: "前置节点 ID 列表"
+        input_mapping:
+          type: object
+          additionalProperties:
+            type: string
+          description: "输入映射，JSONPath 风格"
+        output_mapping:
+          type: object
+          additionalProperties:
+            type: string
+          description: "输出映射，JSONPath 风格"
+        condition:
+          type: string
+          description: "节点执行条件表达式"
+
+    WorkflowEdge:
+      type: object
+      required:
+        - from
+        - to
+      properties:
+        from:
+          type: string
+          description: "起始节点 ID"
+        to:
+          type: string
+          description: "目标节点 ID，__end__ 表示结束"
+
+    WorkflowDefinition:
+      type: object
+      required:
+        - id
+        - name
+        - version
+        - nodes
+        - edges
+      properties:
+        id:
+          type: string
+          description: "工作流唯一标识"
+        name:
+          type: string
+          description: "工作流中文名称"
+        version:
+          type: string
+          description: "工作流版本号"
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowNode"
+        edges:
+          type: array
+          items:
+            $ref: "#/components/schemas/WorkflowEdge"
+
+    WorkflowRunRequest:
+      type: object
+      required:
+        - input
+      properties:
+        input:
+          type: object
+          description: "工作流初始输入，会写入 state.input"
+
+    WorkflowRunResponse:
+      type: object
+      required:
+        - workflow_id
+        - status
+        - outputs
+      properties:
+        workflow_id:
+          type: string
+          description: "工作流唯一标识"
+        status:
+          type: string
+          description: "执行状态"
+          enum:
+            - completed
+            - failed
+        outputs:
+          type: object
+          description: "各节点输出字典"
+          additionalProperties: true
+
+    WorkflowRunSSEEvent:
+      type: object
+      required:
+        - event
+        - run_id
+      properties:
+        event:
+          type: string
+          description: "事件类型"
+          enum:
+            - workflow.start
+            - node.start
+            - node.log
+            - node.complete
+            - node.failed
+            - node.waiting
+            - workflow.complete
+            - workflow.failed
+        run_id:
+          type: string
+          description: "运行实例 ID"
+        node_id:
+          type: string
+          description: "相关节点 ID"
+        data:
+          type: object
+          description: "事件载荷"
+          additionalProperties: true
+        message:
+          type: string
+          description: "日志或错误信息"
+
+    WorkflowRunControlRequest:
+      type: object
+      required:
+        - action
+      properties:
+        action:
+          type: string
+          description: "控制动作"
+          enum:
+            - retry
+            - skip
+            - abort
+        node_id:
+          type: string
+          description: "目标节点 ID，不填则使用当前失败节点"
+
+    WorkflowRunControlResponse:
+      type: object
+      required:
+        - run_id
+        - status
+      properties:
+        run_id:
+          type: string
+          description: "运行实例 ID"
+        status:
+          type: string
+          description: "运行状态"
+        failed_node:
+          type: string
+          nullable: true
+          description: "当前失败节点 ID"
+        outputs:
+          type: object
+          description: "当前已完成的节点输出"
+          additionalProperties: true
+
+    WorkflowRunStatusResponse:
+      type: object
+      required:
+        - run_id
+        - workflow_id
+        - status
+      properties:
+        run_id:
+          type: string
+          description: "运行实例 ID"
+        workflow_id:
+          type: string
+          description: "工作流唯一标识"
+        status:
+          type: string
+          description: "运行状态"
+        outputs:
+          type: object
+          description: "当前已完成的节点输出"
+          additionalProperties: true
+        failed_node:
+          type: string
+          nullable: true
+          description: "失败节点 ID"
+        error:
+          type: string
+          nullable: true
+          description: "错误信息"
+
+    APIError:
+      type: object
+      description: "统一错误响应"
+      properties:
+        detail:
+          type: string
+          description: "人类可读的错误描述"
+        code:
+          type: string
+          description: "错误码"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: "出错字段名"
+              message:
+                type: string
+                description: "字段级错误说明"
+      required:
+        - detail
+        - code
+
+  responses:
+    BadRequest:
+      description: "请求参数错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    NotFound:
+      description: "资源不存在"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    ValidationError:
+      description: "字段校验失败"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    InternalError:
+      description: "服务器内部错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
