@@ -28,7 +28,15 @@ body,
 #root {
   height: 100%;
   margin: 0;
+}
+
+/* Fallback for browsers without dvh support */
+:root { --app-height: 100vh; }
+@supports (height: 100dvh) { :root { --app-height: 100dvh; } }
+
+html, body, #root {
   overflow: hidden;
+  height: var(--app-height);
 }
 
 #root {
@@ -37,9 +45,9 @@ body,
 }
 
 @media (max-width: 1024px) {
-  .app { flex-direction: column !important; height: auto !important; }
+  .app { flex-direction: column !important; min-height: var(--app-height) !important; height: auto !important; }
   .app > aside { width: 100% !important; min-width: 0 !important; height: auto !important; position: relative !important; }
-  .app > main { height: auto !important; }
+  .app > main { min-height: 100dvh !important; height: auto !important; }
 }
 
 /* Hide sidebar scrollbar but keep scrollable */

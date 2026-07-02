@@ -104,8 +104,8 @@ export function PlanPage() {
   const TABS = [{ idx: 0, label: '概览' }, { idx: 1, label: '1. 项目概述' }, { idx: 2, label: '2. 市场分析' }, { idx: 3, label: '3. 营销策略' }, { idx: 4, label: '4. 执行方案' }, { idx: 5, label: '5. 数字化运营' }, { idx: 6, label: '6. 达人体系' }, { idx: 7, label: '7. 时间规划' }, { idx: 8, label: '8. KPI' }, { idx: 9, label: '9. 预算' }]
 
   return (
-    <div className="app" style={{ display: 'flex', height: '100vh', overflow: 'hidden', backgroundColor: '#fafbfc' }}>
-      <aside style={{ width: 360, minWidth: 360, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', height: '100vh', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+    <div className="app" style={{ display: 'flex', height: 'var(--app-height)', overflow: 'hidden', backgroundColor: '#fafbfc' }}>
+      <aside style={{ width: 360, minWidth: 360, flexShrink: 0, background: '#fff', borderRight: '1px solid #e2e8f0', height: 'var(--app-height)', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
         <div style={{ padding: '20px 22px 12px', borderBottom: '1px solid #f1f5f9', flexShrink: 0 }}>
           <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
@@ -126,7 +126,7 @@ export function PlanPage() {
         </div>
       </aside>
 
-      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+      <main style={{ flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column', height: 'var(--app-height)', overflow: 'hidden' }}>
         <header style={{ height: 64, background: '#fff', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '0 28px', flexShrink: 0 }}>
           <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', color: '#0f172a' }}>营销方案工作台</div>
           <div style={{ display: 'flex', gap: 10 }}>
