@@ -248,17 +248,17 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-[22px]">
+    <form onSubmit={handleSubmit} className="space-y-3">
       {/* ── Intent input ── */}
       <div>
-        <div className="mb-2.5 text-xs font-semibold uppercase tracking-[0.5px] text-slate-600">
+        <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.5px] text-slate-600">
           用一句话描述需求
         </div>
         <div className="relative">
           <textarea
-            className="min-h-[76px] w-full resize-none rounded-[10px] border border-slate-200 bg-white px-[14px] py-3 pr-[42px] text-sm leading-relaxed text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
+            className="min-h-[52px] w-full resize-none rounded-[10px] border border-slate-200 bg-white px-3 py-2 pr-[42px] text-sm leading-snug text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
             placeholder="例如：我是娃哈哈，想在上海推广一款新果汁，预算300万，周期3个月…"
-            rows={3}
+            rows={2}
             value={intent}
             onChange={(e) => setIntent(e.target.value)}
           />
@@ -286,7 +286,7 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
         </div>
 
         {/* Scene chips */}
-        <div className="mt-2.5 flex flex-wrap gap-2">
+        <div className="mt-2 flex flex-wrap gap-1.5">
           {SCENE_TEMPLATES.map((tpl) => (
             <button
               key={tpl.label}
@@ -302,12 +302,12 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
 
       {/* ── Required fields ── */}
       <div>
-        <div className="mb-3 flex items-center justify-between">
+        <div className="mb-2 flex items-center justify-between">
           <span className="text-[13px] font-bold text-slate-900">基础信息</span>
           <span className="text-[11px] text-orange-500">* 必填</span>
         </div>
 
-        <div className="space-y-3.5">
+        <div className="space-y-2.5">
           <div>
             <label className="mb-1.5 block text-xs font-semibold text-slate-600">
               品牌名称 <span className="text-orange-500">*</span>
@@ -383,7 +383,7 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
       <div>
         <button
           type="button"
-          className="flex w-full cursor-pointer items-center justify-between border-b border-slate-100 py-2 hover:text-blue-900"
+          className="flex w-full cursor-pointer items-center justify-between border-b border-slate-100 py-1.5 hover:text-blue-900"
           onClick={() => setAdvancedOpen((o) => !o)}
         >
           <span className="text-[13px] font-bold text-slate-900">补充信息（可选）</span>
@@ -403,7 +403,7 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
         </button>
 
         {advancedOpen && (
-          <div className="space-y-3.5 pt-3">
+          <div className="space-y-2.5 pt-2.5">
             <div>
               <label className="mb-1.5 block text-xs font-semibold text-slate-600">产品矩阵</label>
               <textarea
@@ -486,7 +486,7 @@ export function PlanForm({ initial, onSubmit, isLoading }: PlanFormProps) {
       <button
         type="submit"
         disabled={!requiredOk || isLoading}
-        className="flex w-full items-center justify-center gap-2 rounded-[10px] border-none bg-orange-500 px-4 py-3 text-[15px] font-bold text-white shadow-[0_4px_12px_rgba(249,115,22,0.25)] transition-all hover:-translate-y-px hover:bg-orange-600 hover:shadow-[0_6px_16px_rgba(249,115,22,0.3)] disabled:translate-y-0 cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
+        className="flex w-full items-center justify-center gap-2 rounded-[10px] border-none bg-orange-500 px-4 py-2.5 text-[15px] font-bold text-white shadow-[0_4px_12px_rgba(249,115,22,0.25)] transition-all hover:-translate-y-px hover:bg-orange-600 hover:shadow-[0_6px_16px_rgba(249,115,22,0.3)] disabled:translate-y-0 cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
       >
         <svg
           width="18"
