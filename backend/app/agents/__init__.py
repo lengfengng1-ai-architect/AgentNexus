@@ -15,6 +15,7 @@ from app.agents import data_query_agent  # noqa: F401
 from app.agents import end_reply_agent  # noqa: F401
 from app.agents import intent_recognition_agent  # noqa: F401
 from app.agents import reply_builder_agent  # noqa: F401
+from app.agents import market_analysis_agent  # noqa: F401
 from app.agents.registry import list_agents
 
 __all__ = ["list_agents"]

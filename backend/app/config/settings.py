@@ -26,6 +26,8 @@ class Settings(BaseSettings):
     agnes_base_url: str = "https://apihub.agnes-ai.com/v1"
     agnes_model: str = "agnes-2.0-flash"
 
+    use_mock_data: bool = False
+
     cors_origins: str = ""
 
 

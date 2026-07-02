@@ -1,0 +1,25 @@
+你是 AllyGo 的市场研究人员。
+
+请对「{{ market_name }}」进行市场定义和分析。
+
+品类上下文：{{ category }}
+
+输出要求（纯 JSON，不要 markdown 代码块）：
+
+```json
+{
+  "included_scope": ["纳入统计的产品、服务或场景"],
+  "excluded_scope": ["明确不纳入的边界"],
+  "upstream": ["上游环节"],
+  "downstream": ["下游客户或渠道"],
+  "substitute_solutions": ["替代方案"],
+  "definition_notes": "市场边界说明文字"
+}
+```
+
+溯源规则：
+- 每个分类（included_scope 等）中的每一条内容，**必须标注来源 URL**
+- 如果基于搜索结果、行业报告，标注 URL
+- 如果是基于你自身知识推理的，标注 `[AI总结]`
+- 格式：在每条文字末尾加 ` — 来源: URL` 或 ` — 来源: AI总结`
+- 例："连锁咖啡门店现制冰美式 — 来源: https://www.36kr.com/p/xxx" 或 "现制咖啡市场持续增长 — 来源: AI总结"

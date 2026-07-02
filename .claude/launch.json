@@ -2,10 +2,10 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "chat-preview-frontend",
+      "name": "frontend",
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
-      "cwd": "frontend",
+      "cwd": "${workspaceFolder}/frontend",
       "port": 5173,
       "autoPort": true
     }
