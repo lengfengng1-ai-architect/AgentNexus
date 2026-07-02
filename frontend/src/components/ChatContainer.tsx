@@ -38,14 +38,6 @@ function BrandConfirmCard({ brandInput, onConfirm, onCancel }: { brandInput: Bra
     </div>
   )
 }
-import { ChatBubble } from './ChatBubble'
-import { ChatInput } from './ChatInput'
-import { ErrorBar } from './ErrorBar'
-import { LoadingBubble } from './LoadingBubble'
-import { ProgressTrack, getFieldEditPrompt } from './ProgressTrack'
-import { WelcomeCard } from './WelcomeCard'
-
-const PLAN_SESSION_KEY = 'allygo_plan_session'
 
 export function ChatContainer() {
   const {

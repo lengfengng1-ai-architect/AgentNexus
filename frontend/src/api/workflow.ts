@@ -69,35 +69,36 @@ export async function* streamChat(
     const { done, value } = await reader.read()
     if (done) break
     buffer += decoder.decode(value, { stream: true })
-    const lines = buffer.split('\n')
-    buffer = lines.pop() ?? ''
 
-    let currentEvent = ''
-    let currentData = ''
+    const parts = buffer.split('\n\n')
+    buffer = parts.pop() ?? ''
 
-    for (const line of lines) {
-      const trimmed = line.trim()
+    for (const part of parts) {
+      const trimmed = part.trim()
       if (!trimmed) continue
-      if (trimmed.startsWith('event:')) {
-        currentEvent = trimmed.slice(6).trim()
-      } else if (trimmed.startsWith('data:')) {
-        currentData = trimmed.slice(5).trim()
-      } else if (trimmed.startsWith('id:')) {
-        // ignore
-      }
-    }
-
-    if (currentEvent && currentData) {
-      try {
-        const parsed = JSON.parse(currentData)
-        if (currentEvent === 'reasoning') {
-          yield { reasoning: parsed.text, reasoningFull: parsed.full }
-        } else if (currentEvent === 'reply') {
-          yield { reply: parsed.text }
-        }
-      } catch {
-        // skip malformed
-      }
+      const chunk = parseEventBlock(trimmed)
+      if (chunk) yield chunk
     }
   }
+}
+
+function parseEventBlock(block: string): StreamChunk | null {
+  let event = ''
+  let data = ''
+  for (const line of block.split('\n')) {
+    const s = line.trim()
+    if (s.startsWith('event:')) event = s.slice(6).trim()
+    else if (s.startsWith('data:')) data = s.slice(5).trim()
+  }
+  if (!event || !data) return null
+  try {
+    const parsed = JSON.parse(data)
+    if (event === 'reasoning') {
+      return { reasoning: parsed.text, reasoningFull: parsed.full }
+    }
+    if (event === 'reply') {
+      return { reply: parsed.text }
+    }
+  } catch { /* skip */ }
+  return null
 }
