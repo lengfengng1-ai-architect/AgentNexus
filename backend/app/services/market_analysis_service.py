@@ -107,10 +107,6 @@ def _translate_event(
         if r:
             return f"event: result\ndata: {json.dumps(r, ensure_ascii=False)}\n\n"
 
-    if ev_type == "on_chain_end" and name == "" and not data.get("output"):
-        # handle None
-        pass
-
     return None
 
 

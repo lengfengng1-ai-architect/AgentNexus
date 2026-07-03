@@ -39,9 +39,14 @@ NODE_LABELS = {
 
 # ── Helpers ──
 
+_model = None
+
 
 def _build_model():
-    return build_chat_model()
+    global _model
+    if _model is None:
+        _model = build_chat_model()
+    return _model
 
 
 def _render(name: str, **kw) -> str:

@@ -8,6 +8,7 @@ superpowers in_scope ID: audience-insight
 import asyncio
 from typing import Any
 
+from bs4 import BeautifulSoup
 from ddgs import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
@@ -225,13 +226,10 @@ async def run_audience_search(state: dict[str, Any]) -> dict[str, Any]:
     if ad is None:
         raise ValueError("Agent did not return audience data")
     # 持久化到 mock_data/audience_insight/
-    from app.utils import sanitize as _san
     from app.config.cache_paths import AUDIENCE_DIR
-    safe_name = _san(pn)
+    safe_name = pn.replace(" ", "_").lower()
     AUDIENCE_DIR.mkdir(parents=True, exist_ok=True)
     path = AUDIENCE_DIR / f"{safe_name}.json"
-    if not safe_name:
-        path = AUDIENCE_DIR / "unknown.json"
     path.write_text(ad.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
     return ad.model_dump()
 
@@ -249,23 +247,8 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
     from app.schemas.audience_insight import AudienceRawData
     ad = AudienceRawData.model_validate(audience_data_raw)
 
-    s = await _graph.ainvoke({
-        "product_name": pn,
-        "product_info": state.get("product_info", {}),
-        "market_info": state.get("market_info", {}),
-        "audience_data": ad,
-    })
-    # 不需要上面这行，直接用 llm 调用生成画像
-
-    product_info_str = ""
-    if state.get("product_info"):
-        import json
-        product_info_str = json.dumps(state["product_info"], indent=2, ensure_ascii=False)[:2000]
-
-    market_info_str = ""
-    if state.get("market_info"):
-        import json
-        market_info_str = json.dumps(state["market_info"], indent=2, ensure_ascii=False)[:2000]
+    product_info_str = json.dumps(state.get("product_info", {}), ensure_ascii=False)[:2000] if state.get("product_info") else ""
+    market_info_str = json.dumps(state.get("market_info", {}), ensure_ascii=False)[:2000] if state.get("market_info") else ""
 
     prompt = _load_template("persona_generation.md.j2",
                             product_name=pn,
@@ -280,14 +263,10 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
     ])
 
     # 持久化到 mock_data/user_persona/
-    from app.utils import sanitize as _san
-    from app.config.cache_paths import PERSONA_DIR
-    safe_name = _san(pn)
-    PERSONA_DIR.mkdir(parents=True, exist_ok=True)
-    path = PERSONA_DIR / f"{safe_name}.json"
-    if not safe_name:
-        path = PERSONA_DIR / "unknown.json"
-    path.write_text(result.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
+    from app.config.cache_paths import persona_path
+    pp = persona_path(pn)
+    pp.parent.mkdir(parents=True, exist_ok=True)
+    pp.write_text(result.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
 
     return result.model_dump()
 

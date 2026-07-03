@@ -83,9 +83,14 @@ class ProductResearchState(BaseModel):
 
 # ── 辅助函数 ────────────────────────────────────────────────
 
+_model = None
+
 
 def _build_model():
-    return build_chat_model()
+    global _model
+    if _model is None:
+        _model = build_chat_model()
+    return _model
 
 
 def _load_prompt(product_name: str, fetched_pages: list[FetchedPage]) -> str:
