@@ -90,6 +90,34 @@ def _merge_context(
     return output
 
 
+def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecognitionOutput:
+    """Correct intent based on field completeness.
+
+    LLM sometimes returns clarify despite all fields being present, or
+    generate_plan despite missing fields. Enforce the rule:
+    - all 5 fields present -> generate_plan
+    - any field missing and intent is not update_context -> clarify
+    """
+    required = ("brand_name", "category", "city", "budget", "period")
+    missing = [
+        field for field in required
+        if getattr(output.brand_input, field) is None
+    ]
+
+    if not missing and output.intent != "generate_plan":
+        output.intent = "generate_plan"
+        output.confidence = max(output.confidence, 0.95)
+        if not output.reply:
+            output.reply = "信息已确认完整，开始生成营销方案。"
+    elif missing and output.intent not in ("clarify", "update_context"):
+        output.intent = "clarify"
+        if not output.reply:
+            output.reply = f"为了生成营销方案，我还需要了解：{', '.join(missing)}"
+
+    output.missing_fields = missing
+    return output
+
+
 async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
     """Agent handler for intent recognition.
 
@@ -139,6 +167,8 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
             for key, value in result.brand_input.model_dump(exclude_none=True).items()
             if getattr(original, key) != value
         }
+
+    result = _normalize_intent_output(result)
 
     logger.info(
         "Intent recognized: %s (confidence=%.2f)",
@@ -224,6 +254,8 @@ async def stream_intent_recognition(
                 val = getattr(ctx_bi, key, None)
                 if val is not None:
                     setattr(result.brand_input, key, val)
+
+    result = _normalize_intent_output(result)
 
     logger.info("Intent recognized: %s (confidence=%.2f)", result.intent, result.confidence)
     yield ("", result.model_dump())
