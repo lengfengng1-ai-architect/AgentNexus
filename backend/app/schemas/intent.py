@@ -33,6 +33,12 @@ class IntentRecognitionOutput(BaseModel):
     reasoning: str = Field(
         default="", description="模型思考过程，用于聊天框展示"
     )
+    confirmed: bool = Field(
+        default=False, description="用户是否已确认该操作"
+    )
+    gate: str | None = Field(
+        default=None, description="需要确认的门类型，如 'generate_plan'"
+    )
 
 
 class IntentRecognitionRequest(BaseModel):

@@ -1,0 +1,191 @@
+{
+  "identity": {
+    "product_name": {
+      "value": "新运动品牌",
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "brand": {
+      "value": null,
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "manufacturer": {
+      "value": null,
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "industry": {
+      "value": "运动鞋服",
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": "运动品牌的成长烦恼：lululemon低谷与新品牌狂飙"
+    },
+    "category": {
+      "value": "新运动品牌（泛指新兴垂类运动品牌，如Alo Yoga、Vuori、On昂跑、Hoka等）",
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": "lululemon就碰到了这样的困境...Alo Yoga、Vuori等新兴品牌突飞猛进，跑鞋正在成为全球增速最快的细分鞋服品类之一"
+    }
+  },
+  "official_description": {
+    "description": {
+      "value": "新运动品牌泛指近年涌现的聚焦细分运动领域（如瑜伽、跑步、健身）的垂类品牌，通常通过社交媒体营销、社群运营和独特设计吸引特定消费群体，区别于传统综合运动品牌。",
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": "消费行业有条做品牌的方法论是，你需要找个尽可能细分的切口、面对尽可能细分人群提供产品和服务...运动品牌是体育资源加传播渠道的总和"
+    },
+    "tagline": {
+      "value": null,
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "statement": {
+      "value": null,
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "features": [
+    {
+      "name": "细分领域聚焦",
+      "category": "undefined",
+      "description": "新运动品牌通常聚焦单一垂直运动领域（如瑜伽、跑步、健身），通过专业化产品满足特定人群需求。",
+      "evidence": [
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ]
+    },
+    {
+      "name": "社交媒体营销驱动",
+      "category": "undefined",
+      "description": "依赖TikTok、Instagram、小红书等社交平台进行视觉营销和品牌传播，弱化传统功能营销。",
+      "evidence": [
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456"
+      ]
+    },
+    {
+      "name": "社群运营与连接感",
+      "category": "undefined",
+      "description": "通过线下活动（如跑步俱乐部、瑜伽课程）和线上社群建立品牌与消费者的情感连接。",
+      "evidence": [
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217",
+        "https://m.pedaily.cn/news/554307"
+      ]
+    },
+    {
+      "name": "高端定价策略",
+      "category": "undefined",
+      "description": "产品定价较高（通常在千元人民币以上），强调品质、设计或科技含量。",
+      "evidence": [
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217",
+        "https://m.pedaily.cn/news/554307"
+      ]
+    },
+    {
+      "name": "快速迭代与品类扩展",
+      "category": "undefined",
+      "description": "从单一品类起步后，快速扩展至男装/女装、鞋类、配件等，以突破增长天花板。",
+      "evidence": [
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456"
+      ]
+    }
+  ],
+  "specifications": {
+    "value": {},
+    "sources": [
+      "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+      "https://m.pedaily.cn/news/554307",
+      "https://36kr.com/p/3443287699331456",
+      "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+    ],
+    "method": "extracted"
+  },
+  "availability": {
+    "status": {
+      "value": "在售",
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": "Alo Yoga、Vuori等新兴品牌突飞猛进...On昂跑开店vs.Allbirds闭店"
+    },
+    "pricing": [],
+    "available_regions": {
+      "value": [
+        "全球多个市场",
+        "欧美为主",
+        "部分已进入中国内地"
+      ],
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted"
+    },
+    "access_model": {
+      "value": "线下零售（直营门店、经销商门店）+ 线上直销（官网、电商平台）+ 社交媒体分销",
+      "sources": [
+        "https://support.apple.com/zh-cn/guide/tvplus/apd9bf4d28bc/web",
+        "https://m.pedaily.cn/news/554307",
+        "https://36kr.com/p/3443287699331456",
+        "http://www.bmronline.com.cn/index.php?m=content&c=index&a=show&catid=9&id=8217"
+      ],
+      "method": "extracted",
+      "quote": "On昂跑已经登陆全球超过60个国家的6500多家经销商门店，并在多地开设了旗舰店和直营门店"
+    }
+  }
+}

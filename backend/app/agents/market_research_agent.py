@@ -4,8 +4,6 @@ Corresponding OpenSpec: openspec/changes/add-plan-generation-workbench/specs/pla
 Corresponding in_scope ID: plan-generation
 """
 
-import json
-from pathlib import Path
 from typing import Any
 
 from app.agents.market_analysis_agent import (
@@ -20,13 +18,6 @@ from app.agents.market_analysis_agent import (
 from app.agents.registry import register
 from app.config.settings import settings
 from app.schemas.plan_generation import MarketResearchOutput, MarketTrend
-
-_MOCK_PATH = Path(__file__).parent.parent.parent / "mock_data" / "plan_market_research.json"
-
-
-def _load_mock() -> MarketResearchOutput:
-    with _MOCK_PATH.open("r", encoding="utf-8") as f:
-        return MarketResearchOutput.model_validate(json.load(f))
 
 
 def _build_output(brand_name: str, category: str, d3: Any, d6: dict, report: str) -> MarketResearchOutput:
@@ -49,9 +40,6 @@ async def run_market_research(state: dict[str, Any]) -> dict[str, Any]:
     category = state.get("category") or state.get("brand_input", {}).get("category")
     if not brand_name or not category:
         raise ValueError("Missing required inputs: brand_name and category")
-
-    if settings.use_mock_data:
-        return _load_mock().model_dump()
 
     d1 = call_node_define(brand_name, category)
     d2 = call_node_size(brand_name, d1)

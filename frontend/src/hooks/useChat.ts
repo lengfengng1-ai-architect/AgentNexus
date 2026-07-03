@@ -19,7 +19,7 @@ type ChatAction =
   | { type: 'SEND_MESSAGE'; content: string }
   | { type: 'STREAM_START' }
   | { type: 'STREAM_REASONING'; text: string }
-  | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[] }
+  | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RETRY_MESSAGE'; messageId: string }
@@ -100,6 +100,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         intent: action.intent as ChatMessage['intent'],
         canGeneratePlan,
         missingFields: action.missingFields.length > 0 ? action.missingFields : undefined,
+        gate: action.gate,
       }
       return { ...state, isLoading: false, messages: [...msgs, aiMessage] }
     }
@@ -182,6 +183,7 @@ export function useChat() {
             reply: chunk.intent.reply,
             brandInput: chunk.intent.brand_input,
             missingFields: chunk.intent.missing_fields || [],
+            gate: chunk.intent.gate,
           })
         }
       }
@@ -218,6 +220,7 @@ export function useChat() {
             reply: chunk.intent.reply,
             brandInput: chunk.intent.brand_input,
             missingFields: chunk.intent.missing_fields || [],
+            gate: chunk.intent.gate,
           })
         }
       }

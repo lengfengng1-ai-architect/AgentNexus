@@ -4,7 +4,6 @@ Corresponding OpenSpec: openspec/changes/add-plan-generation-workbench/specs/pla
 Corresponding in_scope ID: plan-generation
 """
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -12,16 +11,9 @@ from jinja2 import Environment, FileSystemLoader
 
 from app.agents.llm_utils import invoke_json
 from app.agents.registry import register
-from app.config.settings import settings
 from app.schemas.plan_generation import ActionRecommendationsOutput
 
-_MOCK_PATH = Path(__file__).parent.parent.parent / "mock_data" / "plan_actions.json"
 _PROMPT_DIR = Path(__file__).parent.parent / "prompt_templates"
-
-
-def _load_mock() -> ActionRecommendationsOutput:
-    with _MOCK_PATH.open("r", encoding="utf-8") as f:
-        return ActionRecommendationsOutput.model_validate(json.load(f))
 
 
 def _render(name: str, **kw) -> str:
@@ -59,9 +51,6 @@ async def run_action_recommendations(state: dict[str, Any]) -> dict[str, Any]:
     city = brand_input.get("city")
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
-
-    if settings.use_mock_data:
-        return _load_mock().model_dump()
 
     result = invoke_json(
         _render(

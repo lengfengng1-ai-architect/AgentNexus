@@ -14,8 +14,20 @@
 1. 在 `backend/app/agents/` 下新建 `your_name_agent.py`
 2. 实现一个异步入口函数：`async def run_your_name(state: dict) -> dict`
 3. 在自己的模块里调用 `registry.register("your_name", run_your_name)`
-4. 在 `backend/app/agents/__init__.py` 中 `import` 你的模块（触发注册）
-5. 写测试：`backend/tests/test_agents/test_your_name_agent.py`
+4. 调用 LLM 时使用 `from app.agents.llm_utils import build_chat_model`，不要自己写 `_build_model()`
+5. 在 `backend/app/agents/__init__.py` 中 `import` 你的模块（触发注册）
+6. 写测试：`backend/tests/test_agents/test_your_name_agent.py`
+
+### Mock Agent（可选）
+
+如果需要为 Agent 提供 mock 实现（例如用于测试或离线演示），**必须新建独立文件**，文件以 `mock_` 开头：
+
+- 文件：`backend/app/agents/mock_your_name.py`
+- 通过 `registry.register_mock("your_name", mock_run_your_name)` 注册
+- 在 `__init__.py` 中 import 触发注册
+- 测试文件：`tests/test_agents/test_mock_your_name.py`
+
+**真实 Agent 文件禁止包含 mock 代码**（禁止 `use_mock_data`、`_MOCK_PATH`、`_load_mock`）。
 
 ### 1.2 入口函数签名
 
@@ -43,10 +55,13 @@ async def run_your_name(state: dict) -> dict:
 """
 
 from app.agents.registry import register
+from app.agents.llm_utils import build_chat_model
 
 
 async def run_market_research(state: dict) -> dict:
     brand_input = state.get("brand_input")
+    # 使用统一 LLM 入口，不要自己写 _build_model()
+    llm = build_chat_model()
     # 调用 LLM、查询 mock 数据等
     return {
         "target_city": brand_input.get("city"),
@@ -151,7 +166,32 @@ edges:
 
 ---
 
-## 3. 底座维护者负责什么
+## 3. Mock 注册
+
+Mock Agent **必须放在独立文件**，以 `mock_` 开头：
+
+```python
+# backend/app/agents/mock_your_agent.py
+from app.agents.registry import register_mock
+
+
+async def mock_run_your_agent(state: dict) -> dict:
+    """确定性 mock，不调用 LLM。"""
+    return {"result": "mock data"}
+
+
+register_mock("your_agent", mock_run_your_agent)
+```
+
+在 `backend/app/agents/__init__.py` 中 import 即可注册：
+
+```python
+from app.agents import mock_your_agent  # noqa: F401
+```
+
+当 `settings.use_mock_data=True` 时，`registry.get_handler()` 自动返回 mock handler。
+
+## 4. 底座维护者负责什么
 
 如果你是主流程/底座维护者，需要维护以下文件：
 

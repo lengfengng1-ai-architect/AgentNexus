@@ -4,7 +4,6 @@ Corresponding OpenSpec: openspec/changes/add-plan-generation-workbench/specs/pla
 Corresponding in_scope ID: plan-generation
 """
 
-import json
 from pathlib import Path
 from typing import Any
 
@@ -12,16 +11,9 @@ from jinja2 import Environment, FileSystemLoader
 
 from app.agents.llm_utils import invoke_json
 from app.agents.registry import register
-from app.config.settings import settings
 from app.schemas.plan_generation import BudgetKpiOutput
 
-_MOCK_PATH = Path(__file__).parent.parent.parent / "mock_data" / "plan_budget_kpi.json"
 _PROMPT_DIR = Path(__file__).parent.parent / "prompt_templates"
-
-
-def _load_mock() -> BudgetKpiOutput:
-    with _MOCK_PATH.open("r", encoding="utf-8") as f:
-        return BudgetKpiOutput.model_validate(json.load(f))
 
 
 def _render(name: str, **kw) -> str:
@@ -61,9 +53,6 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
     period = _parse_period(brand_input.get("period"))
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
-
-    if settings.use_mock_data:
-        return _load_mock().model_dump()
 
     result = invoke_json(
         _render(
