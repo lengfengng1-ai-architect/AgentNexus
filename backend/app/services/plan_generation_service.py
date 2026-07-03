@@ -11,9 +11,10 @@
 import asyncio
 import json
 from collections.abc import AsyncGenerator
-from typing import Any, TypedDict
+from typing import Any
 
 from langgraph.graph import END, StateGraph
+from typing_extensions import TypedDict
 
 from app.agents.registry import get_handler
 
@@ -59,7 +60,7 @@ _NODE_LOG_STEPS: dict[str, list[str]] = {
 }
 
 
-def _build_node(node_id: str):
+def _build_node(node_id: str) -> Any:
     """Create a LangGraph node that calls get_handler(node_id)."""
     label = _NODE_LABELS.get(node_id, node_id)
     handler = get_handler(node_id)
@@ -109,28 +110,30 @@ def _build_node(node_id: str):
 
 
 def _build_graph() -> StateGraph:
-    graph = StateGraph(PlanState)
+    graph = StateGraph(PlanState)  # type: ignore[arg-type]
 
-    node_ids = [
-        "product_research",
-        "market_research",
-        "audience_insight",
-        "plan_data_query",
-        "fitness_analysis",
-        "strategy_generation",
-        "execution_planning",
-        "budget_kpi",
-        "action_recommendations",
-        "plan_generator",
-    ]
-
-    for nid in node_ids:
-        graph.add_node(nid, _build_node(nid))
+    graph.add_node("product_research", _build_node("product_research"))
+    graph.add_node("market_research", _build_node("market_research"))
+    graph.add_node("audience_insight", _build_node("audience_insight"))
+    graph.add_node("plan_data_query", _build_node("plan_data_query"))
+    graph.add_node("fitness_analysis", _build_node("fitness_analysis"))
+    graph.add_node("strategy_generation", _build_node("strategy_generation"))
+    graph.add_node("execution_planning", _build_node("execution_planning"))
+    graph.add_node("budget_kpi", _build_node("budget_kpi"))
+    graph.add_node("action_recommendations", _build_node("action_recommendations"))
+    graph.add_node("plan_generator", _build_node("plan_generator"))
 
     graph.set_entry_point("product_research")
-    for i in range(len(node_ids) - 1):
-        graph.add_edge(node_ids[i], node_ids[i + 1])
-    graph.add_edge(node_ids[-1], END)
+    graph.add_edge("product_research", "market_research")
+    graph.add_edge("market_research", "audience_insight")
+    graph.add_edge("audience_insight", "plan_data_query")
+    graph.add_edge("plan_data_query", "fitness_analysis")
+    graph.add_edge("fitness_analysis", "strategy_generation")
+    graph.add_edge("strategy_generation", "execution_planning")
+    graph.add_edge("execution_planning", "budget_kpi")
+    graph.add_edge("budget_kpi", "action_recommendations")
+    graph.add_edge("action_recommendations", "plan_generator")
+    graph.add_edge("plan_generator", END)
 
     return graph.compile()
 
