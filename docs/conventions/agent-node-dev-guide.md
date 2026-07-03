@@ -323,5 +323,6 @@ uv run python -m scripts.debug_<agent>
 - [testing.md](./testing.md) — 测试规范
 - [directory-structure.md](./directory-structure.md) — 目录结构
 - [../superpowers.yaml](../superpowers.yaml) — 能力边界
-- `backend/app/agents/audience_insight_agent.py` — 图构建示例
+- `backend/app/agents/audience_insight_agent.py` — 图构建示例（显式 add_node/add_edge）
+- `backend/app/services/plan_generation_service.py` — 串行 StateGraph + checkpoint + interrupt
 - `backend/tests/test_agents/test_audience_insight_agent.py` — 最小测试示例

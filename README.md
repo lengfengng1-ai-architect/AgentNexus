@@ -1,138 +1,21 @@
 # AllyGo 营销方案 Agent
 
-运动场景 × 品牌营销平台。本项目的核心目标是通过 AI 辅助，为运动类品牌生成可执行、数据可溯源的营销方案。
+运动场景 × 品牌营销平台。AI 辅助为运动类品牌生成可执行、数据可溯源的营销方案。
 
 **开发模式**：人写 Spec → AI 填充实现 → 人 Review。
 
----
+## 开发工作流
 
-## 技术栈
-
-| 层级 | 技术 |
-|------|------|
-| 后端 API | FastAPI (Python 3.14) |
-| Agent 框架 | LangGraph + DeepAgents |
-| LLM Provider | 阿里百炼（通义千问）|
-| 依赖管理 | uv |
-| 前端 | React + TypeScript + Vite + Tailwind CSS |
-| 规范驱动 | OpenSpec |
-| 代码索引 | CodeGraph |
-
----
-
-## 目录结构
+本项目使用 OpenSpec 规范驱动开发。
 
 ```
-AgentNexus/
-├── backend/                       # FastAPI 后端
-│   ├── app/
-│   │   ├── config/                # pydantic-settings 配置
-│   │   ├── routers/               # API 路由层
-│   │   ├── schemas/               # Pydantic models（按 OpenSpec 生成）
-│   │   ├── services/              # 业务逻辑层
-│   │   ├── prompt_templates/      # Jinja2 prompt 模板
-│   │   └── main.py                # FastAPI 入口
-│   ├── tests/                     # pytest + pytest-asyncio
-│   ├── mock_data/                 # MVP 阶段 mock JSON
-│   ├── pyproject.toml             # uv 依赖配置
-│   └── uv.lock                    # uv lock 文件
-├── frontend/                      # React 前端（待定）
-├── docs/
-│   ├── api/                       # OpenAPI YAML 文件
-│   │   └── _template.yaml         # OpenSpec 谱例模板
-│   ├── conventions/               # 开发规范
-│   │   ├── directory-structure.md
-│   │   ├── testing.md
-│   │   ├── mock-data.md
-│   │   ├── git-workflow.md
-│   │   └── prompt-templates.md
-│   └── superpowers.yaml           # 能力边界定义
-├── openspec/                      # OpenSpec 工作区
-│   ├── config.yaml                # OpenSpec 项目上下文
-│   ├── specs/                     # 主 spec 文件
-│   └── changes/                   # 进行中的 change
-│       └── archive/               # 已归档的 change
-├── .claude/
-│   └── CLAUDE.md                  # AI 开发约束（强制）
-└── README.md                      # 本文件
+/opsx:explore  <想法>     → 探索方案（只思考，不写代码）
+/opsx:propose  <name>     → 生成 proposal/design/spec/tasks
+/opsx:apply    <name>     → 按 tasks 写代码
+/opsx:archive  <name>     → 归档 change（sync delta spec）
 ```
 
----
-
-## 开发工作流（OpenSpec）
-
-本项目使用 OpenSpec 规范驱动开发。任何功能实现前，必须先有 OpenSpec change。
-
-```
-/opsx:explore  <想法/问题>      # 探索阶段：只思考，不写代码
-/opsx:propose  <change-name>    # 提案阶段：生成 proposal / design / specs / tasks
-/opsx:apply    <change-name>    # 实现阶段：AI 按 tasks 写代码
-/opsx:archive  <change-name>    # 归档阶段：sync delta spec，归档 change
-```
-
-详细规则见 `.claude/CLAUDE.md` 和 `docs/conventions/git-workflow.md`。
-
----
-
-## AI 开发约束（摘要）
-
-AI 写代码前必须遵守 `.claude/CLAUDE.md` 的全部规则，核心摘要如下：
-
-### 1. 写代码前三步检查
-
-1. **查 CodeGraph**：`codegraph explore "营销方案Agent <模块名>"`
-2. **读 Superpowers**：读取 `docs/superpowers.yaml`，确认功能在 `in_scope` 内
-3. **确认 OpenSpec**：检查 `docs/api/paths/` 或 `openspec/specs/` 是否有对应 spec
-
-### 2. 能力边界
-
-**可以做的（in_scope）**：
-- 品牌需求录入
-- AllyGo 数据查询
-- 品牌 × 运动适配度评估
-- 营销方案生成
-- 方案文档导出
-
-**不能做的（out_scope）**：
-- 方案自动执行
-- 跨平台数据接入（抖音/小红书等）
-- 效果归因系统
-- 竞品分析
-- 非运动类品牌支持
-- 用户认证、支付/订单
-
-### 3. 数据规则
-
-- 所有厂商/赛事/达人/数据数值必须来自 API 返回或 mock 数据
-- LLM **禁止**编造名称和数值
-- LLM 可以生成创意策划内容、文案润色、基于数据的推理结论
-
-### 4. 代码规范
-
-- Python 文件：`snake_case`
-- Pydantic models：`PascalCase`
-- React 组件：`PascalCase`
-- API YAML：`kebab-case`
-- 每个模块文件头标注对应的 OpenSpec 路径和 in_scope ID
-- 硬编码配置必须提取到环境变量/配置
-- 不要写重复功能函数
-
-### 5. 测试规范
-
-- pytest + pytest-asyncio
-- tests 目录镜像 app 结构
-- 每个端点必须覆盖 200/400/422/500
-- 覆盖率阈值 80%
-- 运行命令：`uv run pytest -v`
-
-### 6. 依赖管理
-
-- 必须使用 **uv**
-- 安装依赖：`uv sync`
-- 运行命令：`uv run pytest ...`、`uv run python ...`
-- 提交 `uv.lock`
-
----
+详细规则见 `.claude/CLAUDE.md` 和 `docs/conventions/`。
 
 ## 如何指导 AI 写一个功能
 
@@ -188,86 +71,74 @@ AI 会把 delta spec sync 到 `openspec/specs/brand-input/spec.md`，然后把 c
 
 ---
 
-## 快速开始
-
-### 后端
-
-```bash
-# 1. 进入后端目录
-cd backend
-
-# 2. 安装依赖（使用 uv）
-uv sync
-
-# 3. 运行测试
-uv run pytest -v
-
-# 4. 启动服务
-uv run python -m app.main
-```
-
-服务启动后访问：
-- 健康检查：`GET http://localhost:8000/api/v1/health`
-- 对话提取：`POST http://localhost:8000/api/v1/chat`，请求体 `{"message": "..."}`
-- API 文档：`http://localhost:8000/docs`
-
-### 前端
-
-```bash
-# 1. 进入前端目录
-cd frontend
-
-# 2. 安装依赖
-npm install
-
-# 3. 复制环境变量
- cp .env.example .env
-
-# 4. 启动开发服务器
-npm run dev
-```
-
-开发服务器默认运行在 `http://localhost:5173`。确保后端已启动并配置了 `CORS_ORIGINS=http://localhost:5173`。
-
----
-
 ## 文档索引
 
-| 文档 | 内容 |
+### 开发规范（`docs/conventions/`）
+
+| 文件 | 内容 |
 |------|------|
-| `.claude/CLAUDE.md` | AI 开发约束（强制） |
+| `directory-structure.md` | 目录结构定义，新代码必须放入约定位置 |
+| `testing.md` | 测试框架、Mock 策略、覆盖率要求、智能测试选择 |
+| `mock-data.md` | MVP 阶段 mock JSON 数据规范 |
+| `git-workflow.md` | 分支策略、commit 格式、PR 流程 |
+| `prompt-templates.md` | Jinja2 prompt 模板规范 |
+| `agent-framework.md` | LangGraph + DeepAgents 技术约束 |
+| `agent-registry.md` | Agent 注册表机制 |
+| `agent-node-dev-guide.md` | Agent 节点开发手册 |
+
+### AI 开发约束
+
+| 文件 | 内容 |
+|------|------|
+| `.claude/CLAUDE.md` | AI 必须遵守的 9 步入口流程、代码规范、违规后果 |
 | `docs/superpowers.yaml` | 能力边界（in_scope / out_scope） |
-| `docs/conventions/directory-structure.md` | 目录结构与职责分界 |
-| `docs/conventions/testing.md` | 测试规范 |
-| `docs/conventions/mock-data.md` | Mock 数据规范 |
-| `docs/conventions/git-workflow.md` | Git 分支与提交规范 |
-| `docs/conventions/prompt-templates.md` | Prompt 模板规范 |
-| `docs/api/_template.yaml` | OpenAPI YAML 谱例模板 |
-| `openspec/config.yaml` | OpenSpec 项目上下文 |
+
+### OpenSpec
+
+| 路径 | 内容 |
+|------|------|
+| `docs/api/paths/*.yaml` | OpenAPI 端点契约 |
+| `openspec/specs/<capability>/spec.md` | 能力主 spec |
+| `openspec/changes/archive/` | 已归档变更 |
+
+### 方案生成
+
+| 文件 | 内容 |
+|------|------|
+| `backend/app/services/plan_generation_service.py` | 方案流水线（StateGraph + checkpoint + interrupt） |
+| `frontend/src/hooks/usePlanRun.ts` | 前端流水线状态管理 |
 
 ---
 
-## 当前状态
+## 技术栈
 
-已完成：
-- 项目骨架（FastAPI + uv + Python 3.14）
-- 健康检查端点 `/api/v1/health`
-- 对话式品牌需求提取 Agent：`POST /api/v1/chat`
-  - LangGraph + DeepAgents + 阿里百炼
-  - 提取字段：brand_name, category, city, budget, period
-  - 字段不完整时自动反问
-- 前端聊天界面（React + TypeScript + Vite + Tailwind）
-  - 自然语言对话录入
-  - 顶部"进度跑道"显示字段提取状态
-  - 场景卡片引导、错误重试、localStorage 历史
-- 测试基础设施（7 个测试全部通过）
-- OpenSpec / CodeGraph / Git 工作流
+FastAPI + LangGraph + React 18 + Vite + uv
 
-尚未实现：
-- 品牌需求持久化录入（brand-input）
-- AllyGo 数据查询（data-query）
-- 品牌 × 运动适配度评估（fitness-engine）
-- 完整营销方案生成（plan-generation）
-- 方案文档导出（document-export）
+## 快速开始
 
-下一个推荐功能：**品牌需求持久化录入（brand-input）**，把 chat agent 提取的结果保存下来。
+```bash
+cd backend && uv sync && uv run pytest -v
+uv run python -m app.main
+# 另一个终端
+cd frontend && npm install && npm run dev
+```
+
+## 代码质量
+
+提交时自动运行（`.claude/hooks/`）：
+- `mypy` — 静态类型检查
+- `pylint` — 未定义变量、未使用 import
+
+## 方案生成 API
+
+| 端点 | 说明 |
+|------|------|
+| `POST /plan/run` | 启动生成（SSE 流式） |
+| `POST /plan/runs/{run_id}/approve` | 通过审核 |
+| `POST /plan/runs/{run_id}/reject` | 驳回 |
+| `POST /plan/runs/{run_id}/cancel` | 取消 |
+| `GET /plan/runs/{run_id}/status` | 运行状态 |
+| `GET /plan/runs` | 批次记录 |
+
+每次运行持久化到 `data/checkpoints.db`（`plan_records` 表）。  
+前端通过 `localStorage` 保存 `run_id`，刷新页面自动恢复节点状态。
