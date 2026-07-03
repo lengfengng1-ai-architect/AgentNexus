@@ -162,3 +162,16 @@ uv run pytest -x -q tests/test_services/test_<name>.py
 # 多文件关联跑
 uv run pytest -x -q tests/test_agents/test_<a>.py tests/test_services/test_<b>.py
 ```
+
+## 运行命令
+
+```bash
+# 全量运行
+cd backend && uv run pytest -v --cov=app --cov-report=term-missing
+
+# 单文件
+uv run pytest -v tests/test_routers/test_brands.py
+
+# 按关键字
+uv run pytest -v -k "fitness"
+```
