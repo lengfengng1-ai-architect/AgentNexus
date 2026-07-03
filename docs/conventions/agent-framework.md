@@ -122,26 +122,58 @@ register("mock_intent_recognition", mock_run_intent_recognition)
 
 ## 方案生成 Pipeline
 
-方案生成使用 LangGraph `StateGraph` 在代码中直接定义，不经过 YAML 配置层：
+方案生成使用 LangGraph `StateGraph` 在代码中直接定义，不经过 YAML 配置层。官网推荐方式：`StateGraph` + `TypedDict` + `add_node/edge` → `compile()`。
+
+### 并行→汇总示例（官网推荐模式）
 
 ```python
-from langgraph.graph import StateGraph, END
+from langgraph.graph import StateGraph, END, START
+from typing import TypedDict
 
-class PlanState(TypedDict):
-    brand_input: dict
-    product_research: dict
-    ...
 
-graph = StateGraph(PlanState)
+class ResearchState(TypedDict):
+    web_result: str
+    news_result: str
+    summary: str
 
-def add_nodes_and_edges(graph):
-    graph.add_node("product_research", product_research_node)
-    ...
-    graph.set_entry_point("product_research")
-    graph.add_edge("product_research", "audience_insight")
-    graph.add_edge("plan_generator", END)
+
+async def search_web(state: ResearchState) -> dict:
+    return {"web_result": "web data"}
+
+
+async def search_news(state: ResearchState) -> dict:
+    return {"news_result": "news data"}
+
+
+async def summarize(state: ResearchState) -> dict:
+    combined = f"{state['web_result']} + {state['news_result']}"
+    return {"summary": combined}
+
+
+graph = StateGraph(ResearchState)
+graph.add_node("web", search_web)
+graph.add_node("news", search_news)
+graph.add_node("summary", summarize)
+
+# 两个并行入口（web 和 news 同时执行）
+graph.add_edge(START, "web")
+graph.add_edge(START, "news")
+# 两个都完成后才执行 summarize
+graph.add_edge("web", "summary")
+graph.add_edge("news", "summary")
+graph.add_edge("summary", END)
 
 pipeline = graph.compile()
+result = await pipeline.ainvoke({
+    "web_result": "", "news_result": "", "summary": ""
+})
+```
+
+`web` 和 `news` 通过 `START` 同时出发，LangGraph 自动并行执行。两者都完成后，`summary` 节点（fan-in）拿到 `state["web_result"]` 和 `state["news_result"]`。
+
+对应本项目的例子，方案生成 pipeline 中 `product_research` 和 `market_research` 在理论上也可以并行（无依赖关系），但因为依赖数据同步等实际约束，当前采用串行。
+
+参考实现：`backend/app/services/plan_generation_service.py`。
 result = await pipeline.ainvoke({"brand_input": {...}})
 ```
 
