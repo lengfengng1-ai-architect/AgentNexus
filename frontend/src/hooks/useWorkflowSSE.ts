@@ -3,7 +3,7 @@ import { controlPlanRun, getPlanRunStatus, resumePlanRun, startPlanRun } from '.
 import type { PlanLogEvent, PlanNode, PlanNodeStatus, PlanOutputs, WorkflowControlAction } from '../types/plan'
 
 const PIPELINE_NODES: { id: string; label: string }[] = [
-  { id: 'collect', label: '需求确认' },
+  { id: 'product_research', label: '产品调研' },
   { id: 'market_research', label: '市场研究' },
   { id: 'audience_insight', label: '人群洞察' },
   { id: 'plan_data_query', label: '平台资源' },
@@ -25,6 +25,7 @@ interface SSEState {
   error: string | null
   isConnected: boolean
   lastEventId: number | null
+  nodeLogs: Record<string, string[]>
 }
 
 type SSEAction =
@@ -41,6 +42,7 @@ type SSEAction =
   | { type: 'SET_ERROR'; error: string }
   | { type: 'SET_FAILED_NODE'; nodeId: string | null }
   | { type: 'RESTORE_STATUS'; status: SSEState }
+  | { type: 'NODE_LOG'; nodeId: string; message: string }
 
 function buildInitialNodes(): PlanNode[] {
   return PIPELINE_NODES.map((node) => ({
@@ -62,6 +64,7 @@ function sseReducer(state: SSEState, action: SSEAction): SSEState {
         error: null,
         isConnected: false,
         lastEventId: null,
+        nodeLogs: {},
       }
     case 'SET_RUN_ID':
       return { ...state, runId: action.runId }
@@ -108,6 +111,14 @@ function sseReducer(state: SSEState, action: SSEAction): SSEState {
       return { ...state, failedNode: action.nodeId }
     case 'RESTORE_STATUS':
       return action.status
+    case 'NODE_LOG':
+      return {
+        ...state,
+        nodeLogs: {
+          ...state.nodeLogs,
+          [action.nodeId]: [...(state.nodeLogs[action.nodeId] || []), action.message],
+        },
+      }
     default:
       return state
   }
@@ -192,6 +203,7 @@ export function useWorkflowSSE() {
     error: null,
     isConnected: false,
     lastEventId: null,
+    nodeLogs: {},
   })
 
   const abortRef = useRef<(() => void) | null>(null)
@@ -231,6 +243,9 @@ export function useWorkflowSSE() {
         break
       case 'node.waiting':
         if (event.nodeId) dispatch({ type: 'NODE_WAITING', nodeId: event.nodeId })
+        break
+      case 'node.log':
+        if (event.nodeId && event.message) dispatch({ type: 'NODE_LOG', nodeId: event.nodeId, message: event.message })
         break
       case 'workflow.complete':
         dispatch({ type: 'SET_CONNECTED', connected: false })

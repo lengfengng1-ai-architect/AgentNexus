@@ -1,0 +1,56 @@
+{
+  "city": "上海",
+  "summary": {
+    "leagues": {
+      "count": 3,
+      "items": [
+        {"alliance_name": "沪跑团", "sport_type": "跑步", "city": "上海", "level_badge": "王者", "is_official": true, "member_count": 3200, "follower_count": 15000, "activity_count_30d": 12, "total_fee": 45000, "enrolled_count": 680, "refund_rate": 0.02, "points_used": 12000, "avg_like_count": 156, "comment_density": 0.34, "checkin_rate": 0.78, "credit_score": 92, "health_score": 88, "violation_count": 0},
+        {"alliance_name": "静安跑友会", "sport_type": "跑步", "city": "上海", "level_badge": "黄金", "is_official": false, "member_count": 580, "follower_count": 2600, "activity_count_30d": 8, "total_fee": 7800, "enrolled_count": 145, "refund_rate": 0.02, "points_used": 1200, "avg_like_count": 67, "comment_density": 0.19, "checkin_rate": 0.68, "credit_score": 82, "health_score": 79, "violation_count": 0},
+        {"alliance_name": "徐汇跑团", "sport_type": "跑步", "city": "上海", "level_badge": "白银", "is_official": false, "member_count": 420, "follower_count": 1400, "activity_count_30d": 6, "total_fee": 5600, "enrolled_count": 95, "refund_rate": 0.03, "points_used": 900, "avg_like_count": 42, "comment_density": 0.15, "checkin_rate": 0.62, "credit_score": 76, "health_score": 73, "violation_count": 0}
+      ],
+      "priority": "high",
+      "top_alliances": ["沪跑团", "静安跑友会", "徐汇跑团"]
+    },
+    "influencers": {
+      "count": 4,
+      "items": [
+        {"influencer_name": "跑步小王子", "sport_type": "跑步", "city": "上海", "tier": "至尊/大师", "quote": 3.5, "follower_count": 256000},
+        {"influencer_name": "浦东跑者", "sport_type": "跑步", "city": "上海", "tier": "健将", "quote": 0.6, "follower_count": 32000},
+        {"influencer_name": "外滩运动达人", "sport_type": "跑步", "city": "上海", "tier": "达人", "quote": 0.35, "follower_count": 15000},
+        {"influencer_name": "沪上健身教主", "sport_type": "健身", "city": "上海", "tier": "至尊/大师", "quote": 4.2, "follower_count": 310000}
+      ],
+      "priority": "high",
+      "top_tiers": ["至尊/大师", "健将", "达人"]
+    },
+    "events": {
+      "count": 2,
+      "items": [
+        {"event_name": "城市马拉松", "city": "上海"},
+        {"event_name": "趣味跑", "city": "上海"}
+      ],
+      "priority": "high"
+    },
+    "stores": {"priority": "medium"},
+    "venues": {"priority": "medium"},
+    "personas": {"age": "18-40岁占71%", "gender": "女性54%", "traits": ["注重健康", "社交活跃", "周末运动", "品质消费"], "priority": "low"}
+  },
+  "data": {
+    "上海": {
+      "population": "2487万",
+      "sport_index": 92,
+      "top_sports": ["跑步", "瑜伽", "篮球", "骑行", "健身"],
+      "consumption": "高",
+      "weekend_active": "68%"
+    }
+  },
+  "reply": "已为你查询 **上海** 的 AllyGo 平台数据：\n\n• 盟域 (重点)：3 个相关盟 — 沪跑团、静安跑友会、徐汇跑团 等\n• 达人 (重点)：4 位推荐达人 — 等级含 至尊/大师/健将/达人\n• 赛事 (重点)：2 个匹配赛事 — 城市马拉松、趣味跑 等\n• 经营社(medium)：基础数据可用\n• 场馆(medium)：基础数据可用\n\n需要基于这些数据生成营销方案吗？",
+  "available_cities": [],
+  "dimension_priorities": {
+    "盟域": "high",
+    "达人": "high",
+    "赛事": "high",
+    "经营社": "medium",
+    "场馆": "medium",
+    "人群画像": "low"
+  }
+}

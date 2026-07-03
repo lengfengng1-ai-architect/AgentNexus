@@ -11,15 +11,17 @@ import asyncio
 from pathlib import Path
 
 from bs4 import BeautifulSoup
-from duckduckgo_search import DDGS
+from ddgs import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
+
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from app.config.settings import settings
+from app.agents.registry import register
 from app.schemas.product_info import (
     ProductResearchResult,
     SourcedStr,
@@ -94,6 +96,13 @@ def _build_model():
             model_provider="openai",
             api_key=settings.agnes_api_key,
             base_url=settings.agnes_base_url,
+        )
+    elif settings.llm_provider == "myself":
+        return init_chat_model(
+            model=settings.myself_model,
+            model_provider="openai",
+            api_key=settings.myself_api_key,
+            base_url=settings.myself_base_url,
         )
     return init_chat_model(
         model=settings.dashscope_model,
@@ -294,16 +303,19 @@ async def research_product(product_name: str) -> ProductResearchResult:
     return output
 
 
-# ── Registry entry (for workflow orchestration) ──
-
-
 async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
-    """Workflow-compatible handler: input dict → output dict."""
-    pn = state.get("product_name") or state.get("brand_name")
-    if not pn:
-        raise ValueError("Missing required input: product_name")
-    result = await research_product(pn)
-    _save_to_cache(pn, result)
+    """Workflow-compatible handler: input dict → output dict.
+
+    Expects state keys: product_name or brand_name.
+    Uses brand_name as the product to research.
+    """
+    brand_name = state.get("brand_name") or state.get("product_name")
+    if not brand_name:
+        raise ValueError("Missing required input: brand_name or product_name")
+    if settings.use_mock_data:
+        return {"product_name": brand_name, "summary": f"Mock research for {brand_name}"}
+    result = await research_product(brand_name)
+    _save_to_cache(brand_name, result)
     return result.model_dump()
 
 

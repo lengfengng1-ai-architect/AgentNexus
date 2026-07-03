@@ -51,6 +51,11 @@ def _build_model():
             model=settings.agnes_model, model_provider="openai",
             api_key=settings.agnes_api_key, base_url=settings.agnes_base_url,
         )
+    elif settings.llm_provider == "myself":
+        return init_chat_model(
+            model=settings.myself_model, model_provider="openai",
+            api_key=settings.myself_api_key, base_url=settings.myself_base_url,
+        )
     return init_chat_model(
         model=settings.dashscope_model, model_provider="openai",
         api_key=settings.dashscope_api_key, base_url=settings.dashscope_base_url,

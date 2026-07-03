@@ -25,16 +25,10 @@ export interface PlanChapter {
   content: string
 }
 
-export interface PlanActions {
-  actions: { title: string; description: string }[]
-}
-
-export interface PlanBudgetKpi {
-  total_budget: number
-  period_months: number
-  allocations: { category: string; amount: number; percentage: number }[]
-  kpis: Record<string, string>
-  timeline: string[]
+export interface PlanActionItem {
+  title: string
+  description: string
+  buttonLabel: string
 }
 
 export interface PlanOutputs {
@@ -45,8 +39,8 @@ export interface PlanOutputs {
   fitness_analysis?: Record<string, unknown>
   strategy_generation?: Record<string, unknown>
   execution_planning?: Record<string, unknown>
-  budget_kpi?: PlanBudgetKpi
-  action_recommendations?: PlanActions
+  budget_kpi?: Record<string, unknown>
+  action_recommendations?: { actions: Pick<PlanActionItem, 'title' | 'description'>[] }
   plan_generator?: { chapters: PlanChapter[] }
 }
 

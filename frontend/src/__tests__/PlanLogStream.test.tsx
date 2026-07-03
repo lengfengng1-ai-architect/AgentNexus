@@ -4,27 +4,20 @@ import type { PlanLogEvent } from '../types/plan'
 
 const sampleLogs: PlanLogEvent[] = [
   { id: 1, event: 'workflow.start', runId: 'run-1' },
-  { id: 2, event: 'node.start', runId: 'run-1', nodeId: 'collect' },
-  { id: 3, event: 'node.complete', runId: 'run-1', nodeId: 'collect', message: '完成' },
+  { id: 2, event: 'node.start', runId: 'run-1', nodeId: 'market_research' },
+  { id: 3, event: 'node.complete', runId: 'run-1', nodeId: 'market_research', message: '完成' },
 ]
 
 describe('PlanLogStream', () => {
   test('shows placeholder when empty', () => {
     render(<PlanLogStream logs={[]} />)
-    expect(screen.getByText('等待流水线启动…')).toBeInTheDocument()
+    expect(screen.getByText(/等待输入品牌信息/)).toBeInTheDocument()
+    expect(screen.getByText(/生成营销方案/)).toBeInTheDocument()
   })
 
-  test('renders log events', () => {
+  test('renders formatted log event when logs present', () => {
     render(<PlanLogStream logs={sampleLogs} />)
-    expect(screen.getByText(/workflow.start/)).toBeInTheDocument()
-    expect(screen.getByText(/node.start/)).toBeInTheDocument()
-    expect(screen.getByText(/node.complete/)).toBeInTheDocument()
-  })
-
-  test('shows nodeId and message in formatted event', () => {
-    render(<PlanLogStream logs={sampleLogs} />)
-    const collectItems = screen.getAllByText(/\[collect\]/)
-    expect(collectItems.length).toBeGreaterThanOrEqual(1)
-    expect(screen.getByText(/- 完成/)).toBeInTheDocument()
+    // The latest log event (index 2) is node.complete for market_research agent
+    expect(screen.getByText(/市场调研 Agent/)).toBeInTheDocument()
   })
 })

@@ -14,6 +14,7 @@ export interface IntentRecognitionResult {
   brand_input: BrandInput
   missing_fields?: string[] | null
   updated_fields?: Record<string, unknown> | null
+  reasoning?: string
 }
 
 export interface WorkflowRunResponse {
@@ -23,6 +24,7 @@ export interface WorkflowRunResponse {
     intent: IntentRecognitionResult
     reply_builder?: {
       reply: string
+      reasoning?: string
     }
     [key: string]: unknown
   }
