@@ -363,6 +363,7 @@ export function usePlanRun() {
     async (brandInput: Record<string, unknown>) => {
       abortRef.current?.()
       dispatch({ type: 'RESET' })
+      try { localStorage.removeItem('allygo_plan_run_id') } catch { /* ignore */ }
 
       try {
         const { runId, stream } = await startPlanRun(brandInput)

@@ -578,6 +578,8 @@ async def get_status(run_id: str) -> dict[str, Any]:
     st = _status_for_state(state, run_id)
     # 更新批次记录的状态和更新时间
     _update_plan_record(run_id, st["status"], st.get("current_node"))
+    # 同步删除已 canceled 的旧记录（超过 50 条时清理）
+    _cleanup_old_records()
     return st
 
 
@@ -604,6 +606,17 @@ def _update_plan_record(run_id: str, status: str, current_node: str | None = Non
         conn.commit()
     except Exception as exc:
         logger.warning("failed to update plan record: %s", exc)
+
+
+def _cleanup_old_records() -> None:
+    try:
+        conn = _ensure_plan_db()
+        conn.execute(
+            "DELETE FROM plan_records WHERE run_id NOT IN (SELECT run_id FROM plan_records ORDER BY created_at DESC LIMIT 50)"
+        )
+        conn.commit()
+    except Exception:
+        pass
 
 
 async def list_runs(limit: int = 20) -> list[dict[str, Any]]:
