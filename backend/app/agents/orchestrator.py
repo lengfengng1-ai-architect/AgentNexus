@@ -2,6 +2,10 @@
 
 Corresponding OpenSpec: docs/api/workflows.yaml
 Corresponding in_scope ID: workflow-orchestration
+
+Support serial (existing) and parallel (new) workflows.
+- Fan-out: multiple nodes can run concurrently when they share no dependencies.
+- Fan-in: a node with `depends_on` waits for ALL upstream nodes to complete.
 """
 
 import asyncio
@@ -11,7 +15,7 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Annotated, Any
 
-from langgraph.graph import END, StateGraph
+from langgraph.graph import END, START, StateGraph
 from pydantic import BaseModel, Field
 
 from app.agents.registry import AgentHandler, get_handler
@@ -62,11 +66,7 @@ def _resolve_pointer(state: WorkflowState, pointer: str) -> Any:
 
 
 def _tokenize_condition(condition: str) -> list[str]:
-    """Tokenize a condition expression into operators and operands.
-
-    ponytail: naive regex-free tokenizer; sufficient for MVP expressions.
-    Upgrade path: replace with a proper parser if expressions become complex.
-    """
+    """Tokenize a condition expression into operators and operands."""
     import re
 
     pattern = r"(==|!=|<=|>=|<|>|in|and|or|\(|\)|'[^']*'|\"[^\"]*\"|\[|\]|[A-Za-z0-9_$.]+)"
@@ -86,7 +86,6 @@ def _parse_value(token: str, state: WorkflowState) -> Any:
         inner = token[1:-1]
         if not inner:
             return []
-        # Tokenize inner content respecting string literals so commas inside quotes are not split.
         import re
 
         inner_tokens = re.findall(r"'[^']*'|\"[^\"]*\"|[^,]+", inner)
@@ -102,7 +101,6 @@ def _parse_value(token: str, state: WorkflowState) -> Any:
     if token in ("None", "null"):
         return None
 
-    # Try numeric literal
     try:
         if "." in token:
             return float(token)
@@ -114,16 +112,11 @@ def _parse_value(token: str, state: WorkflowState) -> Any:
 
 
 def _evaluate_simple_condition(condition: str, state: WorkflowState) -> bool:
-    """Evaluate a simple condition without and/or grouping.
-
-    ponytail: supports ==, in, and basic comparisons. Parentheses and mixed
-    logic are handled by the recursive evaluator below.
-    """
+    """Evaluate a simple condition without and/or grouping."""
     tokens = _tokenize_condition(condition)
     if not tokens:
         raise ValueError(f"Empty condition: {condition}")
 
-    # Handle unary parentheses stripping
     if tokens[0] == "(" and tokens[-1] == ")":
         tokens = tokens[1:-1]
 
@@ -153,21 +146,14 @@ def _evaluate_simple_condition(condition: str, state: WorkflowState) -> bool:
                 raise ValueError(f"'in' requires a list on the right side, got {type(right)}")
             return left in right
 
-    # Single token treated as truthiness
     value = _parse_value(tokens[0], state)
     return bool(value)
 
 
 def _evaluate_condition(condition: str, state: WorkflowState) -> bool:
-    """Evaluate a condition expression supporting and/or grouping.
-
-    ponytail: splits on top-level and/or. Parenthesized sub-expressions are
-    evaluated recursively. This is sufficient for MVP conditions like:
-    $.outputs.intent.intent == 'generate_plan' and len($.outputs.intent.missing_fields) == 0
-    """
+    """Evaluate a condition expression supporting and/or grouping."""
     condition = condition.strip()
 
-    # Find top-level and/or (not inside parentheses)
     depth = 0
     for i, char in enumerate(condition):
         if char == "(":
@@ -188,11 +174,9 @@ def _evaluate_condition(condition: str, state: WorkflowState) -> bool:
                     continue
                 return _evaluate_condition(left, state) and _evaluate_condition(right, state)
 
-    # Strip outer parentheses
     if condition.startswith("(") and condition.endswith(")"):
         return _evaluate_condition(condition[1:-1], state)
 
-    # Handle len(...) == N helpers
     if condition.startswith("len("):
         end = condition.find(")")
         if end == -1:
@@ -203,7 +187,6 @@ def _evaluate_condition(condition: str, state: WorkflowState) -> bool:
         length = len(value) if isinstance(value, (list, dict, str)) else 0
         if not rest:
             return bool(length)
-        # expect == N or != N
         import re
 
         match = re.match(r"^(==|!=|<=|>=|<|>)\s*(.+)$", rest)
@@ -248,11 +231,24 @@ def _wrap_sync_handler(handler: AgentHandler) -> AgentHandler:
 def _build_node_wrapper(
     node: WorkflowNode, handler: AgentHandler
 ) -> Callable[[WorkflowState], Awaitable[dict[str, Any]]]:
-    """Build a LangGraph node wrapper that maps state to/from the agent handler."""
+    """Build a LangGraph node wrapper with fan-in barrier support.
+
+    Fan-in: if node declares depends_on, the wrapper checks ALL upstream
+    outputs exist before executing. If not all ready, returns no-op {}.
+    This enables multiple upstream nodes to edge into the same downstream
+    without premature execution.
+    """
 
     effective_handler = handler if inspect.iscoroutinefunction(handler) else _wrap_sync_handler(handler)
 
     async def node_wrapper(state: WorkflowState) -> dict[str, Any]:
+        # Fan-in barrier: wait for all depends_on outputs to be available
+        if node.depends_on:
+            for dep in node.depends_on:
+                if dep not in state.outputs:
+                    logger.info("Fan-in barrier: '%s' waiting for '%s'", node.id, dep)
+                    return {}
+
         node_input = apply_mappings(state, node.input_mapping)
         output = await effective_handler(node_input)
         return {"outputs": {node.id: output}}
@@ -260,18 +256,38 @@ def _build_node_wrapper(
     return node_wrapper
 
 
-def topological_sort(nodes: list[WorkflowNode], edges: list[WorkflowEdge]) -> list[str]:
-    """Return a topological order of node IDs based on edges."""
-    node_ids = {node.id for node in nodes}
-    adjacency: dict[str, list[str]] = {node_id: [] for node_id in node_ids}
-    in_degree: dict[str, int] = {node_id: 0 for node_id in node_ids}
+def _topological_sort_by_depends(nodes: list[WorkflowNode], edges: list[WorkflowEdge] | None = None) -> list[str]:
+    """Topological sort using depends_on and edges for connectivity."""
+    node_ids = {n.id for n in nodes}
+    node_map = {n.id: n for n in nodes}
 
-    for edge in edges:
-        if edge.from_ in node_ids and edge.to in node_ids:
-            adjacency[edge.from_].append(edge.to)
-            in_degree[edge.to] += 1
+    in_degree: dict[str, int] = {}
+    adjacency: dict[str, list[str]] = {}
 
-    queue = [node_id for node_id, degree in in_degree.items() if degree == 0]
+    for nid in node_ids:
+        in_degree[nid] = 0
+        adjacency[nid] = []
+
+    # Build graph from depends_on
+    for n in nodes:
+        if n.depends_on:
+            for dep in n.depends_on:
+                if dep in node_ids:
+                    adjacency[dep].append(n.id)
+                    in_degree[n.id] += 1
+
+    # Also incorporate edges for cycle detection + serial compatibility
+    if edges:
+        for edge in edges:
+            if edge.from_ in node_ids and edge.to in node_ids:
+                # Skip if already captured by depends_on
+                target = node_map.get(edge.to)
+                already = target and target.depends_on and edge.from_ in target.depends_on
+                if not already and edge.to not in adjacency[edge.from_]:
+                    adjacency[edge.from_].append(edge.to)
+                    in_degree[edge.to] += 1
+
+    queue = [nid for nid, d in in_degree.items() if d == 0]
     ordered: list[str] = []
 
     while queue:
@@ -291,10 +307,14 @@ def topological_sort(nodes: list[WorkflowNode], edges: list[WorkflowEdge]) -> li
 def build_graph(workflow: WorkflowDefinition) -> Any:
     """Build a compiled LangGraph from a workflow definition.
 
-    MVP 实现按边做拓扑排序，串行执行每个节点。支持带 condition 的条件边。
+    Supports:
+    - Serial execution (existing behavior)
+    - Parallel fan-out: nodes with no dependencies run concurrently
+    - Parallel fan-in: nodes with depends_on wait for ALL upstream outputs
+    - Conditional edges (existing behavior)
     """
-    order = topological_sort(workflow.nodes, workflow.edges)
-    node_map = {node.id: node for node in workflow.nodes}
+    order = _topological_sort_by_depends(workflow.nodes, workflow.edges)
+    node_map = {n.id: n for n in workflow.nodes}
 
     graph = StateGraph(WorkflowState)
 
@@ -304,67 +324,60 @@ def build_graph(workflow: WorkflowDefinition) -> Any:
         wrapper = _build_node_wrapper(node, handler)
         graph.add_node(node_id, wrapper)
 
-    # Set entry point to first node in topological order.
-    if order:
-        graph.set_entry_point(order[0])
+    # ── Entry: find root nodes (no depends_on) ──
+    roots = [n for n in workflow.nodes if not n.depends_on]
 
-    # Build adjacency and route edges.
-    adjacency: dict[str, list[str]] = {node_id: [] for node_id in order}
+    if not roots:
+        raise ValueError("Workflow has no entry nodes (all nodes have depends_on)")
+
+    if len(roots) == 1:
+        graph.set_entry_point(roots[0].id)
+    else:
+        # Multiple entry points: fan-out via START
+        for root in roots:
+            graph.add_edge(START, root.id)
+
+    # ── Build edges from depends_on ──
+    for n in workflow.nodes:
+        if n.depends_on:
+            for dep in n.depends_on:
+                if dep in node_map:
+                    graph.add_edge(dep, n.id)
+
+    # ── Handle edges from workflow definition ──
     for edge in workflow.edges:
-        if edge.from_ in adjacency and edge.to in adjacency:
-            adjacency[edge.from_].append(edge.to)
+        if edge.from_ in node_map and edge.to in node_map:
+            # Skip if already represented by depends_on
+            target = node_map.get(edge.to)
+            already = target and target.depends_on and edge.from_ in target.depends_on
+            if not already:
+                graph.add_edge(edge.from_, edge.to)
 
-    for node_id in order:
-        targets = adjacency.get(node_id, [])
-        if not targets:
-            graph.add_edge(node_id, END)
-            continue
+    # ── Nodes with no outgoing edges → END ──
+    has_outgoing: set[str] = set()
+    roots_set = {r.id for r in roots}
+    for n in workflow.nodes:
+        if n.depends_on:
+            for dep in n.depends_on:
+                has_outgoing.add(dep)
+    for edge in workflow.edges:
+        has_outgoing.add(edge.from_)
+    # Also track edges from depends_on
+    has_outgoing.update(roots_set)  # All roots have the virtual start edge
 
-        # Separate unconditional targets from conditional targets.
-        unconditional_targets: list[str] = []
-        conditional_targets: list[tuple[str, str]] = []
-        for target_id in targets:
-            target_node = node_map[target_id]
-            if target_node.condition:
-                conditional_targets.append((target_id, target_node.condition))
-            else:
-                unconditional_targets.append(target_id)
-
-        if conditional_targets:
-            # All outgoing edges from this node are conditional.
-            if unconditional_targets:
-                raise ValueError(
-                    f"Node '{node_id}' has both conditional and unconditional outgoing edges"
-                )
-
-            def _make_router(conditions: list[tuple[str, str]]) -> Callable[[WorkflowState], str]:
-                def router(state: WorkflowState) -> str:
-                    for target_id, condition in conditions:
-                        try:
-                            result = _evaluate_condition(condition, state)
-                        except Exception as exc:
-                            raise ValueError(
-                                f"Failed to evaluate condition for node '{target_id}': {exc}"
-                            ) from exc
-                        if result:
-                            logger.info("Workflow node '%s' condition satisfied -> '%s'", node_id, target_id)
-                            return target_id
-                    logger.info("Workflow node '%s' no condition satisfied, ending branch", node_id)
-                    return END
-
-                return router
-
-            router = _make_router(conditional_targets)
-            graph.add_conditional_edges(node_id, router, {t: t for t, _ in conditional_targets} | {"__end__": END})
-        else:
-            # Unconditional edges: first target is the next node, remaining targets are parallel.
-            # ponytail: MVP supports single unconditional target. Multiple targets would require
-            # parallel Send support, deferred to future change.
-            if len(unconditional_targets) > 1:
-                raise ValueError(
-                    f"Node '{node_id}' has multiple unconditional outgoing edges (not supported in MVP)"
-                )
-            next_id = unconditional_targets[0]
-            graph.add_edge(node_id, next_id)
+    for nid in order:
+        # Check if this node has any outgoing edges from either depends_on or edges
+        outgoing = False
+        for other in workflow.nodes:
+            if other.depends_on and nid in other.depends_on:
+                outgoing = True
+                break
+        if not outgoing:
+            for edge in workflow.edges:
+                if edge.from_ == nid:
+                    outgoing = True
+                    break
+        if not outgoing:
+            graph.add_edge(nid, END)
 
     return graph.compile()

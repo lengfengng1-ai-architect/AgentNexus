@@ -1,0 +1,62 @@
+{
+  "result": {
+    "market_name": "冰美式咖啡",
+    "market_type": "消费市场",
+    "industry": "食品饮料",
+    "category": "咖啡饮品",
+    "description": "以冰美式为核心的现磨咖啡细分市场，覆盖便利店、连锁咖啡店和即饮产品",
+    "geo_scope": "中国大陆",
+    "time_scope_start": 2021,
+    "time_scope_end": 2026,
+    "focus_period": "近3年",
+    "research_purpose": "市场进入评估",
+    "research_depth": "standard_report",
+    "market_definition": {
+      "included_scope": ["连锁咖啡店现制冰美式", "便利店冰美式咖啡饮品", "即饮冰美式瓶装"],
+      "excluded_scope": ["热美式", "冷萃咖啡", "冰拿铁/冰澳白", "家用咖啡机自制"],
+      "upstream": ["咖啡豆种植与贸易", "咖啡烘焙加工", "咖啡设备制造"],
+      "downstream": ["连锁咖啡品牌门店", "便利店渠道", "电商平台"],
+      "substitute_solutions": ["冷萃咖啡", "冰滴咖啡", "速溶冰咖啡", "自制冰咖啡"],
+      "definition_notes": "冰美式是指以浓缩咖啡为基底、加冰和水稀释的现制咖啡饮品，属于意式咖啡分类下的经典产品线。本报告聚焦中国大陆即饮和现制渠道的冰美式产品。"
+    },
+    "market_size": {
+      "tam": { "value": 6400, "unit": "亿元人民币", "year": 2024, "calculation_method": "中国现磨咖啡市场整体规模", "confidence_level": "medium", "evidence_ids": [] },
+      "sam": { "value": 1200, "unit": "亿元人民币", "year": 2024, "calculation_method": "冰咖啡类别占比约20%", "confidence_level": "medium", "evidence_ids": [] },
+      "som": { "value": 400, "unit": "亿元人民币", "year": 2024, "calculation_method": "冰美式占冰咖啡约35%", "confidence_level": "low", "evidence_ids": [] },
+      "cagr": 0.25, "cagr_period": "2021-2026", "cagr_confidence": "medium",
+      "conflict_notes": "不同研究报告对冰咖啡占比的统计口径不同：部分含即饮品，部分仅含现制"
+    },
+    "trend_signals": [
+      { "signal_type": "消费行为", "title": "日常刚需化消费", "summary": "冰美式从季节限定品变为四季常青产品，白领日均咖啡消费量从0.8杯提升至1.5杯", "impact": "positive", "confidence_level": "high", "evidence_ids": [] },
+      { "signal_type": "投融资", "title": "价格战加剧行业洗牌", "summary": "9.9元价格带成为主流区间，对品牌利润率和可持续经营构成压力", "impact": "negative", "confidence_level": "medium", "evidence_ids": [] },
+      { "signal_type": "政策", "title": "下沉市场消费习惯培育", "summary": "三四线城市咖啡消费快速渗透，县域市场门店扩张加速", "impact": "positive", "confidence_level": "medium", "evidence_ids": [] },
+      { "signal_type": "媒体热度", "title": "健康化驱动低糖低卡偏好", "summary": "冰美式因0糖0脂属性在健身人群渗透率超70%，成为健康生活方式符号", "impact": "positive", "confidence_level": "high", "evidence_ids": [] }
+    ],
+    "target_users": [
+      { "segment_name": "都市白领", "user_profile": "一二线城市25-35岁上班族，追求效率与性价比", "core_scenarios": ["早晨通勤提神", "午后工作续力", "会议间歇"], "pain_points": ["排队等待时间长", "单杯价格偏高", "口味选择困难"], "purchase_drivers": ["价格实惠(9.9-15元)", "出餐快", "热量低"], "purchase_barriers": ["门店距离远", "口感不一致"], "willingness_to_pay": "10-15元/杯", "evidence_ids": [] },
+      { "segment_name": "健身人群", "user_profile": "20-35岁定期健身人士，注重饮食健康", "core_scenarios": ["健身前提升代谢", "健身后补充水分", "日常控卡饮品"], "pain_points": ["含糖咖啡阻碍减脂", "运动场景饮品选择少"], "purchase_drivers": ["0糖0脂", "提神不涨体重", "冰爽口感"], "purchase_barriers": ["部分门店冰块过多影响口感", "非运动场景认知不足"], "willingness_to_pay": "12-18元/杯", "evidence_ids": [] }
+    ],
+    "competitors": [
+      { "company_name": "瑞幸咖啡", "brand": "瑞幸咖啡", "product_or_service": "冰美式", "positioning": "极致性价比国民咖啡", "pricing": "9.9-15元", "channels": ["直营门店", "快取店", "小程序/APP"], "strengths": ["门店密度高", "数字化运营强", "用户粘性高"], "weaknesses": ["盈利能力受价格战影响", "品牌溢价弱"], "evidence_ids": [] },
+      { "company_name": "星巴克", "brand": "星巴克", "product_or_service": "冰美式", "positioning": "高端第三空间", "pricing": "28-33元", "channels": ["直营门店", "天猫/京东"], "strengths": ["品牌力强", "空间体验好", "全球供应链"], "weaknesses": ["价格高", "下沉市场渗透慢"], "evidence_ids": [] },
+      { "company_name": "库迪咖啡", "brand": "库迪咖啡", "product_or_service": "冰美式", "positioning": "品质平价", "pricing": "8.8-13元", "channels": ["直营+加盟门店", "外卖平台"], "strengths": ["价格极端低", "扩张速度快"], "weaknesses": ["品牌认知度低", "门店质量参差"], "evidence_ids": [] },
+      { "company_name": "Manner Coffee", "brand": "Manner", "product_or_service": "冰美式", "positioning": "精品平价", "pricing": "10-15元(自带杯-5元)", "channels": ["直营门店", "小程序"], "strengths": ["精品咖啡豆", "环保差异化", "口碑好"], "weaknesses": ["门店集中在上海", "扩张慢"], "evidence_ids": [] }
+    ],
+    "opportunity_assessment": {
+      "market_attractiveness": "high",
+      "competition_intensity": "high",
+      "entry_difficulty": "medium",
+      "data_confidence": "medium",
+      "key_opportunities": ["低价高频复购模型已跑通", "下沉市场空间大", "健康化趋势利好品类", "即饮工业化有增量"],
+      "key_risks": ["价格战持续压缩利润", "龙头品牌马太效应", "消费者忠诚度低"],
+      "recommended_actions": ["聚焦差异化定价(15-20元区间)", "强化健康功能性标签", "便利店+线上多渠道覆盖"],
+      "unknowns_to_verify": ["价格战何时触底", "下沉市场真实复购率", "即饮冰美式 vs 现制替代关系"]
+    },
+    "evidence": [
+      { "evidence_id": "E001", "claim": "现磨咖啡市场规模约6400亿元", "source_type": "研报", "source_name": "艾瑞咨询", "source_url": "", "publish_time": "2024", "retrieved_at": "", "original_excerpt": "", "confidence_level": "medium", "cross_validated": false, "conflict_notes": "" },
+      { "evidence_id": "E002", "claim": "白领日均咖啡消费1.5杯", "source_type": "媒体报道", "source_name": "36氪", "source_url": "", "publish_time": "2024", "retrieved_at": "", "original_excerpt": "", "confidence_level": "medium", "cross_validated": false, "conflict_notes": "" }
+    ],
+    "full_report": "# 冰美式咖啡市场分析报告\n\n## 市场概况\n\n冰美式咖啡市场正处于高速增长阶段…"
+  },
+  "confidence": "medium"
+}

@@ -1,0 +1,61 @@
+{
+  "profile_summary": {
+    "method": "quoted",
+    "source": "https://www.wjx.cn/m/11185365.aspx",
+    "quote": "旺仔牛奶的消费者群体大多数为6-12岁的人群，是小朋友居多的产品，但同时许多大人也会选择此款产品。"
+  },
+  "typical_user": {
+    "method": "inferred",
+    "source": "",
+    "quote": ""
+  },
+  "demographics": {
+    "age": [
+      "6-12岁",
+      "成年人（含80后、90后怀旧群体）"
+    ],
+    "gender": "男女均有，儿童群体无明显性别差异",
+    "city_tier": "全层级覆盖，侧重家庭消费场景",
+    "income": "中等收入家庭为主，价格敏感度适中"
+  },
+  "purchase_motivation": {
+    "pain_points": [
+      "部分家长认为其对儿童成长帮助有限（营养认知偏差）"
+    ],
+    "primary": "情感怀旧与童年记忆共鸣",
+    "secondary": [
+      "礼品赠送与社交分享需求",
+      "家庭聚会共享场景"
+    ],
+    "switch_reason": "包装改变可能导致老客户流失（消费者不愿更换经典包装）"
+  },
+  "product_usage": {
+    "core_scenarios": [
+      "儿童日常加餐/早餐",
+      "节日/探亲礼品赠送",
+      "家庭聚会分享",
+      "朋友间怀旧分享"
+    ],
+    "feature_preference": "大容量/整箱装适合家庭，小包装/礼袋装适合社交赠送",
+    "usage_frequency": "高频（日常饮用）至中频（节日送礼）"
+  },
+  "lifestyle": {
+    "consumption_style": "注重性价比与情感价值，偏好经典品牌，家庭型消费",
+    "interests": [
+      "童年回忆",
+      "家庭聚会",
+      "零食分享"
+    ],
+    "media_habits": "受传统广告及社交媒体怀旧话题影响较大",
+    "sport_affinity": "N/A"
+  },
+  "product_fit": {
+    "price_sensitivity": "中等，家长认为价格可接受",
+    "reason_this_product": "经典IP带来的信任感与怀旧情绪，以及作为儿童营养补充品的心理暗示",
+    "valued_features": [
+      "经典红白包装（不愿更换）",
+      "便携与分享属性",
+      "品牌知名度"
+    ]
+  }
+}

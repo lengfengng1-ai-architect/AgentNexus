@@ -5,7 +5,7 @@ import sys
 
 import httpx
 
-API_URL = "http://localhost:8001/api/v1/product-info/stream"
+API_URL = "http://localhost:8002/api/v1/product-info/stream"
 
 
 def main():

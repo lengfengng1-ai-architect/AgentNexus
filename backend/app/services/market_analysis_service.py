@@ -5,6 +5,9 @@ Corresponding in_scope ID: market-analysis
 """
 
 import asyncio
+import json
+import re
+from pathlib import Path
 from typing import AsyncGenerator
 
 from app.agents.market_analysis_agent import (
@@ -29,12 +32,46 @@ from app.schemas.market_analysis import (
     RESEARCH_NODES,
 )
 
+MOCK_DATA_DIR = Path("mock_data") / "market_analysis"
+
+
+def _sanitize(name: str) -> str:
+    safe = re.sub(r'[^\w一-鿿]+', "_", name).strip("_").lower()
+    return safe if safe else "unknown"
+
+
+def _cache_path(market_name: str) -> Path:
+    return MOCK_DATA_DIR / f"{_sanitize(market_name)}.json"
+
+
+def _load_cache(market_name: str) -> MarketResearchResponse | None:
+    path = _cache_path(market_name)
+    if path.exists():
+        data = json.loads(path.read_text(encoding="utf-8"))
+        return MarketResearchResponse.model_validate(data)
+    return None
+
+
+def _save_cache(market_name: str, result: MarketResearchResponse) -> None:
+    MOCK_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    _cache_path(market_name).write_text(
+        result.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8"
+    )
+
 
 async def analyze(market_name: str, category: str) -> MarketResearchResponse:
     """同步分析入口。USE_MOCK_DATA=true 时返回 mock 数据。"""
     if settings.use_mock_data:
         return _load_mock_response()
-    return await research_market(market_name=market_name, category=category)
+
+    # 检查缓存
+    cached = _load_cache(market_name)
+    if cached:
+        return cached
+
+    result = await research_market(market_name=market_name, category=category)
+    _save_cache(market_name, result)
+    return result
 
 
 async def analyze_stream(market_name: str, category: str) -> AsyncGenerator[str, None]:

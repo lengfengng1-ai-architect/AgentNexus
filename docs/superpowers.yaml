@@ -44,6 +44,14 @@ capabilities:
         数据引用必须来自搜索或 mock，LLM 不可编造厂商/赛事/达人名称。
         MVP 阶段支持 mock 模式（USE_MOCK_DATA=true）。
 
+    - id: "audience-insight"
+      name: "人群洞察"
+      description: "基于产品名称，搜索并提取目标人群的原始数据（人口统计/购买行为/使用场景），综合生成用户画像"
+      constraints: |
+        同一产品同一次调研结果缓存到 mock_data/audience_insight/ 和 mock_data/user_persona/。
+        每个字段标注 method（quoted/extracted/inferred）。
+        不编造用户数据，不确定的字段留空。
+
     - id: "document-export"
       name: "方案文档导出"
       description: "Markdown → PDF/Word 导出"

@@ -12,7 +12,7 @@ from collections.abc import AsyncIterator
 from pathlib import Path
 from typing import Any
 
-from app.agents.orchestrator import WorkflowState, apply_mappings, topological_sort
+from app.agents.orchestrator import WorkflowState, apply_mappings, _topological_sort_by_depends
 from app.agents.registry import get_handler
 from app.schemas.workflow import WorkflowNode
 
@@ -121,14 +121,14 @@ async def _execute_nodes(
     state: WorkflowState,
     history: list[dict[str, Any]],
 ) -> AsyncIterator[dict[str, Any]]:
-    order = topological_sort(workflow.nodes, workflow.edges)
     node_map = {node.id: node for node in workflow.nodes}
+    node_ids = set(node_map.keys())
 
-    for node_id in order:
+    # Build depends_on map
+    depends_map: dict[str, list[str]] = {n.id: n.depends_on or [] for n in workflow.nodes}
+
+    async def _exec_one(node_id: str) -> None:
         node = node_map[node_id]
-        if node_id in state.outputs:
-            continue
-
         yield await _emit(history, "node.start", run_id, node_id=node_id)
 
         # Before running the node, emit progress logs
@@ -147,9 +147,30 @@ async def _execute_nodes(
             yield await _emit(history, "node.waiting", run_id, node_id=node_id, message="等待用户决策")
             yield await _emit(history, "workflow.failed", run_id, message=f"节点 {node_id} 执行失败")
             return
-
         state.outputs[node_id] = output
         yield await _emit(history, "node.complete", run_id, node_id=node_id, data=output)
+
+    # Parallel execution: run ready nodes concurrently
+    completed: set[str] = set()
+    pending: set[str] = node_ids - completed
+
+    while pending:
+        # Find nodes whose dependencies are all met
+        ready = {
+            nid for nid in pending
+            if all(dep in completed for dep in depends_map[nid])
+        }
+        if not ready:
+            # Cycle or unreachable nodes
+            raise ValueError(f"Workflow deadlocked: pending={pending}, completed={completed}")
+
+        # Run all ready nodes concurrently
+        for nid in ready:
+            async for event in _exec_one(nid):
+                yield event
+
+        completed |= ready
+        pending -= ready
 
     state.status = "completed"
     yield await _emit(history, "workflow.complete", run_id, data={"outputs": state.outputs})
