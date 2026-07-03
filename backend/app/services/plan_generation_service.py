@@ -271,7 +271,7 @@ def _translate_event(
 
     if ev_type == "on_custom_event" and name == "chapter":
         chunk = data.get("chunk", {})
-        if chunk:
+        if chunk and chunk.get("event"):
             _counter[0] += 1
             return _sse_frame(
                 event_id=_counter[0],
