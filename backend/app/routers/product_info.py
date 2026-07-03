@@ -1,6 +1,6 @@
 from collections.abc import AsyncGenerator
 
-from fastapi import APIRouter, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, status
 from sse_starlette.sse import EventSourceResponse
 
 from app.schemas.common import APIError
@@ -18,7 +18,7 @@ async def product_info_endpoint(request: ProductInfoRequest):
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=APIError(detail=str(exc), code="llm_error").model_dump(),
+            detail=APIError(detail=str(exc), code="llm_error", errors=None).model_dump(),
         )
 
 

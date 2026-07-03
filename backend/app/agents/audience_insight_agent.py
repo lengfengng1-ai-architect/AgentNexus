@@ -61,12 +61,10 @@ class State(BaseModel):
 # ── 辅助 ──
 
 
+
 def _load_template(name: str, **kwargs) -> str:
     env = Environment(loader=FileSystemLoader("app/prompt_templates"))
     return env.get_template(name).render(**kwargs)
-
-
-from app.utils import extract_text_from_html as _extract_text_from_html
 
 
 # ── 节点 ──
@@ -107,7 +105,7 @@ async def fetch_node(state: State) -> dict:
                 resp.raise_for_status()
                 if "text/html" not in resp.headers.get("content-type", ""):
                     return FetchedPage(url=url, title=None, content="", fetched=False)
-                text = _extract_text_from_html(resp.text)
+                text = extract_text_from_html(resp.text)
                 if len(text) > MAX_PAGE_CHARS:
                     text = text[:MAX_PAGE_CHARS] + "\n...[截断]"
                 soup = BeautifulSoup(resp.text, "lxml")

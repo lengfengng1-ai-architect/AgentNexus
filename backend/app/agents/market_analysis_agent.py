@@ -13,10 +13,8 @@ from typing_extensions import TypedDict
 
 from app.agents.llm_utils import build_chat_model
 from app.agents.registry import register
-from app.config.settings import settings
 from app.schemas.market_analysis import (
     CompetitorItem,
-    EvidenceItem,
     MarketDefinition,
     MarketResearchResponse,
     MarketResearchResult,

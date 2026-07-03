@@ -24,7 +24,7 @@ async def audience_insight_endpoint(request: AudienceInsightRequest):
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=APIError(detail=str(exc), code="llm_error").model_dump(),
+            detail=APIError(detail=str(exc), code="llm_error", errors=None).model_dump(),
         )
 
 

@@ -4,7 +4,6 @@ Corresponding OpenSpec: openspec/changes/add-plan-generation-workbench/specs/pla
 Corresponding in_scope ID: plan-generation
 """
 
-import json
 from pathlib import Path
 from typing import Any
 

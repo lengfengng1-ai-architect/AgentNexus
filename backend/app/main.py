@@ -44,7 +44,7 @@ def create_app() -> FastAPI:
             status_code=500,
             content=APIResponse(
                 success=False,
-                error=APIError(detail=str(exc), code=ErrorCode.INTERNAL_ERROR),
+                error=APIError(detail=str(exc), code=ErrorCode.INTERNAL_ERROR, errors=None),
             ).model_dump(),
         )
 

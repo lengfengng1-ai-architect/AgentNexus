@@ -40,7 +40,7 @@ def _sse_headers(run_id: str | None = None) -> dict[str, str]:
 def _error_response(status_code: int, detail: str, code: str) -> JSONResponse:
     return JSONResponse(
         status_code=status_code,
-        content=APIError(detail=detail, code=code).model_dump(),
+        content=APIError(detail=detail, code=code, errors=None).model_dump(),
     )
 
 

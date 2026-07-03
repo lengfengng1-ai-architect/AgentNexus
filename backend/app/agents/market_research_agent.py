@@ -16,7 +16,6 @@ from app.agents.market_analysis_agent import (
     call_node_users,
 )
 from app.agents.registry import register
-from app.config.settings import settings
 from app.schemas.plan_generation import MarketResearchOutput, MarketTrend
 
 

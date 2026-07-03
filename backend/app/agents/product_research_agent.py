@@ -22,12 +22,8 @@ from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model
 from app.agents.registry import register
-from app.config.settings import settings
 from app.schemas.product_info import (
     ProductResearchResult,
-    SourcedStr,
-    SourcedDict,
-    SourcedStrList,
 )
 from app.utils import sanitize, extract_text_from_html
 from urllib.parse import urlparse

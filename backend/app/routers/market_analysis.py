@@ -25,7 +25,7 @@ async def market_analysis_create(request: MarketAnalysisRequest):
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=APIError(detail=str(exc), code="analysis_error").model_dump(),
+            detail=APIError(detail=str(exc), code="analysis_error", errors=None).model_dump(),
         )
 
 
@@ -48,5 +48,5 @@ async def market_analysis_stream(request: MarketAnalysisRequest):
     except Exception as exc:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=APIError(detail=str(exc), code="analysis_stream_error").model_dump(),
+            detail=APIError(detail=str(exc), code="analysis_stream_error", errors=None).model_dump(),
         )
