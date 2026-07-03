@@ -12,16 +12,16 @@
 - 在 `backend/app/agents/` 下新增一个 Agent 文件
 - 设计该 Agent 的输入/输出 Pydantic schema
 - 编写 Jinja2 prompt 模板
-- 实现 LangGraph 图（StateGraph + 节点）
-- 暴露一个统一的入口函数供 service/主流程调用
+- 使用 `build_chat_model()` 调用 LLM
+- 通过 `registry.register()` 注册入口函数
+- （可选）注册 mock handler 供 `use_mock_data` 模式使用
 - 编写对应的单元测试
 
 ### 你不负责
 
 - FastAPI 路由（`routers/`）
-- 业务编排 service（`services/` 主流程文件）
-- 前端代码
-- 主流程 LangGraph 编排（由主流程负责人维护）
+- 调用 `_build_model()` —— 统一用 `from app.agents.llm_utils import build_chat_model`
+- 主流程 LangGraph 编排（由 `orchestrator.py` 通过 YAML 配置）
 - 架构决策、技术选型、新增依赖审批
 
 ---
@@ -51,7 +51,7 @@ codegraph explore "<你的agent名>"
 
 ## 3. 一个 Agent 文件的标准结构
 
-参考 `backend/app/agents/chat_extraction_agent.py`，所有新 Agent 必须遵循此模板。
+参考 `backend/app/agents/*_agent.py`，所有新 Agent 必须遵循此模板。
 
 ```python
 """Agent: <能力名称>。
@@ -60,78 +60,35 @@ codegraph explore "<你的agent名>"
 对应 in_scope ID: <从 superpowers.yaml 填写>
 """
 
-from jinja2 import Environment, FileSystemLoader
-from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import END, StateGraph
-from pydantic import BaseModel, Field
-
+from app.agents.registry import register
+from app.agents.llm_utils import build_chat_model
 from app.config.settings import settings
+from app.schemas.<domain> import <AgentOutput>
 
 
-class <Agent>Output(BaseModel):
-    """Agent 结构化输出 schema。"""
+async def run_<agent>(state: dict) -> dict:
+    """Agent 入口函数。"""
+    input_val = state.get("input_field")
+    if not input_val:
+        raise ValueError("Missing required input: input_field")
 
-    reply: str = Field(..., description="给用户的回复文本")
-    # 其他字段...
+    if settings.use_mock_data:
+        return <AgentOutput>(...).model_dump()
 
-
-class _State(BaseModel):
-    input_text: str
-    output: <Agent>Output | None = None
-
-
-def _load_system_prompt() -> str:
-    env = Environment(loader=FileSystemLoader("app/prompt_templates"))
-    template = env.get_template("<agent_name>.md.j2")
-    return template.render()
+    llm = build_chat_model().with_structured_output(<AgentOutput>)
+    result = await llm.ainvoke([...])
+    return result.model_dump()
 
 
-def _build_model():
-    """统一模型入口，禁止自己读 .env。"""
-    if settings.llm_provider == "agnes":
-        return init_chat_model(
-            model=settings.agnes_model,
-            model_provider="openai",
-            api_key=settings.agnes_api_key,
-            base_url=settings.agnes_base_url,
-        )
-    return init_chat_model(
-        model=settings.dashscope_model,
-        model_provider="openai",
-        api_key=settings.dashscope_api_key,
-        base_url=settings.dashscope_base_url,
-    )
+register("<agent>", run_<agent>)
 
 
-def _<agent>_node(state: _State) -> dict:
-    """LangGraph 节点：只做输入→LLM→结构化输出。"""
-    llm = _build_model().with_structured_output(<Agent>Output)
-    result = llm.invoke([
-        SystemMessage(content=_load_system_prompt()),
-        HumanMessage(content=state.input_text),
-    ])
-    return {"output": result}
+# (可选) Mock handler
+async def mock_run_<agent>(state: dict) -> dict:
+    return <AgentOutput>(...).model_dump()
 
-
-def _build_graph():
-    graph = StateGraph(_State)
-    graph.add_node("run", _<agent>_node)
-    graph.set_entry_point("run")
-    graph.add_edge("run", END)
-    return graph.compile()
-
-
-_graph = _build_graph()
-
-
-async def run_<agent>(input_text: str) -> <Agent>Output:
-    """对外入口函数，service/主流程只调这个函数。"""
-    result = await _graph.ainvoke({"input_text": input_text})
-    output = result.get("output")
-    if output is None:
-        raise ValueError("Agent did not return output")
-    return output
+# 在 __init__.py 中：
+# register_mock("<agent>", mock_run_<agent>)
 ```
 
 ### 关键约定
@@ -141,10 +98,9 @@ async def run_<agent>(input_text: str) -> <Agent>Output:
 | 文件命名 | `backend/app/agents/<agent_name>_agent.py`，`agent_name` 用 snake_case |
 | schema 文件 | `backend/app/schemas/<domain>.py`，Pydantic model 用 PascalCase |
 | prompt 文件 | `backend/app/prompt_templates/<agent_name>.md.j2` |
-| 入口函数 | `async def run_<agent_name>(...) -> OutputSchema` |
-| 状态定义 | 优先用 Pydantic `BaseModel`，不用 `TypedDict(total=False)` |
-| 节点返回值 | 必须返回状态更新 dict，禁止直接修改输入 state |
-| 模型构建 | 必须用 `_build_model()`，禁止自己读环境变量或引入新的 model client |
+| 入口函数 | `async def run_<agent_name>(state: dict) -> dict` |
+| 模型构建 | **必须用 `build_chat_model()`**，禁止自己写 `_build_model()` |
+| Mock 注册 | 通过 `register_mock()` 注册，在 `__init__.py` 中 import |
 
 ---
 
