@@ -1,0 +1,82 @@
+{
+  "data": [
+    {
+      "brand_name": "Nike",
+      "category": "跑鞋",
+      "dimension_focus": {
+        "盟域": {"priority": "high", "match_tags": ["跑步", "健身"]},
+        "赛事": {"priority": "high", "match_tags": ["城市马拉松", "趣味跑"]},
+        "达人": {"priority": "high", "tier_filter": ["至尊/大师", "明星/精英"]},
+        "经营社": {"priority": "medium"},
+        "场馆": {"priority": "medium", "match_tags": ["跑步公园"]}
+      },
+      "target_audience": {"age_range": "18-40岁", "traits": ["注重健康", "品质消费"]}
+    },
+    {
+      "brand_name": "李宁",
+      "category": "跑鞋",
+      "dimension_focus": {
+        "盟域": {"priority": "high", "match_tags": ["跑步", "篮球"]},
+        "赛事": {"priority": "high", "match_tags": ["城市马拉松", "社区篮球赛"]},
+        "达人": {"priority": "high", "tier_filter": ["明星/精英", "健将"]},
+        "经营社": {"priority": "high"},
+        "场馆": {"priority": "low"}
+      },
+      "target_audience": {"age_range": "18-35岁", "traits": ["性价比敏感", "国潮偏好"]}
+    },
+    {
+      "brand_name": "宝矿力",
+      "category": "运动饮料",
+      "dimension_focus": {
+        "盟域": {"priority": "medium"},
+        "赛事": {"priority": "high", "match_tags": ["城市马拉松", "篮球赛"]},
+        "达人": {"priority": "high", "tier_filter": ["明星/精英", "健将"]},
+        "经营社": {"priority": "high", "match_tags": ["健康食品"]},
+        "场馆": {"priority": "low"}
+      },
+      "target_audience": {"age_range": "20-45岁", "traits": ["注重健康", "运动习惯"]}
+    },
+    {
+      "brand_name": "佳得乐",
+      "category": "运动饮料",
+      "dimension_focus": {
+        "盟域": {"priority": "medium", "match_tags": ["篮球", "跑步"]},
+        "赛事": {"priority": "high", "match_tags": ["篮球赛", "城市马拉松"]},
+        "达人": {"priority": "high", "tier_filter": ["至尊/大师", "明星/精英"]},
+        "经营社": {"priority": "medium"},
+        "场馆": {"priority": "low"}
+      },
+      "target_audience": {"age_range": "18-35岁", "traits": ["竞技偏好", "运动社交"]}
+    },
+    {
+      "brand_name": "Under Armour",
+      "category": "运动服装",
+      "dimension_focus": {
+        "盟域": {"priority": "high", "match_tags": ["健身", "跑步"]},
+        "赛事": {"priority": "medium"},
+        "达人": {"priority": "high", "tier_filter": ["至尊/大师", "明星/精英"]},
+        "经营社": {"priority": "medium", "match_tags": ["运动装备"]},
+        "场馆": {"priority": "low"}
+      },
+      "target_audience": {"age_range": "22-40岁", "traits": ["专业运动", "品质消费"]}
+    },
+    {
+      "brand_name": "Lululemon",
+      "category": "运动服装",
+      "dimension_focus": {
+        "盟域": {"priority": "high", "match_tags": ["瑜伽", "跑步", "健身"]},
+        "赛事": {"priority": "low"},
+        "达人": {"priority": "high", "tier_filter": ["明星/精英", "健将"]},
+        "经营社": {"priority": "high", "match_tags": ["运动装备", "潮流服饰"]},
+        "场馆": {"priority": "medium", "match_tags": ["瑜伽馆"]}
+      },
+      "target_audience": {"age_range": "20-38岁", "traits": ["精致生活", "健康管理", "品牌意识"]}
+    }
+  ],
+  "meta": {
+    "total": 6,
+    "last_updated": "2026-07-02",
+    "source": "manual",
+    "version": "v0.1"
+  }
+}

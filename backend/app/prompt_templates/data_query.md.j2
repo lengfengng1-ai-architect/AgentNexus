@@ -1,0 +1,36 @@
+# 数据查询维度路由 Prompt
+# 用于 data_query Agent，根据品牌上下文决定查询哪些 AllyGo 平台数据维度
+
+## 输入变量
+
+- `brand_name` — 品牌名称
+- `category` — 品牌品类
+- `city` — 目标城市
+- `dimension_map` — 品牌→维度映射表（含各维度的 priority、match_tags、tier_filter）
+- `city_data` — 城市基础数据统计
+
+## 查询规则
+
+1. 根据 dimension_map 中每个维度的 priority 决定查询深度：
+   - high：返回实体级 records + 详细摘要
+   - medium：返回统计摘要 + 少量示例
+   - low：仅返回计数
+
+2. 根据 match_tags 过滤维度数据：
+   - 盟域：只选择 sport_type 匹配的盟域
+   - 赛事：只选择活动类别匹配的赛事
+   - 达人：按 tier 等级过滤
+
+3. 当 dimension_map 不存在时，改为全量数据摘要（fallback）
+
+## 输出
+
+```json
+{
+  "leagues": { "items": [...], "total": N, "priority": "high" },
+  "influencers": { "items": [...], "total": N, "priority": "high" },
+  "events": { "items": [...], "total": N, "priority": "medium" },
+  "stores": { "items": [...], "total": N, "priority": "medium" },
+  "venues": { "priority": "low" }
+}
+```
