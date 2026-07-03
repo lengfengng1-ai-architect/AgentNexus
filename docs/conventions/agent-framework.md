@@ -26,7 +26,11 @@
 │  Agent 节点层                           │  ← agents/*_agent.py
 │  - async def run_xxx(state: dict)->dict │    统一入口，注册到 registry
 │  - 内部使用 build_chat_model()          │
-│  - use_mock_data gate（可选）            │
+│  - 不含 mock 代码                       │
+├─────────────────────────────────────────┤
+│  Mock Agent 层                          │  ← agents/mock_*.py
+│  - 独立文件，以 mock_ 开头               │
+│  - register_mock() 注册                 │
 ├─────────────────────────────────────────┤
 │  LangChain 模型层                       │  ← llm_utils.py
 │  - build_chat_model()                   │    统一 provider 适配
@@ -36,7 +40,8 @@
 
 **核心原则：**
 - Agent 通过 `registry.register()` 注册到系统，不依赖硬编码的路由。
-- Mock 通过 `registry.register_mock()` 注册，`get_handler()` 根据 `settings.use_mock_data` 自动路由。
+- Mock Agent 通过 `registry.register_mock()` 注册为独立文件（`mock_` 开头）。
+- 真实 Agent 文件**禁止包含任何 mock 代码**（`use_mock_data`、`_MOCK_PATH`、`_load_mock`）。
 - `llm_utils.build_chat_model()` 是唯一的模型构建入口，所有 agent 禁止自己写 `_build_model()`。
 
 ## 模型配置

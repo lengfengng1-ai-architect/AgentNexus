@@ -9,11 +9,9 @@ from pathlib import Path
 from typing import Any
 
 from app.agents.registry import register
-from app.config.settings import settings
 from app.schemas.plan_generation import FitnessAnalysisOutput, SportFitnessScore
 from app.services.data_provider import get_data_provider
 
-_MOCK_PATH = Path(__file__).parent.parent.parent / "mock_data" / "plan_fitness_analysis.json"
 _FITNESS_MAP_PATH = Path(__file__).parent.parent.parent / "mock_data" / "category_fitness.json"
 
 
@@ -29,11 +27,6 @@ def _load_fitness_map() -> dict[str, dict[str, Any]]:
 # ponytail: loaded once at module level; if the JSON is missing, falls back to empty map.
 # Upgrade path: load lazily on first call to avoid stale cache during hot reload.
 _CATEGORY_FITNESS_MAP: dict[str, dict[str, Any]] = _load_fitness_map()
-
-
-def _load_mock() -> FitnessAnalysisOutput:
-    with _MOCK_PATH.open("r", encoding="utf-8") as f:
-        return FitnessAnalysisOutput.model_validate(json.load(f))
 
 
 def _find_category_key(category: str) -> str | None:
@@ -71,9 +64,6 @@ async def run_fitness_analysis(state: dict[str, Any]) -> dict[str, Any]:
     city = state.get("city") or state.get("brand_input", {}).get("city")
     if not category or not city:
         raise ValueError("Missing required inputs: category and city")
-
-    if settings.use_mock_data:
-        return _load_mock().model_dump()
 
     city_data = get_data_provider().get_city_data(city)
     top_sports = city_data.get("top_sports", []) if city_data else []

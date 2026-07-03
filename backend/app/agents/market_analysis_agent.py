@@ -26,8 +26,6 @@ from app.schemas.market_analysis import (
     TrendSignalItem,
 )
 
-_MARKET_MOCK_PATH = Path(__file__).parent.parent.parent / "mock_data" / "market.json"
-
 NODE_LABELS = {
     "define": "市场边界定义",
     "size": "市场规模估算",
@@ -39,10 +37,6 @@ NODE_LABELS = {
 }
 
 # ── Helpers ──
-
-def _load_mock_response() -> MarketResearchResponse:
-    with _MARKET_MOCK_PATH.open("r", encoding="utf-8") as f:
-        return MarketResearchResponse.model_validate(json.load(f))
 
 
 def _build_model():
@@ -208,8 +202,6 @@ async def run_market_analysis(state: dict[str, Any]) -> dict[str, Any]:
     cat = state.get("category")
     if not mn or not cat:
         raise ValueError("Missing required inputs")
-    if settings.use_mock_data:
-        return _load_mock_response().model_dump()
     resp = await research_market(market_name=mn, category=cat)
     return resp.model_dump()
 

@@ -11,7 +11,6 @@ from pathlib import Path
 from typing import AsyncGenerator
 
 from app.agents.market_analysis_agent import (
-    _load_mock_response,
     call_node_define,
     call_node_size,
     call_node_trends,
@@ -60,10 +59,7 @@ def _save_cache(market_name: str, result: MarketResearchResponse) -> None:
 
 
 async def analyze(market_name: str, category: str) -> MarketResearchResponse:
-    """同步分析入口。USE_MOCK_DATA=true 时返回 mock 数据。"""
-    if settings.use_mock_data:
-        return _load_mock_response()
-
+    """同步分析入口。"""
     # 检查缓存
     cached = _load_cache(market_name)
     if cached:
@@ -80,11 +76,6 @@ async def analyze_stream(market_name: str, category: str) -> AsyncGenerator[str,
     每个节点：progress → data → node_end
     全部完成：result 全量
     """
-    if settings.use_mock_data:
-        async for event in _mock_stream():
-            yield event
-        return
-
     # Storage for partial results
     d1 = d2 = d3 = d4 = d5 = d6 = {}
     report = ""
@@ -170,15 +161,6 @@ async def analyze_stream(market_name: str, category: str) -> AsyncGenerator[str,
 
     # ── Assemble & emit final result ──
     result = assemble_result(market_name, category, d1, d2, d3, d4, d5, d6, report)
-    yield f"event: result\ndata: {result.model_dump_json()}\n\n"
-
-
-async def _mock_stream() -> AsyncGenerator[str, None]:
-    result = _load_mock_response()
-    for node_key, progress in RESEARCH_NODES:
-        label = NODE_LABELS.get(node_key, node_key)
-        yield f"event: progress\ndata: {MarketAnalysisProgressEvent(node=node_key, progress=progress, stage=label).model_dump_json()}\n\n"
-        await asyncio.sleep(0.3)
     yield f"event: result\ndata: {result.model_dump_json()}\n\n"
 
 

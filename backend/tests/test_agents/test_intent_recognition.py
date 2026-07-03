@@ -6,6 +6,7 @@ Corresponding OpenSpec: openspec/changes/add-intent-recognition-agent/specs/inte
 import pytest
 
 from app.agents import intent_recognition_agent
+from app.agents.mock_intent_recognition_agent import mock_run_intent_recognition
 from app.schemas.intent import IntentRecognitionOutput
 
 
@@ -15,7 +16,7 @@ def patch_intent_agent(monkeypatch):
     monkeypatch.setattr(
         intent_recognition_agent,
         "run_intent_recognition",
-        intent_recognition_agent.mock_run_intent_recognition,
+        mock_run_intent_recognition,
     )
 
 

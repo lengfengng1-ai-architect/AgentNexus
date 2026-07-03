@@ -4,12 +4,10 @@ Corresponding OpenSpec: openspec/changes/add-plan-generation-workbench/specs/pla
 Corresponding in_scope ID: plan-generation
 """
 
-import json
 from pathlib import Path
 from typing import Any
 
 from app.agents.registry import register
-from app.config.settings import settings
 from app.schemas.plan_generation import (
     CityDataOutput,
     EventData,
@@ -20,13 +18,6 @@ from app.schemas.plan_generation import (
     VenueData,
 )
 from app.services.data_provider import get_data_provider
-
-_MOCK_PATH = Path(__file__).parent.parent.parent / "mock_data" / "plan_city_data.json"
-
-
-def _load_mock() -> CityDataOutput:
-    with _MOCK_PATH.open("r", encoding="utf-8") as f:
-        return CityDataOutput.model_validate(json.load(f))
 
 
 def _build_output(city: str, data: dict[str, Any]) -> CityDataOutput:
@@ -80,9 +71,6 @@ async def run_plan_data_query(state: dict[str, Any]) -> dict[str, Any]:
     city = state.get("city") or state.get("brand_input", {}).get("city")
     if not city:
         raise ValueError("Missing required input: city")
-
-    if settings.use_mock_data:
-        return _load_mock().model_dump()
 
     city_data = get_data_provider().get_city_data(city)
     if city_data is None:

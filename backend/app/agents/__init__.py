@@ -18,6 +18,7 @@ from app.agents import plan_data_query_agent  # noqa: F401
 from app.agents import plan_generator_agent  # noqa: F401
 from app.agents import product_research_agent  # noqa: F401
 from app.agents import strategy_generation_agent  # noqa: F401
+from app.agents import mock_intent_recognition_agent  # noqa: F401
 from app.agents.registry import list_agents
 
 __all__ = ["list_agents"]
