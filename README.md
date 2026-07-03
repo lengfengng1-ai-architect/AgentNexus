@@ -4,7 +4,18 @@
 
 **开发模式**：人写 Spec → AI 填充实现 → 人 Review。
 
-## 技术栈
+## 开发工作流
+
+本项目使用 OpenSpec 规范驱动开发。
+
+```
+/opsx:explore  <想法>     → 探索方案（只思考，不写代码）
+/opsx:propose  <name>     → 生成 proposal/design/spec/tasks
+/opsx:apply    <name>     → 按 tasks 写代码
+/opsx:archive  <name>     → 归档 change（sync delta spec）
+```
+
+详细规则见 `.claude/CLAUDE.md` 和 `docs/conventions/`。
 
 FastAPI + LangGraph + React 18 + Vite + uv
 
