@@ -7,7 +7,7 @@ Corresponding in_scope ID: workflow-orchestration
 import re
 from typing import Any
 
-from app.agents.registry import register_mock
+from app.agents.registry import register
 from app.schemas.chat import BrandInput
 from app.schemas.intent import IntentRecognitionOutput
 
@@ -142,4 +142,4 @@ async def mock_run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
     ).model_dump()
 
 
-register_mock("intent_recognition", mock_run_intent_recognition)
+register("mock_intent_recognition", mock_run_intent_recognition)
