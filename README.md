@@ -71,6 +71,45 @@ AI 会把 delta spec sync 到 `openspec/specs/brand-input/spec.md`，然后把 c
 
 ---
 
+## 文档索引
+
+### 开发规范（`docs/conventions/`）
+
+| 文件 | 内容 |
+|------|------|
+| `directory-structure.md` | 目录结构定义，新代码必须放入约定位置 |
+| `testing.md` | 测试框架、Mock 策略、覆盖率要求、智能测试选择 |
+| `mock-data.md` | MVP 阶段 mock JSON 数据规范 |
+| `git-workflow.md` | 分支策略、commit 格式、PR 流程 |
+| `prompt-templates.md` | Jinja2 prompt 模板规范 |
+| `agent-framework.md` | LangGraph + DeepAgents 技术约束 |
+| `agent-registry.md` | Agent 注册表机制 |
+| `agent-node-dev-guide.md` | Agent 节点开发手册 |
+
+### AI 开发约束
+
+| 文件 | 内容 |
+|------|------|
+| `.claude/CLAUDE.md` | AI 必须遵守的 9 步入口流程、代码规范、违规后果 |
+| `docs/superpowers.yaml` | 能力边界（in_scope / out_scope） |
+
+### OpenSpec
+
+| 路径 | 内容 |
+|------|------|
+| `docs/api/paths/*.yaml` | OpenAPI 端点契约 |
+| `openspec/specs/<capability>/spec.md` | 能力主 spec |
+| `openspec/changes/archive/` | 已归档变更 |
+
+### 方案生成
+
+| 文件 | 内容 |
+|------|------|
+| `backend/app/services/plan_generation_service.py` | 方案流水线（StateGraph + checkpoint + interrupt） |
+| `frontend/src/hooks/usePlanRun.ts` | 前端流水线状态管理 |
+
+---
+
 ## 技术栈
 
 FastAPI + LangGraph + React 18 + Vite + uv
