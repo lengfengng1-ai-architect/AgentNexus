@@ -9,7 +9,7 @@ export interface PlanRunStartResult {
 
 export async function startPlanRun(brandInput: Record<string, unknown>): Promise<PlanRunStartResult> {
   const response = await fetch(
-    `${API_BASE_URL}/workflows/plan_generation_pipeline/run?stream=true`,
+    `${API_BASE_URL}/plan/run`,
     {
       method: 'POST',
       headers: {

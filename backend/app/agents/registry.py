@@ -1,6 +1,5 @@
-"""Agent registry for LangGraph orchestration.
+"""Agent registry.
 
-Corresponding OpenSpec: docs/api/workflows.yaml
 Corresponding in_scope ID: workflow-orchestration
 """
 
