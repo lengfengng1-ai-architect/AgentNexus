@@ -6,6 +6,18 @@
         "command": "/bin/bash /Users/hxq/Desktop/AgentNexus/.claude/hooks/check-opsx-change.sh \"$FILE_PATH\"",
         "description": "Block code edits without active opsx change"
       }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "cd /Users/hxq/Desktop/AgentNexus/backend && uv run mypy app/ --no-error-summary --ignore-missing-imports 2>&1 | head -5",
+        "description": "Type-check modified code with mypy"
+      },
+      {
+        "matcher": "Write|Edit",
+        "command": "cd /Users/hxq/Desktop/AgentNexus/backend && uv run pylint app/ --score=n 2>&1 | grep -E 'E[0-9]|W[0-9]' | head -10",
+        "description": "Lint modified code with pylint"
+      }
     ]
   }
 }
