@@ -8,6 +8,7 @@ superpowers in_scope ID: product-research
 """
 
 import asyncio
+from pathlib import Path
 
 from bs4 import BeautifulSoup
 from ddgs import DDGS
@@ -27,6 +28,23 @@ from app.schemas.product_info import (
     SourcedDict,
     SourcedStrList,
 )
+from app.agents.registry import register
+
+# ── mock_data 持久化 ──
+
+MOCK_DATA_DIR = Path("mock_data") / "product_info"
+
+
+def _sanitize(name: str) -> str:
+    import re
+    safe = re.sub(r'[^\w一-鿿]+', "_", name).strip("_").lower()
+    return safe if safe else "unknown"
+
+
+def _save_to_cache(product_name: str, info: ProductResearchResult) -> None:
+    MOCK_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    path = MOCK_DATA_DIR / f"{_sanitize(product_name)}.json"
+    path.write_text(info.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
 
 # ── 搜索和抓取常量 ──────────────────────────────────────────
 SEARCH_MAX_RESULTS = 10
@@ -222,7 +240,7 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
     product = state.product_name
     # 如果已有官网值且看起来不像通用首页，跳过
     existing = output.identity.product_name.value
-    if existing and "product" in existing.lower() or "shop" in existing.lower():
+    if existing and ("product" in existing.lower() or "shop" in existing.lower()):
         return {}
 
     try:
@@ -242,7 +260,7 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
                 resp.raise_for_status()
                 text = _extract_text_from_html(resp.text)
-                if product.lower() in text.lower()[:800]:
+                if product.lower() in (text or "").lower()[:800]:
                     # 将官网 URL 存到 identity.product_name 的 sources
                     if url not in output.identity.product_name.sources:
                         output.identity.product_name.sources.append(url)
@@ -286,17 +304,18 @@ async def research_product(product_name: str) -> ProductResearchResult:
 
 
 async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
-    """Product research adapter for the workflow orchestrator.
+    """Workflow-compatible handler: input dict → output dict.
 
-    Expects state keys: brand_name, category.
+    Expects state keys: product_name or brand_name.
     Uses brand_name as the product to research.
     """
-    brand_name = state.get("brand_name", "")
+    brand_name = state.get("brand_name") or state.get("product_name")
     if not brand_name:
-        raise ValueError("Missing required input: brand_name")
+        raise ValueError("Missing required input: brand_name or product_name")
     if settings.use_mock_data:
         return {"product_name": brand_name, "summary": f"Mock research for {brand_name}"}
     result = await research_product(brand_name)
+    _save_to_cache(brand_name, result)
     return result.model_dump()
 
 

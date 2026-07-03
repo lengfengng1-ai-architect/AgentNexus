@@ -1,0 +1,121 @@
+{
+  "identity": {
+    "product_name": {
+      "value": "iPhone 16",
+      "sources": [
+        "https://apple.com"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "brand": {
+      "value": "Apple",
+      "sources": [
+        "https://apple.com"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "manufacturer": {
+      "value": "Apple Inc.",
+      "sources": [
+        "https://apple.com"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "industry": {
+      "value": "消费电子",
+      "sources": [
+        "https://zol.com.cn"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "category": {
+      "value": "手机",
+      "sources": [
+        "https://zol.com.cn"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "official_description": {
+    "description": {
+      "value": "iPhone 16 是 Apple 新一代智能手机",
+      "sources": [
+        "https://apple.com"
+      ],
+      "method": "quoted",
+      "quote": "iPhone 16 是 Apple 新一代智能手机"
+    },
+    "tagline": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    },
+    "statement": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "features": [
+    {
+      "name": "Camera Control",
+      "category": "影像",
+      "description": "相机控制按键",
+      "evidence": [
+        "https://apple.com"
+      ]
+    }
+  ],
+  "specifications": {
+    "value": {
+      "芯片": "A18",
+      "屏幕": "6.1英寸"
+    },
+    "sources": [
+      "https://apple.com"
+    ],
+    "method": "extracted"
+  },
+  "availability": {
+    "status": {
+      "value": "在售",
+      "sources": [
+        "https://apple.com"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "pricing": [
+      {
+        "label": "128GB",
+        "price": "5999",
+        "currency": "CNY",
+        "source": "https://apple.com"
+      }
+    ],
+    "available_regions": {
+      "value": [
+        "中国大陆"
+      ],
+      "sources": [
+        "https://apple.com"
+      ],
+      "method": "extracted"
+    },
+    "access_model": {
+      "value": "线上直销",
+      "sources": [
+        "https://apple.com"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  }
+}

@@ -1,0 +1,35 @@
+id: audience_insight_pipeline
+name: 人群洞察并行工作流
+version: "0.1"
+
+# 三步并行调研 → 汇总生成用户画像
+nodes:
+  - id: product_research
+    agent: product_research
+    input_mapping:
+      product_name: "$.input.product_name"
+
+  - id: market_analysis
+    agent: market_analysis
+    input_mapping:
+      market_name: "$.input.product_name"
+      category: "$.input.category"
+
+  - id: audience_search
+    agent: audience_search
+    input_mapping:
+      product_name: "$.input.product_name"
+
+  - id: generate_persona
+    agent: generate_persona
+    depends_on:
+      - product_research
+      - market_analysis
+      - audience_search
+    input_mapping:
+      product_name: "$.input.product_name"
+      product_info: "$.outputs.product_research"
+      market_info: "$.outputs.market_analysis"
+      audience_data: "$.outputs.audience_search"
+
+edges: []
