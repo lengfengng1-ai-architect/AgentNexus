@@ -16,6 +16,7 @@ from app.services.plan_generation_service import (
     approve_run,
     delete_run,
     get_status,
+    list_runs,
     reject_run,
     run_exists,
     start_run,
@@ -135,3 +136,18 @@ async def plan_run_status(run_id: str = Path(..., description="运行实例 ID")
             ErrorCode.INTERNAL_ERROR,
         )
     return APIResponse(success=True, data=status)
+
+
+@router.get("/plan/runs")
+async def plan_list_runs(limit: int = 20):
+    """列出最近方案生成批次记录，含创建时间和状态。"""
+    try:
+        records = await list_runs(limit=limit)
+        return APIResponse(success=True, data=records)
+    except Exception as exc:
+        logger.exception("failed to list plan runs")
+        return _error_response(
+            500,
+            f"Failed to list runs: {exc}",
+            ErrorCode.WORKFLOW_LIST_ERROR,
+        )

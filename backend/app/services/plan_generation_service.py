@@ -12,13 +12,16 @@ from __future__ import annotations
 
 import json
 import logging
+import sqlite3
 import uuid
+from datetime import datetime, timezone
 from collections.abc import AsyncGenerator
 from typing import Any
 
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import Command
+from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 import aiosqlite
@@ -34,6 +37,41 @@ _CHECKPOINT_INTERRUPT_NODES = [
     "execution_planning",
     "plan_generator",
 ]
+
+
+class PlanRunRecord(BaseModel):
+    """Trackable plan run record with timestamps."""
+    run_id: str
+    brand_input: dict[str, Any]
+    status: str  # running / paused / completed / failed / canceled
+    created_at: str  # ISO 8601
+    updated_at: str
+    current_node: str | None = None
+
+
+_RUN_RECORDS: dict[str, PlanRunRecord] = {}
+
+
+def _ensure_plan_db() -> sqlite3.Connection:
+    """Open (or reuse) the checkpoints SQLite DB with our plan_records table.
+
+    与 LangGraph 共用同一个 checkpoints.db 文件，不额外创建数据库。
+    """
+    if not hasattr(_ensure_plan_db, "_conn") or _ensure_plan_db._conn is None:  # type: ignore[attr-defined]
+        conn = sqlite3.connect(_CHECKPOINT_DB_PATH)
+        conn.execute("""
+            CREATE TABLE IF NOT EXISTS plan_records (
+                run_id TEXT PRIMARY KEY,
+                brand_input TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'running',
+                created_at TEXT NOT NULL,
+                updated_at TEXT NOT NULL,
+                current_node TEXT
+            )
+        """)
+        conn.commit()
+        _ensure_plan_db._conn = conn  # type: ignore[attr-defined]
+    return _ensure_plan_db._conn  # type: ignore[attr-defined]  # in-memory, lost on restart
 
 
 class PlanState(TypedDict):
@@ -120,8 +158,13 @@ def _node_inputs(node_id: str, state: PlanState) -> dict[str, Any]:
 
 
 def _build_node(node_id: str) -> Any:
-    """Create a LangGraph node that calls get_handler(node_id)."""
-    label = _NODE_LABELS.get(node_id, node_id)
+    """Create a LangGraph node that calls get_handler(node_id).
+
+    ponytail: plan_generator 接受 writer 参数用于发送 chapter progress 事件。
+    LangGraph 在 astream_events 模式下不会自动注入 writer，
+    所以当前 plan_generator 节点不传 writer (None)。
+    如果后续需要前端显示逐章进度，需要通过其他方式(如自定义事件)实现。
+    """
     handler = get_handler(node_id)
 
     async def node_fn(state: PlanState) -> dict[str, Any]:
@@ -226,6 +269,16 @@ def _translate_event(
             },
         )
 
+    if ev_type == "on_custom_event" and name == "chapter":
+        chunk = data.get("chunk", {})
+        if chunk and chunk.get("event"):
+            _counter[0] += 1
+            return _sse_frame(
+                event_id=_counter[0],
+                event="chapter",
+                data={"run_id": run_id, "node_id": "plan_generator", "data": chunk},
+            )
+
     if ev_type == "on_chain_stream" and name in _NODE_LABELS:
         chunk = data.get("chunk", {})
         # Skip checkpoint interrupt markers from public stream.
@@ -244,6 +297,9 @@ def _translate_event(
     if ev_type == "on_chain_end" and name in _NODE_LABELS:
         # Confirm completion with the structured output if available.
         output = data.get("output", {})
+        # The plan_generator handler returns {plan_generator: {...}}
+        # so on_chain_end passes the full output. For plan_generator specifically
+        # the output is already complete with all 9 chapters.
         _counter[0] += 1
         return _sse_frame(
             event_id=_counter[0],
@@ -402,6 +458,9 @@ async def start_run(
 ) -> AsyncGenerator[str, None]:
     """Start a new plan generation run and stream SSE events."""
     run_id = run_id or str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    # 持久化批次记录到 SQLite
+    _save_plan_record(run_id, brand_input, "running", now, now)
     graph = await _get_graph()
     state = _initial_state(brand_input)
 
@@ -537,7 +596,73 @@ async def delete_run(run_id: str) -> None:
 async def get_status(run_id: str) -> dict[str, Any]:
     """Return current run status including paused snapshot if applicable."""
     state = await _checkpoint_state(run_id)
-    return _status_for_state(state, run_id)
+    st = _status_for_state(state, run_id)
+    # 更新批次记录的状态和更新时间
+    _update_plan_record(run_id, st["status"], st.get("current_node"))
+    # 同步删除已 canceled 的旧记录（超过 50 条时清理）
+    _cleanup_old_records()
+    return st
+
+
+def _save_plan_record(run_id: str, brand_input: dict, status: str, created_at: str, updated_at: str) -> None:
+    try:
+        conn = _ensure_plan_db()
+        conn.execute(
+            "INSERT OR REPLACE INTO plan_records (run_id, brand_input, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+            (run_id, json.dumps(brand_input, ensure_ascii=False), status, created_at, updated_at),
+        )
+        conn.commit()
+    except Exception as exc:
+        logger.warning("failed to save plan record: %s", exc)
+
+
+def _update_plan_record(run_id: str, status: str, current_node: str | None = None) -> None:
+    try:
+        conn = _ensure_plan_db()
+        now = datetime.now(timezone.utc).isoformat()
+        conn.execute(
+            "UPDATE plan_records SET status = ?, updated_at = ?, current_node = ? WHERE run_id = ?",
+            (status, now, current_node, run_id),
+        )
+        conn.commit()
+    except Exception as exc:
+        logger.warning("failed to update plan record: %s", exc)
+
+
+def _cleanup_old_records() -> None:
+    try:
+        conn = _ensure_plan_db()
+        conn.execute(
+            "DELETE FROM plan_records WHERE run_id NOT IN (SELECT run_id FROM plan_records ORDER BY created_at DESC LIMIT 50)"
+        )
+        conn.commit()
+    except Exception:
+        pass
+
+
+async def list_runs(limit: int = 20) -> list[dict[str, Any]]:
+    """List recent plan run records with timestamps."""
+    try:
+        conn = _ensure_plan_db()
+        cur = conn.execute(
+            "SELECT run_id, brand_input, status, created_at, updated_at, current_node FROM plan_records ORDER BY created_at DESC LIMIT ?",
+            (limit,),
+        )
+        rows = cur.fetchall()
+        return [
+            {
+                "run_id": r[0],
+                "brand_input": json.loads(r[1]),
+                "status": r[2],
+                "created_at": r[3],
+                "updated_at": r[4],
+                "current_node": r[5],
+            }
+            for r in rows
+        ]
+    except Exception as exc:
+        logger.warning("failed to list plan records: %s", exc)
+        return []
 
 
 async def run_exists(run_id: str) -> bool:

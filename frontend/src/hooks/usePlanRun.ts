@@ -7,6 +7,7 @@ import {
   startPlanRun,
 } from '../api/plan'
 import type { PlanChapter, PlanLogEvent, PlanNode, PlanOutputs } from '../types/plan'
+import type { PlanRunStatus as ApiPlanRunStatus } from '../api/plan'
 
 const PIPELINE_NODES: { id: string; label: string }[] = [
   { id: 'product_research', label: '产品调研' },
@@ -269,10 +270,15 @@ export function usePlanRun() {
 
   const abortRef = useRef<(() => void) | null>(null)
   const runIdRef = useRef<string | null>(null)
+  const statusRef = useRef<PlanRunStatus>('idle')
 
   useEffect(() => {
     runIdRef.current = state.runId
   }, [state.runId])
+
+  useEffect(() => {
+    statusRef.current = state.status
+  }, [state.status])
 
   useEffect(() => {
     const abort = abortRef.current
@@ -296,7 +302,7 @@ export function usePlanRun() {
           dispatch({
             type: 'NODE_COMPLETE',
             nodeId: event.nodeId,
-            data: event.data,
+            data: event.data?.output || event.data,
           })
         }
         break
@@ -309,9 +315,15 @@ export function usePlanRun() {
           snapshot: event.data?.snapshot as PlanRunState['pausedSnapshot'],
         })
         break
-      case 'workflow.complete':
+      case 'workflow.complete': {
+        const eventOutputs = event.data?.output || event.data
+        const completedNodeIds = Object.keys(eventOutputs || {})
+        const nextNodes = state.nodes.map((n) =>
+          completedNodeIds.includes(n.id) ? { ...n, status: 'complete' as const } : n
+        )
         dispatch({ type: 'WORKFLOW_COMPLETE', outputs: event.data as PlanOutputs })
         break
+      }
       case 'chapter.start': {
         const data = event.data ?? {}
         dispatch({
@@ -357,6 +369,7 @@ export function usePlanRun() {
     async (brandInput: Record<string, unknown>) => {
       abortRef.current?.()
       dispatch({ type: 'RESET' })
+      try { localStorage.removeItem('allygo_plan_run_id') } catch { /* ignore */ }
 
       try {
         const { runId, stream } = await startPlanRun(brandInput)
@@ -374,18 +387,19 @@ export function usePlanRun() {
 
   const approve = useCallback(
     async (editedInput?: Record<string, unknown>) => {
-      if (!state.runId) return
+      const rid = runIdRef.current
+      if (!rid) return
       dispatch({ type: 'SET_LOADING', loading: true })
       try {
-        // If status drifted from paused, re-check from server first.
-        if (state.status !== 'paused') {
-          await refreshStatus()
+        // Check latest status from ref, not stale closure.
+        if (statusRef.current !== 'paused') {
+          const result = await getPlanRunStatus(rid)
+          if (result.status !== 'paused') {
+            dispatch({ type: 'SET_LOADING', loading: false })
+            return
+          }
         }
-        if (state.status !== 'paused') {
-          dispatch({ type: 'SET_LOADING', loading: false })
-          return
-        }
-        const stream = await approvePlanRun(state.runId, editedInput ? { edited_input: editedInput } : undefined)
+        const stream = await approvePlanRun(rid, editedInput ? { edited_input: editedInput } : undefined)
         dispatch({ type: 'SET_CONNECTED', connected: true })
         await consumeStream(stream)
       } catch (error) {
@@ -395,22 +409,23 @@ export function usePlanRun() {
         dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [state.runId],
+    [consumeStream],
   )
 
   const reject = useCallback(
     async (reason: string) => {
-      if (!state.runId) return
+      const rid = runIdRef.current
+      if (!rid) return
       dispatch({ type: 'SET_LOADING', loading: true })
       try {
-        if (state.status !== 'paused') {
-          await refreshStatus()
+        if (statusRef.current !== 'paused') {
+          const result = await getPlanRunStatus(rid)
+          if (result.status !== 'paused') {
+            dispatch({ type: 'SET_LOADING', loading: false })
+            return
+          }
         }
-        if (state.status !== 'paused') {
-          dispatch({ type: 'SET_LOADING', loading: false })
-          return
-        }
-        const stream = await rejectPlanRun(state.runId, { reason })
+        const stream = await rejectPlanRun(rid, { reason })
         dispatch({ type: 'SET_CONNECTED', connected: true })
         await consumeStream(stream)
       } catch (error) {
@@ -420,7 +435,7 @@ export function usePlanRun() {
         dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [state.runId],
+    [consumeStream],
   )
 
   const cancel = useCallback(async () => {
@@ -443,7 +458,8 @@ export function usePlanRun() {
   const refreshStatus = useCallback(async () => {
     if (!state.runId) return
     try {
-      const result = await getPlanRunStatus(state.runId)
+      const resp = await getPlanRunStatus(state.runId)
+      const result = 'data' in resp ? (resp as { data: PlanRunStatus }).data : resp
       if (result.status === 'completed') {
         dispatch({ type: 'WORKFLOW_COMPLETE', outputs: result.outputs as PlanOutputs })
       } else if (result.status === 'failed') {
@@ -484,7 +500,8 @@ export function usePlanRun() {
   const restoreFromRunId = useCallback(async (runId: string) => {
     dispatch({ type: 'SET_RUN_ID', runId })
     try {
-      const result = await getPlanRunStatus(runId)
+      const resp = await getPlanRunStatus(runId)
+      const result = 'data' in resp ? (resp as { data: PlanRunStatus }).data : resp
       dispatch({
         type: 'RESTORE_STATUS',
         status: result.status,

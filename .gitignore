@@ -26,6 +26,7 @@ htmlcov/
 
 # LangGraph checkpointer SQLite (thread state, keep out of git)
 backend/data/checkpoints.db*
+backend/data/plan_records.db*
 
 # E2E test screenshots (Playwright visual regression)
 frontend/e2e/__screenshots__/
