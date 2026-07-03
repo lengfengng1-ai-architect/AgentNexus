@@ -82,143 +82,24 @@ from app.agents import market_research_agent  # noqa: F401
 
 ## 2. 主流程怎么调度你
 
-主流程 `backend/app/agents/orchestrator.py` 会在运行时从 `registry` 查找 Agent 名称，不需要你修改 orchestrator。
-
-### 2.1 串行节点示例
-
-```yaml
-id: brand_research_pipeline
-name: 品牌调研流水线
-version: "0.1"
-nodes:
-  - id: extract
-    agent: chat_extraction
-    input_mapping:
-      message: "$.input.message"
-
-  - id: market_research
-    agent: market_research
-    depends_on: [extract]
-    input_mapping:
-      brand_input: "$.outputs.extract.brand_input"
-
-edges:
-  - from: extract
-    to: market_research
-  - from: market_research
-    to: __end__
-```
-
-### 2.2 条件分支示例（意图识别后路由）
-
-意图识别 Agent 通常作为工作流入口，根据输出把对话路由到不同分支：
-
-```yaml
-id: chat_pipeline
-name: 对话意图识别流水线
-version: "0.1"
-nodes:
-  - id: intent
-    agent: intent_recognition
-    input_mapping:
-      message: "$.input.message"
-      context: "$.input.context"
-
-  - id: extract
-    agent: chat_extraction
-    condition: "$.outputs.intent.intent == 'generate_plan'"
-    input_mapping:
-      message: "$.input.message"
-
-  - id: data_query
-    agent: data_query
-    condition: "$.outputs.intent.intent == 'query_data'"
-    input_mapping:
-      city: "$.outputs.intent.brand_input.city"
-
-  - id: end_reply
-    agent: end_reply
-    condition: "$.outputs.intent.intent in ['chat', 'clarify', 'update_context']"
-    input_mapping:
-      reply: "$.outputs.intent.reply"
-
-edges:
-  - from: intent
-    to: extract
-  - from: intent
-    to: data_query
-  - from: intent
-    to: end_reply
-  - from: extract
-    to: __end__
-  - from: data_query
-    to: __end__
-  - from: end_reply
-    to: __end__
-```
-
-规则：
-
-- 一个节点的多条出边要么**全部带 condition**，要么**全部不带 condition**。
-- condition 使用 JSONPath 风格的指针（`$.input.x`、`$.outputs.node_id.field`）加比较运算符。
-- 支持 `==`、`!=`、`in`、`and`、`or`；列表用 `['a', 'b']` 形式。
-- 条件都不满足时，该分支直接结束（不会报错）。
+主流程 `plan_generation_service.py` 在运行时从 `registry` 查找 Agent 名称，不需要你修改编排代码。`register()`/`get_handler()` 机制本身仍然活跃——你在 `register("xxx", my_handler)` 注册的 handler 会被 plan pipeline 自动发现。
 
 ---
 
-## 3. Mock 注册
-
-Mock Agent **必须放在独立文件**，以 `mock_` 开头：
-
-```python
-# backend/app/agents/mock_your_agent.py
-from app.agents.registry import register_mock
-
-
-async def mock_run_your_agent(state: dict) -> dict:
-    """确定性 mock，不调用 LLM。"""
-    return {"result": "mock data"}
-
-
-register_mock("your_agent", mock_run_your_agent)
-```
-
-在 `backend/app/agents/__init__.py` 中 import 即可注册：
-
-```python
-from app.agents import mock_your_agent  # noqa: F401
-```
-
-当 `settings.use_mock_data=True` 时，`registry.get_handler()` 自动返回 mock handler。
-
-## 4. 底座维护者负责什么
-
-如果你是主流程/底座维护者，需要维护以下文件：
-
-- `backend/app/agents/registry.py` — Agent 注册表
-- `backend/app/agents/orchestrator.py` — LangGraph 图构建
-- `backend/app/services/workflow_service.py` — YAML 加载与校验
-- `backend/app/routers/workflows.py` — HTTP 路由
-- `backend/workflows/*.yaml` — 工作流定义文件
-
-新增 Agent 节点本身**不需要改这些文件**，只有当 Agent 入口签名变更、或者要支持新的编排语义（如并行、条件分支、持久化）时才需要改底座。
-
----
-
-## 4. 禁止事项
+## 3. 禁止事项
 
 | 禁止 | 原因 | 正确做法 |
 |------|------|---------|
-| 直接改 orchestrator.py 加自己的节点 | 破坏可插拔原则 | 用 registry.register 注册 |
+| 直接在 plan_generation_service.py 之外改编排 | 破坏可插拔原则 | 用 registry.register 注册 |
 | 在 Agent 里 import routers/services 主流程 | 循环依赖 | 只暴露 `run_xxx(state)` 入口 |
 | 返回非 dict / 不可序列化对象 | LangGraph state 需要可序列化 | 返回 dict 或 Pydantic model.dict() |
 | 不注册就写测试 | 测试找不到 handler | 先 register 再 import 测试 |
 
 ---
 
-## 5. 参考
+## 4. 参考
 
-- [agent-framework.md](./agent-framework.md) — LangGraph + DeepAgents 技术约束
+- [agent-framework.md](./agent-framework.md) — Agent 框架技术约束
 - [agent-node-dev-guide.md](./agent-node-dev-guide.md) — Agent 节点开发手册
 - [directory-structure.md](./directory-structure.md) — 目录结构规范
-- [../api/workflows.yaml](../api/workflows.yaml) — 工作流编排 API 契约
+- [plan_generation_service.py](../../backend/app/services/plan_generation_service.py) — Plan pipeline StateGraph 编排源码

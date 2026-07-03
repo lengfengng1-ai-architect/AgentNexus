@@ -12,6 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 from app.agents.llm_utils import invoke_json
 from app.agents.registry import register
 from app.schemas.plan_generation import ActionRecommendationsOutput
+from app.utils import parse_budget, parse_period
 
 _PROMPT_DIR = Path(__file__).parent.parent / "prompt_templates"
 
@@ -19,24 +20,6 @@ _PROMPT_DIR = Path(__file__).parent.parent / "prompt_templates"
 def _render(name: str, **kw) -> str:
     env = Environment(loader=FileSystemLoader(str(_PROMPT_DIR)))
     return env.get_template(f"{name}.md.j2").render(**kw)
-
-
-def _parse_budget(value: Any) -> int:
-    if isinstance(value, int | float):
-        return int(value)
-    if isinstance(value, str):
-        digits = "".join(c for c in value if c.isdigit() or c == ".")
-        return int(float(digits)) if digits else 0
-    return 0
-
-
-def _parse_period(value: Any) -> int:
-    if isinstance(value, int | float):
-        return int(value)
-    if isinstance(value, str):
-        digits = "".join(c for c in value if c.isdigit())
-        return int(digits) if digits else 3
-    return 3
 
 
 async def run_action_recommendations(state: dict[str, Any]) -> dict[str, Any]:
@@ -52,7 +35,7 @@ async def run_action_recommendations(state: dict[str, Any]) -> dict[str, Any]:
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
-    result = invoke_json(
+    result = await invoke_json(
         _render(
             "action_recommendations",
             brand_name=brand_name,
@@ -61,8 +44,8 @@ async def run_action_recommendations(state: dict[str, Any]) -> dict[str, Any]:
             positioning=strategy.get("positioning", ""),
             marketing_goal=strategy.get("marketing_goal", ""),
             primary_sport=fitness.get("primary_sport", ""),
-            budget=_parse_budget(brand_input.get("budget")),
-            period=_parse_period(brand_input.get("period")),
+            budget=parse_budget(brand_input.get("budget")),
+            period=parse_period(brand_input.get("period")),
             kpis=budget_kpi.get("kpis", {}),
         ),
         f"请为 {brand_name} 生成行动建议。",

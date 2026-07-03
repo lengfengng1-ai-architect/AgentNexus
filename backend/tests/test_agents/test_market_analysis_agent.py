@@ -96,7 +96,7 @@ async def test_call_node_define_calls_llm():
     with patch("app.agents.market_analysis_agent._llm_json") as mock_llm:
         mock_llm.return_value = {"included_scope": ["test"]}
         from app.agents.market_analysis_agent import call_node_define
-        result = call_node_define("test_market", "test_cat")
+        result = await call_node_define("test_market", "test_cat")
         assert result["included_scope"] == ["test"]
         mock_llm.assert_called_once()
 

@@ -84,7 +84,7 @@ async def run_plan_generator(
             action_recommendations=_serialize(state.get("action_recommendations", {})),
         )
 
-        result = invoke_json(
+        result = await invoke_json(
             prompt,
             f"请为 {brand_name} 撰写「{title}」章节内容。",
         )

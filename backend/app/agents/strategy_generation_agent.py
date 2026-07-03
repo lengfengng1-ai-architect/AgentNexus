@@ -43,7 +43,7 @@ async def run_strategy_generation(state: dict[str, Any]) -> dict[str, Any]:
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
-    result = invoke_json(
+    result = await invoke_json(
         _render(
             "strategy_generation",
             brand_name=brand_name,

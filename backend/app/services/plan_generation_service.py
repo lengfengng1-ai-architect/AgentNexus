@@ -137,13 +137,28 @@ def _build_graph() -> Any:
     """Build graph topology; compile with checkpointer in _get_graph."""
     graph = StateGraph(PlanState)  # type: ignore[arg-type]
 
-    for node_id in _NODE_ORDER:
-        graph.add_node(node_id, _build_node(node_id))
+    graph.add_node("product_research", _build_node("product_research"))
+    graph.add_node("market_research", _build_node("market_research"))
+    graph.add_node("audience_insight", _build_node("audience_insight"))
+    graph.add_node("plan_data_query", _build_node("plan_data_query"))
+    graph.add_node("fitness_analysis", _build_node("fitness_analysis"))
+    graph.add_node("strategy_generation", _build_node("strategy_generation"))
+    graph.add_node("execution_planning", _build_node("execution_planning"))
+    graph.add_node("budget_kpi", _build_node("budget_kpi"))
+    graph.add_node("action_recommendations", _build_node("action_recommendations"))
+    graph.add_node("plan_generator", _build_node("plan_generator"))
 
-    graph.set_entry_point(_NODE_ORDER[0])
-    for i in range(len(_NODE_ORDER) - 1):
-        graph.add_edge(_NODE_ORDER[i], _NODE_ORDER[i + 1])
-    graph.add_edge(_NODE_ORDER[-1], END)
+    graph.set_entry_point("product_research")
+    graph.add_edge("product_research", "market_research")
+    graph.add_edge("market_research", "audience_insight")
+    graph.add_edge("audience_insight", "plan_data_query")
+    graph.add_edge("plan_data_query", "fitness_analysis")
+    graph.add_edge("fitness_analysis", "strategy_generation")
+    graph.add_edge("strategy_generation", "execution_planning")
+    graph.add_edge("execution_planning", "budget_kpi")
+    graph.add_edge("budget_kpi", "action_recommendations")
+    graph.add_edge("action_recommendations", "plan_generator")
+    graph.add_edge("plan_generator", END)
 
     return graph
 

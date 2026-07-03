@@ -34,7 +34,7 @@ async def run_execution_planning(state: dict[str, Any]) -> dict[str, Any]:
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
-    result = invoke_json(
+    result = await invoke_json(
         _render(
             "execution_planning",
             brand_name=brand_name,

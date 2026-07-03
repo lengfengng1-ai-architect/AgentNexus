@@ -7,7 +7,7 @@ venv/
 .env
 
 # macOS
-.DS_Store
+**/.DS_Store
 
 # IDE
 .vscode/
@@ -39,4 +39,5 @@ backend/mock_data/audience_insight/*.json
 backend/mock_data/market_analysis/*.json
 backend/mock_data/user_persona/*.json
 backend/mock_data/product_info/跑力狮.json
+backend/mock_data/product_info/**/*.json
 

@@ -6,10 +6,8 @@ superpowers in_scope ID: audience-insight
 """
 
 import asyncio
-import re
 from typing import Any
 
-from bs4 import BeautifulSoup
 from ddgs import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
@@ -18,8 +16,9 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model
-from app.schemas.audience_insight import AudienceRawData, UserPersona
 from app.agents.registry import register
+from app.schemas.audience_insight import AudienceRawData, UserPersona
+from app.utils import extract_text_from_html
 
 # ── 常量 ──
 SEARCH_MAX = 8
@@ -64,12 +63,7 @@ def _load_template(name: str, **kwargs) -> str:
     return env.get_template(name).render(**kwargs)
 
 
-def _extract_text_from_html(html: str) -> str:
-    soup = BeautifulSoup(html, "lxml")
-    for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
-        tag.decompose()
-    text = soup.get_text(separator="\n", strip=True)
-    return "\n".join(line.strip() for line in text.split("\n") if line.strip())
+from app.utils import extract_text_from_html as _extract_text_from_html
 
 
 # ── 节点 ──
@@ -231,8 +225,9 @@ async def run_audience_search(state: dict[str, Any]) -> dict[str, Any]:
     if ad is None:
         raise ValueError("Agent did not return audience data")
     # 持久化到 mock_data/audience_insight/
-    safe_name = re.sub(r'[^\w一-鿿]+', "_", pn).strip("_").lower()
-    from app.services.audience_insight_service import AUDIENCE_DIR
+    from app.utils import sanitize as _san
+    from app.config.cache_paths import AUDIENCE_DIR
+    safe_name = _san(pn)
     AUDIENCE_DIR.mkdir(parents=True, exist_ok=True)
     path = AUDIENCE_DIR / f"{safe_name}.json"
     if not safe_name:
@@ -285,8 +280,9 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
     ])
 
     # 持久化到 mock_data/user_persona/
-    safe_name = re.sub(r'[^\w一-鿿]+', "_", pn).strip("_").lower()
-    from app.services.audience_insight_service import PERSONA_DIR
+    from app.utils import sanitize as _san
+    from app.config.cache_paths import PERSONA_DIR
+    safe_name = _san(pn)
     PERSONA_DIR.mkdir(parents=True, exist_ok=True)
     path = PERSONA_DIR / f"{safe_name}.json"
     if not safe_name:
@@ -298,5 +294,35 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
 
 register("audience_search", run_audience_search)
 register("generate_persona", run_generate_persona)
-register("audience_insight", run_generate_persona)  # alias for plan_generation_pipeline
+
+
+async def run_audience_insight_full(state: dict[str, Any]) -> dict[str, Any]:
+    """Full pipeline handler: search → fetch → extract → generate_persona.
+
+    Used by plan_generation_service via get_handler('audience_insight').
+    Returns both audience_data and persona so downstream nodes have
+    the complete audience insight payload.
+    """
+    product_name = state.get("product_name") or state.get("brand_name")
+    if not product_name:
+        raise ValueError("Missing required input: product_name or brand_name")
+
+    s = await _graph.ainvoke({
+        "product_name": product_name,
+        "product_info": state.get("product_info", {}),
+        "market_info": state.get("market_info", {}),
+    })
+
+    audience = s.get("audience_data")
+    persona = s.get("persona")
+    if audience is None or persona is None:
+        raise ValueError("Agent did not return complete result")
+
+    return {
+        "audience_data": audience.model_dump() if hasattr(audience, "model_dump") else audience,
+        "persona": persona.model_dump() if hasattr(persona, "model_dump") else persona,
+    }
+
+
+register("audience_insight", run_audience_insight_full)
 

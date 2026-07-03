@@ -29,22 +29,16 @@ from app.schemas.product_info import (
     SourcedDict,
     SourcedStrList,
 )
-from app.agents.registry import register
+from app.utils import sanitize, extract_text_from_html as _extract_text_from_html
 
 # ── mock_data 持久化 ──
 
 MOCK_DATA_DIR = Path("mock_data") / "product_info"
 
 
-def _sanitize(name: str) -> str:
-    import re
-    safe = re.sub(r'[^\w一-鿿]+', "_", name).strip("_").lower()
-    return safe if safe else "unknown"
-
-
 def _save_to_cache(product_name: str, info: ProductResearchResult) -> None:
     MOCK_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    path = MOCK_DATA_DIR / f"{_sanitize(product_name)}.json"
+    path = MOCK_DATA_DIR / f"{sanitize(product_name)}.json"
     path.write_text(info.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
 
 # ── 搜索和抓取常量 ──────────────────────────────────────────
@@ -107,15 +101,6 @@ def _domain_priority(url: str) -> int:
         if hostname == domain or hostname.endswith("." + domain):
             return 2
     return 1
-
-
-def _extract_text_from_html(html: str) -> str:
-    soup = BeautifulSoup(html, "lxml")
-    for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
-        tag.decompose()
-    text = soup.get_text(separator="\n", strip=True)
-    lines = [line.strip() for line in text.split("\n") if line.strip()]
-    return "\n".join(lines)
 
 
 def _fill_sourced_fields(result: ProductResearchResult, all_urls: list[str]) -> None:

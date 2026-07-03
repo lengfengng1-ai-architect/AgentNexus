@@ -1,50 +1,23 @@
-"""人群洞察 Service。
+"""人群洞察 Service — 通过 agent 的 StateGraph.astream_events() 消费。
 
-两层结构：
-  mock_data/audience_insight/  — 人群调研原始数据
-  mock_data/user_persona/      — 用户画像
+superpowers in_scope ID: audience-insight
 """
 
-import asyncio
 import json
-import re
 from collections.abc import AsyncGenerator
-from pathlib import Path
 
-from app.agents.audience_insight_agent import (
-    State,
-    extract_audience_node,
-    fetch_node,
-    generate_persona_node,
-    run_audience_insight,
-    search_node,
-)
+from app.agents.audience_insight_agent import _graph, run_audience_insight
+from app.config.cache_paths import AUDIENCE_DIR, PERSONA_DIR, audience_path, persona_path
 from app.schemas.audience_insight import (
     AudienceInsightResponse,
     AudienceRawData,
     UserPersona,
 )
 
-AUDIENCE_DIR = Path("mock_data") / "audience_insight"
-PERSONA_DIR = Path("mock_data") / "user_persona"
-
-
-def _sanitize(name: str) -> str:
-    safe = re.sub(r'[^\w一-鿿]+', "_", name).strip("_").lower()
-    return safe if safe else "unknown"
-
-
-def _audience_path(product_name: str) -> Path:
-    return AUDIENCE_DIR / f"{_sanitize(product_name)}.json"
-
-
-def _persona_path(product_name: str) -> Path:
-    return PERSONA_DIR / f"{_sanitize(product_name)}.json"
-
 
 def _load_cache(product_name: str) -> AudienceInsightResponse | None:
-    ap = _audience_path(product_name)
-    pp = _persona_path(product_name)
+    ap = audience_path(product_name)
+    pp = persona_path(product_name)
     if ap.exists() and pp.exists():
         return AudienceInsightResponse(
             product_name=product_name,
@@ -58,8 +31,8 @@ def _load_cache(product_name: str) -> AudienceInsightResponse | None:
 def _save_cache(product_name: str, audience: AudienceRawData, persona: UserPersona) -> None:
     AUDIENCE_DIR.mkdir(parents=True, exist_ok=True)
     PERSONA_DIR.mkdir(parents=True, exist_ok=True)
-    _audience_path(product_name).write_text(audience.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
-    _persona_path(product_name).write_text(persona.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
+    audience_path(product_name).write_text(audience.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
+    persona_path(product_name).write_text(persona.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
 
 
 async def get_audience_insight(
@@ -88,7 +61,7 @@ async def stream_audience_insight(
     product_info: dict | None = None,
     market_info: dict | None = None,
 ) -> AsyncGenerator[str, None]:
-    """流式——逐步推送 SSE 事件。"""
+    """流式——通过 agent graph 的 astream_events 逐步推送 SSE 事件。"""
     # 1. 检查缓存
     cached = _load_cache(product_name)
     if cached:
@@ -96,39 +69,74 @@ async def stream_audience_insight(
         yield f"event: result\ndata: {cached.model_dump_json()}\n\n"
         return
 
-    # 2. 搜索
-    yield f"event: progress\ndata: {json.dumps({'step': 'search', 'message': f'正在搜索 {product_name} 的目标人群信息...'})}\n\n"
-    state = State(product_name=product_name, product_info=product_info or {}, market_info=market_info or {})
-    result = await search_node(state)
-    state.search_results = result["search_results"]
-    yield f"event: progress\ndata: {json.dumps({'step': 'search_done', 'message': f'找到 {len(state.search_results)} 个相关页面'})}\n\n"
+    initial_state = {
+        "product_name": product_name,
+        "product_info": product_info or {},
+        "market_info": market_info or {},
+        "search_results": [],
+        "fetched_pages": [],
+        "audience_data": None,
+        "persona": None,
+    }
 
-    # 3. 读页
-    result = await fetch_node(state)
-    state.fetched_pages = result["fetched_pages"]
-    valid = [p for p in state.fetched_pages if p.fetched]
-    for i, page in enumerate(valid):
-        title = page.title or page.url
-        yield f"event: progress\ndata: {json.dumps({'step': 'fetch', 'index': i + 1, 'total': len(valid), 'message': f'正在读取 ({i+1}/{len(valid)}): {title}'})}\n\n"
-        await asyncio.sleep(0)
+    try:
+        async for event in _graph.astream_events(initial_state, None, version="v2"):
+            translated = _translate_audience_event(event, product_name)
+            if translated is not None:
+                yield translated
+    except Exception as exc:
+        yield f"event: error\ndata: {str(exc)}\n\n"
 
-    # 4. 提取人群数据
-    yield f"event: progress\ndata: {json.dumps({'step': 'extract', 'message': 'LLM 正在提取人群数据...'})}\n\n"
-    result = await extract_audience_node(state)
-    state.audience_data = result["audience_data"]
 
-    # 5. 生成用户画像
-    yield f"event: progress\ndata: {json.dumps({'step': 'persona', 'message': 'LLM 正在生成用户画像...'})}\n\n"
-    result = await generate_persona_node(state)
-    state.persona = result["persona"]
+_NODE_SSE_MAP = {
+    "search": {"step": "search", "done_step": "search_done"},
+    "fetch": {"step": "fetch"},
+    "extract_audience": {"step": "extract"},
+    "generate_persona": {"step": "persona"},
+}
 
-    # 6. 保存
-    _save_cache(product_name, state.audience_data, state.persona)
-    response = AudienceInsightResponse(
-        product_name=product_name,
-        audience_data=state.audience_data,
-        persona=state.persona,
-        from_cache=False,
-    )
 
-    yield f"event: result\ndata: {response.model_dump_json()}\n\n"
+def _translate_audience_event(event: dict, product_name: str) -> str | None:
+    """Map astream_events v2 event to audience insight SSE frames."""
+    ev_type = event.get("event")
+    name = event.get("name")
+    data = event.get("data", {})
+
+    node_info = _NODE_SSE_MAP.get(name)
+
+    if ev_type == "on_chain_start" and node_info:
+        step = node_info["step"]
+        msg = f"正在{ {'search': '搜索', 'fetch': '读取页面', 'extract': '提取人群数据', 'persona': '生成用户画像'}.get(step, step) } {product_name}..."
+        if step == "fetch":
+            msg = f"正在读取 {product_name} 的相关页面..."
+        return f"event: progress\ndata: {json.dumps({'step': step, 'message': msg})}\n\n"
+
+    if ev_type == "on_chain_end" and name in ("search",):
+        output = data.get("output", {})
+        results = output.get("search_results", [])
+        done_step = node_info["done_step"]
+        return f"event: progress\ndata: {json.dumps({'step': done_step, 'message': f'找到 {len(results)} 个相关页面'})}\n\n"
+
+    if ev_type == "on_chain_end" and name in ("fetch",):
+        output = data.get("output", {})
+        pages = output.get("fetched_pages", [])
+        valid_count = sum(1 for p in pages if isinstance(p, dict) and p.get("fetched"))
+        return f"event: progress\ndata: {json.dumps({'step': 'fetch_done', 'message': f'完成读取 {valid_count} 个页面'})}\n\n"
+
+    if ev_type == "on_chain_end" and name == "LangGraph":
+        output = data.get("output", {})
+        audience = output.get("audience_data")
+        persona = output.get("persona")
+        if audience and persona:
+            ad = AudienceRawData.model_validate(audience) if isinstance(audience, dict) else audience
+            pp = UserPersona.model_validate(persona) if isinstance(persona, dict) else persona
+            _save_cache(product_name, ad, pp)
+            response = AudienceInsightResponse(
+                product_name=product_name,
+                audience_data=ad,
+                persona=pp,
+                from_cache=False,
+            )
+            return f"event: result\ndata: {response.model_dump_json()}\n\n"
+
+    return None

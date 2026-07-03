@@ -41,13 +41,13 @@ async def run_market_research(state: dict[str, Any]) -> dict[str, Any]:
     if not brand_name or not category:
         raise ValueError("Missing required inputs: brand_name and category")
 
-    d1 = call_node_define(brand_name, category)
-    d2 = call_node_size(brand_name, d1)
-    d3 = call_node_trends(brand_name, d2)
-    d4 = call_node_users(brand_name, d3)
-    d5 = call_node_competitors(brand_name, d4)
-    d6 = call_node_assess(brand_name, d5)
-    report = call_node_synthesize(brand_name, d1, d2, d3, d4, d5, d6)
+    d1 = await call_node_define(brand_name, category)
+    d2 = await call_node_size(brand_name, d1)
+    d3 = await call_node_trends(brand_name, d2)
+    d4 = await call_node_users(brand_name, d3)
+    d5 = await call_node_competitors(brand_name, d4)
+    d6 = await call_node_assess(brand_name, d5)
+    report = await call_node_synthesize(brand_name, d1, d2, d3, d4, d5, d6)
 
     output = _build_output(brand_name, category, d3, d6, report)
     return output.model_dump()
