@@ -1,0 +1,112 @@
+{
+  "identity": {
+    "product_name": {
+      "value": "BT-398YEK-31-589M10-A1",
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "quoted",
+      "quote": "BT-398YEK-31-589M10-A1"
+    },
+    "brand": {
+      "value": "NationStar（国星光电）",
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "manufacturer": {
+      "value": "佛山市国星光电股份有限公司（FOSHAN NATIONSTAR OPTOELECTRONICS CO., LTD）",
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "industry": {
+      "value": "光电 / 半导体",
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "category": {
+      "value": "支架式发光二极管（Lamp Type LED）",
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "quoted",
+      "quote": "支架式发光二极管　Lamp Type LED"
+    }
+  },
+  "official_description": {
+    "description": {
+      "value": "产品规格书，支架式发光二极管，型号 BT-398YEK-31-589M10-A1",
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "tagline": {
+      "value": null,
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "statement": {
+      "value": null,
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "features": [],
+  "specifications": {
+    "value": {
+      "型号": "BT-398YEK-31-589M10-A1",
+      "产品类型": "支架式发光二极管（Lamp Type LED）",
+      "包装形式": "支架式",
+      "颜色": "YEK（推测为黄色/黄绿色，具体未明确）",
+      "引脚数": "2 引脚（标准支架式 LED）"
+    },
+    "sources": [
+      "https://www.yumpu.com/en/document/view/46414910"
+    ],
+    "method": "extracted"
+  },
+  "availability": {
+    "status": {
+      "value": "unknown",
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "pricing": [],
+    "available_regions": {
+      "value": [
+        "全球（通过经销商网络）"
+      ],
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "extracted"
+    },
+    "access_model": {
+      "value": "经销商 / B2B 直销",
+      "sources": [
+        "https://www.yumpu.com/en/document/view/46414910"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  }
+}

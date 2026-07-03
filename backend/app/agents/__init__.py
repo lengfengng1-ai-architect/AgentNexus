@@ -1,6 +1,5 @@
 """Agent package initialization — registers all agent handlers.
 
-Corresponding OpenSpec: docs/api/workflows.yaml
 Corresponding in_scope ID: workflow-orchestration
 """
 
