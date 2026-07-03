@@ -297,6 +297,9 @@ def _translate_event(
     if ev_type == "on_chain_end" and name in _NODE_LABELS:
         # Confirm completion with the structured output if available.
         output = data.get("output", {})
+        # The plan_generator handler returns {plan_generator: {...}}
+        # so on_chain_end passes the full output. For plan_generator specifically
+        # the output is already complete with all 9 chapters.
         _counter[0] += 1
         return _sse_frame(
             event_id=_counter[0],

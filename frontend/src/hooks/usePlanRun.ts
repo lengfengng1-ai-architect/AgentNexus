@@ -302,7 +302,7 @@ export function usePlanRun() {
           dispatch({
             type: 'NODE_COMPLETE',
             nodeId: event.nodeId,
-            data: event.data,
+            data: event.data?.output || event.data,
           })
         }
         break
@@ -315,9 +315,15 @@ export function usePlanRun() {
           snapshot: event.data?.snapshot as PlanRunState['pausedSnapshot'],
         })
         break
-      case 'workflow.complete':
+      case 'workflow.complete': {
+        const eventOutputs = event.data?.output || event.data
+        const completedNodeIds = Object.keys(eventOutputs || {})
+        const nextNodes = state.nodes.map((n) =>
+          completedNodeIds.includes(n.id) ? { ...n, status: 'complete' as const } : n
+        )
         dispatch({ type: 'WORKFLOW_COMPLETE', outputs: event.data as PlanOutputs })
         break
+      }
       case 'chapter.start': {
         const data = event.data ?? {}
         dispatch({
