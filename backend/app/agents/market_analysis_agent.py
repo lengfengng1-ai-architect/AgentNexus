@@ -4,6 +4,7 @@ Corresponding in_scope ID: market-analysis
 """
 
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -224,6 +225,16 @@ async def run_market_analysis(state: dict[str, Any]) -> dict[str, Any]:
     if settings.use_mock_data:
         return _load_mock_response().model_dump()
     resp = await research_market(market_name=mn, category=cat)
+
+    # 持久化到 mock_data/market_analysis/
+    safe_name = re.sub(r'[^\w一-鿿]+', "_", mn).strip("_").lower()
+    mkt_dir = Path("mock_data") / "market_analysis"
+    mkt_dir.mkdir(parents=True, exist_ok=True)
+    path = mkt_dir / f"{safe_name}.json"
+    if not safe_name:
+        path = mkt_dir / "unknown.json"
+    path.write_text(resp.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
+
     return resp.model_dump()
 
 

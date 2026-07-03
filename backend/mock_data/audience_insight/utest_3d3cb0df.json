@@ -1,0 +1,32 @@
+{
+  "demographics": {
+    "age": "25-40"
+  },
+  "purchase_motivations": [
+    {
+      "text": "追求品质",
+      "source": "https://example.com"
+    }
+  ],
+  "decision_factors": [
+    {
+      "text": "性能",
+      "source": "https://example.com"
+    }
+  ],
+  "usage_scenarios": [
+    {
+      "text": "日常使用",
+      "source": "https://example.com"
+    }
+  ],
+  "descriptions": [
+    {
+      "text": "年轻白领",
+      "source": "https://example.com"
+    }
+  ],
+  "sources": [
+    "https://example.com"
+  ]
+}
