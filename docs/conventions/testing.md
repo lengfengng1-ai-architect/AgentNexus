@@ -24,10 +24,17 @@ uv 会自动安装 `[dependency-groups] dev` 中的包（`tool.uv.default-groups
 
 ## 测试范围
 
-- **测试重点是单 Agent**——每个 agent 独立测试。对于调 LLM 的 agent，mock 掉 LLM 层（mock `_graph.ainvoke` 或 `build_chat_model`），避免真实调用。
-- **测试不能只是 mock**——mock 只屏蔽 LLM，agent 本身的逻辑路径（字段提取、条件判断、错误处理）必须被真实覆盖。只 mock 然后 assert 返回了一个空 schema 不算合格测试。
+- **测试重点是单 Agent**——每个 agent 独立测试。
 - **不测试 Pipeline/工作流编排**，除非用户明确要求。pipeline 属于编排层的内部实现细节，测试代价高且收益低。
-- 覆盖率按 agent 文件单独计算，全局阈值 ≥80%。
+- 覆盖率阈值 ≥80%。
+
+## Mock 策略
+
+mock 是可选的，不是必须的：
+- **可以 mock**——mock 掉 LLM/网络层，跑通逻辑路径。适合 CI 环境。
+- **也可以调真实 LLM**——本地开发时直接调真实 API，覆盖真实输出。前提是 `.env` 配好 key。
+
+关键不在于 mock 与否，而在于**测试必须验证 agent 的行为逻辑**（字段提取、条件分支、错误处理），不只是 mock 个空返回值。
 
 tests 目录结构镜像 `backend/app`：
 
