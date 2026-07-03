@@ -7,6 +7,7 @@ import {
   startPlanRun,
 } from '../api/plan'
 import type { PlanChapter, PlanLogEvent, PlanNode, PlanOutputs } from '../types/plan'
+import type { PlanRunStatus as ApiPlanRunStatus } from '../api/plan'
 
 const PIPELINE_NODES: { id: string; label: string }[] = [
   { id: 'product_research', label: '产品调研' },
@@ -450,7 +451,8 @@ export function usePlanRun() {
   const refreshStatus = useCallback(async () => {
     if (!state.runId) return
     try {
-      const result = await getPlanRunStatus(state.runId)
+      const resp = await getPlanRunStatus(state.runId)
+      const result = 'data' in resp ? (resp as { data: PlanRunStatus }).data : resp
       if (result.status === 'completed') {
         dispatch({ type: 'WORKFLOW_COMPLETE', outputs: result.outputs as PlanOutputs })
       } else if (result.status === 'failed') {
@@ -491,7 +493,8 @@ export function usePlanRun() {
   const restoreFromRunId = useCallback(async (runId: string) => {
     dispatch({ type: 'SET_RUN_ID', runId })
     try {
-      const result = await getPlanRunStatus(runId)
+      const resp = await getPlanRunStatus(runId)
+      const result = 'data' in resp ? (resp as { data: PlanRunStatus }).data : resp
       dispatch({
         type: 'RESTORE_STATUS',
         status: result.status,

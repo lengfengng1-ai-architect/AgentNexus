@@ -95,6 +95,7 @@ export interface PlanRunStatus {
   status: 'running' | 'paused' | 'completed' | 'failed' | 'canceled'
   current_node: string | null
   outputs: Record<string, unknown>
+  completed_nodes: string[]
   paused_snapshot: {
     node_id: string
     node_input: Record<string, unknown>
