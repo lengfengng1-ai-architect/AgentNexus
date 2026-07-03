@@ -223,7 +223,7 @@ async def run_audience_search(state: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Agent did not return audience data")
     # 持久化到 mock_data/audience_insight/
     AUDIENCE_DIR.mkdir(parents=True, exist_ok=True)
-    path = AUDIENCE_DIR / f"{safe_name}.json"
+    path = AUDIENCE_DIR / f"{pn.replace(' ', '_').lower()}.json"
     path.write_text(ad.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
     return ad.model_dump()
 
