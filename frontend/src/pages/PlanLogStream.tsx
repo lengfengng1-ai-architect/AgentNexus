@@ -1,38 +1,118 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useMemo } from 'react'
 import type { PlanLogEvent } from '../types/plan'
 
 interface PlanLogStreamProps {
   logs: PlanLogEvent[]
 }
 
-function formatEvent(event: PlanLogEvent): string {
-  const parts = [event.event]
-  if (event.nodeId) parts.push(`[${event.nodeId}]`)
-  if (event.message) parts.push(`- ${event.message}`)
-  return parts.join(' ')
+const AGENT_NAMES: Record<string, string> = {
+  product_research: '产品调研 Agent',
+  market_research: '市场调研 Agent',
+  audience_insight: '人群洞察 Agent',
+  plan_data_query: '数据查询 Agent',
+  fitness_analysis: '适配度分析 Agent',
+  strategy_generation: '策略生成 Agent',
+  execution_planning: '执行规划 Agent',
+  budget_kpi: '预算与 KPI Agent',
+  action_recommendations: '行动建议 Agent',
+  plan_generator: '方案生成 Agent',
+}
+
+function agentLabel(nodeId: string): string {
+  return AGENT_NAMES[nodeId] ?? nodeId
+}
+
+function formatLogEvent(event: PlanLogEvent): string {
+  const agent = event.nodeId ? agentLabel(event.nodeId) : ''
+
+  switch (event.event) {
+    case 'node.start':
+      return agent ? `${agent}：开始执行…` : '开始执行…'
+    case 'node.complete':
+      return agent ? `${agent}：执行完成` : '执行完成'
+    case 'node.failed':
+      return agent
+        ? `${agent}：执行失败: ${event.message ?? '未知错误'}`
+        : `执行失败: ${event.message ?? '未知错误'}`
+    case 'workflow.complete':
+      return '方案生成完成'
+    case 'workflow.start':
+      return '启动流水线'
+    default:
+      return agent
+        ? `${agent}：${event.message ?? event.event}`
+        : (event.message ?? event.event)
+  }
 }
 
 export function PlanLogStream({ logs }: PlanLogStreamProps) {
-  const bottomRef = useRef<HTMLDivElement>(null)
+  const textRef = useRef<HTMLSpanElement>(null)
 
-  useEffect(() => {
-    bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
+  const latestMessage = useMemo(() => {
+    if (logs.length === 0) return null
+    const latest = logs[logs.length - 1]
+    return formatLogEvent(latest)
   }, [logs])
 
+  // Reset scroll position when a new message arrives
+  useEffect(() => {
+    if (textRef.current) {
+      // Force a reflow reset so the CSS animation restarts from the start
+      textRef.current.style.animation = 'none'
+      void textRef.current.offsetHeight // trigger reflow
+      textRef.current.style.animation = ''
+    }
+  }, [latestMessage])
+
   return (
-    <div className="rounded-xl border border-line bg-white p-4">
-      <h3 className="mb-2 text-sm font-semibold text-track">运行日志</h3>
-      <div className="h-40 overflow-y-auto rounded-lg bg-mist p-3 text-xs">
-        {logs.length === 0 && (
-          <p className="text-track/40">等待流水线启动…</p>
+    <div
+      className="flex h-10 items-center overflow-hidden px-6 font-mono text-[13px]"
+      style={{
+        background: 'linear-gradient(90deg, #0f172a 0%, #1e293b 100%)',
+        color: '#e2e8f0',
+      }}
+    >
+      {/* Pulse dot */}
+      <span
+        className="mr-3 h-2 w-2 flex-shrink-0 rounded-full"
+        style={{
+          backgroundColor: '#22d3ee',
+          animation: logs.length > 0 ? 'plan-log-pulse 1.5s infinite' : 'none',
+          opacity: logs.length > 0 ? 1 : 0.4,
+        }}
+      />
+
+      {/* Scrolling text */}
+      <span className="flex-1 overflow-hidden whitespace-nowrap">
+        {latestMessage ? (
+          <span
+            ref={textRef}
+            className="inline-block"
+            style={{
+              animation: `plan-log-marquee ${Math.max(8, latestMessage.length * 0.25)}s linear infinite`,
+            }}
+          >
+            {latestMessage}
+          </span>
+        ) : (
+          <span className="text-slate-500">
+            等待输入品牌信息，点击「生成营销方案」开始…
+          </span>
         )}
-        {logs.map((log) => (
-          <div key={log.id} className="mb-1 font-mono text-track/70">
-            <span className="text-track/40">#{log.id}</span> {formatEvent(log)}
-          </div>
-        ))}
-        <div ref={bottomRef} />
-      </div>
+      </span>
+
+      {/* Keyframe styles injected once */}
+      <style>{`
+        @keyframes plan-log-pulse {
+          0% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0.6); }
+          70% { box-shadow: 0 0 0 8px rgba(34, 211, 238, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(34, 211, 238, 0); }
+        }
+        @keyframes plan-log-marquee {
+          0% { transform: translateX(100%); }
+          100% { transform: translateX(-100%); }
+        }
+      `}</style>
     </div>
   )
 }

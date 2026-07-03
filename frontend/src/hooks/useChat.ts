@@ -1,8 +1,11 @@
 import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { runChatPipeline } from '../api/workflow'
+import { streamChat } from '../api/workflow'
 import type { BrandInput, ChatMessage } from '../types/chat'
 
 const STORAGE_KEY = 'allygo_chat_history'
+
+// ─── Streaming ID counter ────────────────────────────────────────────
+let _streamIdCounter = 0
 
 interface ChatState {
   messages: ChatMessage[]
@@ -14,16 +17,9 @@ interface ChatState {
 type ChatAction =
   | { type: 'SET_INPUT'; value: string }
   | { type: 'SEND_MESSAGE'; content: string }
-  | {
-      type: 'RECEIVE_MESSAGE'
-      reply: string
-      brandInput: BrandInput
-      intent?: ChatMessage['intent']
-      isComplete: boolean
-      canGeneratePlan: boolean
-    }
-  | { type: 'LOADING_MESSAGE' }
-  | { type: 'REMOVE_LOADING' }
+  | { type: 'STREAM_START' }
+  | { type: 'STREAM_REASONING'; text: string }
+  | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[] }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RETRY_MESSAGE'; messageId: string }
@@ -37,6 +33,32 @@ function createMessage(content: string, role: ChatMessage['role']): ChatMessage 
   }
 }
 
+function getLatestBrandInput(messages: ChatMessage[]): BrandInput | undefined {
+  let merged: BrandInput | undefined
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const b = messages[i].brandInput
+    if (!b) continue
+    if (!merged) {
+      merged = { ...b }
+    } else {
+      // Merge: keep the latest non-null value for each field
+      if (b.brand_name != null) merged.brand_name = b.brand_name
+      if (b.category != null) merged.category = b.category
+      if (b.city != null) merged.city = b.city
+      if (b.budget != null) merged.budget = b.budget
+      if (b.period != null) merged.period = b.period
+    }
+  }
+  return merged
+}
+
+function getStreamingMsgIndex(msgs: ChatMessage[]): number {
+  for (let i = msgs.length - 1; i >= 0; i--) {
+    if (msgs[i].id.startsWith('stream-')) return i
+  }
+  return -1
+}
+
 function chatReducer(state: ChatState, action: ChatAction): ChatState {
   switch (action.type) {
     case 'SET_INPUT':
@@ -44,80 +66,60 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case 'SEND_MESSAGE': {
       const userMessage = createMessage(action.content, 'user')
-      return {
-        ...state,
-        messages: [...state.messages, userMessage],
-        inputValue: '',
-        error: null,
-      }
+      return { ...state, messages: [...state.messages, userMessage], inputValue: '', error: null }
     }
 
-    case 'LOADING_MESSAGE': {
-      const loadingMessage: ChatMessage = {
-        id: `loading-${Date.now()}`,
+    case 'STREAM_START': {
+      const sid = `stream-${++_streamIdCounter}`
+      const streamMsg: ChatMessage = {
+        id: sid,
         role: 'ai',
         content: '',
-        isLoading: true,
-      }
-      return { ...state, isLoading: true, messages: [...state.messages, loadingMessage] }
-    }
-
-    case 'REMOVE_LOADING': {
-      return {
-        ...state,
         isLoading: false,
-        messages: state.messages.filter((m) => !m.isLoading),
+        reasoning: '',
       }
+      return { ...state, isLoading: true, messages: [...state.messages.filter(m => !m.isLoading), streamMsg] }
     }
 
-    case 'RECEIVE_MESSAGE': {
+    case 'STREAM_REASONING': {
+      const idx = getStreamingMsgIndex(state.messages)
+      if (idx < 0) return state
+      const m = { ...state.messages[idx], reasoning: (state.messages[idx].reasoning || '') + action.text }
+      const next = [...state.messages]; next[idx] = m
+      return { ...state, messages: next }
+    }
+
+    case 'INTENT_RECEIVED': {
+      const msgs = state.messages.filter(m => !m.id.startsWith('stream-'))
+      const canGeneratePlan = action.intent === 'generate_plan' && action.missingFields.length === 0
       const aiMessage: ChatMessage = {
         id: `ai-${Date.now()}`,
         role: 'ai',
         content: action.reply,
         brandInput: action.brandInput,
-        intent: action.intent,
-        isComplete: action.isComplete,
-        canGeneratePlan: action.canGeneratePlan,
+        intent: action.intent as ChatMessage['intent'],
+        canGeneratePlan,
+        missingFields: action.missingFields.length > 0 ? action.missingFields : undefined,
       }
-      return {
-        ...state,
-        isLoading: false,
-        messages: [...state.messages.filter((m) => !m.isLoading), aiMessage],
-      }
+      return { ...state, isLoading: false, messages: [...msgs, aiMessage] }
     }
 
     case 'SET_ERROR': {
-      const lastUserMessage = [...state.messages]
-        .reverse()
-        .find((m) => m.role === 'user' && !m.isError)
-      const updatedMessages = lastUserMessage
-        ? state.messages.map((m) =>
-            m.id === lastUserMessage.id ? { ...m, isError: true, retryable: true } : m,
-          )
+      const lastUserMsg = [...state.messages].reverse().find(m => m.role === 'user' && !m.isError)
+      const updatedMessages = lastUserMsg
+        ? state.messages.map(m => (m.id === lastUserMsg.id ? { ...m, isError: true, retryable: true } : m))
         : state.messages
-      return {
-        ...state,
-        isLoading: false,
-        error: action.error,
-        messages: updatedMessages.filter((m) => !m.isLoading),
-      }
+      return { ...state, error: action.error, messages: updatedMessages, isLoading: false }
     }
 
     case 'CLEAR_ERROR':
       return { ...state, error: null }
 
     case 'RETRY_MESSAGE': {
-      const messageToRetry = state.messages.find((m) => m.id === action.messageId)
-      if (!messageToRetry || messageToRetry.role !== 'user') return state
-      const cleanedMessages = state.messages
-        .filter((m) => m.id !== action.messageId)
-        .map((m) => (m.role === 'user' && m.isError ? { ...m, isError: false, retryable: false } : m))
-      return {
-        ...state,
-        error: null,
-        messages: [...cleanedMessages, createMessage(messageToRetry.content, 'user')],
-      }
+      const updatedMessages = state.messages.map(m =>
+        m.id === action.messageId ? { ...m, isError: false, retryable: false } : m,
+      )
+      return { ...state, messages: updatedMessages, isLoading: false }
     }
 
     case 'LOAD_HISTORY':
@@ -128,25 +130,11 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
   }
 }
 
-function getLatestBrandInput(messages: ChatMessage[]): BrandInput | undefined {
-  for (let i = messages.length - 1; i >= 0; i--) {
-    const message = messages[i]
-    if (message.role === 'ai' && message.brandInput) {
-      return message.brandInput
-    }
-  }
-  return undefined
-}
-
 export function useChat() {
-  const [state, dispatch] = useReducer(chatReducer, {
-    messages: [],
-    inputValue: '',
-    isLoading: false,
-    error: null,
-  })
-
+  const [state, dispatch] = useReducer(chatReducer, { messages: [], inputValue: '', isLoading: false, error: null })
   const isProcessingRef = useRef(false)
+  const messagesRef = useRef(state.messages)
+  messagesRef.current = state.messages
 
   useEffect(() => {
     try {
@@ -155,102 +143,94 @@ export function useChat() {
         const parsed = JSON.parse(raw) as ChatMessage[]
         dispatch({ type: 'LOAD_HISTORY', messages: parsed })
       }
-    } catch {
-      // ignore corrupted storage
-    }
+    } catch { /* ignore */ }
   }, [])
 
   useEffect(() => {
-    try {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(state.messages))
-    } catch {
-      // ignore storage errors
-    }
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.messages)) } catch { /* ignore */ }
   }, [state.messages])
 
-  const setInputValue = useCallback((value: string) => {
-    dispatch({ type: 'SET_INPUT', value })
-  }, [])
+  const setInputValue = useCallback((value: string) => { dispatch({ type: 'SET_INPUT', value }) }, [])
 
-  const sendMessage = useCallback(
-    async (content: string) => {
-      if (isProcessingRef.current || !content.trim()) return
-      isProcessingRef.current = true
-      dispatch({ type: 'CLEAR_ERROR' })
-      dispatch({ type: 'SEND_MESSAGE', content: content.trim() })
-      dispatch({ type: 'LOADING_MESSAGE' })
+  const sendMessage = useCallback(async (content: string) => {
+    if (isProcessingRef.current || !content.trim()) return
+    isProcessingRef.current = true
+    dispatch({ type: 'CLEAR_ERROR' })
+    dispatch({ type: 'SEND_MESSAGE', content: content.trim() })
+    dispatch({ type: 'STREAM_START' })
 
-      try {
-        const response = await runChatPipeline(content.trim())
-        const intent = response.outputs?.intent
-        const reply = response.outputs?.reply_builder?.reply
-        if (!reply) {
-          throw new Error('后端未返回有效回复')
-        }
-        dispatch({
-          type: 'RECEIVE_MESSAGE',
-          reply,
-          brandInput: intent?.brand_input ?? {
-            brand_name: null,
-            category: null,
-            city: null,
-            budget: null,
-            period: null,
-          },
-          intent: intent?.intent,
-          isComplete: intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
-          canGeneratePlan:
-            intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
-        })
-      } catch (error) {
-        const message = error instanceof Error ? error.message : '发送失败，请重试'
-        dispatch({ type: 'SET_ERROR', error: message })
-      } finally {
-        isProcessingRef.current = false
-      }
-    },
-    [],
-  )
-
-  const retryMessage = useCallback(async (messageId: string) => {
-    const messageToRetry = state.messages.find((m) => m.id === messageId)
-    if (!messageToRetry || messageToRetry.role !== 'user') return
-    dispatch({ type: 'RETRY_MESSAGE', messageId })
-    dispatch({ type: 'LOADING_MESSAGE' })
+    // Build full context: conversation history + merged brand_input
+    const lastBrand = getLatestBrandInput(messagesRef.current)
+    const conversationHistory = messagesRef.current
+      .filter(m => !m.id.startsWith('stream-'))
+      .map(m => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`)
+      .slice(-10) // keep last 10 exchanges
+    const context: Record<string, unknown> = { conversation_history: conversationHistory }
+    if (lastBrand) context.brand_input = lastBrand
 
     try {
-      const response = await runChatPipeline(messageToRetry.content)
-      const intent = response.outputs?.intent
-      const reply = response.outputs?.reply_builder?.reply
-      if (!reply) {
-        throw new Error('后端未返回有效回复')
+      let intentReceived = false
+      for await (const chunk of streamChat(content.trim(), context)) {
+        if (chunk.reasoning) {
+          dispatch({ type: 'STREAM_REASONING', text: chunk.reasoning })
+        }
+        if (chunk.intent && !intentReceived) {
+          intentReceived = true
+          dispatch({
+            type: 'INTENT_RECEIVED',
+            intent: chunk.intent.intent,
+            reply: chunk.intent.reply,
+            brandInput: chunk.intent.brand_input,
+            missingFields: chunk.intent.missing_fields || [],
+          })
+        }
       }
-      dispatch({
-        type: 'RECEIVE_MESSAGE',
-        reply,
-        brandInput: intent?.brand_input ?? {
-          brand_name: null,
-          category: null,
-          city: null,
-          budget: null,
-          period: null,
-        },
-        intent: intent?.intent,
-        isComplete: intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
-        canGeneratePlan:
-          intent?.intent === 'generate_plan' && !intent?.missing_fields?.length,
-      })
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '发送失败，请重试'
+      dispatch({ type: 'SET_ERROR', error: message })
+    } finally {
+      isProcessingRef.current = false
+    }
+  }, [])
+
+  const retryMessage = useCallback(async (messageId: string) => {
+    const msgs = messagesRef.current
+    const messageToRetry = msgs.find(m => m.id === messageId)
+    if (!messageToRetry || messageToRetry.role !== 'user') return
+    dispatch({ type: 'RETRY_MESSAGE', messageId })
+    dispatch({ type: 'STREAM_START' })
+
+    const context = getLatestBrandInput(msgs)
+      ? { brand_input: getLatestBrandInput(msgs) }
+      : undefined
+
+    try {
+      let intentReceived = false
+      for await (const chunk of streamChat(messageToRetry.content, context)) {
+        if (chunk.reasoning) {
+          dispatch({ type: 'STREAM_REASONING', text: chunk.reasoning })
+        }
+        if (chunk.intent && !intentReceived) {
+          intentReceived = true
+          dispatch({
+            type: 'INTENT_RECEIVED',
+            intent: chunk.intent.intent,
+            reply: chunk.intent.reply,
+            brandInput: chunk.intent.brand_input,
+            missingFields: chunk.intent.missing_fields || [],
+          })
+        }
+      }
     } catch (error) {
       const message = error instanceof Error ? error.message : '发送失败，请重试'
       dispatch({ type: 'SET_ERROR', error: message })
     }
-  }, [state.messages])
-
-  const prefillInput = useCallback((text: string) => {
-    dispatch({ type: 'SET_INPUT', value: text })
   }, [])
 
+  const prefillInput = useCallback((text: string) => { dispatch({ type: 'SET_INPUT', value: text }) }, [])
+
   const latestBrandInput = getLatestBrandInput(state.messages)
+  const hasPendingGeneratePlan = state.messages.some(m => m.canGeneratePlan && !m.isComplete)
 
   return {
     messages: state.messages,
@@ -258,9 +238,11 @@ export function useChat() {
     isLoading: state.isLoading,
     error: state.error,
     latestBrandInput,
-    setInputValue,
     sendMessage,
     retryMessage,
     prefillInput,
+    setInputValue,
   }
 }
+
+export type { ChatMessage }

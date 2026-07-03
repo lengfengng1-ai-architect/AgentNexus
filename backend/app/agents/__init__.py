@@ -4,12 +4,6 @@ Corresponding OpenSpec: docs/api/workflows.yaml
 Corresponding in_scope ID: workflow-orchestration
 """
 
-"""Agent package initialization — registers all agent handlers.
-
-Corresponding OpenSpec: docs/api/workflows.yaml
-Corresponding in_scope ID: workflow-orchestration
-"""
-
 from app.agents import action_recommendations_agent  # noqa: F401
 from app.agents import audience_insight_agent  # noqa: F401
 from app.agents import budget_kpi_agent  # noqa: F401
@@ -24,8 +18,6 @@ from app.agents import market_research_agent  # noqa: F401
 from app.agents import plan_data_query_agent  # noqa: F401
 from app.agents import plan_generator_agent  # noqa: F401
 from app.agents import product_research_agent  # noqa: F401
-from app.agents import reply_builder_agent  # noqa: F401
-from app.agents import requirement_collector_agent  # noqa: F401
 from app.agents import strategy_generation_agent  # noqa: F401
 from app.agents.registry import list_agents
 
