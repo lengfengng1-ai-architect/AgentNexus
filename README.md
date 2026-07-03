@@ -17,6 +17,62 @@
 
 详细规则见 `.claude/CLAUDE.md` 和 `docs/conventions/`。
 
+## 如何指导 AI 写一个功能
+
+以"品牌需求录入"为例：
+
+### 步骤 1：进入探索模式
+
+```
+/opsx:explore 品牌需求录入 MVP
+```
+
+和 AI 讨论：
+- 需要哪些字段？（品牌名称、品类、目标城市、预算、周期等）
+- 需要哪些端点？（POST /brands, GET /brands/{id}）
+- mock 数据怎么组织？
+- 第一个简单 Agent 做什么？
+
+### 步骤 2：生成提案
+
+```
+/opsx:propose brand-input-mvp
+```
+
+AI 会自动生成：
+- `proposal.md`：为什么做、做什么
+- `design.md`：技术设计、数据流
+- `specs/brand-input/spec.md`：需求与场景
+- `tasks.md`：可勾选实现步骤
+
+**人必须 Review 这些 artifact**，确认字段、边界、数据规则正确。
+
+### 步骤 3：实现
+
+```
+/opsx:apply brand-input-mvp
+```
+
+AI 按 tasks 顺序实现：
+1. 写 OpenAPI YAML（`docs/api/brands.yaml`）
+2. 生成 Pydantic schemas（`app/schemas/brand.py`）
+3. 实现 service 层（`app/services/brand_service.py`）
+4. 实现 router（`app/routers/brands.py`）
+5. 写测试（`tests/test_routers/test_brands.py`）
+6. 运行 `uv run pytest -v`
+
+### 步骤 4：归档
+
+```
+/opsx:archive brand-input-mvp
+```
+
+AI 会把 delta spec sync 到 `openspec/specs/brand-input/spec.md`，然后把 change 归档到 `openspec/changes/archive/`。
+
+---
+
+## 技术栈
+
 FastAPI + LangGraph + React 18 + Vite + uv
 
 ## 快速开始
