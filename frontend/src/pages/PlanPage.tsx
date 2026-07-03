@@ -7,22 +7,28 @@ import { PlanLogStream } from './PlanLogStream'
 import { PlanPreview } from './PlanPreview'
 import { PipelineTimeline } from './PipelineTimeline'
 
+const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
 
 interface PlanSession { brandInput: BrandInput }
 
 function usePlanSession() {
-  const [seed, setSeed] = useState<BrandInput | undefined>(undefined)
-  useEffect(() => {
+  const [seed, setSeed] = useState<BrandInput | undefined>(() => {
+    // Only read from sessionStorage (chat → plan jump), NOT from localStorage
     try {
-      const raw = localStorage.getItem(STORAGE_KEY)
+      const raw = sessionStorage.getItem(BRAND_INPUT_KEY)
       if (raw) {
-        const parsed = JSON.parse(raw) as PlanSession
-        if (parsed.brandInput) setSeed(parsed.brandInput)
+        const parsed = JSON.parse(raw) as BrandInput
+        if (parsed.brand_name || parsed.category || parsed.city || parsed.budget || parsed.period) {
+          sessionStorage.removeItem(BRAND_INPUT_KEY)
+          return parsed
+        }
       }
     } catch { /* ignore */ }
+    return undefined
   }, [])
   const save = useCallback((brandInput: BrandInput) => {
+    // Save to localStorage for manual re-use
     try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ brandInput })) } catch { /* ignore */ }
   }, [])
   return { seed, save }
@@ -47,14 +53,6 @@ export function PlanPage() {
     save(brandInput)
     start({ brand_name: brandInput.brand_name, category: brandInput.category, city: brandInput.city, budget: brandInput.budget, period: brandInput.period })
   }, [save, start])
-
-  const startedRef = useRef(false)
-  useEffect(() => {
-    if (seed && status === 'idle' && !startedRef.current) {
-      startedRef.current = true
-      handleStart({ brandName: seed.brand_name ?? '', category: seed.category ?? '', city: seed.city ?? '上海', budget: seed.budget ?? 300, period: seed.period ?? 3 })
-    }
-  }, [seed, status, handleStart])
 
   const chapters = outputs.plan_generator?.chapters || []
   const actionItems = outputs.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({ title: a.title, description: a.description, buttonLabel: '查看详情' }))

@@ -28,6 +28,7 @@ export interface ChatMessage {
   retryable?: boolean
   canGeneratePlan?: boolean
   reasoning?: string
+  missingFields?: string[]
 }
 
 export type FieldKey = keyof BrandInput

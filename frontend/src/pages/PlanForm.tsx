@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import type { BrandInput } from '../types/chat'
 
 // ─── Types ───────────────────────────────────────────────────────────────────
@@ -24,168 +24,14 @@ interface PlanFormProps {
   status?: 'idle' | 'running' | 'failed' | 'completed'
 }
 
-// ─── Scene templates ─────────────────────────────────────────────────────────
-
-interface SceneTemplate {
-  label: string
-  intent: string
-  values: PlanFormData
-}
-
-const SCENE_TEMPLATES: SceneTemplate[] = [
-  {
-    label: '新品上市',
-    intent:
-      '我是娃哈哈，新推出魅力系列100%果汁，想在上海做新品上市营销，预算300万，周期3个月',
-    values: {
-      brandName: '娃哈哈',
-      category: '魅力系列果汁',
-      city: '上海',
-      budget: 300,
-      period: 3,
-      marketingGoal: 'brand-awareness',
-      positioning: '健康活力，全家共享的天然果汁',
-      targetAudience: '18-40岁都市白领及家庭用户',
-      productMatrix: '魅力100%果汁系列：橙汁/苹果汁/葡萄汁，1L家庭装，定价12-15元',
-      history: '曾在抖音与健身达人合作推广营养快线，单条曝光超500万',
-      constraints: '希望重点覆盖周末运动场景，避免深夜时段投放',
-    },
-  },
-  {
-    label: '赛事赞助',
-    intent:
-      '我们是某运动饮料品牌，想赞助北京马拉松相关赛事活动，预算500万，周期6个月',
-    values: {
-      brandName: '某运动饮料品牌',
-      category: '运动饮料',
-      city: '北京',
-      budget: 500,
-      period: 6,
-      marketingGoal: 'brand-awareness',
-      positioning: '专业运动补给，激发更好表现',
-      targetAudience: '18-35岁跑步、健身人群',
-      productMatrix: '电解质饮料/蛋白粉/能量胶，单瓶8-15元',
-      history: '曾赞助多场校园篮球赛',
-      constraints: '需要绑定至少3场大型赛事',
-    },
-  },
-  {
-    label: '达人推广',
-    intent:
-      '我们是瑜伽服饰品牌，想通过达人推广进入杭州市场，预算150万，周期3个月',
-    values: {
-      brandName: '某瑜伽服饰品牌',
-      category: '瑜伽运动服饰',
-      city: '杭州',
-      budget: 150,
-      period: 3,
-      marketingGoal: 'sales-conversion',
-      positioning: '柔软亲肤，陪伴每一次呼吸',
-      targetAudience: '22-40岁女性瑜伽爱好者',
-      productMatrix: '瑜伽裤/运动文胸/罩衫，单价200-500元',
-      history: '在小红书有过小规模种草',
-      constraints: '要求达人真实体验，禁止硬广',
-    },
-  },
-  {
-    label: '会员运营',
-    intent:
-      '我们是健身房连锁品牌，想在成都做会员拉新活动，预算200万，周期6个月',
-    values: {
-      brandName: '某健身连锁品牌',
-      category: '健身服务',
-      city: '成都',
-      budget: 200,
-      period: 6,
-      marketingGoal: 'membership',
-      positioning: '让运动成为生活习惯',
-      targetAudience: '20-35岁都市白领',
-      productMatrix: '月卡/季卡/私教课程，月卡299元起',
-      history: '曾通过盟域活动获客',
-      constraints: '需与盟域活动深度绑定',
-    },
-  },
-]
-
-// ─── Intent parsing (keyword-based, single-pass) ─────────────────────────────
-
-function parseIntent(text: string): Partial<PlanFormData> {
-  // 品牌名称: "我是XX，"
-  const brandPatterns = [/我是(.+?)[，,]/]
-  // 产品/品类: "新推出/推出/推广/做XX，"
-  // ponytail: simple regex cascade; cover only common form variations
-  const productPatterns = [
-    /(?:品牌|公司).*?(?:新推出|推出|推广|做|策划)(.+?)[，,]/,
-    /(?:推|做)(?:一个|一款|)(.+?)(?:营销|推广|市场|活动)/,
-  ]
-  // 城市: "在XX做/推广/市场/营销/活动"
-  const cityPatterns = [/在(.+?)(?:做|推广|市场|做营销|做活动)/]
-  // 预算: "预算XXX万/万元"
-  const budgetPatterns = [/预算(\d+)(?:万|万元)/]
-  // 周期: "周期X个月/月"
-  const periodPatterns = [/周期(\d+)(?:个?月|个月)/]
-
-  const parsed: Partial<PlanFormData> = {}
-
-  for (const r of brandPatterns) {
-    const m = text.match(r)
-    if (m) {
-      parsed.brandName = m[1].trim()
-      break
-    }
-  }
-
-  for (const r of productPatterns) {
-    const m = text.match(r)
-    if (m) {
-      parsed.category = m[1].trim()
-      break
-    }
-  }
-
-  for (const r of cityPatterns) {
-    const m = text.match(r)
-    if (m) {
-      const candidate = m[1].trim()
-      if (['上海', '北京', '成都', '杭州', '广州'].includes(candidate)) {
-        parsed.city = candidate
-      }
-      break
-    }
-  }
-
-  for (const r of budgetPatterns) {
-    const m = text.match(r)
-    if (m) {
-      parsed.budget = parseInt(m[1], 10)
-      break
-    }
-  }
-
-  for (const r of periodPatterns) {
-    const m = text.match(r)
-    if (m) {
-      parsed.period = parseInt(m[1], 10)
-      break
-    }
-  }
-
-  // marketingGoal from keyword hints
-  if (text.includes('拉新') || text.includes('获客')) parsed.marketingGoal = 'user-acquisition'
-  else if (text.includes('转化') || text.includes('销售')) parsed.marketingGoal = 'sales-conversion'
-  else if (text.includes('会员')) parsed.marketingGoal = 'membership'
-
-  return parsed
-}
-
 // ─── Defaults ────────────────────────────────────────────────────────────────
 
 const DEFAULT_FORM: PlanFormData = {
   brandName: '',
   category: '',
   city: '上海',
-  budget: 300,
-  period: 3,
+  budget: 0,
+  period: 0,
   productMatrix: '',
   positioning: '',
   marketingGoal: 'brand-awareness',
@@ -197,16 +43,38 @@ const DEFAULT_FORM: PlanFormData = {
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps) {
-  const [intent, setIntent] = useState('')
-  const [form, setForm] = useState<PlanFormData>(() => ({
-    ...DEFAULT_FORM,
-    brandName: initial?.brand_name ?? '',
-    category: initial?.category ?? '',
-    city: initial?.city ?? DEFAULT_FORM.city,
-    budget: initial?.budget ?? DEFAULT_FORM.budget,
-    period: initial?.period ?? DEFAULT_FORM.period,
-  }))
+  const [form, setForm] = useState<PlanFormData>(DEFAULT_FORM)
   const [advancedOpen, setAdvancedOpen] = useState(false)
+  const [autoSubmitted, setAutoSubmitted] = useState(false)
+
+  // Sync form when initial changes from chat
+  useEffect(() => {
+    if (initial) {
+      setForm({
+        ...DEFAULT_FORM,
+        brandName: initial.brand_name ?? '',
+        category: initial.category ?? '',
+        city: initial.city ?? DEFAULT_FORM.city,
+        budget: initial.budget ?? DEFAULT_FORM.budget,
+        period: initial.period ?? DEFAULT_FORM.period,
+      })
+    }
+  }, [initial])
+
+  // Auto-submit when initial is received from chat
+  useEffect(() => {
+    if (initial && status === 'idle' && !autoSubmitted) {
+      setAutoSubmitted(true)
+      const data: PlanFormData = {
+        brandName: initial.brand_name ?? '',
+        category: initial.category ?? '',
+        city: initial.city ?? DEFAULT_FORM.city,
+        budget: initial.budget ?? DEFAULT_FORM.budget,
+        period: initial.period ?? DEFAULT_FORM.period,
+      }
+      onSubmit(data)
+    }
+  }, [initial, status, onSubmit, autoSubmitted])
 
   // ── Handlers ───────────────────────────────────────────────────────────
 
@@ -216,18 +84,6 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
     },
     [],
   )
-
-  const applyScene = useCallback((template: SceneTemplate) => {
-    setIntent(template.intent)
-    setForm((prev) => ({ ...prev, ...template.values }))
-  }, [])
-
-  const handleIntentParse = useCallback(() => {
-    const trimmed = intent.trim()
-    if (!trimmed) return
-    const parsed = parseIntent(trimmed)
-    setForm((prev) => ({ ...prev, ...parsed }))
-  }, [intent])
 
   const handleSubmit = useCallback(
     (event: React.FormEvent) => {
@@ -252,59 +108,6 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
-      {/* ── Intent input ── */}
-      {!isRunning && (
-      <div>
-        <div className="mb-1.5 text-xs font-semibold uppercase tracking-[0.5px] text-slate-600">
-          用一句话描述需求
-        </div>
-        <div className="relative">
-          <textarea
-            className="min-h-[52px] w-full resize-none rounded-[10px] border border-slate-200 bg-white px-3 py-2 pr-[42px] text-sm leading-snug text-slate-900 outline-none transition-colors placeholder:text-slate-400 focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
-            placeholder="例如：我是娃哈哈，想在上海推广一款新果汁，预算300万，周期3个月…"
-            rows={2}
-            value={intent}
-            onChange={(e) => setIntent(e.target.value)}
-          />
-          <button
-            type="button"
-            disabled={!intent.trim()}
-            className="absolute bottom-2 right-2 flex h-[30px] w-[30px] items-center justify-center rounded-md border-none bg-blue-900 text-white transition-colors hover:bg-blue-950 disabled:cursor-not-allowed disabled:opacity-50"
-            onClick={handleIntentParse}
-            aria-label="解析需求"
-          >
-            <svg
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            >
-              <line x1="22" y1="2" x2="11" y2="13" />
-              <polygon points="22 2 15 22 11 13 2 9 22 2" />
-            </svg>
-          </button>
-        </div>
-
-        {/* Scene chips */}
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {SCENE_TEMPLATES.map((tpl) => (
-            <button
-              key={tpl.label}
-              type="button"
-              className="whitespace-nowrap rounded-[20px] border border-slate-200 bg-white px-3 py-1.5 text-xs text-slate-600 transition-colors hover:border-blue-800 hover:bg-blue-50 hover:text-blue-900"
-              onClick={() => applyScene(tpl)}
-            >
-              {tpl.label}
-            </button>
-          ))}
-        </div>
-      </div>
-      )}
-
       {/* ── Required fields ── */}
       <div>
         <div className="mb-2 flex items-center justify-between">
@@ -364,6 +167,9 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
                 value={form.period}
                 onChange={(e) => updateField('period', Number(e.target.value))}
               >
+                <option value={0}>请选择周期</option>
+                <option value={1}>1 个月</option>
+                <option value={2}>2 个月</option>
                 <option value={3}>3 个月</option>
                 <option value={6}>6 个月</option>
                 <option value={12}>12 个月</option>
@@ -488,26 +294,28 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
         )}
       </div>
 
-      {/* ── Generate button ── */}
-      <button
-        type="submit"
-        disabled={!requiredOk || isLoading}
-        className="flex w-full items-center justify-center gap-2 rounded-[10px] border-none bg-orange-500 px-4 py-2.5 text-[15px] font-bold text-white shadow-[0_4px_12px_rgba(249,115,22,0.25)] transition-all hover:-translate-y-px hover:bg-orange-600 hover:shadow-[0_6px_16px_rgba(249,115,22,0.3)] disabled:translate-y-0 cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
-      >
-        <svg
-          width="18"
-          height="18"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
+      {/* ── Generate button (only show when form can be manually edited) ── */}
+      {!isRunning && !initial && (
+        <button
+          type="submit"
+          disabled={!requiredOk || isLoading}
+          className="flex w-full items-center justify-center gap-2 rounded-[10px] border-none bg-orange-500 px-4 py-2.5 text-[15px] font-bold text-white shadow-[0_4px_12px_rgba(249,115,22,0.25)] transition-all hover:-translate-y-px hover:bg-orange-600 hover:shadow-[0_6px_16px_rgba(249,115,22,0.3)] disabled:translate-y-0 cursor-not-allowed disabled:opacity-60 disabled:shadow-none"
         >
-          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
-        </svg>
-        {isLoading ? '生成中…' : '生成营销方案'}
-      </button>
+          <svg
+            width="18"
+            height="18"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2.5"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+          >
+            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+          </svg>
+          {isLoading ? '生成中…' : '生成营销方案'}
+        </button>
+      )}
     </form>
   )
 }

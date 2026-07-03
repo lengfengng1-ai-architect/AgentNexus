@@ -1,5 +1,16 @@
 import axios, { isAxiosError } from 'axios'
+import type { BrandInput } from '../types/chat'
 import type { WorkflowRunRequest, WorkflowRunResponse } from '../types/workflow'
+
+export interface IntentResult {
+  intent: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context'
+  confidence: number
+  reply: string
+  brand_input: BrandInput
+  missing_fields: string[]
+  updated_fields: Record<string, unknown>
+  reasoning: string
+}
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1',
@@ -42,19 +53,20 @@ export async function runChatPipeline(
 
 export interface StreamChunk {
   reasoning?: string
-  reasoningFull?: string
   reply?: string
+  intent?: IntentResult
 }
 
 export async function* streamChat(
   message: string,
+  context?: Record<string, unknown>,
 ): AsyncGenerator<StreamChunk> {
   const response = await fetch(
     `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'}/chat/stream`,
     {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ message }),
+      body: JSON.stringify({ message, context }),
     },
   )
   if (!response.ok || !response.body) {
@@ -94,10 +106,13 @@ function parseEventBlock(block: string): StreamChunk | null {
   try {
     const parsed = JSON.parse(data)
     if (event === 'reasoning') {
-      return { reasoning: parsed.text, reasoningFull: parsed.full }
+      return { reasoning: parsed.text }
     }
     if (event === 'reply') {
       return { reply: parsed.text }
+    }
+    if (event === 'intent') {
+      return { intent: parsed as IntentResult }
     }
   } catch { /* skip */ }
   return null
