@@ -62,7 +62,9 @@ export function PlanPage() {
   // Restore paused/completed run on mount
   useEffect(() => {
     const savedRunId = localStorage.getItem(RUN_ID_KEY)
-    if (savedRunId) restoreFromRunId(savedRunId)
+    if (savedRunId && savedRunId !== 'null' && savedRunId !== 'undefined') {
+      restoreFromRunId(savedRunId)
+    }
   }, [restoreFromRunId])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(status !== 'idle')
   useEffect(() => { if (status !== 'idle') setSidebarCollapsed(true) }, [status])
