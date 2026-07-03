@@ -20,7 +20,7 @@
 ├─────────────────────────────────────────┤
 │  Registry + Orchestrator                │  ← registry.py + orchestrator.py
 │  - register("name", handler)            │    可插拔注册 + LangGraph 图构建
-│  - register_mock("name", mock_handler)  │
+│  - build_graph(workflow_def) → graph    │
 │  - build_graph(workflow_def) → graph    │
 ├─────────────────────────────────────────┤
 │  Agent 节点层                           │  ← agents/*_agent.py
@@ -30,7 +30,6 @@
 ├─────────────────────────────────────────┤
 │  Mock Agent 层                          │  ← agents/mock_*.py
 │  - 独立文件，以 mock_ 开头               │
-│  - register_mock() 注册                 │
 ├─────────────────────────────────────────┤
 │  LangChain 模型层                       │  ← llm_utils.py
 │  - build_chat_model()                   │    统一 provider 适配
@@ -43,6 +42,33 @@
 - Mock Agent 通过 `registry.register_mock()` 注册为独立文件（`mock_` 开头）。
 - 真实 Agent 文件**禁止包含任何 mock 代码**（`use_mock_data`、`_MOCK_PATH`、`_load_mock`）。
 - `llm_utils.build_chat_model()` 是唯一的模型构建入口，所有 agent 禁止自己写 `_build_model()`。
+
+### Agent 文件头注释规范
+
+每个 Agent 文件头部必须包含标准注释块：
+
+```python
+"""Agent: <能力名称>。
+
+注册名称: <registry 名称>
+对应 OpenSpec: docs/api/paths/<xxx>.yaml
+对应 in_scope ID: <superpowers.yaml ID>
+用途: <一句话描述>
+输入: <需要的 state 字段>
+输出: <返回的 schema>
+"""
+```
+
+字段说明：
+
+| 字段 | 说明 |
+|------|------|
+| `注册名称` | `registry.register()` 中的名称，YAML workflow `agent:` 引用 |
+| `对应 OpenSpec` | `docs/api/paths/` 下的 YAML 文件路径 |
+| `对应 in_scope ID` | `docs/superpowers.yaml` 中 `in_scope` 的 ID |
+| `用途` | 一句话描述 |
+| `输入` | `state` 中需要的字段 |
+| `输出` | 返回的 Pydantic schema |
 
 ## 模型配置
 
@@ -152,8 +178,8 @@ def build_chat_model():
 ```text
 backend/app/
 ├── agents/                      # Agent 节点
-│   ├── __init__.py              # 导入所有 agent 触发注册 + 注册 mock handler
-│   ├── registry.py              # register / register_mock / get_handler
+│   ├── __init__.py              # 导入所有 agent 触发注册
+│   ├── registry.py              # register / get_handler
 │   ├── orchestrator.py          # 可配置 LangGraph 图构建
 │   ├── llm_utils.py             # build_chat_model — 统一 LLM 入口
 │   ├── intent_recognition_agent.py

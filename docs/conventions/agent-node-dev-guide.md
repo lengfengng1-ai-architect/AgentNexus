@@ -56,8 +56,12 @@ codegraph explore "<你的agent名>"
 ```python
 """Agent: <能力名称>。
 
+注册名称: <registry 名称>
 对应 OpenSpec: docs/api/paths/<xxx>.yaml
 对应 in_scope ID: <从 superpowers.yaml 填写>
+用途: <一句话描述该 Agent 的功能职责>
+输入: <需要的 state 字段>
+输出: <返回的 schema>
 """
 
 from app.agents.registry import register
@@ -72,12 +76,13 @@ async def run_<agent>(state: dict) -> dict:
     if not input_val:
         raise ValueError("Missing required input: input_field")
 
-    if settings.use_mock_data:
-        return <AgentOutput>(...).model_dump()
-
     llm = build_chat_model().with_structured_output(<AgentOutput>)
     result = await llm.ainvoke([...])
     return result.model_dump()
+
+
+register("<agent>", run_<agent>)
+```
 
 
 register("<agent>", run_<agent>)
@@ -95,12 +100,12 @@ async def mock_run_<agent>(state: dict) -> dict:
 
 | 项 | 约定 |
 |----|------|
+| 文件头注释 | 必须包含 `注册名称`、`对应 OpenSpec`、`对应 in_scope ID`、`用途`、`输入`、`输出` |
 | 文件命名 | `backend/app/agents/<agent_name>_agent.py`，`agent_name` 用 snake_case |
 | schema 文件 | `backend/app/schemas/<domain>.py`，Pydantic model 用 PascalCase |
 | prompt 文件 | `backend/app/prompt_templates/<agent_name>.md.j2` |
 | 入口函数 | `async def run_<agent_name>(state: dict) -> dict` |
 | 模型构建 | **必须用 `build_chat_model()`**，禁止自己写 `_build_model()` |
-| Mock 注册 | 通过 `register_mock()` 注册，在 `__init__.py` 中 import |
 
 ---
 
@@ -278,7 +283,8 @@ uv run python -m scripts.debug_<agent>
 
 ## 9. 提交前的自检清单
 
-- [ ] 我的 Agent 文件放在 `backend/app/agents/<agent_name>_agent.py`
+- [ ] 我的注册名称和文件在 `backend/app/agents/<agent_name>_agent.py`
+- [ ] 文件头包含了 `注册名称`、`对应 OpenSpec`、`对应 in_scope ID`、`用途`、`输入`、`输出`
 - [ ] 我的 schema 放在 `backend/app/schemas/<domain>.py`
 - [ ] 我的 prompt 放在 `backend/app/prompt_templates/<agent_name>.md.j2`
 - [ ] 我实现了 `async def run_<agent_name>(...) -> OutputSchema`
