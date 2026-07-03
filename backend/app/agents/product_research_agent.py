@@ -9,6 +9,7 @@ superpowers in_scope ID: product-research
 
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from bs4 import BeautifulSoup
 from ddgs import DDGS
