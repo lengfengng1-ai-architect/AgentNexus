@@ -395,7 +395,7 @@ export function usePlanRun() {
         dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [state.runId, state.status, consumeStream, refreshStatus],
+    [state.runId],
   )
 
   const reject = useCallback(
@@ -420,7 +420,7 @@ export function usePlanRun() {
         dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [state.runId, state.status, consumeStream, refreshStatus],
+    [state.runId],
   )
 
   const cancel = useCallback(async () => {
