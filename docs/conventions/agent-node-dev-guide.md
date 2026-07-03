@@ -107,6 +107,7 @@ async def mock_run_<agent>(state: dict) -> dict:
 | 入口函数 | `async def run_<agent_name>(state: dict) -> dict` |
 | 模型构建 | **必须用 `build_chat_model()`**，禁止自己写 `_build_model()` |
 | 图构建 | **禁止 for 循环建图**。所有 `add_node`/`add_edge` 必须逐条显式写出。顺序一目了然，不需要读者跳到变量定义确认拓扑 |
+| import 规则 | **禁止在方法/函数内部 import**。所有 import 必须放在文件顶部。违反者在 Code Review 打回 |
 
 ---
 
@@ -279,7 +280,8 @@ uv run python -m scripts.debug_<agent>
 | 没有测试就提交 | 无法保证回归 | 覆盖率 ≥80% |
 | 没有 OpenSpec 就写代码 | 违反项目核心流程 | 先补 spec |
 | 编造厂商/赛事/达人名称或数据数值 | 违反数据引用规则 | 全部来自 API/mock |
-| **用 for 循环建 **`_build_graph`** / add_node / add_edge** | 读者要跳到变量定义才能看清拓扑 | 逐条显式写出每个节点和每条边 |
+| **用 for 循环建 add_node / add_edge** | 读者要跳到变量定义才能看清拓扑 | 逐条显式写出每个节点和每条边 |
+| **在函数体内 import** | 隐藏依赖、难测试、违反一致性 | 全部放到文件顶部 |
 
 ---
 

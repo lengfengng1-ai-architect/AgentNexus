@@ -6,6 +6,7 @@ superpowers in_scope ID: audience-insight
 """
 
 import asyncio
+import json
 from typing import Any
 
 from bs4 import BeautifulSoup
@@ -18,6 +19,7 @@ from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model
 from app.agents.registry import register
+from app.config.cache_paths import AUDIENCE_DIR, persona_path
 from app.schemas.audience_insight import AudienceRawData, UserPersona
 from app.utils import extract_text_from_html
 
@@ -149,15 +151,9 @@ async def generate_persona_node(state: State) -> dict:
     if not state.audience_data:
         return {"persona": UserPersona()}
 
-    product_info_str = ""
-    if state.product_info:
-        import json
-        product_info_str = json.dumps(state.product_info, indent=2, ensure_ascii=False)[:2000]
+    product_info_str = json.dumps(state.product_info, ensure_ascii=False)[:2000] if state.product_info else ""
 
-    market_info_str = ""
-    if state.market_info:
-        import json
-        market_info_str = json.dumps(state.market_info, indent=2, ensure_ascii=False)[:2000]
+    market_info_str = json.dumps(state.market_info, ensure_ascii=False)[:2000] if state.market_info else ""
 
     prompt = _load_template("persona_generation.md.j2",
                             product_name=state.product_name,
@@ -226,8 +222,6 @@ async def run_audience_search(state: dict[str, Any]) -> dict[str, Any]:
     if ad is None:
         raise ValueError("Agent did not return audience data")
     # 持久化到 mock_data/audience_insight/
-    from app.config.cache_paths import AUDIENCE_DIR
-    safe_name = pn.replace(" ", "_").lower()
     AUDIENCE_DIR.mkdir(parents=True, exist_ok=True)
     path = AUDIENCE_DIR / f"{safe_name}.json"
     path.write_text(ad.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
@@ -244,7 +238,6 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Missing required input: product_name")
 
     audience_data_raw = state.get("audience_data", {})
-    from app.schemas.audience_insight import AudienceRawData
     ad = AudienceRawData.model_validate(audience_data_raw)
 
     product_info_str = json.dumps(state.get("product_info", {}), ensure_ascii=False)[:2000] if state.get("product_info") else ""
@@ -263,7 +256,6 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
     ])
 
     # 持久化到 mock_data/user_persona/
-    from app.config.cache_paths import persona_path
     pp = persona_path(pn)
     pp.parent.mkdir(parents=True, exist_ok=True)
     pp.write_text(result.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")

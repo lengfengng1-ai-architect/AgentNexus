@@ -7,6 +7,8 @@ beyond ~20 lines or gains module-level state, break it into its own module.
 import re
 from typing import Any
 
+from bs4 import BeautifulSoup
+
 
 def sanitize(name: str) -> str:
     """Convert a name to a filesystem-safe identifier.
@@ -39,8 +41,6 @@ def parse_period(value: Any) -> int:
 
 def extract_text_from_html(html: str) -> str:
     """Strip HTML tags and return clean text content."""
-    from bs4 import BeautifulSoup
-
     soup = BeautifulSoup(html, "lxml")
     for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
         tag.decompose()

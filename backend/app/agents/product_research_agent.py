@@ -21,15 +21,16 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model
-from app.config.settings import settings
 from app.agents.registry import register
+from app.config.settings import settings
 from app.schemas.product_info import (
     ProductResearchResult,
     SourcedStr,
     SourcedDict,
     SourcedStrList,
 )
-from app.utils import sanitize, extract_text_from_html as _extract_text_from_html
+from app.utils import sanitize, extract_text_from_html
+from urllib.parse import urlparse
 
 # ── mock_data 持久化 ──
 
@@ -100,7 +101,6 @@ def _load_prompt(product_name: str, fetched_pages: list[FetchedPage]) -> str:
 
 
 def _domain_priority(url: str) -> int:
-    from urllib.parse import urlparse
     hostname = urlparse(url).hostname or ""
     for domain in PRIORITY_DOMAINS:
         if hostname == domain or hostname.endswith("." + domain):
@@ -165,7 +165,7 @@ async def fetch_node(state: ProductResearchState) -> dict:
                 if "text/html" not in content_type and "application/xhtml" not in content_type:
                     return FetchedPage(url=url, title=None, content="", fetched=False)
                 raw = resp.text
-                text = _extract_text_from_html(raw)
+                text = extract_text_from_html(raw)
                 if len(text) > MAX_PAGE_CHARS:
                     text = text[:MAX_PAGE_CHARS] + "\n...[内容截断]"
                 soup = BeautifulSoup(raw, "lxml")

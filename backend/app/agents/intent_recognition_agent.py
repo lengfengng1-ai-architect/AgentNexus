@@ -9,6 +9,7 @@ import logging
 from pathlib import Path
 from typing import Any, AsyncGenerator
 
+import openai
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -140,7 +141,6 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
     )
 
     if settings.enable_thinking:
-        import openai
         client = openai.OpenAI(api_key=settings.myself_api_key, base_url=settings.myself_base_url)
         resp = client.chat.completions.create(
             model=settings.myself_model,
@@ -204,7 +204,6 @@ async def stream_intent_recognition(
     )
 
     if settings.enable_thinking:
-        import openai
         client = openai.OpenAI(api_key=settings.myself_api_key, base_url=settings.myself_base_url)
         stream = client.chat.completions.create(
             model=settings.myself_model,
