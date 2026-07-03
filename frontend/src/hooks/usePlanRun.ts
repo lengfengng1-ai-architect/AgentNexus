@@ -269,10 +269,15 @@ export function usePlanRun() {
 
   const abortRef = useRef<(() => void) | null>(null)
   const runIdRef = useRef<string | null>(null)
+  const statusRef = useRef<PlanRunStatus>('idle')
 
   useEffect(() => {
     runIdRef.current = state.runId
   }, [state.runId])
+
+  useEffect(() => {
+    statusRef.current = state.status
+  }, [state.status])
 
   useEffect(() => {
     const abort = abortRef.current
@@ -374,18 +379,19 @@ export function usePlanRun() {
 
   const approve = useCallback(
     async (editedInput?: Record<string, unknown>) => {
-      if (!state.runId) return
+      const rid = runIdRef.current
+      if (!rid) return
       dispatch({ type: 'SET_LOADING', loading: true })
       try {
-        // If status drifted from paused, re-check from server first.
-        if (state.status !== 'paused') {
-          await refreshStatus()
+        // Check latest status from ref, not stale closure.
+        if (statusRef.current !== 'paused') {
+          const result = await getPlanRunStatus(rid)
+          if (result.status !== 'paused') {
+            dispatch({ type: 'SET_LOADING', loading: false })
+            return
+          }
         }
-        if (state.status !== 'paused') {
-          dispatch({ type: 'SET_LOADING', loading: false })
-          return
-        }
-        const stream = await approvePlanRun(state.runId, editedInput ? { edited_input: editedInput } : undefined)
+        const stream = await approvePlanRun(rid, editedInput ? { edited_input: editedInput } : undefined)
         dispatch({ type: 'SET_CONNECTED', connected: true })
         await consumeStream(stream)
       } catch (error) {
@@ -395,22 +401,23 @@ export function usePlanRun() {
         dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [state.runId],
+    [consumeStream],
   )
 
   const reject = useCallback(
     async (reason: string) => {
-      if (!state.runId) return
+      const rid = runIdRef.current
+      if (!rid) return
       dispatch({ type: 'SET_LOADING', loading: true })
       try {
-        if (state.status !== 'paused') {
-          await refreshStatus()
+        if (statusRef.current !== 'paused') {
+          const result = await getPlanRunStatus(rid)
+          if (result.status !== 'paused') {
+            dispatch({ type: 'SET_LOADING', loading: false })
+            return
+          }
         }
-        if (state.status !== 'paused') {
-          dispatch({ type: 'SET_LOADING', loading: false })
-          return
-        }
-        const stream = await rejectPlanRun(state.runId, { reason })
+        const stream = await rejectPlanRun(rid, { reason })
         dispatch({ type: 'SET_CONNECTED', connected: true })
         await consumeStream(stream)
       } catch (error) {
@@ -420,7 +427,7 @@ export function usePlanRun() {
         dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [state.runId],
+    [consumeStream],
   )
 
   const cancel = useCallback(async () => {
