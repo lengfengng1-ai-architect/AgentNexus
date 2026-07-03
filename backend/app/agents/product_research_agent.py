@@ -8,6 +8,7 @@ superpowers in_scope ID: product-research
 """
 
 import asyncio
+from pathlib import Path
 
 from bs4 import BeautifulSoup
 from duckduckgo_search import DDGS
@@ -26,6 +27,22 @@ from app.schemas.product_info import (
     SourcedStrList,
 )
 from app.agents.registry import register
+
+# ── mock_data 持久化 ──
+
+MOCK_DATA_DIR = Path("mock_data") / "product_info"
+
+
+def _sanitize(name: str) -> str:
+    import re
+    safe = re.sub(r'[^\w一-鿿]+', "_", name).strip("_").lower()
+    return safe if safe else "unknown"
+
+
+def _save_to_cache(product_name: str, info: ProductResearchResult) -> None:
+    MOCK_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    path = MOCK_DATA_DIR / f"{_sanitize(product_name)}.json"
+    path.write_text(info.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
 
 # ── 搜索和抓取常量 ──────────────────────────────────────────
 SEARCH_MAX_RESULTS = 10
@@ -234,7 +251,7 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
                 resp.raise_for_status()
                 text = _extract_text_from_html(resp.text)
-                if product.lower() in text.lower()[:800]:
+                if product.lower() in (text or "").lower()[:800]:
                     # 将官网 URL 存到 identity.product_name 的 sources
                     if url not in output.identity.product_name.sources:
                         output.identity.product_name.sources.append(url)
@@ -286,6 +303,7 @@ async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
     if not pn:
         raise ValueError("Missing required input: product_name")
     result = await research_product(pn)
+    _save_to_cache(pn, result)
     return result.model_dump()
 
 

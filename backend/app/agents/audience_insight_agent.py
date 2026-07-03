@@ -6,6 +6,7 @@ superpowers in_scope ID: audience-insight
 """
 
 import asyncio
+import re
 from typing import Any
 
 from bs4 import BeautifulSoup
@@ -242,6 +243,14 @@ async def run_audience_search(state: dict[str, Any]) -> dict[str, Any]:
     ad = s.get("audience_data")
     if ad is None:
         raise ValueError("Agent did not return audience data")
+    # 持久化到 mock_data/audience_insight/
+    safe_name = re.sub(r'[^\w一-鿿]+', "_", pn).strip("_").lower()
+    from app.services.audience_insight_service import AUDIENCE_DIR
+    AUDIENCE_DIR.mkdir(parents=True, exist_ok=True)
+    path = AUDIENCE_DIR / f"{safe_name}.json"
+    if not safe_name:
+        path = AUDIENCE_DIR / "unknown.json"
+    path.write_text(ad.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
     return ad.model_dump()
 
 
@@ -264,9 +273,8 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
         "market_info": state.get("market_info", {}),
         "audience_data": ad,
     })
-    # 上面 set audience_data，generate_persona_node 直接用
-    # 但 generate_persona_node 只在 extract_audience_node 之后才跑
-    # 所以我们直接用 llm 调用来生成
+    # 不需要上面这行，直接用 llm 调用生成画像
+
     product_info_str = ""
     if state.get("product_info"):
         import json
@@ -288,9 +296,20 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
         SystemMessage(content=prompt),
         HumanMessage(content=f"请为产品「{pn}」生成用户画像。"),
     ])
+
+    # 持久化到 mock_data/user_persona/
+    safe_name = re.sub(r'[^\w一-鿿]+', "_", pn).strip("_").lower()
+    from app.services.audience_insight_service import PERSONA_DIR
+    PERSONA_DIR.mkdir(parents=True, exist_ok=True)
+    path = PERSONA_DIR / f"{safe_name}.json"
+    if not safe_name:
+        path = PERSONA_DIR / "unknown.json"
+    path.write_text(result.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
+
     return result.model_dump()
 
 
 register("audience_search", run_audience_search)
 register("generate_persona", run_generate_persona)
+register("audience_insight", run_generate_persona)  # alias for plan_generation_pipeline
 
