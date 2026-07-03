@@ -293,8 +293,6 @@ async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
     brand_name = state.get("brand_name") or state.get("product_name")
     if not brand_name:
         raise ValueError("Missing required input: brand_name or product_name")
-    if settings.use_mock_data:
-        return {"product_name": brand_name, "summary": f"Mock research for {brand_name}"}
     result = await research_product(brand_name)
     _save_to_cache(brand_name, result)
     return result.model_dump()

@@ -1,0 +1,116 @@
+{
+  "identity": {
+    "product_name": {
+      "value": null,
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "brand": {
+      "value": "Nike",
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "manufacturer": {
+      "value": null,
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "industry": {
+      "value": "服装与纺织品",
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "category": {
+      "value": "运动服饰与纺织品",
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "official_description": {
+    "description": {
+      "value": null,
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "tagline": {
+      "value": null,
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "statement": {
+      "value": null,
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "features": [],
+  "specifications": {
+    "value": {},
+    "sources": [
+      "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+      "https://www.tt123.com/fullservice/FBlWMRuT"
+    ],
+    "method": "extracted"
+  },
+  "availability": {
+    "status": {
+      "value": "unknown",
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "pricing": [],
+    "available_regions": {
+      "value": [],
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted"
+    },
+    "access_model": {
+      "value": null,
+      "sources": [
+        "https://downloads.rakwireless.com/LoRa/WisBlock/Accessories/Solar+Panel+14090多晶层压板规格书.pdf",
+        "https://www.tt123.com/fullservice/FBlWMRuT"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  }
+}
