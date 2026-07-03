@@ -1,22 +1,39 @@
-"""Plan generation pipeline — LangGraph StateGraph.
+"""Plan generation pipeline — LangGraph StateGraph with checkpoint + interrupts.
 
 注册名称: plan_generation (service layer, not a registry agent)
-对应 OpenSpec: openspec/changes/simplify-workflow-orchestration/specs/plan-generation-pipeline/spec.md
+对应 OpenSpec: docs/api/paths/plan.yaml
 对应 in_scope ID: plan-generation
-用途: 串行调用 10 个 agent，生成 9 章营销方案
+用途: 串行调用 10 个 agent，生成 9 章营销方案，含 3 处人工审核检查点
 输入: brand_input（brand_name/category/city/budget/period）
 输出: plan_generator 的 chapters
 """
 
-import asyncio
+from __future__ import annotations
+
 import json
+import logging
+import uuid
 from collections.abc import AsyncGenerator
 from typing import Any
 
+from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, StateGraph
+from langgraph.types import Command
 from typing_extensions import TypedDict
 
+import aiosqlite
+
 from app.agents.registry import get_handler
+from app.schemas.common import ErrorCode
+
+logger = logging.getLogger(__name__)
+
+_CHECKPOINT_DB_PATH = "data/checkpoints.db"
+_CHECKPOINT_INTERRUPT_NODES = [
+    "strategy_generation",
+    "execution_planning",
+    "plan_generator",
+]
 
 
 class PlanState(TypedDict):
@@ -46,18 +63,60 @@ _NODE_LABELS: dict[str, str] = {
     "plan_generator": "方案生成",
 }
 
-_NODE_LOG_STEPS: dict[str, list[str]] = {
-    "product_research": ["正在搜索品牌产品信息…", "正在提取产品规格参数…", "完成产品信息调研"],
-    "market_research": ["正在分析行业趋势数据…", "正在研究竞品格局…", "完成市场调研"],
-    "audience_insight": ["正在分析人群画像…", "正在计算运动指数…", "完成人群洞察"],
-    "plan_data_query": ["正在查询盟域数据…", "正在查询达人资源…", "完成平台数据查询"],
-    "fitness_analysis": ["正在计算品类适配度…", "正在生成适配度评分…", "完成适配度分析"],
-    "strategy_generation": ["正在制定营销策略…", "正在确定核心定位…", "完成策略制定"],
-    "execution_planning": ["正在规划赛事方案…", "正在规划内容策略…", "完成执行规划"],
-    "budget_kpi": ["正在测算预算分配…", "正在预测KPI指标…", "完成预算KPI计算"],
-    "action_recommendations": ["正在分析优先级…", "正在生成可执行动作…", "完成行动建议"],
-    "plan_generator": ["正在汇总上游数据…", "正在生成方案章节…", "完成方案生成"],
-}
+_NODE_ORDER = list(_NODE_LABELS.keys())
+
+# Lazy singleton: created on first use so imports stay cheap during tests.
+_saver: AsyncSqliteSaver | None = None
+_conn: aiosqlite.Connection | None = None
+_graph: Any = None
+
+
+async def _get_saver() -> AsyncSqliteSaver:
+    """Return shared AsyncSqliteSaver, opening the DB connection if needed."""
+    global _saver, _conn
+    if _saver is None:
+        _conn = await aiosqlite.connect(_CHECKPOINT_DB_PATH)
+        _saver = AsyncSqliteSaver(_conn)
+    return _saver
+
+
+def _node_inputs(node_id: str, state: PlanState) -> dict[str, Any]:
+    """Build each node's input payload from state."""
+    if node_id == "product_research":
+        return {"brand_name": state["brand_input"].get("brand_name")}
+    if node_id == "market_research":
+        return {
+            "brand_name": state["brand_input"].get("brand_name"),
+            "category": state["brand_input"].get("category"),
+        }
+    if node_id in ("audience_insight", "plan_data_query"):
+        return {
+            "city": state["brand_input"].get("city"),
+            "product_name": state["brand_input"].get("brand_name"),
+        }
+    if node_id == "fitness_analysis":
+        return {
+            "category": state["brand_input"].get("category"),
+            "city": state["brand_input"].get("city"),
+        }
+    if node_id in ("strategy_generation", "execution_planning"):
+        return {"brand_input": state["brand_input"]}
+    if node_id == "budget_kpi":
+        return {
+            "brand_input": state["brand_input"],
+            "execution_planning": state.get("execution_planning", {}),
+        }
+    if node_id == "action_recommendations":
+        return {
+            "brand_input": state["brand_input"],
+            "strategy_generation": state.get("strategy_generation", {}),
+            "fitness_analysis": state.get("fitness_analysis", {}),
+            "budget_kpi": state.get("budget_kpi", {}),
+        }
+    # plan_generator
+    all_upstream = dict(state)
+    all_upstream.pop("brand_input")
+    return {"brand_input": state["brand_input"], **all_upstream}
 
 
 def _build_node(node_id: str) -> Any:
@@ -66,42 +125,7 @@ def _build_node(node_id: str) -> Any:
     handler = get_handler(node_id)
 
     async def node_fn(state: PlanState) -> dict[str, Any]:
-        inputs: dict[str, Any] = {}
-        if node_id == "product_research":
-            inputs = {"brand_name": state["brand_input"].get("brand_name")}
-        elif node_id == "market_research":
-            inputs = {
-                "brand_name": state["brand_input"].get("brand_name"),
-                "category": state["brand_input"].get("category"),
-            }
-        elif node_id in ("audience_insight", "plan_data_query"):
-            inputs = {"city": state["brand_input"].get("city")}
-        elif node_id == "fitness_analysis":
-            inputs = {
-                "category": state["brand_input"].get("category"),
-                "city": state["brand_input"].get("city"),
-            }
-        elif node_id in ("strategy_generation", "execution_planning"):
-            inputs = {
-                "brand_input": state["brand_input"],
-            }
-        elif node_id == "budget_kpi":
-            inputs = {
-                "brand_input": state["brand_input"],
-                "execution_planning": state.get("execution_planning", {}),
-            }
-        elif node_id == "action_recommendations":
-            inputs = {
-                "brand_input": state["brand_input"],
-                "strategy_generation": state.get("strategy_generation", {}),
-                "fitness_analysis": state.get("fitness_analysis", {}),
-                "budget_kpi": state.get("budget_kpi", {}),
-            }
-        else:  # plan_generator
-            all_upstream = dict(state)
-            all_upstream.pop("brand_input")
-            inputs = {"brand_input": state["brand_input"], **all_upstream}
-
+        inputs = _node_inputs(node_id, state)
         return {node_id: await handler(inputs)}
 
     node_fn.__name__ = f"{node_id}_node"
@@ -109,86 +133,395 @@ def _build_node(node_id: str) -> Any:
     return node_fn
 
 
-def _build_graph() -> StateGraph:
+def _build_graph() -> Any:
+    """Build graph topology; compile with checkpointer in _get_graph."""
     graph = StateGraph(PlanState)  # type: ignore[arg-type]
 
-    graph.add_node("product_research", _build_node("product_research"))
-    graph.add_node("market_research", _build_node("market_research"))
-    graph.add_node("audience_insight", _build_node("audience_insight"))
-    graph.add_node("plan_data_query", _build_node("plan_data_query"))
-    graph.add_node("fitness_analysis", _build_node("fitness_analysis"))
-    graph.add_node("strategy_generation", _build_node("strategy_generation"))
-    graph.add_node("execution_planning", _build_node("execution_planning"))
-    graph.add_node("budget_kpi", _build_node("budget_kpi"))
-    graph.add_node("action_recommendations", _build_node("action_recommendations"))
-    graph.add_node("plan_generator", _build_node("plan_generator"))
+    for node_id in _NODE_ORDER:
+        graph.add_node(node_id, _build_node(node_id))
 
-    graph.set_entry_point("product_research")
-    graph.add_edge("product_research", "market_research")
-    graph.add_edge("market_research", "audience_insight")
-    graph.add_edge("audience_insight", "plan_data_query")
-    graph.add_edge("plan_data_query", "fitness_analysis")
-    graph.add_edge("fitness_analysis", "strategy_generation")
-    graph.add_edge("strategy_generation", "execution_planning")
-    graph.add_edge("execution_planning", "budget_kpi")
-    graph.add_edge("budget_kpi", "action_recommendations")
-    graph.add_edge("action_recommendations", "plan_generator")
-    graph.add_edge("plan_generator", END)
+    graph.set_entry_point(_NODE_ORDER[0])
+    for i in range(len(_NODE_ORDER) - 1):
+        graph.add_edge(_NODE_ORDER[i], _NODE_ORDER[i + 1])
+    graph.add_edge(_NODE_ORDER[-1], END)
 
-    return graph.compile()
+    return graph
 
 
-_pipeline = _build_graph()
+async def _get_graph() -> Any:
+    """Return compiled graph with shared checkpointer attached."""
+    global _graph
+    if _graph is None:
+        saver = await _get_saver()
+        _graph = _build_graph().compile(
+            checkpointer=saver,
+            interrupt_before=_CHECKPOINT_INTERRUPT_NODES,
+        )
+    return _graph
+
+
+def _initial_state(brand_input: dict[str, Any]) -> PlanState:
+    return {
+        "brand_input": brand_input,
+        **{key: {} for key in _NODE_LABELS},
+    }
+
+
+def _json_default(obj: Any) -> Any:
+    """Fallback serializer for non-JSON-native objects (Pydantic models, dataclasses, etc.)."""
+    if hasattr(obj, "model_dump"):
+        return obj.model_dump()
+    if hasattr(obj, "__dict__"):
+        return obj.__dict__
+    return str(obj)
+
+
+def _sse_frame(*, event_id: int, event: str, data: dict[str, Any]) -> str:
+    """Standard 3-line SSE frame with monotonic id."""
+    return f"id: {event_id}\nevent: {event}\ndata: {json.dumps(data, ensure_ascii=False, default=_json_default)}\n\n"
+
+
+def _translate_event(
+    event: dict[str, Any],
+    run_id: str,
+    *,
+    _counter: list[int],
+) -> str | None:
+    """Map astream_events v2 event to our SSE frame, or return None to skip."""
+    ev_type = event.get("event")
+    name = event.get("name")
+    data = event.get("data", {})
+
+    if ev_type == "on_chain_start" and name == "LangGraph":
+        return _sse_frame(
+            event_id=_counter[0],
+            event="workflow.start",
+            data={"run_id": run_id},
+        )
+
+    if ev_type == "on_chain_start" and name in _NODE_LABELS:
+        _counter[0] += 1
+        return _sse_frame(
+            event_id=_counter[0],
+            event="node.start",
+            data={
+                "run_id": run_id,
+                "node_id": name,
+                "label": _NODE_LABELS[name],
+            },
+        )
+
+    if ev_type == "on_chain_stream" and name in _NODE_LABELS:
+        chunk = data.get("chunk", {})
+        # Skip checkpoint interrupt markers from public stream.
+        if chunk and "__interrupt__" not in chunk:
+            _counter[0] += 1
+            return _sse_frame(
+                event_id=_counter[0],
+                event="node.complete",
+                data={
+                    "run_id": run_id,
+                    "node_id": name,
+                    "output": chunk,
+                },
+            )
+
+    if ev_type == "on_chain_end" and name in _NODE_LABELS:
+        # Confirm completion with the structured output if available.
+        output = data.get("output", {})
+        _counter[0] += 1
+        return _sse_frame(
+            event_id=_counter[0],
+            event="node.complete",
+            data={
+                "run_id": run_id,
+                "node_id": name,
+                "output": output,
+            },
+        )
+
+    if ev_type == "on_chain_end" and name == "LangGraph":
+        output = data.get("output", {})
+        _counter[0] += 1
+        return _sse_frame(
+            event_id=_counter[0],
+            event="workflow.complete",
+            data={"run_id": run_id, "output": output},
+        )
+
+    return None
+
+
+def _thread_config(run_id: str) -> dict[str, Any]:
+    return {"configurable": {"thread_id": run_id}}
+
+
+async def _stream_events(
+    graph: Any,
+    input_value: Any,
+    run_id: str,
+) -> AsyncGenerator[str, None]:
+    """Consume astream_events v2 and yield standard SSE frames."""
+    counter = [0]
+    async for event in graph.astream_events(
+        input_value,
+        _thread_config(run_id),
+        version="v2",
+    ):
+        translated = _translate_event(event, run_id, _counter=counter)
+        if translated is not None:
+            yield translated
+
+    # After the event stream finishes, check whether the graph paused at an
+    # interrupt checkpoint. LangGraph stops the stream before executing nodes
+    # listed in interrupt_before, so we emit workflow.paused from the checkpoint.
+    state_obj = await graph.aget_state(_thread_config(run_id))
+    next_nodes = list(getattr(state_obj, "next", ()) or [])
+    if next_nodes and next_nodes[0] in _CHECKPOINT_INTERRUPT_NODES:
+        node_id = next_nodes[0]
+        state_values = getattr(state_obj, "values", {}) or {}
+        counter[0] += 1
+        yield _sse_frame(
+            event_id=counter[0],
+            event="workflow.paused",
+            data={
+                "run_id": run_id,
+                "snapshot": _paused_snapshot(state_values, node_id),
+                "reason": "review",
+            },
+        )
+
+
+def _paused_snapshot(state: PlanState, node_id: str) -> dict[str, Any]:
+    """Build snapshot of the node that's about to execute."""
+    return {
+        "node_id": node_id,
+        "node_input": _node_inputs(node_id, state),
+        "upstream_outputs": {
+            key: state.get(key, {}) for key in _NODE_ORDER if key != node_id
+        },
+    }
+
+
+async def _checkpoint_tuple(run_id: str) -> Any:
+    """Fetch the latest checkpoint tuple for a run_id."""
+    saver = await _get_saver()
+    return await saver.aget_tuple(_thread_config(run_id))
+
+
+async def _checkpoint_state(run_id: str) -> PlanState | None:
+    """Fetch the latest checkpoint state for a run_id."""
+    tuple_ = await _checkpoint_tuple(run_id)
+    if tuple_ is None:
+        return None
+    checkpoint = tuple_.checkpoint
+    return checkpoint.get("channel_values")  # type: ignore[return-value]
+
+
+def _status_for_state(
+    state: PlanState | None,
+    run_id: str,
+    *,
+    error: str | None = None,
+) -> dict[str, Any]:
+    """Derive RunStatus from checkpoint state."""
+    if state is None:
+        return {
+            "run_id": run_id,
+            "status": "canceled",
+            "current_node": None,
+            "outputs": {},
+            "paused_snapshot": None,
+            "error": None,
+        }
+
+    # Find the first non-empty output; if all are empty, we're at the start.
+    completed = [nid for nid in _NODE_ORDER if state.get(nid)]
+    outputs = {nid: state[nid] for nid in completed}
+
+    if error:
+        return {
+            "run_id": run_id,
+            "status": "failed",
+            "current_node": None,
+            "outputs": outputs,
+            "paused_snapshot": None,
+            "error": error,
+        }
+
+    # Determine next expected node based on completed outputs.
+    current_node: str | None = None
+    paused_snapshot: dict[str, Any] | None = None
+    for nid in _NODE_ORDER:
+        if not state.get(nid):
+            current_node = nid
+            if nid in _CHECKPOINT_INTERRUPT_NODES:
+                paused_snapshot = _paused_snapshot(state, nid)
+                status = "paused"
+            else:
+                status = "running"
+            break
+    else:
+        status = "completed"
+
+    return {
+        "run_id": run_id,
+        "status": status,
+        "current_node": current_node,
+        "outputs": outputs,
+        "paused_snapshot": paused_snapshot,
+        "error": None,
+    }
 
 
 # ── Public API ──
 
 
-async def run_pipeline(brand_input: dict[str, Any]) -> dict[str, Any]:
-    """Execute plan generation pipeline, return all outputs."""
-    initial: PlanState = {"brand_input": brand_input}
-    for key in _NODE_LABELS:
-        initial[key] = {}
-    result = await _pipeline.ainvoke(initial)
-    return {
-        "status": "completed",
-        "outputs": {k: v for k, v in result.items() if k in _NODE_LABELS},
-    }
+async def start_run(
+    brand_input: dict[str, Any],
+    *,
+    run_id: str | None = None,
+) -> AsyncGenerator[str, None]:
+    """Start a new plan generation run and stream SSE events."""
+    run_id = run_id or str(uuid.uuid4())
+    graph = await _get_graph()
+    state = _initial_state(brand_input)
+
+    try:
+        async for frame in _stream_events(graph, state, run_id):
+            yield frame
+    except Exception as exc:
+        logger.exception("plan run failed: %s", run_id)
+        yield _sse_frame(
+            event_id=0,
+            event="node.failed",
+            data={
+                "run_id": run_id,
+                "node_id": "plan_generation",
+                "message": str(exc),
+                "code": ErrorCode.WORKFLOW_RUN_ERROR,
+            },
+        )
 
 
-async def run_stream(brand_input: dict[str, Any]) -> AsyncGenerator[str, None]:
-    """SSE streaming version of plan generation."""
-    initial: PlanState = {"brand_input": brand_input}
-    for key in _NODE_LABELS:
-        initial[key] = {}
+async def approve_run(
+    run_id: str,
+    *,
+    edited_input: dict[str, Any] | None = None,
+) -> AsyncGenerator[str, None]:
+    """Resume a paused run from an interrupt checkpoint."""
+    graph = await _get_graph()
 
-    node_ids = [
-        "product_research",
-        "market_research",
-        "audience_insight",
-        "plan_data_query",
-        "fitness_analysis",
-        "strategy_generation",
-        "execution_planning",
-        "budget_kpi",
-        "action_recommendations",
-        "plan_generator",
-    ]
-
-    for nid in node_ids:
-        yield f"event: node.start\ndata: {json.dumps({'node_id': nid, 'label': _NODE_LABELS[nid]})}\n\n"
-
-        for log_msg in _NODE_LOG_STEPS.get(nid, ["处理中…"]):
-            yield f"event: node.log\ndata: {json.dumps({'node_id': nid, 'message': log_msg})}\n\n"
-            await asyncio.sleep(0.1)
-
-        try:
-            output = await get_handler(nid)(initial)
-            initial[nid] = output
-            yield f"event: node.complete\ndata: {json.dumps({'node_id': nid, 'data': output})}\n\n"
-        except Exception as exc:
-            yield f"event: node.failed\ndata: {json.dumps({'node_id': nid, 'error': str(exc)})}\n\n"
+    # If the user edited the node input, persist it into the checkpoint so the
+    # next node execution uses the edited payload.
+    if edited_input:
+        tuple_ = await _checkpoint_tuple(run_id)
+        if tuple_ is None:
+            yield _sse_frame(
+                event_id=0,
+                event="node.failed",
+                data={
+                    "run_id": run_id,
+                    "node_id": "plan_generation",
+                    "message": f"Run {run_id} not found",
+                    "code": ErrorCode.NOT_FOUND,
+                },
+            )
             return
+        checkpoint = tuple_.checkpoint
+        channel_values = checkpoint.setdefault("channel_values", {})
+        # Apply edited_input shallow merge to all keys provided; the caller is
+        # expected to send the intended node_input object.
+        for key, value in edited_input.items():
+            channel_values[key] = value
+        saver = await _get_saver()
+        await saver.aput(
+            tuple_.config,
+            checkpoint,
+            tuple_.metadata,
+            checkpoint["channel_versions"],
+        )
 
-    outputs = {k: v for k, v in initial.items() if k in _NODE_LABELS}
-    yield f"event: workflow.complete\ndata: {json.dumps({'outputs': outputs})}\n\n"
+    resume_value: dict[str, Any] = {}
+    try:
+        async for frame in _stream_events(graph, Command(resume=resume_value), run_id):
+            yield frame
+    except Exception as exc:
+        logger.exception("plan approve failed: %s", run_id)
+        yield _sse_frame(
+            event_id=0,
+            event="node.failed",
+            data={
+                "run_id": run_id,
+                "node_id": "plan_generation",
+                "message": str(exc),
+                "code": ErrorCode.WORKFLOW_CONTROL_ERROR,
+            },
+        )
+
+
+async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
+    """Reject current checkpoint and rerun the node with feedback injected."""
+    graph = await _get_graph()
+    tuple_ = await _checkpoint_tuple(run_id)
+    if tuple_ is None:
+        yield _sse_frame(
+            event_id=0,
+            event="node.failed",
+            data={
+                "run_id": run_id,
+                "node_id": "plan_generation",
+                "message": f"Run {run_id} not found",
+                "code": ErrorCode.NOT_FOUND,
+            },
+        )
+        return
+
+    # Inject rejection feedback into brand_input stored in the checkpoint so
+    # the next node execution sees it.
+    checkpoint = tuple_.checkpoint
+    channel_values = checkpoint.setdefault("channel_values", {})
+    brand_input = dict(channel_values.get("brand_input") or {})
+    brand_input["_reject_reason"] = reason
+    channel_values["brand_input"] = brand_input
+
+    saver = await _get_saver()
+    await saver.aput(
+        tuple_.config,
+        checkpoint,
+        tuple_.metadata,
+        checkpoint["channel_versions"],
+    )
+
+    try:
+        async for frame in _stream_events(graph, Command(resume={}), run_id):
+            yield frame
+    except Exception as exc:
+        logger.exception("plan reject failed: %s", run_id)
+        yield _sse_frame(
+            event_id=0,
+            event="node.failed",
+            data={
+                "run_id": run_id,
+                "node_id": "plan_generation",
+                "message": str(exc),
+                "code": ErrorCode.WORKFLOW_CONTROL_ERROR,
+            },
+        )
+
+
+async def delete_run(run_id: str) -> None:
+    """Delete all checkpoints for a run_id (cancel semantics)."""
+    saver = await _get_saver()
+    await saver.adelete_thread(run_id)
+
+
+async def get_status(run_id: str) -> dict[str, Any]:
+    """Return current run status including paused snapshot if applicable."""
+    state = await _checkpoint_state(run_id)
+    return _status_for_state(state, run_id)
+
+
+async def run_exists(run_id: str) -> bool:
+    """Return True if a checkpoint tuple exists for the run_id."""
+    return await _checkpoint_tuple(run_id) is not None

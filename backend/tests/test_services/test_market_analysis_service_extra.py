@@ -3,6 +3,7 @@ from unittest.mock import patch
 
 import pytest
 
+from app.schemas.market_analysis import MarketResearchResponse, MarketResearchResult
 from app.services import market_analysis_service as service
 
 
@@ -37,7 +38,9 @@ async def test_analyze_stream_non_mock_success():
             patch.object(service, "call_node_synthesize", return_value="# Report"),
             patch.object(service, "assemble_result") as mock_assemble,
         ):
-            mock_assemble.return_value = service._load_mock_response()
+            mock_assemble.return_value = MarketResearchResponse(
+                result=MarketResearchResult(market_name="test", industry="i", category="c")
+            )
             events = []
             async for event in service.analyze_stream("test", "cat"):
                 events.append(event)

@@ -1,27 +1,4 @@
-# Capability: plan-generation-pipeline
-
-## Purpose
-
-为 AllyGo 营销方案 Agent 提供从品牌需求到完整 9 章营销方案的后端生成流水线，通过 9 个串行 Agent 节点分别完成需求校验、市场调研、人群洞察、平台数据查询、适配度分析、策略生成、执行规划、预算 KPI 测算和行动建议，最终输出结构化方案内容。
-
-## Requirements
-
-### Requirement: 系统 SHALL 提供 plan_generation_pipeline 工作流
-
-系统 SHALL 提供 `plan_generation_pipeline` 流水线，包含 9 个 Agent 节点（`product_research` / `market_research` / `audience_insight` / `plan_data_query` / `fitness_analysis` / `strategy_generation` / `execution_planning` / `budget_kpi` / `plan_generator`），使用 LangGraph `StateGraph` 在代码中定义（不再使用 YAML）。流水线 SHALL 挂载 `AsyncSqliteSaver` checkpointer 并声明 `interrupt_before` 审核点，通过 `POST /api/v1/plan/run` 启动。
-
-#### Scenario: 启动新 run
-- **GIVEN** 用户已提供合法 `brand_input`
-- **WHEN** 客户端调用 `POST /api/v1/plan/run` 请求体 `{"brand_input": {...}}`
-- **THEN** 系统 SHALL 返回 SSE 响应，`Content-Type` 为 `text/event-stream`
-- **AND** 响应头 SHALL 包含 `X-Run-Id`
-- **AND** 首帧 SHALL 为 `workflow.start` 且包含 `run_id`
-- **AND** 后续帧 SHALL 依次推送节点生命周期事件直到第一个审核点或结束
-
-#### Scenario: 请求体 schema 校验失败
-- **WHEN** 客户端 POST 请求体缺少 `brand_input` 字段或 `brand_input.budget < 1`
-- **THEN** 系统 SHALL 返回 HTTP 422
-- **AND** 错误信息 SHALL 指明缺失或非法字段
+## ADDED Requirements
 
 ### Requirement: 流水线 SHALL 使用 AsyncSqliteSaver checkpointer 持久化 run state
 
@@ -152,6 +129,25 @@
 - **THEN** LLM prompt SHALL 包含前 4 章已生成的 `content`
 - **AND** 章节间叙事 SHALL 一致
 
+## MODIFIED Requirements
+
+### Requirement: 系统 SHALL 提供 plan_generation_pipeline 工作流
+
+系统 SHALL 提供 `plan_generation_pipeline` 流水线，包含 9 个 Agent 节点（`product_research` / `market_research` / `audience_insight` / `plan_data_query` / `fitness_analysis` / `strategy_generation` / `execution_planning` / `budget_kpi` / `plan_generator`），使用 LangGraph `StateGraph` 在代码中定义（不再使用 YAML）。流水线 SHALL 挂载 `AsyncSqliteSaver` checkpointer 并声明 `interrupt_before` 审核点，通过 `POST /api/v1/plan/run` 启动。
+
+#### Scenario: 启动新 run
+- **GIVEN** 用户已提供合法 `brand_input`
+- **WHEN** 客户端调用 `POST /api/v1/plan/run` 请求体 `{"brand_input": {...}}`
+- **THEN** 系统 SHALL 返回 SSE 响应，`Content-Type` 为 `text/event-stream`
+- **AND** 响应头 SHALL 包含 `X-Run-Id`
+- **AND** 首帧 SHALL 为 `workflow.start` 且包含 `run_id`
+- **AND** 后续帧 SHALL 依次推送节点生命周期事件直到第一个审核点或结束
+
+#### Scenario: 请求体 schema 校验失败
+- **WHEN** 客户端 POST 请求体缺少 `brand_input` 字段或 `brand_input.budget < 1`
+- **THEN** 系统 SHALL 返回 HTTP 422
+- **AND** 错误信息 SHALL 指明缺失或非法字段
+
 ### Requirement: 每个 Agent 节点 SHALL 输出结构化数据
 
 每个 Agent 节点 SHALL 使用 Pydantic structured output，输出下游节点可解析的结构化数据。节点输出 SHALL 通过 LangGraph state 传递给下游，state 结构由 `PlanState` TypedDict 声明。
@@ -194,3 +190,19 @@
 - **WHEN** 调用 `POST /api/v1/plan/run` 完成前 5 个节点
 - **THEN** 流水线 SHALL 在 `strategy_generation` 前 emit `workflow.paused`
 - **AND** 用户 approve 后 SHALL 继续到下一个审核点或完成
+
+## REMOVED Requirements
+
+### Requirement: 方案生成流水线 SHALL 支持失败节点阻塞与恢复（retry/skip/abort 语义）
+
+**Reason**: retry/skip/abort 通用工作流控制语义已作废，替换为 approve/reject/cancel 强审核点模型。失败节点在新模型中通过 `workflow.paused` + `reason: "failure"` 表达，恢复动作在 approve/reject 中闭环。
+
+**Migration**:
+- 旧「重试失败节点」→ 新 `POST /api/v1/plan/runs/{run_id}/reject` 请求体 `{"target_node": "<失败节点>"}`
+- 旧「跳过失败节点」→ 新 `POST /api/v1/plan/runs/{run_id}/approve`（不推荐，UI 应 disable）
+- 旧「终止工作流」→ 新 `POST /api/v1/plan/runs/{run_id}/cancel`
+
+## RENAMED Requirements
+
+- FROM: `POST /api/v1/workflows/plan_generation_pipeline/run`
+- TO: `POST /api/v1/plan/run`

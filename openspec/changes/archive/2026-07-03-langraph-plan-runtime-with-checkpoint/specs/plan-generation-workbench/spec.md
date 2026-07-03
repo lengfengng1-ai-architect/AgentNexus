@@ -1,42 +1,4 @@
-# Capability: plan-generation-workbench
-
-## Purpose
-
-为 AllyGo 营销方案 Agent 提供浏览器端的方案生成工作台 `/plan`，让用户在从 `/chat` 跳转过来后，能实时查看 Agent 流水线执行状态、编辑品牌信息、预览生成的 9 章营销方案，并查看下一步行动建议。
-
-## Requirements
-
-### Requirement: 系统 SHALL 提供 `/plan` 页面
-
-系统 SHALL 提供前端路由 `/plan`，作为方案生成工作台。
-
-#### Scenario: 用户直接访问 `/plan`
-- **WHEN** 用户打开 `/plan`
-- **THEN** 页面 SHALL 加载方案生成工作台
-- **AND** 左侧 SHALL 显示品牌信息表单
-- **AND** 右侧 SHALL 显示 Agent 流水线区域
-
-#### Scenario: 从 `/chat` 跳转至 `/plan`
-- **GIVEN** 用户在 `/chat` 完成需求录入并点击"生成方案"
-- **WHEN** 系统导航到 `/plan?session=<id>`
-- **THEN** `/plan` SHALL 从 localStorage 恢复该会话的 `brand_input`
-- **AND** 左侧会话摘要 SHALL 显示来源对话的关键信息
-
-### Requirement: `/plan` 左侧 SHALL 展示会话摘要和可编辑表单
-
-`/plan` 页面左侧 SHALL 显示来自 `/chat` 的会话摘要，并提供可编辑的品牌信息表单。
-
-#### Scenario: 显示会话摘要
-- **GIVEN** 用户从 `/chat` 跳转过来
-- **WHEN** `/plan` 加载完成
-- **THEN** 左侧 SHALL 显示品牌名、品类、城市、预算、周期等关键字段
-- **AND** SHALL 显示"回到对话"按钮
-
-#### Scenario: 编辑品牌信息
-- **WHEN** 用户点击左侧"编辑信息"
-- **THEN** 表单 SHALL 展开
-- **AND** 用户可以修改品牌信息
-- **AND** 修改后点击"重新生成方案"SHALL 触发新的流水线执行
+## MODIFIED Requirements
 
 ### Requirement: `/plan` 右侧 SHALL 展示 Agent 流水线可视化
 
@@ -109,26 +71,13 @@
 - **THEN** SHALL 显示"运行已终止"
 - **AND** run_id SHALL 从 URL / localStorage 清除，防止后续误 approve
 
-### Requirement: `/plan` SHALL 展示行动建议
+## REMOVED Requirements
 
-方案生成完成后，`/plan` SHALL 在方案预览下方展示行动建议卡片。
+### Requirement: 「关闭自动继续」开关
 
-#### Scenario: 显示行动建议
-- **GIVEN** 方案已生成完成
-- **WHEN** 用户滚动到方案底部
-- **THEN** SHALL 显示"创建品牌盟域""发布定制赛事""邀约认证达人"等行动建议卡片
-- **AND** 每张卡片 SHALL 显示描述和按钮
+**Reason**: 强审核点模型下，`interrupt_before` 天然在 `strategy_generation` / `execution_planning` / `plan_generator` 前停下，用户不再需要主动开关"自动继续"。原开关的语义（每个节点完成后暂停）与产品需求错配（用户不需要在每个节点都审核，只在关键决策点审核）。
 
-#### Scenario: 行动建议按钮不可真正执行
-- **WHEN** 用户点击行动建议卡片的按钮
-- **THEN** 系统 SHALL 提示"该功能即将上线"或跳转占位页面
-- **AND** 不调用任何创建/执行类 API
-
-### Requirement: `/plan` SHALL 适配移动端
-
-`/plan` 页面在移动视口下 SHALL 以单栏布局展示，Agent 流水线垂直折叠。
-
-#### Scenario: 375px 视口
-- **WHEN** 视口宽度为 375px
-- **THEN** 左侧表单和右侧流水线 SHALL 垂直堆叠
-- **AND** Agent 节点默认折叠，点击后展开详情
+**Migration**:
+- 旧「关闭自动继续 + 每节点后确认」→ 新「三个强审核点，用户在这三处必审」
+- 旧「确认继续」按钮 → 新审核面板的「通过」按钮
+- 旧「重新执行」按钮 → 新审核面板的「打回」按钮

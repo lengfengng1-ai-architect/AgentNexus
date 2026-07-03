@@ -21,7 +21,7 @@ interface PlanFormProps {
   initial?: BrandInput
   onSubmit: (data: PlanFormData) => void
   isLoading?: boolean
-  status?: 'idle' | 'running' | 'failed' | 'completed'
+  status?: 'idle' | 'running' | 'paused' | 'failed' | 'completed'
 }
 
 // ─── Defaults ────────────────────────────────────────────────────────────────
@@ -118,10 +118,11 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
 
         <div className="space-y-2.5">
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+            <label htmlFor="plan-brand-name" className="mb-1.5 block text-xs font-semibold text-slate-600">
               品牌名称 <span className="text-orange-500">*</span>
             </label>
             <input
+              id="plan-brand-name"
               type="text"
               className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-[13px] text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
               value={form.brandName}
@@ -130,10 +131,11 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+            <label htmlFor="plan-category" className="mb-1.5 block text-xs font-semibold text-slate-600">
               产品/品类 <span className="text-orange-500">*</span>
             </label>
             <input
+              id="plan-category"
               type="text"
               className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-[13px] text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
               value={form.category}
@@ -143,10 +145,11 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+              <label htmlFor="plan-city" className="mb-1.5 block text-xs font-semibold text-slate-600">
                 目标城市 <span className="text-orange-500">*</span>
               </label>
               <select
+                id="plan-city"
                 className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-[13px] text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
                 value={form.city}
                 onChange={(e) => updateField('city', e.target.value)}
@@ -159,10 +162,11 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
               </select>
             </div>
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+              <label htmlFor="plan-period" className="mb-1.5 block text-xs font-semibold text-slate-600">
                 执行周期 <span className="text-orange-500">*</span>
               </label>
               <select
+                id="plan-period"
                 className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-[13px] text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
                 value={form.period}
                 onChange={(e) => updateField('period', Number(e.target.value))}
@@ -178,10 +182,11 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
           </div>
 
           <div>
-            <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+            <label htmlFor="plan-budget" className="mb-1.5 block text-xs font-semibold text-slate-600">
               预算范围（万元） <span className="text-orange-500">*</span>
             </label>
             <input
+              id="plan-budget"
               type="number"
               className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-[13px] text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
               value={form.budget}
@@ -217,8 +222,9 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
         {(!isRunning && advancedOpen) && (
           <div className="space-y-2.5 pt-2.5">
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">产品矩阵</label>
+              <label htmlFor="plan-product-matrix" className="mb-1.5 block text-xs font-semibold text-slate-600">产品矩阵</label>
               <textarea
+                id="plan-product-matrix"
                 className="min-h-[64px] w-full resize-y rounded-md border border-slate-200 px-3 py-2.5 text-[13px] leading-relaxed text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
                 placeholder="产品线、规格、价位…"
                 rows={2}
@@ -228,10 +234,11 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+              <label htmlFor="plan-positioning" className="mb-1.5 block text-xs font-semibold text-slate-600">
                 品牌定位 / Slogan
               </label>
               <input
+                id="plan-positioning"
                 type="text"
                 className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-[13px] text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
                 value={form.positioning ?? ''}
@@ -240,10 +247,11 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+              <label htmlFor="plan-marketing-goal" className="mb-1.5 block text-xs font-semibold text-slate-600">
                 核心营销目标
               </label>
               <select
+                id="plan-marketing-goal"
                 className="w-full rounded-md border border-slate-200 bg-white px-3 py-2.5 text-[13px] text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
                 value={form.marketingGoal ?? 'brand-awareness'}
                 onChange={(e) => updateField('marketingGoal', e.target.value)}
@@ -256,8 +264,9 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">目标人群</label>
+              <label htmlFor="plan-target-audience" className="mb-1.5 block text-xs font-semibold text-slate-600">目标人群</label>
               <input
+                id="plan-target-audience"
                 type="text"
                 className="w-full rounded-md border border-slate-200 px-3 py-2.5 text-[13px] text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
                 value={form.targetAudience ?? ''}
@@ -266,10 +275,11 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+              <label htmlFor="plan-history" className="mb-1.5 block text-xs font-semibold text-slate-600">
                 历史活动经验
               </label>
               <textarea
+                id="plan-history"
                 className="min-h-[64px] w-full resize-y rounded-md border border-slate-200 px-3 py-2.5 text-[13px] leading-relaxed text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
                 placeholder="过往做过的营销活动、合作达人、效果…"
                 rows={2}
@@ -279,10 +289,11 @@ export function PlanForm({ initial, onSubmit, isLoading, status }: PlanFormProps
             </div>
 
             <div>
-              <label className="mb-1.5 block text-xs font-semibold text-slate-600">
+              <label htmlFor="plan-constraints" className="mb-1.5 block text-xs font-semibold text-slate-600">
                 特殊限制 / 备注
               </label>
               <textarea
+                id="plan-constraints"
                 className="min-h-[64px] w-full resize-y rounded-md border border-slate-200 px-3 py-2.5 text-[13px] leading-relaxed text-slate-900 outline-none transition-colors focus:border-blue-800 focus:ring-[3px] focus:ring-blue-100"
                 placeholder="禁投渠道、时间窗口、特殊要求…"
                 rows={2}

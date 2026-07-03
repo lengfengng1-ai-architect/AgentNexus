@@ -2,46 +2,31 @@
   "identity": {
     "product_name": {
       "value": null,
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "sources": [],
       "method": "extracted",
       "quote": null
     },
     "brand": {
-      "value": "Nike",
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "value": null,
+      "sources": [],
       "method": "extracted",
       "quote": null
     },
     "manufacturer": {
       "value": null,
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "sources": [],
       "method": "extracted",
       "quote": null
     },
     "industry": {
-      "value": "Sports",
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "value": null,
+      "sources": [],
       "method": "extracted",
       "quote": null
     },
     "category": {
-      "value": "Sporting goods / Apparel",
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "value": null,
+      "sources": [],
       "method": "extracted",
       "quote": null
     }
@@ -49,28 +34,19 @@
   "official_description": {
     "description": {
       "value": null,
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "sources": [],
       "method": "extracted",
       "quote": null
     },
     "tagline": {
       "value": null,
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "sources": [],
       "method": "extracted",
       "quote": null
     },
     "statement": {
       "value": null,
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "sources": [],
       "method": "extracted",
       "quote": null
     }
@@ -78,37 +54,25 @@
   "features": [],
   "specifications": {
     "value": {},
-    "sources": [
-      "https://support.apple.com/en-us/docs",
-      "https://fenghsin.com.tw/"
-    ],
+    "sources": [],
     "method": "extracted"
   },
   "availability": {
     "status": {
-      "value": "unknown",
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "value": null,
+      "sources": [],
       "method": "extracted",
       "quote": null
     },
     "pricing": [],
     "available_regions": {
       "value": [],
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "sources": [],
       "method": "extracted"
     },
     "access_model": {
       "value": null,
-      "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/"
-      ],
+      "sources": [],
       "method": "extracted",
       "quote": null
     }

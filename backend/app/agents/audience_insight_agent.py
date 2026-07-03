@@ -13,12 +13,11 @@ from bs4 import BeautifulSoup
 from ddgs import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
-from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
-from app.config.settings import settings
+from app.agents.llm_utils import build_chat_model
 from app.schemas.audience_insight import AudienceRawData, UserPersona
 from app.agents.registry import register
 
@@ -58,18 +57,6 @@ class State(BaseModel):
 
 
 # ── 辅助 ──
-
-
-def _build_model():
-    if settings.llm_provider == "agnes":
-        return init_chat_model(
-            model=settings.agnes_model, model_provider="openai",
-            api_key=settings.agnes_api_key, base_url=settings.agnes_base_url,
-        )
-    return init_chat_model(
-        model=settings.dashscope_model, model_provider="openai",
-        api_key=settings.dashscope_api_key, base_url=settings.dashscope_base_url,
-    )
 
 
 def _load_template(name: str, **kwargs) -> str:
@@ -144,7 +131,7 @@ async def extract_audience_node(state: State) -> dict:
         return {"audience_data": AudienceRawData()}
 
     prompt = _load_template("audience_insight.md.j2", product_name=state.product_name, fetched_pages=valid)
-    llm = _build_model().with_structured_output(AudienceRawData)
+    llm = build_chat_model().with_structured_output(AudienceRawData)
 
     result: AudienceRawData = await llm.ainvoke([
         SystemMessage(content=prompt),
@@ -183,7 +170,7 @@ async def generate_persona_node(state: State) -> dict:
                             market_info=market_info_str,
                             audience_data=state.audience_data)
 
-    llm = _build_model().with_structured_output(UserPersona)
+    llm = build_chat_model().with_structured_output(UserPersona)
     result: UserPersona = await llm.ainvoke([
         SystemMessage(content=prompt),
         HumanMessage(content=f"请为产品「{state.product_name}」生成用户画像。"),
@@ -291,7 +278,7 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
                             market_info=market_info_str,
                             audience_data=ad)
 
-    llm = _build_model().with_structured_output(UserPersona)
+    llm = build_chat_model().with_structured_output(UserPersona)
     result: UserPersona = await llm.ainvoke([
         SystemMessage(content=prompt),
         HumanMessage(content=f"请为产品「{pn}」生成用户画像。"),

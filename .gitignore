@@ -23,3 +23,20 @@ htmlcov/
 
 # OpenSpec / CodeGraph
 .codegraph/
+
+# LangGraph checkpointer SQLite (thread state, keep out of git)
+backend/data/checkpoints.db*
+
+# E2E test screenshots (Playwright visual regression)
+frontend/e2e/__screenshots__/
+
+# Playwright test runner output
+frontend/test-results/
+
+# Agent-generated mock data (utest_* and E2E test products)
+backend/mock_data/**/utest_*.json
+backend/mock_data/audience_insight/*.json
+backend/mock_data/market_analysis/*.json
+backend/mock_data/user_persona/*.json
+backend/mock_data/product_info/跑力狮.json
+
