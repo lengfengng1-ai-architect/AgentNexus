@@ -30,11 +30,7 @@ uv 会自动安装 `[dependency-groups] dev` 中的包（`tool.uv.default-groups
 
 ## Mock 策略
 
-mock 是可选的，不是必须的：
-- **可以 mock**——mock 掉 LLM/网络层，跑通逻辑路径。适合 CI 环境。
-- **也可以调真实 LLM**——本地开发时直接调真实 API，覆盖真实输出。前提是 `.env` 配好 key。
-
-关键不在于 mock 与否，而在于**测试必须验证 agent 的行为逻辑**（字段提取、条件分支、错误处理），不只是 mock 个空返回值。
+测试真实 agent 时不要做mock。agent 本身的逻辑（字段提取、条件分支、错误处理）必须被真实覆盖。Mock 只应在为独立 Mock Agent（`mock_*.py`）编写测试时使用。
 
 tests 目录结构镜像 `backend/app`：
 
