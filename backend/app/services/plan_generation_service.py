@@ -13,12 +13,14 @@ from __future__ import annotations
 import json
 import logging
 import uuid
+from datetime import datetime, timezone
 from collections.abc import AsyncGenerator
 from typing import Any
 
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, StateGraph
 from langgraph.types import Command
+from pydantic import BaseModel
 from typing_extensions import TypedDict
 
 import aiosqlite
@@ -34,6 +36,19 @@ _CHECKPOINT_INTERRUPT_NODES = [
     "execution_planning",
     "plan_generator",
 ]
+
+
+class PlanRunRecord(BaseModel):
+    """Trackable plan run record with timestamps."""
+    run_id: str
+    brand_input: dict[str, Any]
+    status: str  # running / paused / completed / failed / canceled
+    created_at: str  # ISO 8601
+    updated_at: str
+    current_node: str | None = None
+
+
+_RUN_RECORDS: dict[str, PlanRunRecord] = {}  # in-memory, lost on restart
 
 
 class PlanState(TypedDict):
@@ -402,6 +417,15 @@ async def start_run(
 ) -> AsyncGenerator[str, None]:
     """Start a new plan generation run and stream SSE events."""
     run_id = run_id or str(uuid.uuid4())
+    now = datetime.now(timezone.utc).isoformat()
+    # 持久化批次记录
+    _RUN_RECORDS[run_id] = PlanRunRecord(
+        run_id=run_id,
+        brand_input=brand_input,
+        status="running",
+        created_at=now,
+        updated_at=now,
+    )
     graph = await _get_graph()
     state = _initial_state(brand_input)
 
@@ -537,7 +561,24 @@ async def delete_run(run_id: str) -> None:
 async def get_status(run_id: str) -> dict[str, Any]:
     """Return current run status including paused snapshot if applicable."""
     state = await _checkpoint_state(run_id)
-    return _status_for_state(state, run_id)
+    st = _status_for_state(state, run_id)
+    # 更新批次记录的时间戳和状态
+    record = _RUN_RECORDS.get(run_id)
+    if record:
+        record.status = st["status"]
+        record.updated_at = datetime.now(timezone.utc).isoformat()
+        record.current_node = st.get("current_node")
+    return st
+
+
+async def list_runs(limit: int = 20) -> list[dict[str, Any]]:
+    """List recent plan run records with timestamps."""
+    records = sorted(
+        _RUN_RECORDS.values(),
+        key=lambda r: r.created_at,
+        reverse=True,
+    )
+    return [r.model_dump() for r in records[:limit]]
 
 
 async def run_exists(run_id: str) -> bool:
