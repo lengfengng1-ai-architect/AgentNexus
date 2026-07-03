@@ -1,6 +1,5 @@
 """LLM utility helpers for agent nodes.
 
-Corresponding OpenSpec: docs/api/workflows.yaml
 Corresponding in_scope ID: workflow-orchestration
 """
 
