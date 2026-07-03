@@ -158,7 +158,13 @@ def _node_inputs(node_id: str, state: PlanState) -> dict[str, Any]:
 
 
 def _build_node(node_id: str) -> Any:
-    """Create a LangGraph node that calls get_handler(node_id)."""
+    """Create a LangGraph node that calls get_handler(node_id).
+
+    ponytail: plan_generator 接受 writer 参数用于发送 chapter progress 事件。
+    LangGraph 在 astream_events 模式下不会自动注入 writer，
+    所以当前 plan_generator 节点不传 writer (None)。
+    如果后续需要前端显示逐章进度，需要通过其他方式(如自定义事件)实现。
+    """
     handler = get_handler(node_id)
 
     async def node_fn(state: PlanState) -> dict[str, Any]:
@@ -262,6 +268,16 @@ def _translate_event(
                 "label": _NODE_LABELS[name],
             },
         )
+
+    if ev_type == "on_custom_event" and name == "chapter":
+        chunk = data.get("chunk", {})
+        if chunk:
+            _counter[0] += 1
+            return _sse_frame(
+                event_id=_counter[0],
+                event="chapter",
+                data={"run_id": run_id, "node_id": "plan_generator", "data": chunk},
+            )
 
     if ev_type == "on_chain_stream" and name in _NODE_LABELS:
         chunk = data.get("chunk", {})
