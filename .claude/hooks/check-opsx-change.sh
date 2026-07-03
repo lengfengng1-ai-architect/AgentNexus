@@ -11,7 +11,8 @@ case "$FILE_PATH" in
 esac
 
 # Check for an active local opsx change.
-PROJ_ROOT=$(git rev-parse --show-toplevel 2>/dev/null || echo "/Users/hxq/Desktop/AgentNexus")
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJ_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd 2>/dev/null || echo "")"
 ACTIVE=$(cd "$PROJ_ROOT" && openspec list --json 2>/dev/null | jq -r '.changes | length')
 if [ "$ACTIVE" = "0" ] || [ -z "$ACTIVE" ]; then
   echo "[Guard] 没有活跃的 opsx change，禁止写代码。" >&2
