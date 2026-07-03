@@ -37,7 +37,6 @@ _NODE_LOGS: dict[str, list[str]] = {
 
 _MOCK_DIR = Path(__file__).parent.parent.parent / "mock_data"
 _NODE_MOCK_FILES: dict[str, str] = {
-    "collect": "plan_requirement_collector.json",
     "market_research": "plan_market_research.json",
     "audience_insight": "plan_audience_insight.json",
     "plan_data_query": "plan_city_data.json",

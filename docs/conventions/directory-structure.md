@@ -6,87 +6,101 @@
 AgentNexus/
 ├── backend/
 │   ├── app/
-│   │   ├── main.py                 # FastAPI 应用入口
-│   │   ├── routers/                # 路由层——每个文件对应一个 OpenSpec 路径组
-│   │   │   ├── __init__.py
-│   │   │   ├── brands.py           # brand-input
-│   │   │   ├── data.py             # data-query
-│   │   │   ├── fitness.py          # fitness-engine
-│   │   │   ├── plans.py            # plan-generation
-│   │   │   └── export.py           # document-export
-│   │   ├── schemas/                # Pydantic models（从 OpenSpec 生成的代码）
-│   │   │   ├── __init__.py
-│   │   │   ├── brand.py
-│   │   │   ├── platform_data.py
-│   │   │   ├── fitness.py
-│   │   │   ├── plan.py
-│   │   │   └── common.py           # APIError 等共享模型
-│   │   ├── services/               # 业务逻辑层
-│   │   │   ├── __init__.py
-│   │   │   ├── brand_service.py
-│   │   │   ├── data_service.py
-│   │   │   ├── fitness_service.py
-│   │   │   ├── plan_generator.py
-│   │   │   └── export_service.py
-│   │   ├── prompt_templates/       # LLM prompt 模板文件
-│   │   │   ├── plan_chapters/
-│   │   │   │   ├── chapter_01.md.j2
-│   │   │   │   ├── chapter_02.md.j2
-│   │   │   │   └── ...
-│   │   │   └── system_prompt.md.j2
-│   │   └── config/                 # 配置管理
-│   │       ├── __init__.py
-│   │       ├── settings.py         # pydantic-settings 加载
-│   │       └── fitness_matrix.yaml # 适配度规则矩阵
-│   ├── tests/
-│   │   ├── conftest.py             # 全局 fixture，mock client
-│   │   ├── test_routers/
-│   │   │   ├── test_brands.py
-│   │   │   ├── test_data.py
-│   │   │   ├── test_fitness.py
-│   │   │   ├── test_plans.py
-│   │   │   └── test_export.py
-│   │   └── test_services/
-│   │       ├── test_brand_service.py
-│   │       ├── test_data_service.py
-│   │       ├── test_fitness_service.py
-│   │       ├── test_plan_generator.py
-│   │       └── test_export_service.py
-│   ├── mock_data/                  # MVP 阶段 mock JSON 文件
-│   │   ├── cities.json
-│   │   ├── sports.json
-│   │   ├── leagues.json
-│   │   ├── events.json
-│   │   ├── influencers.json
-│   │   ├── clubs.json
-│   │   └── brand_input_sample.json
-│   └── pyproject.toml              # 项目依赖（或 requirements.txt）
-├── frontend/                       # React 前端（待定）
+│   │   ├── main.py                 # FastAPI 应用入口（CORS + 异常处理器 + 路由注册）
+│   │   ├── routers/                # API 路由
+│   │   │   ├── chat.py             # POST /chat/stream — SSE 聊天
+│   │   │   ├── health.py           # GET /health
+│   │   │   ├── market_analysis.py  # POST /market-analysis[/stream]
+│   │   │   ├── product_info.py     # POST /product-info[/stream]
+│   │   │   ├── workflows.py        # 工作流编排 CRUD + 运行
+│   │   │   └── audience_insight.py # POST /audience-insight[/stream]
+│   │   ├── schemas/                # Pydantic models（按领域分文件）
+│   │   │   ├── common.py           # APIError, APIResponse, ErrorCode
+│   │   │   ├── chat.py             # BrandInput, ChatResponse
+│   │   │   ├── intent.py           # IntentRecognitionOutput
+│   │   │   ├── market_analysis.py
+│   │   │   ├── plan_generation.py
+│   │   │   ├── product_info.py
+│   │   │   ├── data_query.py
+│   │   │   ├── workflow.py
+│   │   │   └── audience_insight.py
+│   │   ├── agents/                 # Agent 实现（每个文件一个 agent）
+│   │   │   ├── __init__.py         # 导入所有 agent 触发注册，注册 mock handler
+│   │   │   ├── registry.py         # register() / register_mock() / get_handler()
+│   │   │   ├── orchestrator.py     # 可配置 LangGraph 编排器（支持串行/并行/条件路由）
+│   │   │   ├── llm_utils.py        # build_chat_model() — 统一 provider 入口
+│   │   │   ├── intent_recognition_agent.py
+│   │   │   ├── product_research_agent.py
+│   │   │   ├── market_analysis_agent.py
+│   │   │   ├── audience_insight_agent.py
+│   │   │   ├── fitness_analysis_agent.py
+│   │   │   ├── plan_*_agent.py     # market_research, data_query, strategy_generation 等
+│   │   │   ├── data_query_agent.py
+│   │   │   └── end_reply_agent.py
+│   │   ├── services/               # 业务编排层
+│   │   │   ├── workflow_service.py        # YAML 加载与校验
+│   │   │   ├── workflow_run_service.py    # SSE 流式运行 + 状态缓存
+│   │   │   ├── market_analysis_service.py # 市场分析（同步 + 流式）
+│   │   │   ├── product_info_service.py
+│   │   │   ├── data_provider.py           # Mock 数据加载
+│   │   │   └── audience_insight_service.py
+│   │   ├── prompt_templates/       # LLM prompt 模板（Jinja2）
+│   │   │   ├── intent_recognition.md.j2
+│   │   │   ├── product_research.md.j2
+│   │   │   ├── market_analysis.md.j2
+│   │   │   ├── research_*.md.j2    # 市场研究子节点（7 个）
+│   │   │   ├── audience_insight.md.j2
+│   │   │   ├── persona_generation.md.j2
+│   │   │   ├── strategy_generation.md.j2
+│   │   │   └── ...
+│   │   └── config/
+│   │       └── settings.py         # pydantic-settings 加载
+│   ├── workflows/                  # YAML 工作流定义
+│   │   ├── chat_pipeline.yaml
+│   │   ├── plan_generation_pipeline.yaml
+│   │   ├── market_analysis.yaml
+│   │   └── audience_insight_pipeline.yaml
+│   ├── mock_data/                  # MVP mock JSON 数据（允许子目录）
+│   │   ├── product_info/
+│   │   ├── market_analysis/
+│   │   ├── audience_insight/
+│   │   ├── user_persona/
+│   │   ├── category_fitness.json
+│   │   ├── intent_rules.json
+│   │   └── plan_*.json
+│   └── pyproject.toml
+├── frontend/                       # React + Vite
 │   ├── src/
 │   │   ├── components/
 │   │   ├── pages/
 │   │   ├── hooks/
-│   │   └── api/
+│   │   ├── api/
+│   │   └── types/
 │   └── package.json
 ├── docs/
-│   ├── superpowers.yaml            # 能力边界定义
+│   ├── superpowers.yaml
 │   ├── api/
-│   │   ├── _template.yaml          # OpenSpec 谱例模板
-│   │   ├── brands.yaml
-│   │   ├── data.yaml
-│   │   ├── fitness.yaml
-│   │   ├── plans.yaml
-│   │   └── export.yaml
-│   └── conventions/                # 本目录——开发规范
-│       ├── directory-structure.md
-│       ├── testing.md
-│       ├── mock-data.md
-│       ├── git-workflow.md
-│       └── prompt-templates.md
-├── .env.example
+│   │   ├── _template.yaml
+│   │   ├── paths/
+│   │   │   ├── intent.yaml
+│   │   │   ├── market-analysis.yaml
+│   │   │   └── workflows.yaml
+│   │   └── workflows.yaml
+│   ├── conventions/                # 本目录
+│   │   ├── directory-structure.md
+│   │   ├── testing.md
+│   │   ├── mock-data.md
+│   │   ├── git-workflow.md
+│   │   ├── prompt-templates.md
+│   │   ├── agent-registry.md
+│   │   └── agent-framework.md
+│   └── superpowers/specs/
+├── openspec/
+│   ├── specs/                      # 主 spec
+│   └── changes/                    # 变更文档
 └── .claude/
-    ├── CLAUDE.md                   # AI 开发约束（入口）
-    └── settings.local.json
+    ├── CLAUDE.md
+    └── settings.json
 ```
 
 ## 职责分界

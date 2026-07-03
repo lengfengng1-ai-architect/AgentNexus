@@ -4,18 +4,23 @@
 
 ## 存放位置
 
-所有 mock 数据文件位于 `backend/mock_data/`，扁平方放置，不嵌套目录。
+所有 mock 数据文件位于 `backend/mock_data/`，按功能模块组织子目录：
 
 ```
 backend/mock_data/
-├── cities.json              # 城市列表
-├── sports.json              # 运动品类列表
-├── leagues.json             # 赛事/联盟数据
-├── events.json              # 活动数据
-├── influencers.json         # 达人列表
-├── clubs.json               # 经营社/俱乐部
-├── brand_input_sample.json  # 品牌需求样例
-└── __init__.py              # （可选）统一加载入口
+├── product_info/           # 产品信息调研缓存（按产品名命名的 JSON）
+├── market_analysis/        # 市场分析结果缓存（按 market_name 命名的 JSON）
+├── audience_insight/       # 人群洞察缓存（按 product_name 命名的 JSON）
+├── user_persona/           # 用户画像缓存（按 product_name 命名的 JSON）
+├── category_fitness.json   # 品类×运动适配度评分映射
+├── intent_rules.json       # 意图提取规则配置
+├── allygo_city_data.json   # AllyGo 平台城市数据
+├── plan_*.json             # 方案生成 pipeline 各节点 mock 输出（9 个）
+├── market.json             # 市场分析 mock 响应
+├── brand_dimension_map.json # 品牌数据维度映射
+├── influencers.json        # 达人列表
+├── leagues.json            # 赛事/联盟数据
+└── stores.json             # 门店数据
 ```
 
 ## JSON 格式约定
@@ -84,16 +89,14 @@ leagues.json → records 中 city_id="shanghai" # 可选
 
 ## 与 service 层的接口
 
-service 层通过一个 `MockDataLoader`（放在 `app/services/data_service.py`）加载 mock 数据：
+数据提供者抽象在 `app/services/data_provider.py` 中，通过 `get_data_provider()` 获取。切换真实 API 时替换内部实现即可：
 
 ```python
-# 伪代码约定
-class MockDataLoader:
-    def load_cities(self) -> list[City]: ...
-    def load_events(self, city: str | None = None) -> list[Event]: ...
-```
+from app.services.data_provider import get_data_provider
 
-**切换真实 API 时**，将 `MockDataLoader` 的实现在不影响调用方的前提下替换为 HTTP client。调用方只依赖返回的 Pydantic model 类型，不依赖数据来源。
+provider = get_data_provider()
+city_data = provider.get_city_data("上海")
+```
 
 ## 审批
 
