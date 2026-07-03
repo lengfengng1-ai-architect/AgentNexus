@@ -101,8 +101,3 @@ async def test_run_plan_generator__mock():
     output = PlanGeneratorOutput.model_validate(result)
     assert len(output.chapters) == 9
 
-
-@pytest.mark.asyncio
-async def test_plan_generation_pipeline__mock():
-    """Pipeline test is now in test_plan_generation_service.py."""
-    pass
