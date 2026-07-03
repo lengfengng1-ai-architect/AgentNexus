@@ -104,6 +104,13 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
     context = state.get("context") or {}
 
     prompt = _load_system_prompt(message, context)
+    logger.debug(
+        "Intent recognition prompt for message=%r context=%r:\n%s",
+        message,
+        context,
+        prompt,
+    )
+
     if settings.enable_thinking:
         import openai
         client = openai.OpenAI(api_key=settings.myself_api_key, base_url=settings.myself_base_url)
@@ -115,11 +122,13 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
         )
         raw = resp.choices[0].message.content or ""
         reasoning = getattr(resp.choices[0].message, "reasoning_content", "") or ""
+        logger.debug("Intent recognition raw response: %s", raw)
         result = IntentRecognitionOutput.model_validate(json.loads(raw))
         result.reasoning = reasoning
     else:
         llm = _build_structured_llm()
         result = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=message)])
+        logger.debug("Intent recognition structured result: %s", result.model_dump_json(ensure_ascii=False))
 
     if result.intent == "update_context":
         result = _merge_context(context, result)
@@ -157,6 +166,12 @@ async def stream_intent_recognition(
     context = state.get("context") or {}
 
     prompt = _load_system_prompt(message, context)
+    logger.debug(
+        "Streaming intent recognition prompt for message=%r context=%r:\n%s",
+        message,
+        context,
+        prompt,
+    )
 
     if settings.enable_thinking:
         import openai
@@ -184,11 +199,13 @@ async def stream_intent_recognition(
 
         raw = "".join(content_chunks)
         reasoning = "".join(reasoning_chunks)
+        logger.debug("Streaming intent recognition raw response: %s", raw)
         result = IntentRecognitionOutput.model_validate(json.loads(raw))
         result.reasoning = reasoning
     else:
         llm = _build_structured_llm()
         result = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=message)])
+        logger.debug("Streaming intent recognition structured result: %s", result.model_dump_json(ensure_ascii=False))
 
     if result.intent == "update_context":
         result = _merge_context(context, result)

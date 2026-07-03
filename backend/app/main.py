@@ -11,7 +11,16 @@ from app.schemas.common import APIError, APIResponse, ErrorCode
 logger = logging.getLogger(__name__)
 
 
+def _configure_logging() -> None:
+    level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    logging.basicConfig(
+        level=level,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
+
+
 def create_app() -> FastAPI:
+    _configure_logging()
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,
