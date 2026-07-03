@@ -231,7 +231,7 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
             async with AsyncClient(timeout=FETCH_TIMEOUT) as client:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
                 resp.raise_for_status()
-                text = _extract_text_from_html(resp.text)
+                text = extract_text_from_html(resp.text)
                 if product.lower() in (text or "").lower()[:800]:
                     # 将官网 URL 存到 identity.product_name 的 sources
                     if url not in output.identity.product_name.sources:

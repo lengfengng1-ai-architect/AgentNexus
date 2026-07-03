@@ -106,8 +106,8 @@ async def mock_run_<agent>(state: dict) -> dict:
 | prompt 文件 | `backend/app/prompt_templates/<agent_name>.md.j2` |
 | 入口函数 | `async def run_<agent_name>(state: dict) -> dict` |
 | 模型构建 | **必须用 `build_chat_model()`**，禁止自己写 `_build_model()` |
-| 图构建 | **禁止 for 循环建图**。所有 `add_node`/`add_edge` 必须逐条显式写出。顺序一目了然，不需要读者跳到变量定义确认拓扑 |
 | import 规则 | **禁止在方法/函数内部 import**。所有 import 必须放在文件顶部。违反者在 Code Review 打回 |
+| 图构建 | **禁止 for 循环建图**。所有 `add_node`/`add_edge` 必须逐条显式写出。顺序一目了然，不需要读者跳到变量定义确认拓扑 |
 
 ---
 
