@@ -18,10 +18,6 @@ from app.agents import plan_data_query_agent  # noqa: F401
 from app.agents import plan_generator_agent  # noqa: F401
 from app.agents import product_research_agent  # noqa: F401
 from app.agents import strategy_generation_agent  # noqa: F401
-from app.agents.registry import list_agents, register_mock
-from app.agents.intent_recognition_agent import mock_run_intent_recognition
-
-# Register mock handlers (used when settings.use_mock_data=True)
-register_mock("intent_recognition", mock_run_intent_recognition)
+from app.agents.registry import list_agents
 
 __all__ = ["list_agents"]

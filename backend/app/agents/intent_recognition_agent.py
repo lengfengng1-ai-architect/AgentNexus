@@ -103,9 +103,6 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
 
     context = state.get("context") or {}
 
-    if settings.use_mock_data:
-        return await mock_run_intent_recognition(state)
-
     prompt = _load_system_prompt(message, context)
     if settings.enable_thinking:
         import openai
@@ -158,11 +155,6 @@ async def stream_intent_recognition(
         raise ValueError("Missing required input: message")
 
     context = state.get("context") or {}
-
-    if settings.use_mock_data:
-        result = await mock_run_intent_recognition(state)
-        yield ("", result)
-        return
 
     prompt = _load_system_prompt(message, context)
 
