@@ -22,7 +22,11 @@ pytest-mock
 
 uv 会自动安装 `[dependency-groups] dev` 中的包（`tool.uv.default-groups = ["dev"]`）。
 
-## 文件组织
+## 测试范围
+
+- **测试重点是单 Agent**——每个 agent 独立测试，mock 掉 LLM。
+- **不测试 Pipeline/工作流编排**，除非用户明确要求。pipeline 属于编排层的内部实现细节，测试代价高且收益低。
+- 覆盖率按 agent 文件单独计算，全局阈值 ≥80%。
 
 tests 目录结构镜像 `backend/app`：
 
