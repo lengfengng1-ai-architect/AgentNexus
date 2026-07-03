@@ -18,10 +18,12 @@
 ┌─────────────────────────────────────────┐
 │  Application / Router / Service         │
 ├─────────────────────────────────────────┤
-│  Registry + Orchestrator                │  ← registry.py + orchestrator.py
-│  - register("name", handler)            │    可插拔注册 + LangGraph 图构建
-│  - build_graph(workflow_def) → graph    │
-│  - build_graph(workflow_def) → graph    │
+│  StateGraph Pipeline                    │  ← services/plan_generation_service.py
+│  - LangGraph StateGraph + compile()     │    代码定义节点和边
+│  - 直接调 get_handler(agent_name)      │
+├─────────────────────────────────────────┤
+│  Registry                               │  ← registry.py
+│  - register("name", handler)            │    可插拔注册
 ├─────────────────────────────────────────┤
 │  Agent 节点层                           │  ← agents/*_agent.py
 │  - async def run_xxx(state: dict)->dict │    统一入口，注册到 registry
@@ -39,9 +41,22 @@
 
 **核心原则：**
 - Agent 通过 `registry.register()` 注册到系统，不依赖硬编码的路由。
-- Mock Agent 通过 `registry.register_mock()` 注册为独立文件（`mock_` 开头）。
+- 方案生成 pipeline 用 `StateGraph` 在代码中直接定义，不经过 YAML 配置层。
 - 真实 Agent 文件**禁止包含任何 mock 代码**（`use_mock_data`、`_MOCK_PATH`、`_load_mock`）。
 - `llm_utils.build_chat_model()` 是唯一的模型构建入口，所有 agent 禁止自己写 `_build_model()`。
+
+### Mock Agent
+
+Mock Agent 文件以 `mock_` 开头，通过 `register()` 注册（名称前缀 `mock_`）：
+
+```python
+# backend/app/agents/mock_intent_recognition_agent.py
+from app.agents.registry import register
+
+register("mock_intent_recognition", mock_run_intent_recognition)
+```
+
+通过 YAML 或代码中显式引用 `agent: mock_intent_recognition` 来使用。
 
 ### Agent 文件头注释规范
 
@@ -96,41 +111,47 @@ async def run_my_agent(state: dict) -> dict:
 register("my_agent", run_my_agent)
 ```
 
-Mock handler 可选注册：
+Mock handler：
 
 ```python
-from app.agents.registry import register, register_mock
+# backend/app/agents/mock_intent_recognition_agent.py（独立文件）
+from app.agents.registry import register
 
-async def mock_run_my_agent(state: dict) -> dict:
+register("mock_intent_recognition", mock_run_intent_recognition)
+```
+
+## 方案生成 Pipeline
+
+方案生成使用 LangGraph `StateGraph` 在代码中直接定义，不经过 YAML 配置层：
+
+```python
+from langgraph.graph import StateGraph, END
+
+class PlanState(TypedDict):
+    brand_input: dict
+    product_research: dict
     ...
 
-register("my_agent", run_my_agent)
-register_mock("my_agent", mock_run_my_agent)
+graph = StateGraph(PlanState)
+
+def add_nodes_and_edges(graph):
+    graph.add_node("product_research", product_research_node)
+    ...
+    graph.set_entry_point("product_research")
+    graph.add_edge("product_research", "audience_insight")
+    graph.add_edge("plan_generator", END)
+
+pipeline = graph.compile()
+result = await pipeline.ainvoke({"brand_input": {...}})
 ```
 
-## 可配置工作流编排
+代码即配置——每步可视、可打断点。参考 `backend/app/services/plan_generation_service.py`。
 
-通过 YAML 定义节点、边、条件分支和并行执行（串行/并行/fan-in），Orchestrator 自动转为 LangGraph：
+## 注册与路由
 
-```yaml
-nodes:
-  - id: product_research
-    agent: product_research
-    input_mapping:
-      brand_name: "$.input.brand_input.brand_name"
-
-  - id: audience_insight
-    agent: audience_insight
-    depends_on: [product_research]
-    input_mapping:
-      product_name: "$.input.brand_input.brand_name"
-
-edges:
-  - from: product_research
-    to: audience_insight
-  - from: audience_insight
-    to: __end__
-```
+两个入口级路由：
+- **聊天**：`GET /api/v1/chat/stream` → `stream_intent_recognition()` → 意图分类后路由到各 agent
+- **方案生成**：`GET /api/v1/plan/run` → `plan_generation_service.run_stream()` → StateGraph 串行调 10 个 agent
 
 ## 响应信封（非流式端点）
 
