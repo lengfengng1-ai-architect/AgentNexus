@@ -14,19 +14,21 @@ from app.schemas.plan_generation import FitnessAnalysisOutput, SportFitnessScore
 from app.services.data_provider import get_data_provider
 
 _MOCK_PATH = Path(__file__).parent.parent.parent / "mock_data" / "plan_fitness_analysis.json"
+_FITNESS_MAP_PATH = Path(__file__).parent.parent.parent / "mock_data" / "category_fitness.json"
 
 
-# Category keyword -> primary sports and reasoning.
-CATEGORY_FITNESS_MAP: dict[str, dict[str, Any]] = {
-    "跑鞋": {"primary": "跑步", "scores": {"跑步": 95, "健身": 75, "骑行": 60, "篮球": 40}},
-    "运动服装": {"primary": "健身", "scores": {"健身": 90, "跑步": 85, "瑜伽": 80, "篮球": 70, "骑行": 65}},
-    "瑜伽": {"primary": "瑜伽", "scores": {"瑜伽": 98, "健身": 75, "跑步": 50, "普拉提": 85}},
-    "健身": {"primary": "健身", "scores": {"健身": 98, "跑步": 70, "瑜伽": 65, "力量训练": 90}},
-    "户外": {"primary": "徒步", "scores": {"徒步": 95, "露营": 90, "骑行": 80, "登山": 85}},
-    "篮球": {"primary": "篮球", "scores": {"篮球": 98, "健身": 60, "跑步": 50, "街头篮球": 90}},
-    "骑行": {"primary": "骑行", "scores": {"骑行": 98, "公路车": 90, "健身": 55, "跑步": 50}},
-    "游泳": {"primary": "游泳", "scores": {"游泳": 98, "健身": 60, "铁人三项": 85}},
-}
+def _load_fitness_map() -> dict[str, dict[str, Any]]:
+    try:
+        with _FITNESS_MAP_PATH.open("r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data.get("categories", {})
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+# ponytail: loaded once at module level; if the JSON is missing, falls back to empty map.
+# Upgrade path: load lazily on first call to avoid stale cache during hot reload.
+_CATEGORY_FITNESS_MAP: dict[str, dict[str, Any]] = _load_fitness_map()
 
 
 def _load_mock() -> FitnessAnalysisOutput:
@@ -36,7 +38,7 @@ def _load_mock() -> FitnessAnalysisOutput:
 
 def _find_category_key(category: str) -> str | None:
     lowered = category.lower()
-    for key in CATEGORY_FITNESS_MAP:
+    for key in _CATEGORY_FITNESS_MAP:
         if key in lowered:
             return key
     return None
@@ -44,7 +46,7 @@ def _find_category_key(category: str) -> str | None:
 
 def _build_scores(category: str, top_sports: list[str]) -> list[SportFitnessScore]:
     key = _find_category_key(category)
-    config = CATEGORY_FITNESS_MAP.get(key, {"primary": top_sports[0] if top_sports else "综合运动", "scores": {}})
+    config = _CATEGORY_FITNESS_MAP.get(key, {"primary": top_sports[0] if top_sports else "综合运动", "scores": {}})
     scores_map = dict(config["scores"])
 
     # Ensure city top sports are represented.

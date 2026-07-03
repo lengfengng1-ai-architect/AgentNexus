@@ -4,7 +4,7 @@ from unittest.mock import AsyncMock, patch
 
 import pytest
 
-from app.agents.product_research_agent import ProductResearchState, _build_model
+from app.agents.product_research_agent import ProductResearchState
 from app.schemas.product_info import (
     SourcedStr, SourcedStrList, SourcedDict,
     Identity, OfficialDescription, Availability,

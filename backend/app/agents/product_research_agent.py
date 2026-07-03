@@ -14,11 +14,11 @@ from ddgs import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
 
-from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
+from app.agents.llm_utils import build_chat_model
 from app.config.settings import settings
 from app.agents.registry import register
 from app.schemas.product_info import (
@@ -72,26 +72,7 @@ class ProductResearchState(BaseModel):
 
 
 def _build_model():
-    if settings.llm_provider == "agnes":
-        return init_chat_model(
-            model=settings.agnes_model,
-            model_provider="openai",
-            api_key=settings.agnes_api_key,
-            base_url=settings.agnes_base_url,
-        )
-    elif settings.llm_provider == "myself":
-        return init_chat_model(
-            model=settings.myself_model,
-            model_provider="openai",
-            api_key=settings.myself_api_key,
-            base_url=settings.myself_base_url,
-        )
-    return init_chat_model(
-        model=settings.dashscope_model,
-        model_provider="openai",
-        api_key=settings.dashscope_api_key,
-        base_url=settings.dashscope_base_url,
-    )
+    return build_chat_model()
 
 
 def _load_prompt(product_name: str, fetched_pages: list[FetchedPage]) -> str:

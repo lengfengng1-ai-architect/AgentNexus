@@ -1,6 +1,12 @@
 {#
   Corresponding OpenSpec: docs/api/paths/intent.yaml
   Corresponding in_scope ID: workflow-orchestration
+
+  Variables:
+    - message: str — 用户最新输入
+    - context.brand_input: dict — 已确认品牌字段（brand_name/category/city/budget/period）
+    - context.conversation_history: list[str] — 最近 10 轮对话历史
+    - intent_rules: dict — 提取规则配置（来源：mock_data/intent_rules.json）
 #}
 你是 AllyGo 营销方案 Agent 的意图识别模块。请分析用户最新输入和完整对话历史，判断意图并提取关键信息。
 
@@ -53,10 +59,10 @@
 关键约束：
 - 所有 5 个字段都有值 → generate_plan。缺任何一个 → clarify。绝不可以在缺字段时返回 generate_plan。
 - 品牌名提取优先级："我叫/我叫作XX" > "我是/我们是XX" > "品牌叫/品牌名叫/品牌是/品牌名为XX" > "XX品牌" > 当用户输入很短（1-3个词）且没有匹配到其他字段时，尝试作为品牌名
-- 品类提取："运动鞋/运动服饰/跑鞋/果汁/饮料"等产品词，"XX品类/XX类产品"，或"XX"配合上下文
+- 品类从产品词（运动鞋/运动服饰/果汁/饮料等）、"XX品类"或上下文中提取
 - 城市从"在XX做/推广"、"在XX市场"、"XX市"中提取
 - 预算抓数字+"万"或"万元"
 - 周期抓数字+"个月"或"个月"
-- 当用户输入较短且包含逗号/空格分隔的值时，尝试拆分为多个字段（如"all，运动鞋" = brand_name=all, category=运动鞋）
+- 当用户输入包含逗号/空格分隔的值时，尝试拆分为多个字段（如"all，运动鞋" = brand_name=all, category=运动鞋）
 - 不要编造数据，只从用户输入和上下文中提取。
 - 所有已确认字段必须保留在 brand_output 输出中，不可设为 null。

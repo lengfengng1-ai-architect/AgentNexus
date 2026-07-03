@@ -1,9 +1,9 @@
 from jinja2 import Environment, FileSystemLoader
-from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from pydantic import Field
 
+from app.agents.llm_utils import build_chat_model
 from app.agents.registry import register
 from app.config.settings import settings
 from app.schemas.chat import BrandInput, ChatResponse
@@ -24,28 +24,7 @@ def _load_system_prompt() -> str:
 
 
 def _build_model():
-    if settings.llm_provider == "agnes":
-        return init_chat_model(
-            model=settings.agnes_model,
-            model_provider="openai",
-            api_key=settings.agnes_api_key,
-            base_url=settings.agnes_base_url,
-        )
-
-    elif settings.llm_provider == "myself":
-        return init_chat_model(
-            model=settings.myself_model,
-            model_provider="openai",
-            api_key=settings.myself_api_key,
-            base_url=settings.myself_base_url,
-        )
-
-    return init_chat_model(
-        model=settings.dashscope_model,
-        model_provider="openai",
-        api_key=settings.dashscope_api_key,
-        base_url=settings.dashscope_base_url,
-    )
+    return build_chat_model()
 
 
 def _build_structured_llm():
@@ -91,6 +70,8 @@ async def run_chat_extraction(state: dict) -> dict:
     message = state.get("message")
     if not message:
         raise ValueError("Missing required input: message")
+    if settings.use_mock_data:
+        return {"reply": "", "brand_input": BrandInput().model_dump(), "is_complete": False}
     response = await extract_brand_input(message)
     return response.model_dump()
 

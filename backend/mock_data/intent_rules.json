@@ -1,0 +1,44 @@
+{
+  "brand_name_extraction": {
+    "description": "品牌名提取优先级规则，越靠前优先级越高",
+    "patterns": [
+      "我叫/我叫作 XX",
+      "我是/我们是 XX",
+      "品牌叫/品牌名叫/品牌是/品牌名为 XX",
+      "XX 品牌"
+    ],
+    "short_input_fallback": "当用户输入很短（1-3个词）且没有匹配到其他字段时，尝试作为品牌名"
+  },
+  "category_extraction": {
+    "description": "品类提取模式",
+    "patterns": [
+      "运动鞋/运动服饰/跑鞋/果汁/饮料 等产品词",
+      "XX品类/XX类产品",
+      "XX（配合上下文）"
+    ]
+  },
+  "city_extraction": {
+    "description": "城市提取模式",
+    "patterns": [
+      "在XX做/推广",
+      "在XX市场",
+      "XX市"
+    ]
+  },
+  "budget_extraction": {
+    "description": "预算提取模式",
+    "patterns": [
+      "数字 + 万/万元"
+    ]
+  },
+  "period_extraction": {
+    "description": "周期提取模式",
+    "patterns": [
+      "数字 + 个月/个月"
+    ]
+  },
+  "comma_splitting": {
+    "description": "当用户输入较短且包含逗号/空格分隔的值时，尝试拆分为多个字段",
+    "example": "'all，运动鞋' = brand_name=all, category=运动鞋"
+  }
+}

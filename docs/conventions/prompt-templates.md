@@ -6,23 +6,49 @@
 
 ```
 backend/app/prompt_templates/
-├── system_prompt.md.j2       # 方案生成系统 prompt（角色设定+全局约束）
-├── plan_chapters/             # 各章节 prompt
-│   ├── chapter_01.md.j2      # 方案概述
-│   ├── chapter_02.md.j2      # 品牌分析
-│   ├── chapter_03.md.j2      # 运动场景匹配
-│   ├── chapter_04.md.j2      # 赛事体系
-│   ├── chapter_05.md.j2      # 达人矩阵
-│   ├── chapter_06.md.j2      # 活动规划
-│   ├── chapter_07.md.j2      # 媒介策略
-│   ├── chapter_08.md.j2      # 预算分配
-│   └── chapter_09.md.j2      # 执行时间线
-└── export_instructions.md.j2 # 导出格式 prompt
+├── intent_recognition.md.j2  # 意图识别
+├── chat_extraction.md.j2     # 品牌字段提取
+├── market_analysis.md.j2     # 市场分析（7 节点共享）
+├── plan_chapters/             # 【已废弃】旧分章节方案
+├── product_research.md.j2    # 产品信息调研
+├── data_query.md.j2          # 数据查询路由
+├── strategy_generation.md.j2 # 营销策略
+├── execution_planning.md.j2  # 执行规划
+├── budget_kpi.md.j2          # 预算与 KPI
+├── action_recommendations.md.j2 # 行动建议
+├── plan_generator.md.j2      # 方案生成汇总
+├── research_*.md.j2          # 市场研究子节点（7 个）
+└── product_search.md.j2      # 搜索结果过滤
 ```
 
 - 后缀 `.md.j2` 表示这是 Markdown 格式的 Jinja2 模板
-- 不按场景分目录（所有场景共享一套章节模板）
-- 如果某章节的场景差异大，在模板内用 `{% if scenario == "xxx" %}` 分支
+
+### 文件头注释
+
+每个模板文件头部必须包含标准注释块，说明变量来源：
+
+```jinja2
+{#
+  Variables:
+    - message: str — 用户最新输入（来源：chat router）
+    - context.brand_input: dict — 已确认品牌字段（来源：chat 上下文）
+    - context.conversation_history: list[str] — 对话历史
+#}
+```
+
+### 业务数据与 Prompt 分离
+
+Prompt 中的**提取规则 / 映射数据**应提取到 `backend/mock_data/` 的 JSON 文件中，通过 Jinja2 变量传入，不要在 prompt 里硬编码：
+
+```
+mock_data/
+├── intent_rules.json       # 意图提取规则（品牌名/城市/预算/周期提取模式）
+└── category_fitness.json   # 品类→运动适配度评分映射
+```
+
+模板渲染方负责加载 JSON 并传给模板变量，模板只使用变量但不定义规则细节。
+
+### 变量注入
 
 ## 模板格式
 

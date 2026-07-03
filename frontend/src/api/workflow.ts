@@ -10,6 +10,8 @@ export interface IntentResult {
   missing_fields: string[]
   updated_fields: Record<string, unknown>
   reasoning: string
+  confirmed: boolean
+  gate: string | null
 }
 
 const api = axios.create({

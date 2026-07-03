@@ -29,6 +29,8 @@ export interface ChatMessage {
   canGeneratePlan?: boolean
   reasoning?: string
   missingFields?: string[]
+  gate?: string | null
+  confirmed?: boolean
 }
 
 export type FieldKey = keyof BrandInput

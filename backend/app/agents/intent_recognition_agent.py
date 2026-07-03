@@ -6,103 +6,13 @@ Corresponding in_scope ID: workflow-orchestration
 
 import json
 import logging
-from typing import Any
-
-from jinja2 import Environment, FileSystemLoader
-from langchain.chat_models import init_chat_model
-from langchain_core.messages import HumanMessage, SystemMessage
-
-from app.agents.registry import register
-from app.config.settings import settings
-from app.schemas.chat import BrandInput
-from app.schemas.intent import IntentRecognitionOutput
-
-logger = logging.getLogger(__name__)
-
-
-def _load_system_prompt(message: str, context: dict[str, Any]) -> str:
-    env = Environment(loader=FileSystemLoader("app/prompt_templates"))
-    template = env.get_template("intent_recognition.md.j2")
-    return template.render(message=message, context=context)
-
-
-def _build_model():
-    if settings.llm_provider == "agnes":
-        return init_chat_model(
-            model=settings.agnes_model,
-            model_provider="openai",
-            api_key=settings.agnes_api_key,
-            base_url=settings.agnes_base_url,
-        )
-
-    elif settings.llm_provider == "myself":
-        return init_chat_model(
-            model=settings.myself_model,
-            model_provider="openai",
-            api_key=settings.myself_api_key,
-            base_url=settings.myself_base_url,
-        )
-
-    return init_chat_model(
-        model=settings.dashscope_model,
-        model_provider="openai",
-        api_key=settings.dashscope_api_key,
-        base_url=settings.dashscope_base_url,
-    )
-
-
-def _build_structured_llm():
-    return _build_model().with_structured_output(IntentRecognitionOutput)
-
-
-def _parse_brand_input(data: dict[str, Any]) -> BrandInput:
-    """Build BrandInput from a flat dict, normalizing keys."""
-    # Accept both snake_case and the aliases historically used by the frontend demo.
-    brand_name = data.get("brand_name") or data.get("brandName") or None
-    category = data.get("category") or None
-    city = data.get("city") or None
-    budget = data.get("budget")
-    period = data.get("period")
-    return BrandInput(
-        brand_name=brand_name,
-        category=category,
-        city=city,
-        budget=int(budget) if budget is not None else None,
-        period=int(period) if period is not None else None,
-    )
-
-
-def _merge_context(
-    context: dict[str, Any], output: IntentRecognitionOutput
-) -> IntentRecognitionOutput:
-    """Merge existing brand_input from context when intent is update_context."""
-    existing = context.get("brand_input", {})
-    if not existing:
-        return output
-
-    merged = _parse_brand_input(existing)
-    updates = output.brand_input.model_dump(exclude_none=True)
-    for key, value in updates.items():
-        setattr(merged, key, value)
-
-    output.brand_input = merged
-    return output
-
-
-"""Intent recognition agent node.
-
-Corresponding OpenSpec: docs/api/paths/intent.yaml
-Corresponding in_scope ID: workflow-orchestration
-"""
-
-import json
-import logging
+from pathlib import Path
 from typing import Any, AsyncGenerator
 
 from jinja2 import Environment, FileSystemLoader
-from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 
+from app.agents.llm_utils import build_chat_model
 from app.agents.registry import register
 from app.config.settings import settings
 from app.schemas.chat import BrandInput
@@ -127,34 +37,19 @@ def _load_system_prompt(message: str, context: dict[str, Any]) -> str:
             clean_ctx["brand_input"][key] = val if val is not None else None
     else:
         clean_ctx = context
+    # Load intent rules from JSON for the template
+    try:
+        _rules_path = Path(__file__).parent.parent.parent / "mock_data" / "intent_rules.json"
+        intent_rules = json.loads(_rules_path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        intent_rules = {}
     env = Environment(loader=FileSystemLoader("app/prompt_templates"))
     template = env.get_template("intent_recognition.md.j2")
-    return template.render(message=message, context=clean_ctx)
+    return template.render(message=message, context=clean_ctx, intent_rules=intent_rules)
 
 
 def _build_model():
-    if settings.llm_provider == "agnes":
-        return init_chat_model(
-            model=settings.agnes_model,
-            model_provider="openai",
-            api_key=settings.agnes_api_key,
-            base_url=settings.agnes_base_url,
-        )
-
-    elif settings.llm_provider == "myself":
-        return init_chat_model(
-            model=settings.myself_model,
-            model_provider="openai",
-            api_key=settings.myself_api_key,
-            base_url=settings.myself_base_url,
-        )
-
-    return init_chat_model(
-        model=settings.dashscope_model,
-        model_provider="openai",
-        api_key=settings.dashscope_api_key,
-        base_url=settings.dashscope_base_url,
-    )
+    return build_chat_model()
 
 
 def _build_structured_llm():
@@ -207,6 +102,10 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Missing required input: message")
 
     context = state.get("context") or {}
+
+    if settings.use_mock_data:
+        return await mock_run_intent_recognition(state)
+
     prompt = _load_system_prompt(message, context)
     if settings.enable_thinking:
         import openai
@@ -259,6 +158,12 @@ async def stream_intent_recognition(
         raise ValueError("Missing required input: message")
 
     context = state.get("context") or {}
+
+    if settings.use_mock_data:
+        result = await mock_run_intent_recognition(state)
+        yield ("", result)
+        return
+
     prompt = _load_system_prompt(message, context)
 
     if settings.enable_thinking:
@@ -318,11 +223,11 @@ async def stream_intent_recognition(
 register("intent_recognition", run_intent_recognition)
 
 
-# ponytail: minimal deterministic fallback for tests without a live LLM.
+# ponytail: minimal deterministic fallback for tests and use_mock_data mode.
 async def mock_run_intent_recognition(
     state: dict[str, Any]
 ) -> dict[str, Any]:
-    """Deterministic mock used by unit tests. Not registered."""
+    """Deterministic mock. Registered as mock handler for 'intent_recognition'."""
     message = state.get("message")
     if not message:
         raise ValueError("Missing required input: message")
@@ -405,6 +310,7 @@ async def mock_run_intent_recognition(
         confidence=0.9,
         reply=f"收到，开始为 {brand_name} 生成 {city} 营销方案。",
         brand_input=brand_input,
+        gate="generate_plan",
     ).model_dump()
 
 
