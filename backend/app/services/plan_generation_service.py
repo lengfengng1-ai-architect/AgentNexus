@@ -346,6 +346,7 @@ def _status_for_state(
             "status": "canceled",
             "current_node": None,
             "outputs": {},
+            "completed_nodes": [],
             "paused_snapshot": None,
             "error": None,
         }
@@ -360,6 +361,7 @@ def _status_for_state(
             "status": "failed",
             "current_node": None,
             "outputs": outputs,
+            "completed_nodes": completed,
             "paused_snapshot": None,
             "error": error,
         }
@@ -384,6 +386,7 @@ def _status_for_state(
         "status": status,
         "current_node": current_node,
         "outputs": outputs,
+        "completed_nodes": completed,
         "paused_snapshot": paused_snapshot,
         "error": None,
     }

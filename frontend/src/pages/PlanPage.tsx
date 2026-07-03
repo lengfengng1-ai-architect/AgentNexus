@@ -9,6 +9,7 @@ import { PipelineTimeline } from './PipelineTimeline'
 
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
+const RUN_ID_KEY = 'allygo_plan_run_id'
 
 function usePlanSession() {
   const [seed] = useState<BrandInput | undefined>(() => {
@@ -44,6 +45,7 @@ export function PlanPage() {
     outputs,
     failedNode,
     error,
+    isLoading,
     isConnected,
     nodeLogs,
     pausedNode,
@@ -53,8 +55,15 @@ export function PlanPage() {
     approve,
     reject,
     cancel,
+    restoreFromRunId,
   } = usePlanRun()
   const { seed, save } = usePlanSession()
+
+  // Restore paused/completed run on mount
+  useEffect(() => {
+    const savedRunId = localStorage.getItem(RUN_ID_KEY)
+    if (savedRunId) restoreFromRunId(savedRunId)
+  }, [restoreFromRunId])
   const [sidebarCollapsed, setSidebarCollapsed] = useState(status !== 'idle')
   useEffect(() => { if (status !== 'idle') setSidebarCollapsed(true) }, [status])
   const contentRef = useRef<HTMLDivElement>(null)
@@ -150,7 +159,7 @@ export function PlanPage() {
         <button
           type="button"
           onClick={() => approve()}
-          disabled={isConnected}
+          disabled={isLoading || isConnected}
           style={{
             flex: 1,
             padding: '8px 0',
@@ -172,7 +181,7 @@ export function PlanPage() {
             const reason = window.prompt('请输入驳回原因（必填）：')
             if (reason) reject(reason)
           }}
-          disabled={isConnected}
+          disabled={isLoading || isConnected}
           style={{
             flex: 1,
             padding: '8px 0',
@@ -316,7 +325,7 @@ export function PlanPage() {
                   <button
                     type="button"
                     onClick={() => approve()}
-                    disabled={isConnected}
+                    disabled={isLoading || isConnected}
                     style={{
                       flex: 1,
                       padding: '8px 0',
@@ -338,7 +347,7 @@ export function PlanPage() {
                       const reason = window.prompt('请输入驳回原因（必填）：')
                       if (reason) reject(reason)
                     }}
-                    disabled={isConnected}
+                    disabled={isLoading || isConnected}
                     style={{
                       flex: 1,
                       padding: '8px 0',

@@ -32,6 +32,7 @@ interface PlanRunState {
   failedNode: string | null
   error: string | null
   isConnected: boolean
+  isLoading: boolean
   pausedNode: string | null
   pausedSnapshot: {
     node_id: string
@@ -55,6 +56,8 @@ type PlanRunAction =
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CHAPTER_START'; index: number; title: string; subtitle: string }
   | { type: 'CHAPTER_COMPLETE'; chapter: PlanChapter }
+  | { type: 'SET_LOADING'; loading: boolean }
+  | { type: 'RESTORE_STATUS'; status: PlanRunStatus; outputs: PlanOutputs; failedNode: string | null; error: string | null; completedNodes: string[]; pausedNode: string | null; pausedSnapshot: PlanRunState['pausedSnapshot'] }
 
 function buildInitialNodes(): PlanNode[] {
   return PIPELINE_NODES.map((node) => ({
@@ -75,6 +78,7 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
         failedNode: null,
         error: null,
         isConnected: false,
+        isLoading: false,
         pausedNode: null,
         pausedSnapshot: null,
         chapters: [],
@@ -83,6 +87,8 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
       return { ...state, runId: action.runId }
     case 'SET_CONNECTED':
       return { ...state, isConnected: action.connected }
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.loading }
     case 'APPEND_LOG':
       return { ...state, logs: [...state.logs, action.event] }
     case 'NODE_START':
@@ -116,15 +122,16 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
         ...state,
         status: 'paused',
         isConnected: false,
+        isLoading: false,
         pausedNode: action.snapshot?.node_id ?? null,
         pausedSnapshot: action.snapshot,
       }
     case 'WORKFLOW_COMPLETE':
-      return { ...state, status: 'completed', outputs: action.outputs, isConnected: false }
+      return { ...state, status: 'completed', outputs: action.outputs, isConnected: false, isLoading: false }
     case 'WORKFLOW_CANCELED':
-      return { ...state, status: 'idle', runId: null, isConnected: false, pausedNode: null, pausedSnapshot: null }
+      return { ...state, status: 'idle', runId: null, isConnected: false, isLoading: false, pausedNode: null, pausedSnapshot: null }
     case 'SET_ERROR':
-      return { ...state, error: action.error, isConnected: false }
+      return { ...state, error: action.error, isConnected: false, isLoading: false }
     case 'CHAPTER_START':
       return {
         ...state,
@@ -144,6 +151,32 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
         nextChapters.push(action.chapter)
       }
       return { ...state, chapters: nextChapters }
+    }
+    case 'SET_LOADING':
+      return { ...state, isLoading: action.loading }
+    case 'RESTORE_STATUS': {
+      const nextNodes = buildInitialNodes()
+      for (const nid of action.completedNodes) {
+        const idx = nextNodes.findIndex(n => n.id === nid)
+        if (idx >= 0) nextNodes[idx] = { ...nextNodes[idx], status: 'complete' }
+      }
+      if (action.failedNode) {
+        const idx = nextNodes.findIndex(n => n.id === action.failedNode)
+        if (idx >= 0) nextNodes[idx] = { ...nextNodes[idx], status: 'failed' }
+      }
+      return {
+        ...state,
+        status: action.status,
+        runId: state.runId,
+        outputs: action.outputs,
+        nodes: nextNodes,
+        failedNode: action.failedNode,
+        error: action.error,
+        pausedNode: action.pausedNode,
+        pausedSnapshot: action.pausedSnapshot,
+        isConnected: false,
+        isLoading: false,
+      }
     }
     default:
       return state
@@ -228,6 +261,7 @@ export function usePlanRun() {
     failedNode: null,
     error: null,
     isConnected: false,
+    isLoading: false,
     pausedNode: null,
     pausedSnapshot: null,
     chapters: [],
@@ -326,6 +360,7 @@ export function usePlanRun() {
 
       try {
         const { runId, stream } = await startPlanRun(brandInput)
+        try { localStorage.setItem('allygo_plan_run_id', runId) } catch { /* ignore */ }
         dispatch({ type: 'SET_RUN_ID', runId })
         dispatch({ type: 'SET_CONNECTED', connected: true })
         await consumeStream(stream)
@@ -339,38 +374,60 @@ export function usePlanRun() {
 
   const approve = useCallback(
     async (editedInput?: Record<string, unknown>) => {
-      if (!state.runId || state.status !== 'paused') return
+      if (!state.runId) return
+      dispatch({ type: 'SET_LOADING', loading: true })
       try {
+        // If status drifted from paused, re-check from server first.
+        if (state.status !== 'paused') {
+          await refreshStatus()
+        }
+        if (state.status !== 'paused') {
+          dispatch({ type: 'SET_LOADING', loading: false })
+          return
+        }
         const stream = await approvePlanRun(state.runId, editedInput ? { edited_input: editedInput } : undefined)
         dispatch({ type: 'SET_CONNECTED', connected: true })
         await consumeStream(stream)
       } catch (error) {
         const message = error instanceof Error ? error.message : '审批通过失败'
         dispatch({ type: 'SET_ERROR', error: message })
+      } finally {
+        dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [state.runId, state.status, consumeStream],
+    [state.runId, state.status, consumeStream, refreshStatus],
   )
 
   const reject = useCallback(
     async (reason: string) => {
-      if (!state.runId || state.status !== 'paused') return
+      if (!state.runId) return
+      dispatch({ type: 'SET_LOADING', loading: true })
       try {
+        if (state.status !== 'paused') {
+          await refreshStatus()
+        }
+        if (state.status !== 'paused') {
+          dispatch({ type: 'SET_LOADING', loading: false })
+          return
+        }
         const stream = await rejectPlanRun(state.runId, { reason })
         dispatch({ type: 'SET_CONNECTED', connected: true })
         await consumeStream(stream)
       } catch (error) {
         const message = error instanceof Error ? error.message : '驳回失败'
         dispatch({ type: 'SET_ERROR', error: message })
+      } finally {
+        dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [state.runId, state.status, consumeStream],
+    [state.runId, state.status, consumeStream, refreshStatus],
   )
 
   const cancel = useCallback(async () => {
     if (!state.runId) return
     try {
       await cancelPlanRun(state.runId)
+      try { localStorage.removeItem('allygo_plan_run_id') } catch { /* ignore */ }
       dispatch({ type: 'WORKFLOW_CANCELED' })
     } catch (error) {
       const message = error instanceof Error ? error.message : '取消失败'
@@ -396,13 +453,52 @@ export function usePlanRun() {
           message: result.error || '工作流失败',
         })
       } else if (result.status === 'paused') {
-        dispatch({ type: 'WORKFLOW_PAUSED', snapshot: result.paused_snapshot })
+        dispatch({
+          type: 'RESTORE_STATUS',
+          status: 'paused',
+          outputs: result.outputs as PlanOutputs,
+          failedNode: null,
+          error: null,
+          completedNodes: result.completed_nodes ?? [],
+          pausedNode: result.paused_snapshot?.node_id ?? null,
+          pausedSnapshot: result.paused_snapshot,
+        })
+      } else if (result.status === 'running') {
+        dispatch({
+          type: 'RESTORE_STATUS',
+          status: 'running',
+          outputs: result.outputs as PlanOutputs,
+          failedNode: null,
+          error: null,
+          completedNodes: result.completed_nodes ?? [],
+          pausedNode: null,
+          pausedSnapshot: null,
+        })
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : '查询状态失败'
       dispatch({ type: 'SET_ERROR', error: message })
     }
   }, [state.runId])
+
+  const restoreFromRunId = useCallback(async (runId: string) => {
+    dispatch({ type: 'SET_RUN_ID', runId })
+    try {
+      const result = await getPlanRunStatus(runId)
+      dispatch({
+        type: 'RESTORE_STATUS',
+        status: result.status,
+        outputs: result.outputs as PlanOutputs,
+        failedNode: null,
+        error: result.error || null,
+        completedNodes: result.completed_nodes ?? [],
+        pausedNode: result.paused_snapshot?.node_id ?? null,
+        pausedSnapshot: result.paused_snapshot,
+      })
+    } catch {
+      // run not found or expired — stay idle
+    }
+  }, [])
 
   const nodeLogs = useMemo(() => {
     const logsByNode: Record<string, string[]> = {}
@@ -425,6 +521,7 @@ export function usePlanRun() {
     cancel,
     reset,
     refreshStatus,
+    restoreFromRunId,
   }
 }
 
