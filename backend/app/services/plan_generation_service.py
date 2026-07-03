@@ -27,7 +27,6 @@ from typing_extensions import TypedDict
 import aiosqlite
 
 from app.agents.registry import get_handler
-from app.config.settings import settings
 from app.schemas.common import ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -54,9 +53,12 @@ _RUN_RECORDS: dict[str, PlanRunRecord] = {}
 
 
 def _ensure_plan_db() -> sqlite3.Connection:
-    """Open (or reuse) the plan_records SQLite DB with table creation."""
+    """Open (or reuse) the checkpoints SQLite DB with our plan_records table.
+
+    与 LangGraph 共用同一个 checkpoints.db 文件，不额外创建数据库。
+    """
     if not hasattr(_ensure_plan_db, "_conn") or _ensure_plan_db._conn is None:  # type: ignore[attr-defined]
-        conn = sqlite3.connect(settings.plan_db_path)
+        conn = sqlite3.connect(_CHECKPOINT_DB_PATH)
         conn.execute("""
             CREATE TABLE IF NOT EXISTS plan_records (
                 run_id TEXT PRIMARY KEY,

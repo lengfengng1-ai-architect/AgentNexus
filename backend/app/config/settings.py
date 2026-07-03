@@ -35,8 +35,6 @@ class Settings(BaseSettings):
 
     use_mock_data: bool = False
 
-    plan_db_path: str = "data/plan_records.db"
-
     cors_origins: str = ""
 
 
