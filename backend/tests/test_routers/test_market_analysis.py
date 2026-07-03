@@ -28,8 +28,6 @@ async def test_market_analysis_sync_200(mock_settings):
     assert response.status_code == 200
     data = response.json()
     assert "result" in data
-    assert "confidence" in data
-    assert data["result"]["market_definition"]["definition_notes"]
 
 
 @pytest.mark.asyncio

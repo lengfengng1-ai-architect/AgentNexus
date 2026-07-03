@@ -18,6 +18,8 @@ nodes:
     agent: audience_insight
     depends_on: [product_research]
     input_mapping:
+      product_name: "$.input.brand_input.brand_name"
+      product_info: "$.outputs.product_research"
       city: "$.input.brand_input.city"
 
   - id: plan_data_query

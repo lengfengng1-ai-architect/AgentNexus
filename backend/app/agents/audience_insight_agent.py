@@ -219,6 +219,8 @@ async def run_audience_insight(
     market_info: dict | None = None,
 ) -> tuple[AudienceRawData, UserPersona]:
     """执行人群洞察，返回 (原始人群数据, 用户画像)。"""
+    if settings.use_mock_data:
+        return AudienceRawData(), UserPersona()
     state = await _graph.ainvoke({
         "product_name": product_name,
         "product_info": product_info or {},
@@ -262,6 +264,9 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
     pn = state.get("product_name")
     if not pn:
         raise ValueError("Missing required input: product_name")
+
+    if settings.use_mock_data:
+        return UserPersona().model_dump()
 
     audience_data_raw = state.get("audience_data", {})
     from app.schemas.audience_insight import AudienceRawData
