@@ -237,7 +237,8 @@ def _build_smart_reply(city: str, priorities: dict[str, str], dimensions: dict[s
     """Build a smart reply based on dimension priorities."""
     parts = [f"已为你查询 **{city}** 的 AllyGo 平台数据：\n"]
 
-    high_dims = [k for k, v in priorities.items() if v == "high"]
+    # ponytail: high_dims unused, kept for future highlight logic
+    _ = [k for k, v in priorities.items() if v == "high"]
 
     for dim_key, priority in sorted(priorities.items(), key=lambda x: {"high": 0, "medium": 1, "low": 2}[x[1]]):
         dim_en = _chinese_to_en_key(dim_key)

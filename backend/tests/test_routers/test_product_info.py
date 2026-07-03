@@ -147,16 +147,17 @@ async def test_product_info_endpoint_llm_error(client, mock_graph):
 @pytest.mark.asyncio
 async def test_cache_hit_returns_without_agent(tmp_path, monkeypatch, sample_result):
     """缓存命中时直接返回，不调用 Agent。"""
-    from app.services.product_info_service import get_product_info, MOCK_DATA_DIR
+    from app.services.product_info_service import get_product_info
 
-    cache_dir = tmp_path / "product_info"
-    cache_dir.mkdir()
-    monkeypatch.setattr("app.services.product_info_service.MOCK_DATA_DIR", cache_dir)
+    def _fake_path(name: str) -> Path:
+        return tmp_path / f"{name.lower().replace(' ', '_')}.json"
 
-    cache_file = cache_dir / "iphone_16.json"
+    monkeypatch.setattr("app.services.product_info_service.product_info_path", _fake_path)
+
+    cache_file = _fake_path("iPhone 16")
     cache_file.write_text(sample_result.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
 
-    with patch("app.agents.product_research_agent.research_product") as mock_research:
+    with patch("app.services.product_info_service.research_product") as mock_research:
         result = await get_product_info("iPhone 16")
         assert result.from_cache is True
         assert result.product_info.identity.product_name.value == "iPhone 16"
@@ -168,11 +169,13 @@ async def test_cache_miss_invokes_agent(monkeypatch, sample_result):
     """缓存未命中时调用 Agent 并保存。"""
     import tempfile
     tmp_dir = Path(tempfile.mkdtemp())
-    cache_dir = tmp_dir / "product_info"
-    cache_dir.mkdir()
-    monkeypatch.setattr("app.services.product_info_service.MOCK_DATA_DIR", cache_dir)
 
     from app.services.product_info_service import get_product_info
+
+    def _fake_path(name: str) -> Path:
+        return tmp_dir / f"{name.lower().replace(' ', '_')}.json"
+
+    monkeypatch.setattr("app.services.product_info_service.product_info_path", _fake_path)
 
     with patch("app.services.product_info_service.research_product") as mock_research:
         mock_research.return_value = sample_result
@@ -181,7 +184,7 @@ async def test_cache_miss_invokes_agent(monkeypatch, sample_result):
         assert result.product_info.identity.product_name.value == "iPhone 16"
         mock_research.assert_awaited_once()
 
-    assert (cache_dir / "new_product.json").exists()
+    assert (tmp_dir / "new_product.json").exists()
 
 
 @pytest.mark.asyncio

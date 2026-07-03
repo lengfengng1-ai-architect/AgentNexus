@@ -4,9 +4,9 @@ import { PipelineTimeline } from '../pages/PipelineTimeline'
 import type { PlanNode } from '../types/plan'
 
 const sampleNodes: PlanNode[] = [
-  { id: 'market', label: '市场调研 Agent', status: 'running', startedAt: Date.now() },
-  { id: 'audience', label: '人群洞察 Agent', status: 'complete', startedAt: Date.now(), completedAt: Date.now() },
-  { id: 'strategy', label: '策略生成 Agent', status: 'failed', startedAt: Date.now() },
+  { id: 'market_research', label: '市场调研 Agent', status: 'running', startedAt: Date.now() },
+  { id: 'audience_insight', label: '人群洞察 Agent', status: 'complete', startedAt: Date.now(), completedAt: Date.now() },
+  { id: 'strategy_generation', label: '策略生成 Agent', status: 'failed', startedAt: Date.now() },
 ]
 
 describe('PipelineTimeline', () => {
@@ -35,7 +35,7 @@ describe('PipelineTimeline', () => {
   })
 
   test('shows failed status for failed node', () => {
-    render(<PipelineTimeline nodes={sampleNodes} failedNode="strategy" />)
+    render(<PipelineTimeline nodes={sampleNodes} failedNode="strategy_generation" />)
     expect(screen.getByText('失败')).toBeInTheDocument()
   })
 

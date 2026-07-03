@@ -1,6 +1,6 @@
 import type { BrandInput } from './chat'
 
-export type PlanNodeStatus = 'pending' | 'running' | 'complete' | 'failed' | 'waiting'
+export type PlanNodeStatus = 'pending' | 'running' | 'complete' | 'completed' | 'failed' | 'waiting'
 
 export interface PlanNode {
   id: string

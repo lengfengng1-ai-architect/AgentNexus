@@ -9,6 +9,7 @@ superpowers in_scope ID: product-research
 
 import asyncio
 from pathlib import Path
+from typing import Any
 
 from bs4 import BeautifulSoup
 from ddgs import DDGS
@@ -20,30 +21,21 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model
-from app.config.settings import settings
 from app.agents.registry import register
 from app.schemas.product_info import (
     ProductResearchResult,
-    SourcedStr,
-    SourcedDict,
-    SourcedStrList,
 )
-from app.agents.registry import register
+from app.utils import sanitize, extract_text_from_html
+from urllib.parse import urlparse
 
 # ── mock_data 持久化 ──
 
 MOCK_DATA_DIR = Path("mock_data") / "product_info"
 
 
-def _sanitize(name: str) -> str:
-    import re
-    safe = re.sub(r'[^\w一-鿿]+', "_", name).strip("_").lower()
-    return safe if safe else "unknown"
-
-
 def _save_to_cache(product_name: str, info: ProductResearchResult) -> None:
     MOCK_DATA_DIR.mkdir(parents=True, exist_ok=True)
-    path = MOCK_DATA_DIR / f"{_sanitize(product_name)}.json"
+    path = MOCK_DATA_DIR / f"{sanitize(product_name)}.json"
     path.write_text(info.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
 
 # ── 搜索和抓取常量 ──────────────────────────────────────────
@@ -88,9 +80,14 @@ class ProductResearchState(BaseModel):
 
 # ── 辅助函数 ────────────────────────────────────────────────
 
+_model = None
+
 
 def _build_model():
-    return build_chat_model()
+    global _model
+    if _model is None:
+        _model = build_chat_model()
+    return _model
 
 
 def _load_prompt(product_name: str, fetched_pages: list[FetchedPage]) -> str:
@@ -100,21 +97,11 @@ def _load_prompt(product_name: str, fetched_pages: list[FetchedPage]) -> str:
 
 
 def _domain_priority(url: str) -> int:
-    from urllib.parse import urlparse
     hostname = urlparse(url).hostname or ""
     for domain in PRIORITY_DOMAINS:
         if hostname == domain or hostname.endswith("." + domain):
             return 2
     return 1
-
-
-def _extract_text_from_html(html: str) -> str:
-    soup = BeautifulSoup(html, "lxml")
-    for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
-        tag.decompose()
-    text = soup.get_text(separator="\n", strip=True)
-    lines = [line.strip() for line in text.split("\n") if line.strip()]
-    return "\n".join(lines)
 
 
 def _fill_sourced_fields(result: ProductResearchResult, all_urls: list[str]) -> None:
@@ -174,7 +161,7 @@ async def fetch_node(state: ProductResearchState) -> dict:
                 if "text/html" not in content_type and "application/xhtml" not in content_type:
                     return FetchedPage(url=url, title=None, content="", fetched=False)
                 raw = resp.text
-                text = _extract_text_from_html(raw)
+                text = extract_text_from_html(raw)
                 if len(text) > MAX_PAGE_CHARS:
                     text = text[:MAX_PAGE_CHARS] + "\n...[内容截断]"
                 soup = BeautifulSoup(raw, "lxml")
@@ -240,7 +227,7 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
             async with AsyncClient(timeout=FETCH_TIMEOUT) as client:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
                 resp.raise_for_status()
-                text = _extract_text_from_html(resp.text)
+                text = extract_text_from_html(resp.text)
                 if product.lower() in (text or "").lower()[:800]:
                     # 将官网 URL 存到 identity.product_name 的 sources
                     if url not in output.identity.product_name.sources:

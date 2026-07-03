@@ -1,7 +1,6 @@
 import { describe, expect, test, vi } from 'vitest'
 import { renderHook, act } from '@testing-library/react'
 import { useChat } from '../hooks/useChat'
-import type { BrandInput } from '../types/chat'
 
 // Mock the streamChat API
 const mockStreamChat = vi.fn()

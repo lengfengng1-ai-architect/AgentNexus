@@ -12,6 +12,7 @@ from jinja2 import Environment, FileSystemLoader
 from app.agents.llm_utils import invoke_json
 from app.agents.registry import register
 from app.schemas.plan_generation import BudgetKpiOutput
+from app.utils import parse_budget, parse_period
 
 _PROMPT_DIR = Path(__file__).parent.parent / "prompt_templates"
 
@@ -19,26 +20,6 @@ _PROMPT_DIR = Path(__file__).parent.parent / "prompt_templates"
 def _render(name: str, **kw) -> str:
     env = Environment(loader=FileSystemLoader(str(_PROMPT_DIR)))
     return env.get_template(f"{name}.md.j2").render(**kw)
-
-
-def _parse_budget(value: Any) -> int:
-    """Extract integer budget from string like '200万元' or number."""
-    if isinstance(value, int | float):
-        return int(value)
-    if isinstance(value, str):
-        digits = "".join(c for c in value if c.isdigit() or c == ".")
-        return int(float(digits)) if digits else 0
-    return 0
-
-
-def _parse_period(value: Any) -> int:
-    """Extract integer period from string like '3个月' or number."""
-    if isinstance(value, int | float):
-        return int(value)
-    if isinstance(value, str):
-        digits = "".join(c for c in value if c.isdigit())
-        return int(digits) if digits else 3
-    return 3
 
 
 async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
@@ -49,12 +30,12 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
     brand_name = brand_input.get("brand_name")
     category = brand_input.get("category")
     city = brand_input.get("city")
-    budget = _parse_budget(brand_input.get("budget"))
-    period = _parse_period(brand_input.get("period"))
+    budget = parse_budget(brand_input.get("budget"))
+    period = parse_period(brand_input.get("period"))
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
-    result = invoke_json(
+    result = await invoke_json(
         _render(
             "budget_kpi",
             brand_name=brand_name,

@@ -12,7 +12,6 @@ AgentNexus/
 │   │   │   ├── health.py           # GET /health
 │   │   │   ├── market_analysis.py  # POST /market-analysis[/stream]
 │   │   │   ├── product_info.py     # POST /product-info[/stream]
-│   │   │   ├── workflows.py        # 工作流编排 CRUD + 运行
 │   │   │   └── audience_insight.py # POST /audience-insight[/stream]
 │   │   ├── schemas/                # Pydantic models（按领域分文件）
 │   │   │   ├── common.py           # APIError, APIResponse, ErrorCode
@@ -25,41 +24,34 @@ AgentNexus/
 │   │   │   ├── workflow.py
 │   │   │   └── audience_insight.py
 │   │   ├── agents/                 # Agent 实现（每个文件一个 agent）
-│   │   │   ├── __init__.py         # 导入所有 agent 触发注册，注册 mock handler
-│   │   │   ├── registry.py         # register() / register_mock() / get_handler()
-│   │   │   ├── orchestrator.py     # 可配置 LangGraph 编排器（支持串行/并行/条件路由）
-│   │   │   ├── llm_utils.py        # build_chat_model() — 统一 provider 入口
+│   │   │   ├── __init__.py         # 导入所有 agent 触发注册
+│   │   │   ├── registry.py         # register() / get_handler() / list_agents()
+│   │   │   ├── llm_utils.py        # build_chat_model() + invoke_json() — 统一 provider
+│   │   │   ├── utils.py            # 共享工具函数（sanitize / parse_budget / extract_text_from_html）
 │   │   │   ├── intent_recognition_agent.py
 │   │   │   ├── product_research_agent.py
 │   │   │   ├── market_analysis_agent.py
 │   │   │   ├── audience_insight_agent.py
 │   │   │   ├── fitness_analysis_agent.py
-│   │   │   ├── plan_*_agent.py     # market_research, data_query, strategy_generation 等
+│   │   │   ├── plan_generator_agent.py
 │   │   │   ├── data_query_agent.py
-│   │   │   └── end_reply_agent.py
+│   │   │   ├── end_reply_agent.py
+│   │   │   ├── market_research_agent.py
+│   │   │   ├── strategy_generation_agent.py
+│   │   │   ├── execution_planning_agent.py
+│   │   │   ├── budget_kpi_agent.py
+│   │   │   ├── action_recommendations_agent.py
+│   │   │   └── plan_data_query_agent.py
 │   │   ├── services/               # 业务编排层
-│   │   │   ├── workflow_service.py        # YAML 加载与校验
-│   │   │   ├── workflow_run_service.py    # SSE 流式运行 + 状态缓存
 │   │   │   ├── market_analysis_service.py # 市场分析（同步 + 流式）
 │   │   │   ├── product_info_service.py
+│   │   │   ├── plan_generation_service.py # Plan pipeline with checkpoint/interrupt
 │   │   │   ├── data_provider.py           # Mock 数据加载
 │   │   │   └── audience_insight_service.py
 │   │   ├── prompt_templates/       # LLM prompt 模板（Jinja2）
-│   │   │   ├── intent_recognition.md.j2
-│   │   │   ├── product_research.md.j2
-│   │   │   ├── market_analysis.md.j2
-│   │   │   ├── research_*.md.j2    # 市场研究子节点（7 个）
-│   │   │   ├── audience_insight.md.j2
-│   │   │   ├── persona_generation.md.j2
-│   │   │   ├── strategy_generation.md.j2
-│   │   │   └── ...
 │   │   └── config/
-│   │       └── settings.py         # pydantic-settings 加载
-│   ├── workflows/                  # YAML 工作流定义
-│   │   ├── chat_pipeline.yaml
-│   │   ├── plan_generation_pipeline.yaml
-│   │   ├── market_analysis.yaml
-│   │   └── audience_insight_pipeline.yaml
+│   │       ├── settings.py         # pydantic-settings 加载
+│   │       └── cache_paths.py      # Mock 数据目录常量（防止循环依赖）
 │   ├── mock_data/                  # MVP mock JSON 数据（允许子目录）
 │   │   ├── product_info/
 │   │   ├── market_analysis/
@@ -93,9 +85,11 @@ AgentNexus/
 │   │   ├── git-workflow.md
 │   │   ├── prompt-templates.md
 │   │   ├── agent-registry.md
-│   │   └── agent-framework.md
+│   │   ├── agent-framework.md
+│   │   └── agent-node-dev-guide.md
 │   └── superpowers/specs/
 ├── openspec/
+│   ├── config.yaml
 │   ├── specs/                      # 主 spec
 │   └── changes/                    # 变更文档
 └── .claude/

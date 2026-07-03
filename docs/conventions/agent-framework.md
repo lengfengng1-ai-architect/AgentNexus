@@ -179,11 +179,52 @@ result = await pipeline.ainvoke({"brand_input": {...}})
 
 代码即配置——每步可视、可打断点。参考 `backend/app/services/plan_generation_service.py`。
 
+### Checkpointer 与人工审核检查点
+
+方案生成 pipeline 需要支持暂停 / 恢复 / 取消 / 重跑。使用 LangGraph 官方机制：
+
+- **AsyncSqliteSaver**：以 `aiosqlite` 持久连接打开 SQLite 文件（`backend/data/checkpoints.db`），作为 `checkpointer`。MVP 阶段零运维优先，不引入 Postgres。
+- **`interrupt_before`**：在 `compile()` 时声明必须在执行前停下的节点：
+  ```python
+  graph.compile(
+      checkpointer=None,  # 运行时动态附加 saver
+      interrupt_before=["strategy_generation", "execution_planning", "plan_generator"],
+  )
+  ```
+- **恢复**：使用 `Command(resume={})` 调用 `astream_events(..., version="v2")` 从 checkpoint 继续。
+- **编辑再通过**：approve 前把 `edited_input` 写入 checkpoint 的 `channel_values`，下一节点执行时读取到修改后的输入。
+- **驳回重跑**：reject 时把 `_reject_reason` 注入 `brand_input` channel，然后 `Command(resume={})` 重新执行当前节点。
+- **取消**：调用 `AsyncSqliteSaver.adelete_thread(run_id)` 删除 checkpoint。
+
+service 层暴露：
+- `start_run(brand_input, run_id=None)`：启动新 run。
+- `approve_run(run_id, edited_input=None)`：通过并继续。
+- `reject_run(run_id, reason)`：驳回并重新执行当前节点。
+- `delete_run(run_id)`：取消并清理。
+- `get_status(run_id)` / `run_exists(run_id)`：状态查询。
+
+### SSE 流式事件
+
+`POST /plan/run` 与 approve/reject 端点返回 `text/event-stream`，每帧标准三行：
+
+```text
+id: 1
+event: workflow.start
+data: {"run_id": "..."}
+
+id: 2
+event: node.start
+data: {"run_id": "...", "node_id": "strategy_generation", "label": "策略生成"}
+...
+```
+
+事件类型包括：`workflow.start`、`node.start`、`node.complete`、`node.log`、`node.failed`、`workflow.paused`、`chapter.start`、`chapter.complete`、`workflow.complete`。
+
 ## 注册与路由
 
 两个入口级路由：
 - **聊天**：`GET /api/v1/chat/stream` → `stream_intent_recognition()` → 意图分类后路由到各 agent
-- **方案生成**：`GET /api/v1/plan/run` → `plan_generation_service.run_stream()` → StateGraph 串行调 10 个 agent
+- **方案生成**：`POST /api/v1/plan/run` → `plan_generation_service.start_run()` → StateGraph 串行调 10 个 agent；人工审核通过 `POST /api/v1/plan/runs/{run_id}/approve`、`POST /api/v1/plan/runs/{run_id}/reject`、`POST /api/v1/plan/runs/{run_id}/cancel`、`GET /api/v1/plan/runs/{run_id}/status` 控制。
 
 ## 响应信封（非流式端点）
 
@@ -241,8 +282,7 @@ backend/app/
 │   ├── product_research_agent.py
 │   └── ..._agent.py
 ├── services/                    # 业务编排
-│   ├── workflow_service.py
-│   ├── workflow_run_service.py
+│   ├── plan_generation_service.py
 │   └── ..._service.py
 ├── prompt_templates/            # Jinja2 prompt
 │   ├── intent_recognition.md.j2
@@ -264,4 +304,4 @@ backend/app/
 - LangGraph 文档：https://docs.langchain.com/oss/python/langgraph/overview
 - [agent-registry.md](./agent-registry.md) — 注册与编排规范
 - [prompt-templates.md](./prompt-templates.md) — Prompt 模板规范
-- [../api/workflows.yaml](../api/workflows.yaml) — 工作流编排 API 契约
+- [../api/paths/plan.yaml](../api/paths/plan.yaml) — 方案生成流水线 API 契约

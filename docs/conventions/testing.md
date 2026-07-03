@@ -128,15 +128,37 @@ async def test_data_query__by_city__returns_filtered_results():
 - 不逐个端点写局部 mock fixture（除非那个端点用的数据和其他不一致）
 - 切换真实 API 时只改 service 实现类，不修改测试的 fixture 结构
 
-## 运行命令
+## 智能测试选择策略
+
+全量测试（125+ cases）耗时过长。改代码后应该只跑受影响的测试。策略：
+
+### 判断方法
+
+1. **只改了 Agent 内部逻辑**（prompt、node 函数、graph 结构）：只跑对应 agent 的测试文件 + 依赖该 agent 的 service 测试
+   ```bash
+   uv run pytest -x -q tests/test_agents/test_<agent_name>_agent.py
+   ```
+
+2. **改了 Service 层**（`services/` 下的文件）：跑对应 service + 依赖该 service 的 router 测试
+
+3. **改了 Router 层**（`routers/`）：全量跑 router 测试及其依赖的 service 测试
+
+4. **改了通用模块**（`utils.py`、`config/`、`schemas/`）：跑所有引用该模块的测试
+
+5. **不确定影响范围时**：用 LLM 评估改动波及的模块，然后精确选定测试集
+
+### 典型分组
 
 ```bash
-# 全量运行
-cd backend && uv run pytest -v --cov=app --cov-report=term-missing
+# Agent 测试（快速，无网络请求）
+uv run pytest -x -q tests/test_agents/test_<name>_agent.py
 
-# 单文件
-uv run pytest -v tests/test_routers/test_brands.py
+# Router 测试（需要 mock graph）
+uv run pytest -x -q tests/test_routers/test_<name>.py
 
-# 按关键字
-uv run pytest -v -k "fitness"
+# Service 测试
+uv run pytest -x -q tests/test_services/test_<name>.py
+
+# 多文件关联跑
+uv run pytest -x -q tests/test_agents/test_<a>.py tests/test_services/test_<b>.py
 ```

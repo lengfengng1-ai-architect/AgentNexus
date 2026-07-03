@@ -4,14 +4,19 @@
 
 FILE_PATH="$1"
 
+# Normalize to relative path against project root.
+SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
+PROJ_ROOT="$(cd "$SCRIPT_DIR/../.." && pwd 2>/dev/null || echo "")"
+REL_PATH="${FILE_PATH#$PROJ_ROOT/}"
+
 # Only intercept implementation/spec paths.
-case "$FILE_PATH" in
+case "$REL_PATH" in
   backend/app/*|backend/tests/*|docs/api/*|frontend/src/*) ;;
   *) exit 0 ;;
 esac
 
 # Check for an active local opsx change.
-ACTIVE=$(cd /Users/hxq/Desktop/AgentNexus && openspec list --json 2>/dev/null | jq -r '.changes | length')
+ACTIVE=$(cd "$PROJ_ROOT" && openspec list --json 2>/dev/null | jq -r '.changes | length')
 if [ "$ACTIVE" = "0" ] || [ -z "$ACTIVE" ]; then
   echo "[Guard] 没有活跃的 opsx change，禁止写代码。" >&2
   echo "流程：Step 0 检查 Superpowers skill → Step 1 brainstorming → Step 2 grilling → Step 3 /opsx:explore <想法> → Step 8 /opsx:propose <change-name> → /opsx:apply → 完成 Step 9 编码前强制勾选 → /opsx:archive" >&2
