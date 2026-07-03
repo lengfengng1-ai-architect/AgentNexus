@@ -10,12 +10,12 @@
     "PostToolUse": [
       {
         "matcher": "Write|Edit",
-        "command": "cd /Users/hxq/Desktop/AgentNexus/backend && uv run mypy app/ --no-error-summary --ignore-missing-imports 2>&1 | head -5",
+        "command": "/bin/bash /Users/hxq/Desktop/AgentNexus/.claude/hooks/check-mypy.sh",
         "description": "Type-check modified code with mypy"
       },
       {
         "matcher": "Write|Edit",
-        "command": "cd /Users/hxq/Desktop/AgentNexus/backend && uv run pylint app/ --score=n 2>&1 | grep -E 'E[0-9]|W[0-9]' | head -10",
+        "command": "/bin/bash /Users/hxq/Desktop/AgentNexus/.claude/hooks/check-pylint.sh",
         "description": "Lint modified code with pylint"
       }
     ]
