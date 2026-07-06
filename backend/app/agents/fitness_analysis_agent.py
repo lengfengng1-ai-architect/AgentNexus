@@ -39,8 +39,11 @@ def _find_category_key(category: str) -> str | None:
 
 def _build_scores(category: str, top_sports: list[str]) -> list[SportFitnessScore]:
     key = _find_category_key(category)
-    config = _CATEGORY_FITNESS_MAP.get(key, {"primary": top_sports[0] if top_sports else "综合运动", "scores": {}})
-    scores_map = dict(config["scores"])
+    if key is None:
+        config = {"primary": top_sports[0] if top_sports else "综合运动", "scores": {}}
+    else:
+        config = _CATEGORY_FITNESS_MAP.get(key) or {"primary": top_sports[0] if top_sports else "综合运动", "scores": {}}
+    scores_map: dict[str, int] = config.get("scores") or {}  # type: ignore[assignment]
 
     # Ensure city top sports are represented.
     for sport in top_sports[:5]:

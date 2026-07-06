@@ -50,8 +50,8 @@ class FeaturePreference(BaseModel):
 class UserPersona(BaseModel):
     """用户画像——综合产品调研 + 人群调研数据生成。"""
 
-    profile_summary: PersonaSource = Field(default_factory=PersonaSource, description="画像概述，一句话")
-    typical_user: PersonaSource = Field(default_factory=PersonaSource, description="典型用户描述")
+    profile_summary: PersonaSource = Field(default_factory=PersonaSource, description="画像概述，一句话")  # type: ignore[arg-type]
+    typical_user: PersonaSource = Field(default_factory=PersonaSource, description="典型用户描述")  # type: ignore[arg-type]
 
     demographics: dict = Field(default_factory=dict, description="人口画像（age/gender/city_tier/income 等）")
     purchase_motivation: dict = Field(default_factory=dict, description="购买动机（primary/secondary/pain_points/switch_reason）")

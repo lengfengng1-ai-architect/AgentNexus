@@ -82,7 +82,7 @@ async def plan_run(request: Request, body: PlanRunRequest):
 @router.post("/plan/runs/{run_id}/approve")
 async def plan_run_approve(
     run_id: str = Path(..., description="运行实例 ID"),
-    body: ApproveRequest = ApproveRequest(),
+    body: ApproveRequest = ApproveRequest(),  # type: ignore[call-arg]
 ):
     """通过当前审核检查点并继续执行。"""
     if not_found := await _require_run(run_id):
@@ -97,7 +97,7 @@ async def plan_run_approve(
 @router.post("/plan/runs/{run_id}/reject")
 async def plan_run_reject(
     run_id: str = Path(..., description="运行实例 ID"),
-    body: RejectRequest = ...,
+    body: RejectRequest = ...,  # type: ignore[assignment]
 ):
     """驳回当前审核检查点，重新执行当前节点。"""
     if not_found := await _require_run(run_id):

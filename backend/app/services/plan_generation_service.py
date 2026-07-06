@@ -12,7 +12,6 @@ from __future__ import annotations
 
 import json
 import logging
-import sqlite3
 import uuid
 from datetime import datetime, timezone
 from collections.abc import AsyncGenerator
@@ -50,16 +49,16 @@ class PlanRunRecord(BaseModel):
 
 
 _RUN_RECORDS: dict[str, PlanRunRecord] = {}
+_plan_db_initialized = False
 
 
-def _ensure_plan_db() -> sqlite3.Connection:
-    """Open (or reuse) the checkpoints SQLite DB with our plan_records table.
-
-    与 LangGraph 共用同一个 checkpoints.db 文件，不额外创建数据库。
-    """
-    if not hasattr(_ensure_plan_db, "_conn") or _ensure_plan_db._conn is None:  # type: ignore[attr-defined]
-        conn = sqlite3.connect(_CHECKPOINT_DB_PATH)
-        conn.execute("""
+async def _ensure_plan_db_conn() -> aiosqlite.Connection:
+    """Return the shared aiosqlite connection, creating plan_records table once."""
+    global _plan_db_initialized
+    if _conn is None:
+        await _get_saver()
+    if _conn is not None and not _plan_db_initialized:
+        await _conn.execute("""
             CREATE TABLE IF NOT EXISTS plan_records (
                 run_id TEXT PRIMARY KEY,
                 brand_input TEXT NOT NULL,
@@ -69,9 +68,12 @@ def _ensure_plan_db() -> sqlite3.Connection:
                 current_node TEXT
             )
         """)
-        conn.commit()
-        _ensure_plan_db._conn = conn  # type: ignore[attr-defined]
-    return _ensure_plan_db._conn  # type: ignore[attr-defined]  # in-memory, lost on restart
+        await _conn.commit()
+        _plan_db_initialized = True
+    if _conn is None:
+        msg = "Database connection not initialized"
+        raise RuntimeError(msg)
+    return _conn
 
 
 class PlanState(TypedDict):
@@ -178,7 +180,7 @@ def _build_node(node_id: str) -> Any:
 
 def _build_graph() -> Any:
     """Build graph topology; compile with checkpointer in _get_graph."""
-    graph = StateGraph(PlanState)  # type: ignore[arg-type]
+    graph = StateGraph(PlanState)
 
     graph.add_node("product_research", _build_node("product_research"))
     graph.add_node("market_research", _build_node("market_research"))
@@ -219,10 +221,9 @@ async def _get_graph() -> Any:
 
 
 def _initial_state(brand_input: dict[str, Any]) -> PlanState:
-    return {
-        "brand_input": brand_input,
-        **{key: {} for key in _NODE_LABELS},
-    }
+    base: dict[str, Any] = {key: {} for key in _NODE_LABELS}
+    base["brand_input"] = brand_input
+    return base  # type: ignore[return-value]
 
 
 def _json_default(obj: Any) -> Any:
@@ -357,7 +358,7 @@ async def _stream_events(
             event="workflow.paused",
             data={
                 "run_id": run_id,
-                "snapshot": _paused_snapshot(state_values, node_id),
+                "snapshot": _paused_snapshot(state_values, node_id),  # type: ignore[arg-type]
                 "reason": "review",
             },
         )
@@ -377,7 +378,9 @@ def _paused_snapshot(state: PlanState, node_id: str) -> dict[str, Any]:
 async def _checkpoint_tuple(run_id: str) -> Any:
     """Fetch the latest checkpoint tuple for a run_id."""
     saver = await _get_saver()
-    return await saver.aget_tuple(_thread_config(run_id))
+    from langgraph.graph.state import CompiledStateGraph
+    config: Any = {"configurable": {"thread_id": run_id}}
+    return await saver.aget_tuple(config)
 
 
 async def _checkpoint_state(run_id: str) -> PlanState | None:
@@ -386,7 +389,7 @@ async def _checkpoint_state(run_id: str) -> PlanState | None:
     if tuple_ is None:
         return None
     checkpoint = tuple_.checkpoint
-    return checkpoint.get("channel_values")  # type: ignore[return-value]
+    return checkpoint.get("channel_values")
 
 
 def _status_for_state(
@@ -409,7 +412,7 @@ def _status_for_state(
 
     # Find the first non-empty output; if all are empty, we're at the start.
     completed = [nid for nid in _NODE_ORDER if state.get(nid)]
-    outputs = {nid: state[nid] for nid in completed}
+    outputs = {nid: state[nid] for nid in completed}  # type: ignore[literal-required]
 
     if error:
         return {
@@ -460,7 +463,7 @@ async def start_run(
     run_id = run_id or str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
     # 持久化批次记录到 SQLite
-    _save_plan_record(run_id, brand_input, "running", now, now)
+    await _save_plan_record(run_id, brand_input, "running", now, now)
     graph = await _get_graph()
     state = _initial_state(brand_input)
 
@@ -598,44 +601,44 @@ async def get_status(run_id: str) -> dict[str, Any]:
     state = await _checkpoint_state(run_id)
     st = _status_for_state(state, run_id)
     # 更新批次记录的状态和更新时间
-    _update_plan_record(run_id, st["status"], st.get("current_node"))
+    await _update_plan_record(run_id, st["status"], st.get("current_node"))
     # 同步删除已 canceled 的旧记录（超过 50 条时清理）
-    _cleanup_old_records()
+    await _cleanup_old_records()
     return st
 
 
-def _save_plan_record(run_id: str, brand_input: dict, status: str, created_at: str, updated_at: str) -> None:
+async def _save_plan_record(run_id: str, brand_input: dict, status: str, created_at: str, updated_at: str) -> None:
     try:
-        conn = _ensure_plan_db()
-        conn.execute(
+        conn = await _ensure_plan_db_conn()
+        await conn.execute(
             "INSERT OR REPLACE INTO plan_records (run_id, brand_input, status, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
             (run_id, json.dumps(brand_input, ensure_ascii=False), status, created_at, updated_at),
         )
-        conn.commit()
+        await conn.commit()
     except Exception as exc:
         logger.warning("failed to save plan record: %s", exc)
 
 
-def _update_plan_record(run_id: str, status: str, current_node: str | None = None) -> None:
+async def _update_plan_record(run_id: str, status: str, current_node: str | None = None) -> None:
     try:
-        conn = _ensure_plan_db()
+        conn = await _ensure_plan_db_conn()
         now = datetime.now(timezone.utc).isoformat()
-        conn.execute(
+        await conn.execute(
             "UPDATE plan_records SET status = ?, updated_at = ?, current_node = ? WHERE run_id = ?",
             (status, now, current_node, run_id),
         )
-        conn.commit()
+        await conn.commit()
     except Exception as exc:
         logger.warning("failed to update plan record: %s", exc)
 
 
-def _cleanup_old_records() -> None:
+async def _cleanup_old_records() -> None:
     try:
-        conn = _ensure_plan_db()
-        conn.execute(
+        conn = await _ensure_plan_db_conn()
+        await conn.execute(
             "DELETE FROM plan_records WHERE run_id NOT IN (SELECT run_id FROM plan_records ORDER BY created_at DESC LIMIT 50)"
         )
-        conn.commit()
+        await conn.commit()
     except Exception:
         pass
 
@@ -643,12 +646,12 @@ def _cleanup_old_records() -> None:
 async def list_runs(limit: int = 20) -> list[dict[str, Any]]:
     """List recent plan run records with timestamps."""
     try:
-        conn = _ensure_plan_db()
-        cur = conn.execute(
+        conn = await _ensure_plan_db_conn()
+        cur = await conn.execute(
             "SELECT run_id, brand_input, status, created_at, updated_at, current_node FROM plan_records ORDER BY created_at DESC LIMIT ?",
             (limit,),
         )
-        rows = cur.fetchall()
+        rows = await cur.fetchall()
         return [
             {
                 "run_id": r[0],

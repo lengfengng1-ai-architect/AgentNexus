@@ -6,7 +6,7 @@ Corresponding in_scope ID: market-analysis
 
 import json
 from pathlib import Path
-from typing import AsyncGenerator
+from typing import Any, AsyncGenerator
 
 from app.agents.market_analysis_agent import (
     NODE_LABELS,
@@ -57,7 +57,7 @@ async def analyze_stream(market_name: str, category: str) -> AsyncGenerator[str,
       progress → data → node_end
     全部完成时 yield result。
     """
-    state = {
+    state: dict[str, Any] = {
         "market_name": market_name,
         "category": category,
         "definition": {},
@@ -97,7 +97,7 @@ def _translate_event(
         output = data.get("output", {})
         # Emit data event with the node's output
         result_str = f"event: data\ndata: {MarketResearchDataEvent(node=name, result=output).model_dump_json()}\n\n"
-        status_str = f"event: node_end\ndata: {MarketResearchNodeEnd(node=name, status='completed').model_dump_json()}\n\n"
+        status_str = f"event: node_end\ndata: {MarketResearchNodeEnd(node=name, status='completed', error=None).model_dump_json()}\n\n"
         return result_str + status_str
 
     if ev_type == "on_chain_end" and name == "LangGraph":
