@@ -146,7 +146,7 @@ export function PlanPage() {
   const auditPanel = null
 
   return (
-    <div key={runId ?? 'idle'} className="app" style={{ display: 'flex', minHeight: 'var(--app-height)', backgroundColor: '#fafbfc' }}>
+    <div className="app" style={{ display: 'flex', minHeight: 'var(--app-height)', backgroundColor: '#fafbfc' }}>
       <aside style={{
         width: sidebarCollapsed ? 48 : 360,
         minWidth: sidebarCollapsed ? 48 : 360,
