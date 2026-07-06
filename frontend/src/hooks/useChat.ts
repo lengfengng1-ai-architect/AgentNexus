@@ -77,7 +77,6 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         content: '',
         isLoading: false,
         reasoning: '',
-        intent: 'thinking' as ChatMessage['intent'],
       }
       return { ...state, isLoading: true, messages: [...state.messages, streamMsg] }
     }
@@ -93,11 +92,16 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'INTENT_RECEIVED': {
       const msgs = state.messages.filter(m => !m.id.startsWith('stream-'))
       const canGeneratePlan = action.intent === 'generate_plan' && action.missingFields.length === 0
+      const streamMsgId = state.messages.find(m => m.id.startsWith('stream-'))?.id
+      const reasoning = streamMsgId
+        ? state.messages.find(m => m.id === streamMsgId)?.reasoning || ''
+        : ''
       const aiMessage: ChatMessage = {
         id: `ai-${Date.now()}`,
         role: 'ai',
         content: action.reply,
         isLoading: false,
+        reasoning,
         brandInput: action.brandInput,
         intent: action.intent as ChatMessage['intent'],
         canGeneratePlan,
