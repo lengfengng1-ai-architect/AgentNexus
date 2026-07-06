@@ -89,7 +89,6 @@ export function PlanPage() {
     buttonLabel: '查看详情',
   }))
 
-  const [activeTab] = useState(0)
   const [autoMode, setAutoMode] = useState(false)
 
   const TABS = [
@@ -113,9 +112,6 @@ export function PlanPage() {
     nodes.find(n => n.status === 'running' || n.status === 'paused')?.id
     ?? pausedNode
     ?? null
-  const activeTabFromAgent = activeAgentId
-    ? TABS.findIndex(t => t.agentId === activeAgentId)
-    : -1
 
   useEffect(() => {
     if (status === 'paused' && pausedNode && autoMode) {
@@ -381,7 +377,7 @@ export function PlanPage() {
             return (
             <button
               key={t.idx}
-              onClick={() => { setActiveTab(t.idx); scrollToAgent(t.agentId) }}
+              onClick={() => scrollToAgent(t.agentId)}
               style={{
                 padding: '8px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
