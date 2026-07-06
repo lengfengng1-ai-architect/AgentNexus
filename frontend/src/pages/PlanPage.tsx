@@ -91,6 +91,7 @@ export function PlanPage() {
 
   const [autoMode, setAutoMode] = useState(false)
   const userInteractedRef = useRef(false)
+  const [activeTab, setActiveTab] = useState(0)
 
   const TABS = [
     { idx: 0, label: '概览', agentId: '' },
