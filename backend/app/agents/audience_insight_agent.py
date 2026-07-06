@@ -6,6 +6,7 @@ superpowers in_scope ID: audience-insight
 """
 
 import asyncio
+import os
 import re
 from typing import Any
 
@@ -13,11 +14,11 @@ from bs4 import BeautifulSoup
 from ddgs import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
-from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
+from app.agents.llm_utils import build_chat_model
 from app.config.settings import settings
 from app.schemas.audience_insight import AudienceRawData, UserPersona
 from app.agents.registry import register
@@ -61,19 +62,12 @@ class State(BaseModel):
 
 
 def _build_model():
-    if settings.llm_provider == "agnes":
-        return init_chat_model(
-            model=settings.agnes_model, model_provider="openai",
-            api_key=settings.agnes_api_key, base_url=settings.agnes_base_url,
-        )
-    return init_chat_model(
-        model=settings.dashscope_model, model_provider="openai",
-        api_key=settings.dashscope_api_key, base_url=settings.dashscope_base_url,
-    )
+    return build_chat_model()
 
 
 def _load_template(name: str, **kwargs) -> str:
-    env = Environment(loader=FileSystemLoader("app/prompt_templates"))
+    _dir = os.path.join(os.path.dirname(__file__), "..", "prompt_templates")
+    env = Environment(loader=FileSystemLoader(_dir))
     return env.get_template(name).render(**kwargs)
 
 
@@ -210,7 +204,35 @@ def _build_graph():
     return g.compile()
 
 
-_graph = _build_graph()
+def _build_full_graph():
+    """完整的 4 步图：search→fetch→extract→generate_persona。"""
+    g = StateGraph(State)
+    g.add_node("search", search_node)
+    g.add_node("fetch", fetch_node)
+    g.add_node("extract_audience", extract_audience_node)
+    g.add_node("generate_persona", generate_persona_node)
+    g.set_entry_point("search")
+    g.add_edge("search", "fetch")
+    g.add_edge("fetch", "extract_audience")
+    g.add_edge("extract_audience", "generate_persona")
+    g.add_edge("generate_persona", END)
+    return g.compile()
+
+
+def _build_search_only_graph():
+    """只跑搜索→读取→提取，不生成画像（用于并行 pipeline 中的 audience_search 节点）。"""
+    g = StateGraph(State)
+    g.add_node("search", search_node)
+    g.add_node("fetch", fetch_node)
+    g.add_node("extract_audience", extract_audience_node)
+    g.set_entry_point("search")
+    g.add_edge("search", "fetch")
+    g.add_edge("fetch", "extract_audience")
+    g.add_edge("extract_audience", END)
+    return g.compile()
+
+_graph = _build_full_graph()
+_graph_search = _build_search_only_graph()
 
 
 async def run_audience_insight(
@@ -218,7 +240,12 @@ async def run_audience_insight(
     product_info: dict | None = None,
     market_info: dict | None = None,
 ) -> tuple[AudienceRawData, UserPersona]:
-    """执行人群洞察，返回 (原始人群数据, 用户画像)。"""
+    """执行人群洞察，返回 (原始人群数据, 用户画像)。
+
+    注意: 这个函数跑内部完整图（search→fetch→extract→persona），
+    而 registry handler 的 run_audience_search 只跑前半段，
+    run_generate_persona 只跑后半段。
+    """
     state = await _graph.ainvoke({
         "product_name": product_name,
         "product_info": product_info or {},
@@ -239,7 +266,7 @@ async def run_audience_search(state: dict[str, Any]) -> dict[str, Any]:
     pn = state.get("product_name")
     if not pn:
         raise ValueError("Missing required input: product_name")
-    s = await _graph.ainvoke({"product_name": pn})
+    s = await _graph_search.ainvoke({"product_name": pn})
     ad = s.get("audience_data")
     if ad is None:
         raise ValueError("Agent did not return audience data")
@@ -264,16 +291,11 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Missing required input: product_name")
 
     audience_data_raw = state.get("audience_data", {})
-    from app.schemas.audience_insight import AudienceRawData
-    ad = AudienceRawData.model_validate(audience_data_raw)
-
-    s = await _graph.ainvoke({
-        "product_name": pn,
-        "product_info": state.get("product_info", {}),
-        "market_info": state.get("market_info", {}),
-        "audience_data": ad,
-    })
-    # 不需要上面这行，直接用 llm 调用生成画像
+    if isinstance(audience_data_raw, dict):
+        from app.schemas.audience_insight import AudienceRawData
+        ad = AudienceRawData.model_validate(audience_data_raw)
+    else:
+        ad = audience_data_raw
 
     product_info_str = ""
     if state.get("product_info"):

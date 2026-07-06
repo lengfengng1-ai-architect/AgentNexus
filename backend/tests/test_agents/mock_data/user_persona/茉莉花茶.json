@@ -1,0 +1,40 @@
+{
+  "profile_summary": {
+    "method": "inferred",
+    "source": null,
+    "quote": null
+  },
+  "typical_user": {
+    "method": "inferred",
+    "source": "综合市场分析、人群调研及趋势数据",
+    "quote": null
+  },
+  "demographics": {
+    "age": "25-35岁",
+    "gender": "女性为主",
+    "city_tier": "一二线城市",
+    "income": "月收入8k-20k"
+  },
+  "purchase_motivation": {
+    "primary": "享受美好生活带来的惊喜与仪式感",
+    "secondary": "对身心健康的需求（舒缓、提神）",
+    "pain_points": "市场上部分产品价格过高或质量参差不齐，难以判断是否符合国家标准",
+    "switch_reason": "发现口感更清香、香气更自然的产品，或价格更亲民的品牌"
+  },
+  "product_usage": {
+    "core_scenarios": "日常居家冲泡、办公室便捷饮茶、新式茶饮店点单、冷泡或袋泡茶",
+    "feature_preference": "清香爽口、回味甘醇、自然花香、低卡无糖、便捷易冲泡（如棒棒茶、胶囊）",
+    "usage_frequency": "每周3-5次"
+  },
+  "lifestyle": {
+    "interests": "养生、国风文化、社交媒体分享（小红书/抖音）、新式茶饮探店",
+    "sport_affinity": "中低强度运动（瑜伽、散步）",
+    "media_habits": "抖音、小红书、B站，关注茶饮测评、养生知识、国风内容",
+    "consumption_style": "理性消费，看重性价比与品牌真实性，愿意为颜值和体验买单"
+  },
+  "product_fit": {
+    "reason_this_product": "茉莉花茶兼具花香与茶韵，满足口感享受与健康需求，且形态多样（冷泡、袋泡等）适配快节奏生活",
+    "valued_features": "地理标志/有机认证、清香自然的口感、低卡无糖属性、包装设计美感",
+    "price_sensitivity": "中等，愿意为品质和体验支付溢价（80-150元/200g），但对过度溢价敏感"
+  }
+}

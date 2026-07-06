@@ -6,6 +6,7 @@ Corresponding in_scope ID: workflow-orchestration
 
 import json
 import logging
+import os
 from pathlib import Path
 from typing import Any, AsyncGenerator
 
@@ -43,7 +44,8 @@ def _load_system_prompt(message: str, context: dict[str, Any]) -> str:
         intent_rules = json.loads(_rules_path.read_text(encoding="utf-8"))
     except (FileNotFoundError, json.JSONDecodeError):
         intent_rules = {}
-    env = Environment(loader=FileSystemLoader("app/prompt_templates"))
+    _dir = os.path.join(os.path.dirname(__file__), "..", "prompt_templates")
+    env = Environment(loader=FileSystemLoader(_dir))
     template = env.get_template("intent_recognition.md.j2")
     return template.render(message=message, context=clean_ctx, intent_rules=intent_rules)
 

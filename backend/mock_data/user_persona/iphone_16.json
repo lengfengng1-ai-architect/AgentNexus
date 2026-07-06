@@ -1,0 +1,75 @@
+{
+  "profile_summary": {
+    "method": "inferred",
+    "source": null,
+    "quote": null
+  },
+  "typical_user": {
+    "method": "inferred",
+    "source": null,
+    "quote": null
+  },
+  "demographics": {},
+  "purchase_motivation": {
+    "pain_points": [
+      "旧款机型无法运行最新的 Apple Intelligence 功能",
+      "现有设备影像能力不足以满足专业创作需求",
+      "对现有手机外观或交互缺乏新鲜感"
+    ],
+    "primary": [
+      "获取 Apple Intelligence 独家 AI 体验",
+      "升级影像硬件以支持更高品质的内容创作",
+      "追求极致的开箱体验与视觉/听觉满足感 (ASMR)"
+    ],
+    "switch_reason": [
+      "从 iPhone 13 及更早型号升级以获得 AI 功能支持",
+      "从安卓或其他品牌迁移以融入 iOS 生态系统"
+    ],
+    "secondary": [
+      "供应链备货充足带来的购买便利性",
+      "品牌忠诚度驱动的重复购买"
+    ]
+  },
+  "product_usage": {
+    "core_scenarios": [
+      "日常高质量照片与视频拍摄及存储",
+      "个性化手机界面定制 (壁纸、锁屏)",
+      "学习并优化新设备功能与设置",
+      "利用 AI 助手提升工作效率与生活便利性"
+    ],
+    "feature_preference": [
+      "Camera Control (相机控制按钮)",
+      "Apple Intelligence",
+      "JPEG XL 图像格式支持",
+      "长续航与快速充电"
+    ],
+    "usage_frequency": "高频重度用户"
+  },
+  "lifestyle": {
+    "interests": [
+      "科技数码",
+      "移动摄影",
+      "内容创作",
+      "AI 应用探索",
+      "美学设计"
+    ],
+    "sport_affinity": [],
+    "media_habits": [
+      "高频浏览科技评测视频",
+      "关注社交媒体上的开箱与 ASMR 内容",
+      "在 Pinterest 等平台寻找个性化壁纸和锁屏设置灵感"
+    ],
+    "consumption_style": "追求高品质体验，愿意为独家功能（如 Apple Intelligence）和品牌生态支付溢价；注重感官享受（如开箱仪式感）。"
+  },
+  "product_fit": {
+    "reason_this_product": "iPhone 16 作为首款原生支持 Apple Intelligence 的设备，提供了独特的 AI 体验壁垒；同时其影像系统的升级（如 48MP 超广角、相机控制按钮）满足了用户对高质量拍摄和专业创作的需求。",
+    "valued_features": [
+      "Apple Intelligence (AI 功能)",
+      "高性能影像系统 (视频录制、超广角)",
+      "A18 芯片带来的流畅体验",
+      "iOS 生态的无缝衔接",
+      "开箱与视觉满足感"
+    ],
+    "price_sensitivity": "低 (倾向于购买 Pro 系列或最新标准版，对价格不敏感，更看重功能独特性和品牌忠诚度高)"
+  }
+}

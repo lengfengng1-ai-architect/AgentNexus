@@ -1,0 +1,197 @@
+{
+  "identity": {
+    "product_name": {
+      "value": "茉莉花茶",
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "quoted",
+      "quote": "茉莉花茶是属于花茶类和再加工茶的一种，又称为茉莉香片，简称香片。"
+    },
+    "brand": {
+      "value": null,
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "manufacturer": {
+      "value": null,
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "industry": {
+      "value": "茶业",
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "category": {
+      "value": "花茶 / 再加工茶",
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "quoted",
+      "quote": "茉莉花茶是属于花茶类和再加工茶的一种"
+    }
+  },
+  "official_description": {
+    "description": {
+      "value": "茉莉花茶是用含苞欲放的茉莉鲜花加入绿茶中窨制而成的花茶，兼具茶叶与茉莉花的香味，有“在中国的花茶里，可闻春天的气味”之美誉。",
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "quoted",
+      "quote": "茉莉花茶是用含苞欲放的茉莉鲜花加入绿茶中窨制而成的。茉莉花茶，有“在中国的花茶里，可闻春天的气味”之美誉。"
+    },
+    "tagline": {
+      "value": "在中国的花茶里，可闻春天的气味",
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "quoted",
+      "quote": "茉莉花茶，有“在中国的花茶里，可闻春天的气味”之美誉。"
+    },
+    "statement": {
+      "value": "茉莉花茶是属于花茶类和再加工茶的一种，又称为茉莉香片。",
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "quoted",
+      "quote": "茉莉花茶是属于花茶类和再加工茶的一种，又称为茉莉香片"
+    }
+  },
+  "features": [
+    {
+      "name": "香气成分",
+      "category": "化学特性",
+      "description": "茉莉花茶的香气主要由芳樟醇、乙酸苄酯、α-法尼烯、苯甲酸顺-3-己烯酯、邻氨基苯甲酸甲酯、吲哚等6种成分构成，其组成特征在头窨时已经形成。",
+      "evidence": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶"
+      ]
+    },
+    {
+      "name": "搭配茉莉花茶有助于消化",
+      "category": "健康功效",
+      "description": "饱餐一顿过后，搭配茉莉花茶可以帮助消化、消脂，也让口气清新。",
+      "evidence": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶"
+      ]
+    },
+    {
+      "name": "工艺列为非物质文化遗产",
+      "category": "文化传承",
+      "description": "福州茉莉花茶窨制工艺、张一元茉莉花茶制作技艺和吴裕泰茉莉花茶制作技艺被列入国家级非物质文化遗产代表性项目名录。",
+      "evidence": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶"
+      ]
+    }
+  ],
+  "specifications": {
+    "value": {
+      "种类": "花茶 / 再加工茶",
+      "制作材料": "茶叶以及茉莉花",
+      "主要茶胚": "绿茶（可用不同绿茶品种，如龙井茶）",
+      "香气成分": "芳樟醇、乙酸苄酯、α-法尼烯、苯甲酸顺-3-己烯酯、邻氨基苯甲酸甲酯、吲哚",
+      "产地": {
+        "发源地": "福州",
+        "主要产地": "福州（中国地理标志产品）、苏州（曾为品质最佳）、广西横县（粗放型加工）",
+        "地理标志保护范围": "福州市的仓山区、晋安区、马尾区、长乐区、福清市、闽侯县、连江县、闽清县、罗源县、永泰县等10个县区市"
+      },
+      "历史": "可追溯至汉代（福州），始于南宋（苏州）",
+      "非物质文化遗产": {
+        "制作技艺": "福州茉莉花茶窨制工艺、张一元茉莉花茶制作技艺、吴裕泰茉莉花茶制作技艺",
+        "全球重要农业文化遗产": "福州茉莉花种植及茶文化系统（2014年入选FAO）",
+        "人类非物质文化遗产": "包含在“中国传统制茶技艺及其相关习俗”中（2022年入选）"
+      }
+    },
+    "sources": [
+      "https://zh.wikipedia.org/wiki/茉莉花茶",
+      "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+      "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+      "https://en.wikipedia.org/wiki/茉莉花",
+      "https://www.minrongtea.com/"
+    ],
+    "method": "extracted"
+  },
+  "availability": {
+    "status": {
+      "value": "在售",
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "pricing": [],
+    "available_regions": {
+      "value": [
+        "中国大陆（福建福州、江苏苏州、广西横县等）",
+        "台湾",
+        "冲绳（日本）"
+      ],
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "extracted"
+    },
+    "access_model": {
+      "value": "线下零售 / 线上直销",
+      "sources": [
+        "https://zh.wikipedia.org/wiki/茉莉花茶",
+        "https://zh.wikipedia.org/zh-cn/茉莉花茶",
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.minrongtea.com/"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  }
+}

@@ -4,6 +4,7 @@ Corresponding in_scope ID: market-analysis
 """
 
 import json
+import os
 import re
 from pathlib import Path
 from typing import Any
@@ -45,7 +46,8 @@ def _build_model():
 
 
 def _render(name: str, **kw) -> str:
-    env = Environment(loader=FileSystemLoader("app/prompt_templates"))
+    _dir = os.path.join(os.path.dirname(__file__), "..", "prompt_templates")
+    env = Environment(loader=FileSystemLoader(_dir))
     return env.get_template(f"{name}.md.j2").render(**kw)
 
 

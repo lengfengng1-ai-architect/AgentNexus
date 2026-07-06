@@ -13,7 +13,7 @@ import json
 from collections.abc import AsyncGenerator
 from typing import Any, TypedDict
 
-from langgraph.graph import END, StateGraph
+from langgraph.graph import END, START, StateGraph
 
 from app.agents.registry import get_handler
 
@@ -21,7 +21,8 @@ from app.agents.registry import get_handler
 class PlanState(TypedDict):
     brand_input: dict[str, Any]
     product_research: dict[str, Any]
-    market_research: dict[str, Any]
+    market_analysis: dict[str, Any]
+    audience_search: dict[str, Any]
     audience_insight: dict[str, Any]
     plan_data_query: dict[str, Any]
     fitness_analysis: dict[str, Any]
@@ -34,7 +35,8 @@ class PlanState(TypedDict):
 
 _NODE_LABELS: dict[str, str] = {
     "product_research": "产品调研",
-    "market_research": "市场研究",
+    "market_analysis": "市场研究",
+    "audience_search": "人群调研",
     "audience_insight": "人群洞察",
     "plan_data_query": "平台资源",
     "fitness_analysis": "适配度分析",
@@ -47,8 +49,9 @@ _NODE_LABELS: dict[str, str] = {
 
 _NODE_LOG_STEPS: dict[str, list[str]] = {
     "product_research": ["正在搜索品牌产品信息…", "正在提取产品规格参数…", "完成产品信息调研"],
-    "market_research": ["正在分析行业趋势数据…", "正在研究竞品格局…", "完成市场调研"],
-    "audience_insight": ["正在分析人群画像…", "正在计算运动指数…", "完成人群洞察"],
+    "market_analysis": ["正在分析行业趋势数据…", "正在研究竞品格局…", "完成市场调研"],
+    "audience_search": ["正在搜索目标人群信息…", "正在读取人群数据页面…", "完成人群数据搜索"],
+    "audience_insight": ["正在综合分析人群画像…", "正在生成用户画像…", "完成人群洞察"],
     "plan_data_query": ["正在查询盟域数据…", "正在查询达人资源…", "完成平台数据查询"],
     "fitness_analysis": ["正在计算品类适配度…", "正在生成适配度评分…", "完成适配度分析"],
     "strategy_generation": ["正在制定营销策略…", "正在确定核心定位…", "完成策略制定"],
@@ -68,12 +71,19 @@ def _build_node(node_id: str):
         inputs: dict[str, Any] = {}
         if node_id == "product_research":
             inputs = {"brand_name": state["brand_input"].get("brand_name")}
-        elif node_id == "market_research":
+        elif node_id == "market_analysis":
             inputs = {
                 "brand_name": state["brand_input"].get("brand_name"),
                 "category": state["brand_input"].get("category"),
             }
-        elif node_id in ("audience_insight", "plan_data_query"):
+        elif node_id == "audience_insight":
+            inputs = {
+                "product_name": state["brand_input"].get("brand_name"),
+                "product_info": state.get("product_research", {}),
+                "market_info": state.get("market_analysis", {}),
+                "audience_data": state.get("audience_search", {}),
+            }
+        elif node_id == "plan_data_query":
             inputs = {"city": state["brand_input"].get("city")}
         elif node_id == "fitness_analysis":
             inputs = {
@@ -113,7 +123,7 @@ def _build_graph() -> StateGraph:
 
     node_ids = [
         "product_research",
-        "market_research",
+        "market_analysis",
         "audience_insight",
         "plan_data_query",
         "fitness_analysis",
@@ -154,14 +164,41 @@ async def run_pipeline(brand_input: dict[str, Any]) -> dict[str, Any]:
 
 
 async def run_stream(brand_input: dict[str, Any]) -> AsyncGenerator[str, None]:
-    """SSE streaming version of plan generation."""
+    """SSE streaming version of plan generation with parallel research phase."""
     initial: PlanState = {"brand_input": brand_input}
     for key in _NODE_LABELS:
         initial[key] = {}
 
-    node_ids = [
-        "product_research",
-        "market_research",
+    # Phase 1: parallel research
+    parallel_ids = ["product_research", "market_analysis", "audience_search"]
+    for nid in parallel_ids:
+        yield f"event: node.start\ndata: {json.dumps({'node_id': nid, 'label': _NODE_LABELS[nid]})}\n\n"
+
+    async def _run_parallel_node(nid: str) -> tuple[str, dict | None, str | None]:
+        try:
+            handler = get_handler(nid)
+            if nid == "product_research":
+                inputs = {"brand_name": brand_input.get("brand_name")}
+            elif nid == "market_analysis":
+                inputs = {"brand_name": brand_input.get("brand_name"), "category": brand_input.get("category")}
+            else:
+                inputs = {"product_name": brand_input.get("brand_name")}
+            output = await handler(inputs)
+            return (nid, output, None)
+        except Exception as exc:
+            return (nid, None, str(exc))
+
+    results = await asyncio.gather(*[_run_parallel_node(nid) for nid in parallel_ids])
+
+    for nid, output, error in results:
+        if error:
+            yield f"event: node.failed\ndata: {json.dumps({'node_id': nid, 'error': error})}\n\n"
+            return
+        initial[nid] = output
+        yield f"event: node.complete\ndata: {json.dumps({'node_id': nid, 'data': output})}\n\n"
+
+    # Phase 2: audience_insight (fan-in)
+    serial_ids = [
         "audience_insight",
         "plan_data_query",
         "fitness_analysis",
@@ -172,7 +209,7 @@ async def run_stream(brand_input: dict[str, Any]) -> AsyncGenerator[str, None]:
         "plan_generator",
     ]
 
-    for nid in node_ids:
+    for nid in serial_ids:
         yield f"event: node.start\ndata: {json.dumps({'node_id': nid, 'label': _NODE_LABELS[nid]})}\n\n"
 
         for log_msg in _NODE_LOG_STEPS.get(nid, ["处理中…"]):
@@ -180,7 +217,29 @@ async def run_stream(brand_input: dict[str, Any]) -> AsyncGenerator[str, None]:
             await asyncio.sleep(0.1)
 
         try:
-            output = await get_handler(nid)(initial)
+            handler = get_handler(nid)
+            if nid == "audience_insight":
+                inputs = {
+                    "product_name": brand_input.get("brand_name"),
+                    "product_info": initial.get("product_research", {}),
+                    "market_info": initial.get("market_analysis", {}),
+                    "audience_data": initial.get("audience_search", {}),
+                }
+            elif nid == "plan_data_query":
+                inputs = {"city": brand_input.get("city")}
+            elif nid == "fitness_analysis":
+                inputs = {"category": brand_input.get("category"), "city": brand_input.get("city")}
+            elif nid in ("strategy_generation", "execution_planning"):
+                inputs = {"brand_input": brand_input}
+            elif nid == "budget_kpi":
+                inputs = {"brand_input": brand_input, "execution_planning": initial.get("execution_planning", {})}
+            elif nid == "action_recommendations":
+                inputs = {"brand_input": brand_input, "strategy_generation": initial.get("strategy_generation", {}), "fitness_analysis": initial.get("fitness_analysis", {}), "budget_kpi": initial.get("budget_kpi", {})}
+            else:
+                all_upstream = dict(initial)
+                all_upstream.pop("brand_input")
+                inputs = {"brand_input": brand_input, **all_upstream}
+            output = await handler(inputs)
             initial[nid] = output
             yield f"event: node.complete\ndata: {json.dumps({'node_id': nid, 'data': output})}\n\n"
         except Exception as exc:

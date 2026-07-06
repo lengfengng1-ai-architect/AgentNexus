@@ -1,0 +1,41 @@
+{
+  "demographics": {},
+  "purchase_motivations": [
+    {
+      "text": "Unboxing experience (开箱体验)",
+      "source": "https://rutube.ru/video/7858d98f075180dcbb06c49368e110af/"
+    },
+    {
+      "text": "ASMR/Visual satisfaction (ASMR/视觉满足感)",
+      "source": "https://rutube.ru/video/7858d98f075180dcbb06c49368e110af/"
+    }
+  ],
+  "decision_factors": [
+    {
+      "text": "Camera (测试相机)",
+      "source": "https://rutube.ru/video/7858d98f075180dcbb06c49368e110af/"
+    }
+  ],
+  "usage_scenarios": [
+    {
+      "text": "Customizing phone aesthetics (Lock screen, home screen wallpapers)",
+      "source": "https://www.pinterest.com/ideas/iphone-16-wallpaper/897392220571/"
+    },
+    {
+      "text": "Learning device features and settings optimization",
+      "source": "https://yandex.ru/video/preview/15029987260527076473"
+    },
+    {
+      "text": "High-quality image storage and processing (JPEG XL support)",
+      "source": "https://www.cizucu.com/magazines/2024-09-iphone-16-pro-supports-jpeg-xl"
+    }
+  ],
+  "descriptions": [],
+  "sources": [
+    "https://www.youtube.com/watch?v=awCqni1iUHc",
+    "https://rutube.ru/video/7858d98f075180dcbb06c49368e110af/",
+    "https://www.pinterest.com/ideas/iphone-16-wallpaper/897392220571/",
+    "https://yandex.ru/video/preview/15029987260527076473",
+    "https://www.cizucu.com/magazines/2024-09-iphone-16-pro-supports-jpeg-xl"
+  ]
+}

@@ -1,0 +1,171 @@
+{
+  "identity": {
+    "product_name": {
+      "value": "茉莉花茶",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "brand": {
+      "value": null,
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "manufacturer": {
+      "value": null,
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "industry": {
+      "value": "茶业",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "category": {
+      "value": "花茶/再加工茶，亦称茉莉香片",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "quoted",
+      "quote": "茉莉花茶是屬於花茶類和再加工茶的一種，又稱為茉莉香片，簡稱香片。"
+    }
+  },
+  "official_description": {
+    "description": {
+      "value": "茉莉花茶是用含苞欲放的茉莉鲜花加入绿茶中窨制而成的再加工茶，兼有茶叶与茉莉花的香味，有消脂、助消化、令口气清新的功效。",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "tagline": {
+      "value": "在中國的花茶裡，可聞春天的氣味",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "quoted",
+      "quote": "茉莉花茶，有「在中國的花茶裡，可聞春天的氣味」之美譽。"
+    },
+    "statement": {
+      "value": null,
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "features": [
+    {
+      "name": "茉莉花与茶叶双重香气",
+      "category": "感官特性",
+      "description": "制作材料为茶叶以及茉莉花，因此能兼有二者的香味。",
+      "evidence": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶"
+      ]
+    },
+    {
+      "name": "帮助消化、消脂、清新口气",
+      "category": "健康功效",
+      "description": "饱餐一顿过后搭配茉莉花茶可以有效帮助消化、消脂，也让口气清新。",
+      "evidence": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶"
+      ]
+    },
+    {
+      "name": "可选用不同绿茶品种做茶胚",
+      "category": "制作工艺",
+      "description": "例如用龙井茶作茶胚、用茉莉花窨制就叫龙井茉莉花茶；用玫瑰花窨制就叫龙井玫瑰花茶。",
+      "evidence": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶"
+      ]
+    },
+    {
+      "name": "冲泡时花形绽放（部分品种）",
+      "category": "饮用体验",
+      "description": "茉莉仙桃品种在泡茶时会像花一样打开。",
+      "evidence": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶"
+      ]
+    }
+  ],
+  "specifications": {
+    "value": {
+      "产地": "发源地：福州（福建）；历史上品质最佳产地：苏州（江苏）；当前主要粗放加工产地：广西横县。福州茉莉花茶地理标志保护范围包括福州市仓山区、晋安区、马尾区、长乐区、福清市、闽侯县、连江县、闽清县、罗源县、永泰县等10个县区市。",
+      "技艺认定": "福州茉莉花茶窨制工艺、张一元茉莉花茶制作技艺、吴裕泰茉莉花茶制作技艺均被列入国家级非物质文化遗产代表性项目名录。",
+      "香气成分": "主要由芳樟醇、乙酸苄酯、α-法尼烯、苯甲酸顺-3-己烯酯、邻氨基苯甲酸甲酯、吲哚等6种构成。",
+      "文化遗产品类": "2014年入选全球重要农业文化遗产（FAO）；2022年随「中国传统制茶技艺及其相关习俗」入选人类非物质文化遗产。"
+    },
+    "sources": [
+      "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+      "https://en.wikipedia.org/wiki/茉莉花",
+      "https://www.dianpushuo.com/feedback-18804.html"
+    ],
+    "method": "extracted"
+  },
+  "availability": {
+    "status": {
+      "value": "在售",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "pricing": [],
+    "available_regions": {
+      "value": [
+        "中国大陆（尤其福建福州、广西横县等地）",
+        "台湾",
+        "香港",
+        "其他茉莉花茶消费市场"
+      ],
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "extracted"
+    },
+    "access_model": {
+      "value": "线下零售、线上电商、传统茶庄",
+      "sources": [
+        "https://zh.wikipedia.org/zh-hant/茉莉花茶",
+        "https://en.wikipedia.org/wiki/茉莉花",
+        "https://www.dianpushuo.com/feedback-18804.html"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  }
+}

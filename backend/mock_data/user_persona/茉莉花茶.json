@@ -1,0 +1,49 @@
+{
+  "profile_summary": {
+    "method": "quoted",
+    "source": "https://www.hxrcon.com/industry-news/26743.html",
+    "quote": "办公室里的一群轻养生一代"
+  },
+  "typical_user": {
+    "method": "inferred",
+    "source": "综合多个数据点合成",
+    "quote": "一位26-35岁的办公室白领/上班族，性别不限，注重健康但拒绝咖啡和奶茶的副作用，追求微提神+零负担+仪式感的日常饮品。"
+  },
+  "demographics": {
+    "age_range": "26-35岁（占比31%，为绝对主力）",
+    "gender": "男女皆可（问卷未明确偏好）",
+    "occupation": "学生、上班族、自由职业者、退休等，其中26-35岁多为办公室白领/上班族",
+    "city_tier": "一线及新一线城市为主",
+    "income": "中等收入（月薪5k-15k区间）"
+  },
+  "purchase_motivation": {
+    "primary": "追求微提神+零负担+仪式感（来源: https://www.hxrcon.com/industry-news/26743.html）",
+    "secondary": "安神、美容养颜、降低血压血脂等健康功效（来源: https://www.wjx.cn/vm/QllSbMS.aspx）",
+    "pain_points": "厌倦咖啡导致的心跳加速和心悸；拒绝奶茶的高糖高热量和罪恶感（来源: https://www.hxrcon.com/industry-news/26743.html）",
+    "switch_reason": "被咖啡教育过的舌头，正在寻找第二杯（来源: https://www.hxrcon.com/industry-news/26743.html）"
+  },
+  "product_usage": {
+    "core_scenarios": [
+      "日常休闲场景，尤其是下午茶（14:00-17:00时段占比28%）（来源: https://www.hxrcon.com/industry-news/26743.html）",
+      "办公室/工作场景（如新媒体编辑在办公时饮用）（来源: https://www.hxrcon.com/industry-news/26743.html）",
+      "家庭冲泡或即饮消费（来源: https://www.verifiedmarketreports.com/zh/product/jasmine-tea-market/）"
+    ],
+    "feature_preference": {
+      "口味": "偏爱茉莉花香与茶味的平衡，不苦涩、有回甘",
+      "包装": "注重包装设计，易于携带和冲泡（来源: https://www.wjx.cn/vm/QllSbMS.aspx）",
+      "便捷性": "接受袋泡茶、即饮瓶装茶等便捷形态"
+    },
+    "usage_frequency": "每周2-5次，集中于工作日午后"
+  },
+  "lifestyle": {
+    "interests": "轻养生、健康饮食、下午茶文化、社交媒体分享",
+    "sport_affinity": "低至中等运动量，偏好瑜伽、散步、轻健身",
+    "media_habits": "偏好小红书、抖音、B站等社交平台获取饮品评测和生活方式内容",
+    "consumption_style": "理性消费，注重性价比，愿意为健康和体验支付合理溢价（价格接受度：30-50元/100克占32%）（来源: https://www.hxrcon.com/industry-news/26743.html）"
+  },
+  "product_fit": {
+    "reason_this_product": "茉莉花茶满足‘微提神+零负担+仪式感’需求，兼具健康功效和愉悦口感，是咖啡和奶茶的理想替代品",
+    "valued_features": "质量、功效、包装、品牌、口碑（来源: https://www.wjx.cn/vm/QllSbMS.aspx）",
+    "price_sensitivity": "中等敏感，对30-50元/100克的价位接受度最高（32%）（来源: https://www.hxrcon.com/industry-news/26743.html）"
+  }
+}

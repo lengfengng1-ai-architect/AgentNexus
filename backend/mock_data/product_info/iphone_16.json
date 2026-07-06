@@ -1,0 +1,239 @@
+{
+  "identity": {
+    "product_name": {
+      "value": "iPhone 16",
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "quoted",
+      "quote": "iPhone 16"
+    },
+    "brand": {
+      "value": "Apple",
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "manufacturer": {
+      "value": "Apple",
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "industry": {
+      "value": "消费电子",
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "category": {
+      "value": "智能手机",
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "official_description": {
+    "description": {
+      "value": "iPhone 16 是苹果公司开发的第十八代智能手机，采用铝金属设计和彩色注入玻璃背板（白黑除外），配备 6.1 英寸 Super Retina XDR OLED 显示屏，搭载 A18 芯片，支持 Wi-Fi 7 和 Apple Intelligence。",
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "tagline": {
+      "value": null,
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "statement": {
+      "value": null,
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "features": [
+    {
+      "name": "Camera Control",
+      "category": "camera",
+      "description": "配备新的 Camera Control 按钮，位于设备右侧，可区分轻按和重按。轻按一次打开相机应用，轻按两次打开控制菜单（变焦、色调等），重按一次拍照，长按开始录像。也可自定义以打开其他相机应用。",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ]
+    },
+    {
+      "name": "Action Button",
+      "category": "hardware",
+      "description": "配备 Action 按钮，默认切换静音模式，用户可自定义其功能（如打开相机、切换专注模式等）。",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ]
+    },
+    {
+      "name": "Apple Intelligence",
+      "category": "software",
+      "description": "集成 Apple Intelligence，提供视觉智能（Visual Intelligence）、Siri 增强等功能。",
+      "evidence": [
+        "https://www.apple.com/iphone-16/specs/"
+      ]
+    },
+    {
+      "name": "空间视频",
+      "category": "camera",
+      "description": "支持空间视频录制（Spatial video recording）。",
+      "evidence": [
+        "https://www.apple.com/iphone-16/specs/"
+      ]
+    },
+    {
+      "name": "Wi-Fi 7",
+      "category": "hardware",
+      "description": "支持 Wi-Fi 7 (802.11be)。",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ]
+    }
+  ],
+  "specifications": {
+    "value": {
+      "电池": {
+        "iPhone 16": "13.84 Wh (3561 mAh)",
+        "iPhone 16 Plus": "18.11 Wh (4674 mAh)",
+        "充电": "MagSafe 无线充电最高 25W, Qi2 无线充电最高 25W, USB-C 快充"
+      },
+      "尺寸": {
+        "iPhone 16": "147.6 × 71.6 × 7.8 mm",
+        "iPhone 16 Plus": "160.9 × 77.8 × 7.8 mm"
+      },
+      "重量": {
+        "iPhone 16": "170 g",
+        "iPhone 16 Plus": "199 g"
+      },
+      "处理器": {
+        "芯片": "Apple A18",
+        "CPU": "6核 (2性能 + 4能效)",
+        "GPU": "5核",
+        "神经网络引擎": "16核"
+      },
+      "操作系统": "iOS 18",
+      "摄像头": {
+        "后置主摄": "48MP Fusion, f/1.6, 26mm, 传感器位移式 OIS",
+        "后置超广角": "12MP, f/2.2, 13mm, 120°视场角",
+        "前置摄像头": "12MP TrueDepth, f/1.9, 23mm"
+      },
+      "网络": {
+        "蜂窝网络": "5G NR, LTE, UMTS, GSM",
+        "Wi-Fi": "Wi-Fi 7 (802.11be)",
+        "蓝牙": "Bluetooth 5.3",
+        "定位": "GPS, GLONASS, Galileo, QZSS, BeiDou"
+      },
+      "存储": "128GB, 256GB, 512GB",
+      "屏幕": {
+        "iPhone 16": "6.1 英寸 Super Retina XDR OLED, 2556×1179 像素",
+        "iPhone 16 Plus": "6.7 英寸 Super Retina XDR OLED, 2796×1290 像素",
+        "刷新率": "60 Hz"
+      },
+      "防水防尘": "IP68 (最大深度 6 米，最长 30 分钟)",
+      "SIM卡": "双 eSIM (美国); 双纳米 SIM (中国大陆/香港/澳门); 纳米 SIM + eSIM (其他地区)"
+    },
+    "sources": [
+      "https://vga.zol.com.cn/321/3210121.html",
+      "https://www.apple.com/iphone-16/specs/",
+      "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+      "https://www.apple.com/iphone/",
+      "https://en.wikipedia.org/wiki/IPhone_16"
+    ],
+    "method": "extracted"
+  },
+  "availability": {
+    "status": {
+      "value": "在售",
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted",
+      "quote": null
+    },
+    "pricing": [],
+    "available_regions": {
+      "value": [
+        "United States",
+        "Hong Kong",
+        "Macau",
+        "Mainland China",
+        "International"
+      ],
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted"
+    },
+    "access_model": {
+      "value": null,
+      "sources": [
+        "https://vga.zol.com.cn/321/3210121.html",
+        "https://www.apple.com/iphone-16/specs/",
+        "https://en.wikipedia.org/wiki/IPhone_16_Pro",
+        "https://www.apple.com/iphone/",
+        "https://en.wikipedia.org/wiki/IPhone_16"
+      ],
+      "method": "extracted",
+      "quote": null
+    }
+  }
+}

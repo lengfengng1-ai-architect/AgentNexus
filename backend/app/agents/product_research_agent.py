@@ -8,7 +8,9 @@ superpowers in_scope ID: product-research
 """
 
 import asyncio
+import os
 from pathlib import Path
+from typing import Any
 
 from bs4 import BeautifulSoup
 from ddgs import DDGS
@@ -94,7 +96,8 @@ def _build_model():
 
 
 def _load_prompt(product_name: str, fetched_pages: list[FetchedPage]) -> str:
-    env = Environment(loader=FileSystemLoader("app/prompt_templates"))
+    _dir = os.path.join(os.path.dirname(__file__), "..", "prompt_templates")
+    env = Environment(loader=FileSystemLoader(_dir))
     template = env.get_template("product_research.md.j2")
     return template.render(product_name=product_name, fetched_pages=fetched_pages)
 

@@ -1,0 +1,90 @@
+{
+  "demographics": {
+    "age_range": "26-35岁（占比31%，为绝对主力）",
+    "gender": "问卷数据显示男女皆可，未明确说明偏好",
+    "occupation": "学生、上班族、自由职业者、退休等，其中26-35岁多为办公室白领/上班族"
+  },
+  "purchase_motivations": [
+    {
+      "text": "提神醒脑但避免咖啡的心跳加速",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    },
+    {
+      "text": "追求微提神+零负担+仪式感",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    },
+    {
+      "text": "安神、美容养颜、降低血压血脂等健康功效",
+      "source": "https://www.wjx.cn/vm/QllSbMS.aspx"
+    }
+  ],
+  "decision_factors": [
+    {
+      "text": "质量",
+      "source": "https://www.wjx.cn/vm/QllSbMS.aspx"
+    },
+    {
+      "text": "功效",
+      "source": "https://www.wjx.cn/vm/QllSbMS.aspx"
+    },
+    {
+      "text": "包装",
+      "source": "https://www.wjx.cn/vm/QllSbMS.aspx"
+    },
+    {
+      "text": "价格（30-50元/100克中端带接受度32%）",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    },
+    {
+      "text": "品牌",
+      "source": "https://www.wjx.cn/vm/QllSbMS.aspx"
+    },
+    {
+      "text": "评价（亲友口碑与社交媒体占比36%）",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    }
+  ],
+  "usage_scenarios": [
+    {
+      "text": "日常休闲场景，尤其是下午茶（14:00-17:00时段占比28%）",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    },
+    {
+      "text": "办公室/工作场景（如新媒体编辑在办公时饮用）",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    },
+    {
+      "text": "家庭冲泡或即饮消费",
+      "source": "https://www.verifiedmarketreports.com/zh/product/jasmine-tea-market/"
+    }
+  ],
+  "descriptions": [
+    {
+      "text": "\"办公室里的一群轻养生一代\"",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    },
+    {
+      "text": "\"被咖啡教育过的舌头，正在寻找第二杯\"",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    },
+    {
+      "text": "\"拒绝咖啡的心慌，也拒绝奶茶的罪恶\"",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    },
+    {
+      "text": "\"用一杯花香给下午按下重置键\"",
+      "source": "https://www.hxrcon.com/industry-news/26743.html"
+    },
+    {
+      "text": "\"具有健康意识的现代人群\"",
+      "source": "https://www.verifiedmarketreports.com/zh/product/jasmine-tea-market/"
+    }
+  ],
+  "sources": [
+    "https://www.wjx.cn/vm/QllSbMS.aspx",
+    "https://www.verifiedmarketreports.com/zh/product/jasmine-tea-market/",
+    "https://max.book118.com/html/2025/0625/7114023160010123.shtm",
+    "https://www.hxrcon.com/industry-news/26743.html",
+    "https://www.vcg.com/creative/1378044736.html"
+  ]
+}

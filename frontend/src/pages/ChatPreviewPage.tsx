@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { ChatContainer } from '../components/ChatContainer'
 import { IntentTestPage } from './IntentTestPage'
+import { AudienceTestPage } from './AudienceTestPage'
 
-type View = 'chat' | 'intent'
+type View = 'chat' | 'intent' | 'audience'
 
 export function ChatPreviewPage() {
   const [view, setView] = useState<View>('chat')
@@ -32,9 +33,22 @@ export function ChatPreviewPage() {
         >
           意图测试
         </button>
+        <button
+          type="button"
+          onClick={() => setView('audience')}
+          className={`rounded-lg px-4 py-1.5 text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start ${
+            view === 'audience'
+              ? 'bg-start text-white'
+              : 'text-track hover:bg-mist'
+          }`}
+        >
+          用户画像测试
+        </button>
       </div>
 
-      {view === 'chat' ? <ChatContainer /> : <IntentTestPage />}
+      {view === 'chat' && <ChatContainer />}
+      {view === 'intent' && <IntentTestPage />}
+      {view === 'audience' && <AudienceTestPage />}
     </div>
   )
 }

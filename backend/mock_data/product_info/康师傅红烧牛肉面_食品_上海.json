@@ -1,0 +1,80 @@
+{
+  "identity": {
+    "product_name": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    },
+    "brand": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    },
+    "manufacturer": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    },
+    "industry": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    },
+    "category": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "official_description": {
+    "description": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    },
+    "tagline": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    },
+    "statement": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    }
+  },
+  "features": [],
+  "specifications": {
+    "value": {},
+    "sources": [],
+    "method": "extracted"
+  },
+  "availability": {
+    "status": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    },
+    "pricing": [],
+    "available_regions": {
+      "value": [],
+      "sources": [],
+      "method": "extracted"
+    },
+    "access_model": {
+      "value": null,
+      "sources": [],
+      "method": "extracted",
+      "quote": null
+    }
+  }
+}

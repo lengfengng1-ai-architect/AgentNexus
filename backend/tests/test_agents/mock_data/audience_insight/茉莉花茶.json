@@ -1,0 +1,76 @@
+{
+  "demographics": {},
+  "purchase_motivations": [
+    {
+      "text": "享受美好生活所带来的惊喜",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    }
+  ],
+  "decision_factors": [
+    {
+      "text": "级别（如超凡入圣、半圣品位、普及款式）",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    },
+    {
+      "text": "价格亲民程度",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    },
+    {
+      "text": "是否符合国家相关标准",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    },
+    {
+      "text": "商品说明书内容",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    },
+    {
+      "text": "口感（清香爽口、回味甘醇）",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    },
+    {
+      "text": "保健功效",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    },
+    {
+      "text": "自然香气",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    }
+  ],
+  "usage_scenarios": [
+    {
+      "text": "日常饮用享受生活",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    },
+    {
+      "text": "对身心健康有需求时",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    },
+    {
+      "text": "正如网页文字所说“有茶相伴的一天” (可能与饮茶仪式相关)",
+      "source": "https://zente.net/zh/blogs/news/il-fascino-del-te-al-gelsomino"
+    },
+    {
+      "text": "家用或办公室冲泡（Nespresso机适用胶囊形式）",
+      "source": "https://jp.pinterest.com/pin/1065031011860855857/"
+    }
+  ],
+  "descriptions": [
+    {
+      "text": "有人说，人生就像茶，只有经历过艰辛和曲折，才能体会到它的滋味，懂得生活的甜蜜。",
+      "source": "https://zente.net/zh/blogs/news/il-fascino-del-te-al-gelsomino"
+    },
+    {
+      "text": "无论哪个档次都可以享受到美好生活所带来愿意给你惊喜。",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    },
+    {
+      "text": "部分消费者对身心健康需求也日渐增强，因此建议消费者在购买时应根据自己需要选择不同档次产品。",
+      "source": "https://best.pconline.com.cn/yuanchuang/31013314.html"
+    }
+  ],
+  "sources": [
+    "https://zente.net/zh/blogs/news/il-fascino-del-te-al-gelsomino",
+    "https://best.pconline.com.cn/yuanchuang/31013314.html",
+    "https://jp.pinterest.com/pin/1065031011860855857/"
+  ]
+}
