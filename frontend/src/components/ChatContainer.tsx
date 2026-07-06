@@ -71,20 +71,6 @@ export function ChatContainer() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-2">
-          <span className="font-display text-2xl tracking-wide text-track">ALLYGO</span>
-          <span className="rounded-full bg-start px-2 py-0.5 text-[10px] font-bold text-white">
-            MVP
-          </span>
-        </div>
-        <a
-          href="/plan"
-          className="text-sm font-medium text-start hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
-        >
-          工作台
-        </a>
-      </header>
 
       {error && <ErrorBar message={error} onDismiss={() => setInputValue(inputValue)} />}
 
