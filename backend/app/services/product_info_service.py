@@ -6,6 +6,7 @@
 
 import json
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from app.agents.product_research_agent import _graph, research_product
 from app.config.cache_paths import PRODUCT_INFO_DIR, product_info_path
@@ -72,10 +73,12 @@ _NODE_STEPS = {
 def _translate_product_event(event: dict, product_name: str) -> str | None:
     """Map astream_events v2 event to product info SSE frames."""
     ev_type = event.get("event")
-    name = event.get("name")
+    name: Any = event.get("name")
     data = event.get("data", {})
 
     step = _NODE_STEPS.get(name)
+    if step is None:
+        return None
 
     if ev_type == "on_chain_start" and step:
         if step == "search":

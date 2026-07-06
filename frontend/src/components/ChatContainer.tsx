@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '../hooks/useChat'
-import type { BrandInput, FieldKey } from '../types/chat'
+import type { BrandInput } from '../types/chat'
 import { ChatBubble } from './ChatBubble'
 import { ChatInput } from './ChatInput'
 import { ErrorBar } from './ErrorBar'
 import { LoadingBubble } from './LoadingBubble'
-import { ProgressTrack, getFieldEditPrompt } from './ProgressTrack'
 import { WelcomeCard } from './WelcomeCard'
 import { BrandConfirmCard } from './BrandConfirmCard'
 
@@ -18,7 +17,6 @@ export function ChatContainer() {
     inputValue,
     isLoading,
     error,
-    latestBrandInput,
     sendMessage,
     retryMessage,
     prefillInput,
@@ -30,6 +28,14 @@ export function ChatContainer() {
   const [showConfirm, setShowConfirm] = useState<string | null>(null)
   const [pendingBrandInput, setPendingBrandInput] = useState<BrandInput | null>(null)
 
+  // Find the latest brand input from any message that carries one
+  const latestBrandInput = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].brandInput) return messages[i].brandInput
+    }
+    return null
+  }, [messages])
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -39,10 +45,6 @@ export function ChatContainer() {
       sendMessage(inputValue.trim())
     }
   }, [inputValue, sendMessage])
-
-  const handleFieldClick = useCallback((_key: FieldKey, label: string) => {
-    prefillInput(getFieldEditPrompt(label))
-  }, [prefillInput])
 
   const handleGeneratePlan = useCallback((brandInput?: BrandInput) => {
     if (!brandInput) return
@@ -69,22 +71,6 @@ export function ChatContainer() {
 
   return (
     <div className="flex h-full flex-col">
-      <header className="flex items-center justify-between border-b border-line bg-white px-4 py-3 sm:px-6">
-        <div className="flex items-center gap-2">
-          <span className="font-display text-2xl tracking-wide text-track">ALLYGO</span>
-          <span className="rounded-full bg-start px-2 py-0.5 text-[10px] font-bold text-white">
-            MVP
-          </span>
-        </div>
-        <a
-          href="/plan"
-          className="text-sm font-medium text-start hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
-        >
-          工作台
-        </a>
-      </header>
-
-      <ProgressTrack brandInput={latestBrandInput} onFieldClick={handleFieldClick} />
 
       {error && <ErrorBar message={error} onDismiss={() => setInputValue(inputValue)} />}
 

@@ -4,7 +4,7 @@ Corresponding in_scope ID: market-analysis
 """
 
 import json
-from typing import Any
+from typing import Any, Literal, cast
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -173,7 +173,7 @@ def assemble_result(market_name: str, category: str,
             som=_seg("som", d2.get("som")),
             cagr=d2.get("cagr"),
             cagr_period=str(d2.get("cagr_period") or ""),
-            cagr_confidence=str(d2.get("cagr_confidence") or "medium"),
+            cagr_confidence=cast(Literal["high", "medium", "low"], str(d2.get("cagr_confidence") or "medium")),
             conflict_notes=str(d2.get("conflict_notes") or ""),
         ),
         trend_signals=[TrendSignalItem.model_validate(i) for i in d3_list],
@@ -238,7 +238,7 @@ async def _synthesize_node(state: MarketAnalysisState) -> dict:
     return {"report": report, "result": assemble_result(state["market_name"], state["category"], d1, d2, d3, d4, d5, d6, report).model_dump()}
 
 
-def _build_state_graph() -> StateGraph:
+def _build_state_graph() -> Any:
     """Build graph with explicit add_node/add_edge — no for-loop indirection.
 
     ponytail: 7-node serial graph is small enough that a for-loop over
