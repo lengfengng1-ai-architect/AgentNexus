@@ -41,6 +41,8 @@ export function PlanPage() {
   const {
     status,
     nodes,
+    runId,
+    logs,
     outputs,
     failedNode,
     error,
