@@ -7,8 +7,6 @@ import { PlanLogStream } from './PlanLogStream'
 import { PlanPreview } from './PlanPreview'
 import { PipelineTimeline } from './PipelineTimeline'
 
-import { IntentTestPage } from './IntentTestPage'
-
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
 const RUN_ID_KEY = 'allygo_plan_run_id'
@@ -40,7 +38,6 @@ interface PlanFormData {
 }
 
 export function PlanPage() {
-  const [showIntentTest, setShowIntentTest] = useState(false)
   const {
     status,
     nodes,
@@ -415,22 +412,7 @@ export function PlanPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 28px', flexShrink: 0,
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
-            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', color: '#0f172a' }}>
-              {showIntentTest ? '意图识别测试' : '营销方案工作台'}
-            </span>
-            <button
-              onClick={() => setShowIntentTest(v => !v)}
-              style={{
-                padding: '4px 12px', borderRadius: 12, fontSize: 11, fontWeight: 600,
-                cursor: 'pointer', border: '1px solid #d1d5db',
-                background: showIntentTest ? '#1e40af' : '#fff',
-                color: showIntentTest ? '#fff' : '#374151',
-              }}
-            >
-              意图测试
-            </button>
-          </div>
+          <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', color: '#0f172a' }}>营销方案工作台</span>
           <div style={{ display: 'flex', gap: 10 }}>
             <button
               onClick={() => window.print()}
@@ -489,13 +471,9 @@ export function PlanPage() {
             ))}
           </nav>
         )}
+        <div style={{ flexShrink: 0 }}><PlanLogStream logs={logs} /></div>
 
-        {!showIntentTest && <div style={{ flexShrink: 0 }}><PlanLogStream logs={logs} /></div>}
-
-        <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: showIntentTest ? 0 : 28, background: '#fafbfc' }}>
-          {showIntentTest ? (
-            <IntentTestPage />
-          ) : (
+        <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#fafbfc' }}>
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             {auditPanel}
             <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} />
@@ -504,7 +482,6 @@ export function PlanPage() {
               <div id="actions-anchor"><PlanActionCards actions={actionItems} /></div>
             )}
           </div>
-          )}
         </div>
       </main>
 
