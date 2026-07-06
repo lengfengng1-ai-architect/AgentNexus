@@ -124,7 +124,7 @@ def _node_inputs(node_id: str, state: PlanState) -> dict[str, Any]:
     """Build each node's input payload from state."""
     if node_id == "product_research":
         return {"brand_name": state["brand_input"].get("brand_name")}
-    if node_id == "market_research":
+    if node_id == "market_analysis":
         return {
             "brand_name": state["brand_input"].get("brand_name"),
             "category": state["brand_input"].get("category"),
@@ -183,7 +183,7 @@ def _build_graph() -> Any:
     graph = StateGraph(PlanState)  # type: ignore[arg-type]
 
     graph.add_node("product_research", _build_node("product_research"))
-    graph.add_node("market_research", _build_node("market_research"))
+    graph.add_node("market_analysis", _build_node("market_analysis"))
     graph.add_node("audience_insight", _build_node("audience_insight"))
     graph.add_node("plan_data_query", _build_node("plan_data_query"))
     graph.add_node("fitness_analysis", _build_node("fitness_analysis"))
@@ -194,8 +194,8 @@ def _build_graph() -> Any:
     graph.add_node("plan_generator", _build_node("plan_generator"))
 
     graph.set_entry_point("product_research")
-    graph.add_edge("product_research", "market_research")
-    graph.add_edge("market_research", "audience_insight")
+    graph.add_edge("product_research", "market_analysis")
+    graph.add_edge("market_analysis", "audience_insight")
     graph.add_edge("audience_insight", "plan_data_query")
     graph.add_edge("plan_data_query", "fitness_analysis")
     graph.add_edge("fitness_analysis", "strategy_generation")

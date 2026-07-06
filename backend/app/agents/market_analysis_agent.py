@@ -4,8 +4,10 @@ Corresponding in_scope ID: market-analysis
 """
 
 import json
+import os
+import re
+from pathlib import Path
 from typing import Any
-
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph

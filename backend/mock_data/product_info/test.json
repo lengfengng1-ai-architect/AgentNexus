@@ -1,25 +1,21 @@
 {
   "identity": {
     "product_name": {
-      "value": "Test",
+      "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
-      "method": "quoted",
-      "quote": "Test - Wikipedia"
+      "method": "extracted",
+      "quote": null
     },
     "brand": {
       "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted",
       "quote": null
@@ -27,11 +23,9 @@
     "manufacturer": {
       "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted",
       "quote": null
@@ -39,11 +33,9 @@
     "industry": {
       "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted",
       "quote": null
@@ -51,11 +43,9 @@
     "category": {
       "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted",
       "quote": null
@@ -65,11 +55,9 @@
     "description": {
       "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted",
       "quote": null
@@ -77,11 +65,9 @@
     "tagline": {
       "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted",
       "quote": null
@@ -89,11 +75,9 @@
     "statement": {
       "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted",
       "quote": null
@@ -103,11 +87,9 @@
   "specifications": {
     "value": {},
     "sources": [
-      "https://en.wikipedia.org/wiki/Test",
-      "https://en.wikipedia.org/wiki/Bechdel_test",
-      "https://en.wikipedia.org/wiki/A/B_testing",
-      "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-      "https://www.yumpu.com/en/document/view/46414910"
+      "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+      "https://www.yumpu.com/en/document/view/46414910",
+      "http://www.nattest-china.com/"
     ],
     "method": "extracted"
   },
@@ -115,11 +97,9 @@
     "status": {
       "value": "unknown",
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted",
       "quote": null
@@ -128,22 +108,18 @@
     "available_regions": {
       "value": [],
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted"
     },
     "access_model": {
       "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Test",
-        "https://en.wikipedia.org/wiki/Bechdel_test",
-        "https://en.wikipedia.org/wiki/A/B_testing",
-        "https://www.hydzelec.com/uploads/HYR-1708.pdf",
-        "https://www.yumpu.com/en/document/view/46414910"
+        "https://www.hydzelec.com/uploads/HYR-2310A.pdf",
+        "https://www.yumpu.com/en/document/view/46414910",
+        "http://www.nattest-china.com/"
       ],
       "method": "extracted",
       "quote": null

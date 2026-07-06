@@ -9,6 +9,7 @@ import asyncio
 import json
 from typing import Any
 
+import os
 from bs4 import BeautifulSoup
 from ddgs import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException

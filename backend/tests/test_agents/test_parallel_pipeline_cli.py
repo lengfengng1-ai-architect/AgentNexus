@@ -47,12 +47,12 @@ async def main():
     print("阶段 1: 并行调研 (product_research + market_research + audience_search)")
     print("  三个 Agent 同时开始...\n")
 
-    from app.services.plan_generation_service import run_stream
+    from app.services.plan_generation_service import start_run
 
     t0 = time.time()
     parallel_done = set()
 
-    async for event_str in run_stream(brand_input):
+    async for event_str in start_run(brand_input):
         lines = event_str.strip().split("\n")
         event_type = ""
         data = {}
