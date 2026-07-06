@@ -107,8 +107,9 @@ export function PlanPage() {
   ]
 
   // Agent 运行时自动高亮对应 tab（仅在用户未手动点击时生效）
+  // 并行场景下高亮最后一个 running agent（人群洞察）
   const runningAgentId =
-    nodes.find(n => n.status === 'running')?.id
+    nodes.findLast(n => n.status === 'running')?.id
     ?? pausedNode
     ?? null
   const runningTabIndex = runningAgentId
