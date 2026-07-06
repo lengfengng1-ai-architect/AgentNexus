@@ -27,7 +27,7 @@ export function WelcomeCard({ onScenarioClick }: WelcomeCardProps) {
         告诉我你的品牌需求
       </p>
       <p className="mt-2 max-w-md text-sm text-track/60 sm:text-base">
-        我会帮你整理成结构化信息，为后续营销方案生成做准备。
+        说说你的品牌想法，我帮你一步步落地。
       </p>
 
       <div className="mt-8 grid w-full max-w-2xl gap-3 sm:grid-cols-3">
