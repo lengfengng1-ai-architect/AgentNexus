@@ -22,7 +22,7 @@ class IntentRecognitionOutput(BaseModel):
     confidence: float = Field(..., ge=0.0, le=1.0, description="意图置信度")
     reply: str = Field(..., description="给用户的直接回复文案")
     brand_input: BrandInput = Field(
-        default_factory=BrandInput, description="提取或更新后的品牌需求字段"
+        default_factory=BrandInput, description="提取或更新后的品牌需求字段"  # type: ignore[arg-type]
     )
     missing_fields: list[str] = Field(
         default_factory=list, description="缺失字段列表，用于 clarify 意图"

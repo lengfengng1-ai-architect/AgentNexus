@@ -3,7 +3,6 @@ import { usePlanRun } from '../hooks/usePlanRun'
 import type { BrandInput } from '../types/chat'
 import { PlanActionCards } from './PlanActionCards'
 import { PlanForm } from './PlanForm'
-import { PlanLogStream } from './PlanLogStream'
 import { PlanPreview } from './PlanPreview'
 import { PipelineTimeline } from './PipelineTimeline'
 import { AgentConfirmDialog } from './AgentConfirmDialog'
@@ -42,7 +41,6 @@ export function PlanPage() {
   const {
     status,
     nodes,
-    logs,
     outputs,
     failedNode,
     error,
@@ -212,14 +210,13 @@ export function PlanPage() {
   )
 
   return (
-    <div className="app" style={{ display: 'flex', height: 'var(--app-height)', overflow: 'hidden', backgroundColor: '#fafbfc' }}>
+    <div className="app" style={{ display: 'flex', height: '100%', overflow: 'hidden', backgroundColor: '#fafbfc' }}>
       <aside style={{
         width: sidebarCollapsed ? 48 : 360,
         minWidth: sidebarCollapsed ? 48 : 360,
         flexShrink: 0,
         background: '#fff',
         borderRight: '1px solid #e2e8f0',
-        height: 'var(--app-height)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -281,21 +278,6 @@ export function PlanPage() {
         </div>
         {!sidebarCollapsed && (
           <div className="sidebar-scroll" style={{ flex: 1, overflowY: 'auto', padding: '16px 22px 24px', minHeight: 0 }}>
-            <a
-              href="/chat"
-              style={{
-                display: 'inline-flex', alignItems: 'center', gap: 4,
-                marginBottom: 12, fontSize: 12, color: '#1e40af', fontWeight: 500, textDecoration: 'none',
-              }}
-              onMouseEnter={e => (e.currentTarget.style.textDecoration = 'underline')}
-              onMouseLeave={e => (e.currentTarget.style.textDecoration = 'none')}
-            >
-              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <line x1="19" y1="12" x2="5" y2="12" />
-                <polyline points="12 19 5 12 12 5" />
-              </svg>
-              返回聊天
-            </a>
             <PlanForm
               initial={seed}
               onSubmit={handleStart}
@@ -395,7 +377,7 @@ export function PlanPage() {
 
       <main style={{
         flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
-        height: 'var(--app-height)', overflow: 'hidden',
+        overflow: 'hidden',
       }}>
         <header style={{
           height: 64, background: '#fff', borderBottom: '1px solid #e2e8f0',
@@ -456,7 +438,7 @@ export function PlanPage() {
 
         <nav style={{
           height: 52, background: '#fff', borderBottom: '1px solid #e2e8f0',
-          display: 'flex', alignItems: 'center', gap: 4, padding: '0 28px', flexShrink: 0,
+          display: displayedChapters.length > 0 ? 'flex' : 'none', alignItems: 'center', gap: 4, padding: '0 28px', flexShrink: 0,
         }}
         >
           {TABS.map(t => (

@@ -5,6 +5,7 @@ superpowers in_scope ID: audience-insight
 
 import json
 from collections.abc import AsyncGenerator
+from typing import Any
 
 from app.agents.audience_insight_agent import _graph, run_audience_insight
 from app.config.cache_paths import AUDIENCE_DIR, PERSONA_DIR, audience_path, persona_path
@@ -69,7 +70,7 @@ async def stream_audience_insight(
         yield f"event: result\ndata: {cached.model_dump_json()}\n\n"
         return
 
-    initial_state = {
+    initial_state: dict[str, Any] = {
         "product_name": product_name,
         "product_info": product_info or {},
         "market_info": market_info or {},
@@ -99,12 +100,21 @@ _NODE_SSE_MAP = {
 def _translate_audience_event(event: dict, product_name: str) -> str | None:
     """Map astream_events v2 event to audience insight SSE frames."""
     ev_type = event.get("event")
-    name = event.get("name")
+    name: Any = event.get("name")
     data = event.get("data", {})
 
     node_info = _NODE_SSE_MAP.get(name)
+    if node_info is None:
+        return None
 
     if ev_type == "on_chain_start" and node_info:
+        step = node_info["step"]
+        msg = f"正在{ {'search': '搜索', 'fetch': '读取页面', 'extract': '提取人群数据', 'persona': '生成用户画像'}.get(step, step) } {product_name}..."
+        if step == "fetch":
+            msg = f"正在读取 {product_name} 的相关页面..."
+        return f"event: progress\ndata: {json.dumps({'step': step, 'message': msg})}\n\n"
+
+    if ev_type == "on_chain_end" and name in ("search",):
         step = node_info["step"]
         msg = f"正在{ {'search': '搜索', 'fetch': '读取页面', 'extract': '提取人群数据', 'persona': '生成用户画像'}.get(step, step) } {product_name}..."
         if step == "fetch":
