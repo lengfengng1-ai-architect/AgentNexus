@@ -172,6 +172,21 @@ class ActionRecommendationsOutput(BaseModel):
     actions: list[ActionRecommendation] = Field(default_factory=list, description="行动建议列表")
 
 
+# 方案生成器章节规格：title/subtitle 固定，LLM 只生成 content。
+# 顺序和文案由产品/策略团队定义，AI 禁止编造章节名称。
+PLAN_CHAPTER_SPEC: tuple[tuple[str, str], ...] = (
+    ("市场与用户洞察", "从市场趋势到目标人群的完整画像"),
+    ("品牌与运动场景适配", "品牌调性、运动场景匹配度分析"),
+    ("营销策略与核心主张", "整体策略方向与传播主张"),
+    ("执行规划", "盟域/赛事/达人/内容/经营社落地计划"),
+    ("时间线与关键里程碑", "分阶段节奏与重要节点"),
+    ("预算与 KPI", "预算分配与效果衡量指标"),
+    ("创意内容框架", "核心创意概念与内容矩阵"),
+    ("达人合作矩阵", "达人分层与合作策略"),
+    ("行动建议", "可立即启动的关键行动"),
+)
+
+
 class PlanChapter(BaseModel):
     """方案章节。"""
 

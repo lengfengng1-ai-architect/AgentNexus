@@ -36,9 +36,9 @@ def build_chat_model():
     )
 
 
-def invoke_json(system_prompt: str, user_msg: str) -> dict[str, Any]:
+async def invoke_json(system_prompt: str, user_msg: str) -> dict[str, Any]:
     """Invoke LLM and parse JSON from markdown code fences if present."""
-    msg = build_chat_model().invoke([
+    msg = await build_chat_model().ainvoke([
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_msg),
     ])

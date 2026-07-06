@@ -8,12 +8,12 @@ from app.agents.product_research_agent import (
     ProductResearchState,
     SearchResult,
     _domain_priority,
-    _extract_text_from_html,
     _fill_sourced_fields,
     extract_node,
     fetch_node,
     search_node,
 )
+from app.utils import extract_text_from_html
 from app.schemas.product_info import (
     Identity,
     OfficialDescription,
@@ -34,7 +34,7 @@ def test_domain_priority_for_unknown_domain():
 
 def test_extract_text_from_html_strips_noise():
     html = "<html><head><script>alert(1)</script></head><body><p>  hello  </p><span>world</span></body></html>"
-    text = _extract_text_from_html(html)
+    text = extract_text_from_html(html)
     assert "alert" not in text
     assert "hello" in text
     assert "world" in text

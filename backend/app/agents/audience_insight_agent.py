@@ -6,8 +6,7 @@ superpowers in_scope ID: audience-insight
 """
 
 import asyncio
-import os
-import re
+import json
 from typing import Any
 
 from bs4 import BeautifulSoup
@@ -19,9 +18,10 @@ from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model
-from app.config.settings import settings
-from app.schemas.audience_insight import AudienceRawData, UserPersona
 from app.agents.registry import register
+from app.config.cache_paths import AUDIENCE_DIR, persona_path
+from app.schemas.audience_insight import AudienceRawData, UserPersona
+from app.utils import extract_text_from_html
 
 # ── 常量 ──
 SEARCH_MAX = 8
@@ -61,22 +61,11 @@ class State(BaseModel):
 # ── 辅助 ──
 
 
-def _build_model():
-    return build_chat_model()
-
 
 def _load_template(name: str, **kwargs) -> str:
     _dir = os.path.join(os.path.dirname(__file__), "..", "prompt_templates")
     env = Environment(loader=FileSystemLoader(_dir))
     return env.get_template(name).render(**kwargs)
-
-
-def _extract_text_from_html(html: str) -> str:
-    soup = BeautifulSoup(html, "lxml")
-    for tag in soup(["script", "style", "nav", "footer", "header", "aside"]):
-        tag.decompose()
-    text = soup.get_text(separator="\n", strip=True)
-    return "\n".join(line.strip() for line in text.split("\n") if line.strip())
 
 
 # ── 节点 ──
@@ -117,7 +106,7 @@ async def fetch_node(state: State) -> dict:
                 resp.raise_for_status()
                 if "text/html" not in resp.headers.get("content-type", ""):
                     return FetchedPage(url=url, title=None, content="", fetched=False)
-                text = _extract_text_from_html(resp.text)
+                text = extract_text_from_html(resp.text)
                 if len(text) > MAX_PAGE_CHARS:
                     text = text[:MAX_PAGE_CHARS] + "\n...[截断]"
                 soup = BeautifulSoup(resp.text, "lxml")
@@ -138,7 +127,7 @@ async def extract_audience_node(state: State) -> dict:
         return {"audience_data": AudienceRawData()}
 
     prompt = _load_template("audience_insight.md.j2", product_name=state.product_name, fetched_pages=valid)
-    llm = _build_model().with_structured_output(AudienceRawData)
+    llm = build_chat_model().with_structured_output(AudienceRawData)
 
     result: AudienceRawData = await llm.ainvoke([
         SystemMessage(content=prompt),
@@ -161,15 +150,9 @@ async def generate_persona_node(state: State) -> dict:
     if not state.audience_data:
         return {"persona": UserPersona()}
 
-    product_info_str = ""
-    if state.product_info:
-        import json
-        product_info_str = json.dumps(state.product_info, indent=2, ensure_ascii=False)[:2000]
+    product_info_str = json.dumps(state.product_info, ensure_ascii=False)[:2000] if state.product_info else ""
 
-    market_info_str = ""
-    if state.market_info:
-        import json
-        market_info_str = json.dumps(state.market_info, indent=2, ensure_ascii=False)[:2000]
+    market_info_str = json.dumps(state.market_info, ensure_ascii=False)[:2000] if state.market_info else ""
 
     prompt = _load_template("persona_generation.md.j2",
                             product_name=state.product_name,
@@ -177,7 +160,7 @@ async def generate_persona_node(state: State) -> dict:
                             market_info=market_info_str,
                             audience_data=state.audience_data)
 
-    llm = _build_model().with_structured_output(UserPersona)
+    llm = build_chat_model().with_structured_output(UserPersona)
     result: UserPersona = await llm.ainvoke([
         SystemMessage(content=prompt),
         HumanMessage(content=f"请为产品「{state.product_name}」生成用户画像。"),
@@ -271,12 +254,8 @@ async def run_audience_search(state: dict[str, Any]) -> dict[str, Any]:
     if ad is None:
         raise ValueError("Agent did not return audience data")
     # 持久化到 mock_data/audience_insight/
-    safe_name = re.sub(r'[^\w一-鿿]+', "_", pn).strip("_").lower()
-    from app.services.audience_insight_service import AUDIENCE_DIR
     AUDIENCE_DIR.mkdir(parents=True, exist_ok=True)
-    path = AUDIENCE_DIR / f"{safe_name}.json"
-    if not safe_name:
-        path = AUDIENCE_DIR / "unknown.json"
+    path = AUDIENCE_DIR / f"{pn.replace(' ', '_').lower()}.json"
     path.write_text(ad.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
     return ad.model_dump()
 
@@ -291,21 +270,10 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
         raise ValueError("Missing required input: product_name")
 
     audience_data_raw = state.get("audience_data", {})
-    if isinstance(audience_data_raw, dict):
-        from app.schemas.audience_insight import AudienceRawData
-        ad = AudienceRawData.model_validate(audience_data_raw)
-    else:
-        ad = audience_data_raw
+    ad = AudienceRawData.model_validate(audience_data_raw)
 
-    product_info_str = ""
-    if state.get("product_info"):
-        import json
-        product_info_str = json.dumps(state["product_info"], indent=2, ensure_ascii=False)[:2000]
-
-    market_info_str = ""
-    if state.get("market_info"):
-        import json
-        market_info_str = json.dumps(state["market_info"], indent=2, ensure_ascii=False)[:2000]
+    product_info_str = json.dumps(state.get("product_info", {}), ensure_ascii=False)[:2000] if state.get("product_info") else ""
+    market_info_str = json.dumps(state.get("market_info", {}), ensure_ascii=False)[:2000] if state.get("market_info") else ""
 
     prompt = _load_template("persona_generation.md.j2",
                             product_name=pn,
@@ -313,25 +281,51 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
                             market_info=market_info_str,
                             audience_data=ad)
 
-    llm = _build_model().with_structured_output(UserPersona)
+    llm = build_chat_model().with_structured_output(UserPersona)
     result: UserPersona = await llm.ainvoke([
         SystemMessage(content=prompt),
         HumanMessage(content=f"请为产品「{pn}」生成用户画像。"),
     ])
 
     # 持久化到 mock_data/user_persona/
-    safe_name = re.sub(r'[^\w一-鿿]+', "_", pn).strip("_").lower()
-    from app.services.audience_insight_service import PERSONA_DIR
-    PERSONA_DIR.mkdir(parents=True, exist_ok=True)
-    path = PERSONA_DIR / f"{safe_name}.json"
-    if not safe_name:
-        path = PERSONA_DIR / "unknown.json"
-    path.write_text(result.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
+    pp = persona_path(pn)
+    pp.parent.mkdir(parents=True, exist_ok=True)
+    pp.write_text(result.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
 
     return result.model_dump()
 
 
 register("audience_search", run_audience_search)
 register("generate_persona", run_generate_persona)
-register("audience_insight", run_generate_persona)  # alias for plan_generation_pipeline
+
+
+async def run_audience_insight_full(state: dict[str, Any]) -> dict[str, Any]:
+    """Full pipeline handler: search → fetch → extract → generate_persona.
+
+    Used by plan_generation_service via get_handler('audience_insight').
+    Returns both audience_data and persona so downstream nodes have
+    the complete audience insight payload.
+    """
+    product_name = state.get("product_name") or state.get("brand_name")
+    if not product_name:
+        raise ValueError("Missing required input: product_name or brand_name")
+
+    s = await _graph.ainvoke({
+        "product_name": product_name,
+        "product_info": state.get("product_info", {}),
+        "market_info": state.get("market_info", {}),
+    })
+
+    audience = s.get("audience_data")
+    persona = s.get("persona")
+    if audience is None or persona is None:
+        raise ValueError("Agent did not return complete result")
+
+    return {
+        "audience_data": audience.model_dump() if hasattr(audience, "model_dump") else audience,
+        "persona": persona.model_dump() if hasattr(persona, "model_dump") else persona,
+    }
+
+
+register("audience_insight", run_audience_insight_full)
 

@@ -21,7 +21,7 @@
 
 - FastAPI 路由（`routers/`）
 - 调用 `_build_model()` —— 统一用 `from app.agents.llm_utils import build_chat_model`
-- 主流程 LangGraph 编排（由 `orchestrator.py` 通过 YAML 配置）
+- 主流程 LangGraph 编排（由 `plan_generation_service.py` 通过 `get_handler()` 构建 StateGraph）
 - 架构决策、技术选型、新增依赖审批
 
 ---
@@ -106,6 +106,8 @@ async def mock_run_<agent>(state: dict) -> dict:
 | prompt 文件 | `backend/app/prompt_templates/<agent_name>.md.j2` |
 | 入口函数 | `async def run_<agent_name>(state: dict) -> dict` |
 | 模型构建 | **必须用 `build_chat_model()`**，禁止自己写 `_build_model()` |
+| import 规则 | **禁止在方法/函数内部 import**。所有 import 必须放在文件顶部。违反者在 Code Review 打回 |
+| 图构建 | **禁止 for 循环建图**。所有 `add_node`/`add_edge` 必须逐条显式写出。顺序一目了然，不需要读者跳到变量定义确认拓扑 |
 
 ---
 
@@ -278,6 +280,8 @@ uv run python -m scripts.debug_<agent>
 | 没有测试就提交 | 无法保证回归 | 覆盖率 ≥80% |
 | 没有 OpenSpec 就写代码 | 违反项目核心流程 | 先补 spec |
 | 编造厂商/赛事/达人名称或数据数值 | 违反数据引用规则 | 全部来自 API/mock |
+| **用 for 循环建 add_node / add_edge** | 读者要跳到变量定义才能看清拓扑 | 逐条显式写出每个节点和每条边 |
+| **在函数体内 import** | 隐藏依赖、难测试、违反一致性 | 全部放到文件顶部 |
 
 ---
 
@@ -319,5 +323,6 @@ uv run python -m scripts.debug_<agent>
 - [testing.md](./testing.md) — 测试规范
 - [directory-structure.md](./directory-structure.md) — 目录结构
 - [../superpowers.yaml](../superpowers.yaml) — 能力边界
-- `backend/app/agents/chat_extraction_agent.py` — 最小可运行示例
-- `backend/tests/test_agents/test_chat_extraction_agent.py` — 最小测试示例
+- `backend/app/agents/audience_insight_agent.py` — 图构建示例（显式 add_node/add_edge）
+- `backend/app/services/plan_generation_service.py` — 串行 StateGraph + checkpoint + interrupt
+- `backend/tests/test_agents/test_audience_insight_agent.py` — 最小测试示例

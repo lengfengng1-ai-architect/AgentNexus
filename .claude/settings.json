@@ -3,8 +3,20 @@
     "PreToolUse": [
       {
         "matcher": "Write|Edit",
-        "command": "/bin/bash /Users/hxq/Desktop/AgentNexus/.claude/hooks/check-opsx-change.sh \"$FILE_PATH\"",
+        "command": "/bin/bash .claude/hooks/check-opsx-change.sh \"$FILE_PATH\"",
         "description": "Block code edits without active opsx change"
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "command": "/bin/bash .claude/hooks/check-mypy.sh",
+        "description": "Type-check modified code with mypy"
+      },
+      {
+        "matcher": "Write|Edit",
+        "command": "/bin/bash .claude/hooks/check-pylint.sh",
+        "description": "Lint modified code with pylint"
       }
     ]
   }

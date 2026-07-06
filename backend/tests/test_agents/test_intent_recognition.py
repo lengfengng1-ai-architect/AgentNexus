@@ -6,8 +6,68 @@ Corresponding OpenSpec: openspec/changes/add-intent-recognition-agent/specs/inte
 import pytest
 
 from app.agents import intent_recognition_agent
-from app.agents.mock_intent_recognition_agent import mock_run_intent_recognition
 from app.schemas.intent import IntentRecognitionOutput
+
+
+async def _fake_intent(state: dict) -> dict:
+    """Deterministic mock for intent recognition; avoids live LLM calls."""
+    if not state.get("message"):
+        raise ValueError("Missing required input: message")
+    message = state.get("message", "")
+    if "娃哈哈" in message and "上海" in message:
+        return {
+            "intent": "generate_plan",
+            "confidence": 0.95,
+            "brand_input": {
+                "brand_name": "娃哈哈",
+                "category": "饮料",
+                "city": "上海",
+                "budget": 300,
+                "period": 3,
+            },
+            "missing_fields": [],
+            "reply": "",
+        }
+    if "查询" in message or "数据" in message:
+        return {
+            "intent": "query_data",
+            "confidence": 0.8,
+            "brand_input": {"city": "上海"},
+            "missing_fields": [],
+            "reply": "已识别到查询意图，正在为您查询数据。",
+        }
+    if "你好" in message:
+        return {
+            "intent": "chat",
+            "confidence": 0.9,
+            "brand_input": {},
+            "missing_fields": [],
+            "reply": "你好！欢迎使用 AllyGo 营销方案助手。",
+        }
+    if "营销方案" in message:
+        return {
+            "intent": "clarify",
+            "confidence": 0.85,
+            "brand_input": {},
+            "missing_fields": ["brand_name", "city"],
+            "reply": "请问您的品牌名称和目标城市是？",
+        }
+    if "改成" in message:
+        return {
+            "intent": "update_context",
+            "confidence": 0.9,
+            "brand_input": {"brand_name": "娃哈哈", "city": "北京"},
+            "updated_fields": {"city": "北京"},
+            "missing_fields": [],
+            "reply": "已更新目标城市为北京。",
+        }
+    return {
+        "intent": "chat",
+        "confidence": 0.5,
+        "brand_input": {},
+        "missing_fields": [],
+        "reply": "",
+    }
 
 
 @pytest.fixture(autouse=True)
@@ -16,7 +76,7 @@ def patch_intent_agent(monkeypatch):
     monkeypatch.setattr(
         intent_recognition_agent,
         "run_intent_recognition",
-        mock_run_intent_recognition,
+        _fake_intent,
     )
 
 

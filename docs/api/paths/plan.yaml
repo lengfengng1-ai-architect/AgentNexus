@@ -1,0 +1,503 @@
+# OpenSpec: 方案生成流水线
+# in_scope id: plan-generation
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "方案生成流水线"
+  description: |
+    基于 LangGraph 的方案生成流水线，包含 3 处人工审核检查点
+    （strategy_generation / execution_planning / plan_generator）。
+    通过 AsyncSqliteSaver 持久化 checkpoint，支持 approve / reject / cancel
+    人机交互语义，SSE 推送节点级和章节级事件。
+  version: "v0.1"
+  x-in-scope-ref: "plan-generation"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /plan/run:
+    post:
+      operationId: "plan_run"
+      summary: "启动方案生成流水线"
+      description: |
+        接收品牌输入，启动 LangGraph 流水线，返回 SSE 事件流。
+        每次调用会创建新的 `run_id`，通过响应头 `X-Run-Id` 返回，也会在首个
+        `workflow.start` 事件中携带。流在遇到 `interrupt_before` 检查点时
+        推送 `workflow.paused` 事件并结束，等待前端调用 approve/reject/cancel。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanRunRequest"
+      responses:
+        "200":
+          description: "SSE 事件流"
+          headers:
+            X-Run-Id:
+              description: "本次运行实例的唯一 ID，用于后续 approve/reject/cancel/status"
+              required: true
+              schema:
+                type: string
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "SSE 事件流，每帧包含 id / event / data 三行"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /plan/runs/{run_id}/approve:
+    post:
+      operationId: "plan_run_approve"
+      summary: "通过审核检查点，继续执行"
+      description: |
+        在 `workflow.paused` 事件之后调用，通过当前审核检查点。
+        允许提交编辑后的输入（`edited_input`）覆盖当前节点输入。
+        本接口返回 SSE 事件流，从 `interrupt` 位置恢复执行。
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ApproveRequest"
+      responses:
+        "200":
+          description: "SSE 事件流（从 interrupt 位置恢复）"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "SSE 事件流"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /plan/runs/{run_id}/reject:
+    post:
+      operationId: "plan_run_reject"
+      summary: "驳回审核检查点，回退到上一节点重跑"
+      description: |
+        在 `workflow.paused` 事件之后调用，驳回当前节点。
+        流水线会回退到当前节点重新执行（重跑而非跳过）。
+        `reason` 字段用于记录驳回原因，注入到重跑上下文。
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RejectRequest"
+      responses:
+        "200":
+          description: "SSE 事件流（重新执行当前节点）"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "SSE 事件流"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /plan/runs/{run_id}/cancel:
+    post:
+      operationId: "plan_run_cancel"
+      summary: "取消运行并删除 checkpoint"
+      description: |
+        终止运行实例，删除对应的 SQLite checkpoint。
+        取消后 `run_id` 不可恢复。
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "取消成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /plan/runs/{run_id}/status:
+    get:
+      operationId: "plan_run_status"
+      summary: "查询运行状态"
+      description: |
+        返回运行实例当前状态、已完成节点输出、若处于审核检查点则包含 `paused_snapshot`。
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "运行状态"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RunStatus"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    PlanRunRequest:
+      type: object
+      description: "启动方案生成的请求体，直接为品牌输入（无 wrapper）"
+      required:
+        - brand_input
+      properties:
+        brand_input:
+          type: object
+          description: "品牌输入字段集合，来自意图识别累积的结果"
+          additionalProperties: true
+
+    ApproveRequest:
+      type: object
+      description: "通过审核检查点请求"
+      properties:
+        edited_input:
+          type: object
+          nullable: true
+          description: "编辑后的节点输入；为空则使用当前 snapshot 中的输入"
+          additionalProperties: true
+
+    RejectRequest:
+      type: object
+      description: "驳回审核检查点请求"
+      required:
+        - reason
+      properties:
+        reason:
+          type: string
+          description: "驳回原因，注入到重跑上下文"
+          minLength: 1
+          maxLength: 500
+
+    CancelResponse:
+      type: object
+      description: "取消响应"
+      required:
+        - run_id
+        - status
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - canceled
+
+    PausedSnapshot:
+      type: object
+      description: "审核检查点的快照：即将执行节点的输入视图"
+      required:
+        - node_id
+        - node_input
+      properties:
+        node_id:
+          type: string
+          description: "即将执行的节点 ID"
+          enum:
+            - strategy_generation
+            - execution_planning
+            - plan_generator
+        node_input:
+          type: object
+          description: "即将执行节点的输入 payload"
+          additionalProperties: true
+        upstream_outputs:
+          type: object
+          description: "已完成上游节点的输出"
+          additionalProperties: true
+
+    RunStatus:
+      type: object
+      description: "运行状态"
+      required:
+        - run_id
+        - status
+      properties:
+        run_id:
+          type: string
+        status:
+          type: string
+          enum:
+            - running
+            - paused
+            - completed
+            - failed
+            - canceled
+        current_node:
+          type: string
+          nullable: true
+          description: "当前正在执行或即将执行的节点 ID"
+        outputs:
+          type: object
+          description: "已完成节点的输出"
+          additionalProperties: true
+        paused_snapshot:
+          nullable: true
+          allOf:
+            - $ref: "#/components/schemas/PausedSnapshot"
+          description: "仅当 status=paused 时存在"
+        error:
+          type: string
+          nullable: true
+          description: "失败时的错误消息"
+
+    # ── SSE 事件负载 schemas ──
+    SSEEventBase:
+      type: object
+      description: "所有 SSE 事件的公共字段"
+      required:
+        - event
+        - run_id
+      properties:
+        event:
+          type: string
+          description: "事件类型"
+        run_id:
+          type: string
+          description: "运行实例 ID"
+
+    WorkflowStartEvent:
+      description: "工作流启动事件"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          properties:
+            event:
+              type: string
+              enum: [workflow.start]
+
+    NodeStartEvent:
+      description: "节点开始执行事件"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          required: [node_id]
+          properties:
+            event:
+              type: string
+              enum: [node.start]
+            node_id:
+              type: string
+            label:
+              type: string
+              description: "节点中文标签"
+
+    NodeLogEvent:
+      description: "节点日志事件"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          required: [node_id, message]
+          properties:
+            event:
+              type: string
+              enum: [node.log]
+            node_id:
+              type: string
+            message:
+              type: string
+
+    NodeCompleteEvent:
+      description: "节点完成事件"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          required: [node_id]
+          properties:
+            event:
+              type: string
+              enum: [node.complete]
+            node_id:
+              type: string
+            output:
+              type: object
+              description: "节点输出"
+              additionalProperties: true
+
+    NodeFailedEvent:
+      description: "节点失败事件"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          required: [node_id, message]
+          properties:
+            event:
+              type: string
+              enum: [node.failed]
+            node_id:
+              type: string
+            message:
+              type: string
+
+    WorkflowPausedEvent:
+      description: "工作流在审核检查点暂停事件"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          required: [snapshot]
+          properties:
+            event:
+              type: string
+              enum: [workflow.paused]
+            snapshot:
+              $ref: "#/components/schemas/PausedSnapshot"
+
+    ChapterStartEvent:
+      description: "章节开始生成事件（plan_generator 内部）"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          required: [index, title, subtitle]
+          properties:
+            event:
+              type: string
+              enum: [chapter.start]
+            index:
+              type: integer
+              description: "章节序号（0-based）"
+              minimum: 0
+              maximum: 8
+            title:
+              type: string
+            subtitle:
+              type: string
+
+    ChapterCompleteEvent:
+      description: "章节完成事件"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          required: [index, title, content]
+          properties:
+            event:
+              type: string
+              enum: [chapter.complete]
+            index:
+              type: integer
+              minimum: 0
+              maximum: 8
+            title:
+              type: string
+            subtitle:
+              type: string
+            content:
+              type: string
+              description: "LLM 生成的章节正文（Markdown）"
+
+    WorkflowCompleteEvent:
+      description: "工作流成功完成事件"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          properties:
+            event:
+              type: string
+              enum: [workflow.complete]
+            output:
+              type: object
+              description: "plan_generator 的最终输出"
+              additionalProperties: true
+
+    WorkflowCanceledEvent:
+      description: "工作流被取消事件"
+      allOf:
+        - $ref: "#/components/schemas/SSEEventBase"
+        - type: object
+          properties:
+            event:
+              type: string
+              enum: [workflow.canceled]
+
+    # ── 共享错误模型 ──
+    APIError:
+      type: object
+      description: "统一错误响应"
+      properties:
+        detail:
+          type: string
+          description: "人类可读的错误描述"
+        code:
+          type: string
+          description: "错误码"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: "出错字段名"
+              message:
+                type: string
+                description: "字段级错误说明"
+      required:
+        - detail
+        - code
+
+  responses:
+    BadRequest:
+      description: "请求参数错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    NotFound:
+      description: "资源不存在（run_id 未知或已删除）"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    ValidationError:
+      description: "字段校验失败"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    InternalError:
+      description: "服务器内部错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"

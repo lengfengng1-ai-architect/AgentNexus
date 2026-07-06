@@ -4,20 +4,17 @@ Corresponding in_scope ID: market-analysis
 """
 
 import json
-import os
-import re
-from pathlib import Path
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
+from langgraph.graph import END, StateGraph
+from typing_extensions import TypedDict
 
 from app.agents.llm_utils import build_chat_model
 from app.agents.registry import register
-from app.config.settings import settings
 from app.schemas.market_analysis import (
     CompetitorItem,
-    EvidenceItem,
     MarketDefinition,
     MarketResearchResponse,
     MarketResearchResult,
@@ -40,9 +37,14 @@ NODE_LABELS = {
 
 # ── Helpers ──
 
+_model = None
+
 
 def _build_model():
-    return build_chat_model()
+    global _model
+    if _model is None:
+        _model = build_chat_model()
+    return _model
 
 
 def _render(name: str, **kw) -> str:
@@ -51,11 +53,11 @@ def _render(name: str, **kw) -> str:
     return env.get_template(f"{name}.md.j2").render(**kw)
 
 
-def _llm_json(system_prompt: str, user_msg: str) -> dict:
-    msg = _build_model().invoke([
+async def _llm_json(system_prompt: str, user_msg: str) -> dict:
+    msg = (await _build_model().ainvoke([
         SystemMessage(content=system_prompt),
         HumanMessage(content=user_msg),
-    ])
+    ]))
     raw = msg.content.strip()
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1]
@@ -70,63 +72,63 @@ def _llm_json(system_prompt: str, user_msg: str) -> dict:
 
 # ── Public node functions (extracted for streaming) ──
 
-def call_node_define(market_name: str, category: str) -> dict:
+async def call_node_define(market_name: str, category: str) -> dict:
     """Node 1: market definition → returns dict with included_scope, etc."""
-    return _llm_json(
+    return await _llm_json(
         _render("research_define", market_name=market_name, category=category),
         f"请对「{market_name}」进行市场定义和分析。",
     )
 
 
-def call_node_size(market_name: str, definition_dict: dict) -> dict:
+async def call_node_size(market_name: str, definition_dict: dict) -> dict:
     """Node 2: market size → returns dict with tam/sam/som/cagr."""
-    return _llm_json(
+    return await _llm_json(
         _render("research_size", market_name=market_name,
                 definition_context=json.dumps(definition_dict, ensure_ascii=False)),
         f"估算「{market_name}」的市场规模。",
     )
 
 
-def call_node_trends(market_name: str, size_dict: dict) -> dict:
+async def call_node_trends(market_name: str, size_dict: dict) -> dict:
     """Node 3: trend signals → returns dict or list of signals."""
-    return _llm_json(
+    return await _llm_json(
         _render("research_trends", market_name=market_name,
                 size_context=json.dumps(size_dict, ensure_ascii=False)),
         f"扫描「{market_name}」的趋势信号。",
     )
 
 
-def call_node_users(market_name: str, trends_dict: dict) -> dict:
+async def call_node_users(market_name: str, trends_dict: dict) -> dict:
     """Node 4: target users → returns dict or list of user segments."""
-    return _llm_json(
+    return await _llm_json(
         _render("research_users", market_name=market_name,
                 trend_context=json.dumps(trends_dict, ensure_ascii=False)),
         f"分析「{market_name}」的用户画像。",
     )
 
 
-def call_node_competitors(market_name: str, users_dict: dict) -> dict:
+async def call_node_competitors(market_name: str, users_dict: dict) -> dict:
     """Node 5: competitors → returns dict or list of competitors."""
-    return _llm_json(
+    return await _llm_json(
         _render("research_competitors", market_name=market_name,
                 context=json.dumps(users_dict, ensure_ascii=False)),
         f"梳理「{market_name}」的竞争格局。",
     )
 
 
-def call_node_assess(market_name: str, competitors_dict: dict) -> dict:
+async def call_node_assess(market_name: str, competitors_dict: dict) -> dict:
     """Node 6: opportunity assessment → returns dict with scores."""
-    return _llm_json(
+    return await _llm_json(
         _render("research_assess", market_name=market_name,
                 context=json.dumps(competitors_dict, ensure_ascii=False)),
         f"评估「{market_name}」的市场机会。",
     )
 
 
-def call_node_synthesize(market_name: str, d1: dict, d2: dict, d3: dict,
-                         d4: dict, d5: dict, d6: dict) -> str:
+async def call_node_synthesize(market_name: str, d1: dict, d2: dict, d3: dict,
+                                 d4: dict, d5: dict, d6: dict) -> str:
     """Node 7: synthesize full report → returns markdown string."""
-    msg = _build_model().invoke([
+    msg = await _build_model().ainvoke([
         SystemMessage(content=_render("research_synthesize",
             market_name=market_name,
             definition=json.dumps(d1, ensure_ascii=False),
@@ -185,16 +187,99 @@ def assemble_result(market_name: str, category: str,
     return MarketResearchResponse(result=result, confidence="medium")
 
 
+class MarketAnalysisState(TypedDict):
+    """State for the market analysis graph."""
+    market_name: str
+    category: str
+    definition: dict
+    size: dict
+    trends: dict
+    users: dict
+    competitors: dict
+    assess: dict
+    report: str
+    result: dict | None
+
+
+# ── Graph node wrappers ──
+
+
+async def _define_node(state: MarketAnalysisState) -> dict:
+    return {"definition": await call_node_define(state["market_name"], state["category"])}
+
+
+async def _size_node(state: MarketAnalysisState) -> dict:
+    return {"size": await call_node_size(state["market_name"], state["definition"])}
+
+
+async def _trends_node(state: MarketAnalysisState) -> dict:
+    return {"trends": await call_node_trends(state["market_name"], state["size"])}
+
+
+async def _users_node(state: MarketAnalysisState) -> dict:
+    return {"users": await call_node_users(state["market_name"], state["trends"])}
+
+
+async def _competitors_node(state: MarketAnalysisState) -> dict:
+    return {"competitors": await call_node_competitors(state["market_name"], state["users"])}
+
+
+async def _assess_node(state: MarketAnalysisState) -> dict:
+    return {"assess": await call_node_assess(state["market_name"], state["competitors"])}
+
+
+async def _synthesize_node(state: MarketAnalysisState) -> dict:
+    d1 = state["definition"]
+    d2 = state["size"]
+    d3 = state["trends"]
+    d4 = state["users"]
+    d5 = state["competitors"]
+    d6 = state["assess"]
+    report = await call_node_synthesize(state["market_name"], d1, d2, d3, d4, d5, d6)
+    return {"report": report, "result": assemble_result(state["market_name"], state["category"], d1, d2, d3, d4, d5, d6, report).model_dump()}
+
+
+def _build_state_graph() -> StateGraph:
+    """Build graph with explicit add_node/add_edge — no for-loop indirection.
+
+    ponytail: 7-node serial graph is small enough that a for-loop over
+    _GRAPH_NODES makes the topology harder to read, not easier.
+    """
+    g = StateGraph(MarketAnalysisState)
+
+    g.add_node("define", _define_node)
+    g.add_node("size", _size_node)
+    g.add_node("trends", _trends_node)
+    g.add_node("users", _users_node)
+    g.add_node("competitors", _competitors_node)
+    g.add_node("assess", _assess_node)
+    g.add_node("synthesize", _synthesize_node)
+
+    g.set_entry_point("define")
+    g.add_edge("define", "size")
+    g.add_edge("size", "trends")
+    g.add_edge("trends", "users")
+    g.add_edge("users", "competitors")
+    g.add_edge("competitors", "assess")
+    g.add_edge("assess", "synthesize")
+    g.add_edge("synthesize", END)
+
+    return g.compile()
+
+
+_graph = _build_state_graph()
+
+
 # ── Synchronous all-at-once (for /market-analysis sync endpoint) ──
 
 async def research_market(market_name: str, category: str) -> MarketResearchResponse:
-    d1 = call_node_define(market_name, category)
-    d2 = call_node_size(market_name, d1)
-    d3 = call_node_trends(market_name, d2)
-    d4 = call_node_users(market_name, d3)
-    d5 = call_node_competitors(market_name, d4)
-    d6 = call_node_assess(market_name, d5)
-    report = call_node_synthesize(market_name, d1, d2, d3, d4, d5, d6)
+    d1 = await call_node_define(market_name, category)
+    d2 = await call_node_size(market_name, d1)
+    d3 = await call_node_trends(market_name, d2)
+    d4 = await call_node_users(market_name, d3)
+    d5 = await call_node_competitors(market_name, d4)
+    d6 = await call_node_assess(market_name, d5)
+    report = await call_node_synthesize(market_name, d1, d2, d3, d4, d5, d6)
     return assemble_result(market_name, category, d1, d2, d3, d4, d5, d6, report)
 
 

@@ -233,8 +233,6 @@ export function useChat() {
   const prefillInput = useCallback((text: string) => { dispatch({ type: 'SET_INPUT', value: text }) }, [])
 
   const latestBrandInput = getLatestBrandInput(state.messages)
-  const hasPendingGeneratePlan = state.messages.some(m => m.canGeneratePlan && !m.isComplete)
-
   return {
     messages: state.messages,
     inputValue: state.inputValue,

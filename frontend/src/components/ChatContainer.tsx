@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useChat } from '../hooks/useChat'
-import type { BrandInput, ChatMessage, FieldKey } from '../types/chat'
+import type { BrandInput, FieldKey } from '../types/chat'
 import { ChatBubble } from './ChatBubble'
 import { ChatInput } from './ChatInput'
 import { ErrorBar } from './ErrorBar'

@@ -5,19 +5,6 @@ interface PlanPreviewProps {
   chapters: PlanChapter[]
 }
 
-const TAB_LABELS = [
-  '概览',
-  '1. 项目概述',
-  '2. 市场分析',
-  '3. 营销策略',
-  '4. 执行方案',
-  '5. 数字化运营',
-  '6. 达人体系',
-  '7. 时间规划',
-  '8. KPI',
-  '9. 预算',
-] as const
-
 function ChevronIcon({ open }: { open: boolean }) {
   return (
     <svg
