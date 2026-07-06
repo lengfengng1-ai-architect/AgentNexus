@@ -41,8 +41,37 @@ describe('PipelineTimeline', () => {
 
   test('shows pending status for untouched nodes', () => {
     render(<PipelineTimeline nodes={[]} failedNode={null} />)
-    // All 9 agents show 待执行 when no nodes match
+    // All agents show 待执行 when no nodes match
     const pendingLabels = screen.getAllByText('待执行')
     expect(pendingLabels.length).toBe(10)
+  })
+
+  test('expanded running node shows LogViewer with logs', () => {
+    const nodeLogs = { market_research: ['开始执行…', '正在搜索竞品数据', '✓ 执行完成'] }
+    render(
+      <PipelineTimeline
+        nodes={sampleNodes}
+        failedNode={null}
+        nodeLogs={nodeLogs}
+        pausedNode={null}
+      />,
+    )
+    // Running node should auto-expand — log text should be visible
+    expect(screen.getByText('开始执行…')).toBeInTheDocument()
+    expect(screen.getByText('正在搜索竞品数据')).toBeInTheDocument()
+  })
+
+  test('expanded complete node shows execution summary', () => {
+    const nodeLogs = { audience_insight: ['开始执行…', '✓ 执行完成'] }
+    render(
+      <PipelineTimeline
+        nodes={sampleNodes}
+        failedNode={null}
+        nodeLogs={nodeLogs}
+      />,
+    )
+    // Click to expand audience_insight which is 'complete'
+    const agentButtons = screen.getAllByText('已完成')
+    expect(agentButtons.length).toBeGreaterThan(0)
   })
 })

@@ -139,4 +139,60 @@ describe('usePlanRun', () => {
       expect(result.current.runId).toBe('leak-test')
     })
   })
+
+  describe('nodeLogs default message generation', () => {
+    test('generates default message for node.start event', async () => {
+      const { result } = renderHook(() => usePlanRun())
+      // Simulate SSE events flowing in via internal dispatch
+      // We need to trigger the reducer by dispatching APPEND_LOG events
+      // The hook's processEvent is internal — test nodeLogs computed output directly
+      mockStartPlanRun.mockResolvedValue({
+        runId: 'log-test-1',
+        stream: new ReadableStream({
+          async start(controller) {
+            const encoder = new TextEncoder()
+            // Simulate workflow.start
+            controller.enqueue(encoder.encode('id: 1\nevent: workflow.start\ndata: {"run_id":"log-test-1"}\n\n'))
+            // Simulate node.start without message
+            controller.enqueue(encoder.encode('id: 2\nevent: node.start\ndata: {"run_id":"log-test-1","node_id":"market_research"}\n\n'))
+            // Simulate node.complete without message
+            controller.enqueue(encoder.encode('id: 3\nevent: node.complete\ndata: {"run_id":"log-test-1","node_id":"market_research"}\n\n'))
+            controller.close()
+          },
+        }),
+      })
+
+      await act(async () => {
+        await result.current.start({ brand_name: 'X' })
+      })
+
+      expect(result.current.nodeLogs['market_research']).toBeDefined()
+      expect(result.current.nodeLogs['market_research'].length).toBe(2)
+      expect(result.current.nodeLogs['market_research'][0]).toBe('开始执行…')
+      expect(result.current.nodeLogs['market_research'][1]).toBe('✓ 执行完成')
+    })
+
+    test('handles node.failed without message field', async () => {
+      const { result } = renderHook(() => usePlanRun())
+      mockStartPlanRun.mockResolvedValue({
+        runId: 'log-test-2',
+        stream: new ReadableStream({
+          async start(controller) {
+            const encoder = new TextEncoder()
+            controller.enqueue(encoder.encode('id: 1\nevent: workflow.start\ndata: {"run_id":"log-test-2"}\n\n'))
+            controller.enqueue(encoder.encode('id: 2\nevent: node.start\ndata: {"run_id":"log-test-2","node_id":"market_research"}\n\n'))
+            controller.enqueue(encoder.encode('id: 3\nevent: node.failed\ndata: {"run_id":"log-test-2","node_id":"market_research"}\n\n'))
+            controller.close()
+          },
+        }),
+      })
+
+      await act(async () => {
+        await result.current.start({ brand_name: 'X' })
+      })
+
+      expect(result.current.nodeLogs['market_research']).toBeDefined()
+      expect(result.current.nodeLogs['market_research'][1]).toContain('执行失败')
+    })
+  })
 })

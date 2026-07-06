@@ -14,7 +14,7 @@ from typing import Any
 from jinja2 import Environment, FileSystemLoader
 from langgraph.types import StreamWriter
 
-from app.agents.llm_utils import invoke_json
+from app.agents.llm_utils import write_log,  invoke_json
 from app.agents.registry import register
 from app.schemas.plan_generation import (
     PLAN_CHAPTER_SPEC,
@@ -60,6 +60,7 @@ async def run_plan_generator(
 
     for index, (title, subtitle) in enumerate(PLAN_CHAPTER_SPEC):
         logger.info("[plan_generator] chapter %d/%d: %s", index + 1, total, title)
+        write_log("plan_generator", f"🤖 正在生成第 {index + 1} 章：{title}…")
         if writer is not None:
             writer(
                 {
@@ -117,6 +118,7 @@ async def run_plan_generator(
             )
 
     logger.info("[plan_generator] all %d chapters done for %s", total, brand_name)
+    write_log("plan_generator", "✓ 方案生成完成")
     return PlanGeneratorOutput(chapters=chapters).model_dump()
 
 

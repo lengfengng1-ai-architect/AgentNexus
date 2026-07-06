@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import type { PlanNode } from '../types/plan'
 
 interface PipelineTimelineProps {
@@ -90,20 +90,83 @@ function dotClass(status: PlanNode['status'], isPaused: boolean): string {
   }
 }
 
+function formatDuration(seconds: number): string {
+  if (seconds < 60) return `${seconds}秒`
+  const m = Math.floor(seconds / 60)
+  const s = seconds % 60
+  return s > 0 ? `${m}分${s}秒` : `${m}分钟`
+}
+
+/** Terminal-style log viewer: dark background, monospace, vertical scroll, auto-scroll */
+function LogViewer({ logs, isRunning }: { logs: string[]; isRunning: boolean }) {
+  const bottomRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = bottomRef.current?.parentElement
+    if (el) {
+      el.scrollTop = el.scrollHeight
+    }
+  }, [logs.length])
+
+  if (logs.length === 0) {
+    return (
+      <div className="log-viewer" style={{
+        background: '#f8fafc', borderRadius: 8,
+        padding: '12px 16px', maxHeight: 200, overflowY: 'auto',
+        fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+        fontSize: 12, lineHeight: 1.7, color: '#94a3b8',
+      }}>
+        <span style={{ color: '#94a3b8' }}>等待执行…</span>
+      </div>
+    )
+  }
+
+  return (
+    <div className="log-viewer" style={{
+      background: '#f8fafc', borderRadius: 8, border: '1px solid #e2e8f0',
+      padding: '12px 16px', maxHeight: 200, overflowY: 'auto',
+      fontFamily: "'SF Mono', 'Fira Code', 'Cascadia Code', monospace",
+      fontSize: 12, lineHeight: 1.7, color: '#334155',
+    }}>
+      {logs.map((msg, i) => {
+        const prefix = isRunning && i === logs.length - 1 ? '▸ ' : '  '
+        const color =
+          msg.includes('✗') ? '#dc2626' :
+          msg.includes('✓') ? '#059669' :
+          msg.includes('等待') ? '#d97706' :
+          msg.includes('开始') ? '#2563eb' :
+          msg.includes('🔍') ? '#2563eb' :
+          msg.includes('📄') || msg.includes('🌐') ? '#7c3aed' :
+          msg.includes('🤖') ? '#0891b2' :
+          msg.includes('⚠️') || msg.includes('⏱️') ? '#d97706' :
+          '#334155'
+        return (
+          <div key={i} style={{ color, whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>
+            {prefix}{msg}
+          </div>
+        )
+      })}
+      <div ref={bottomRef} />
+    </div>
+  )
+}
+
 export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, autoMode = false, isLoading = false, isConnected = false, onApprove, onRerun  }: PipelineTimelineProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
 
-  // Auto-expand the paused node
+  // Auto-expand running or paused node
   useEffect(() => {
-    if (pausedNode) {
+    const runningNode = nodes.find(n => n.status === 'running')
+    const target = runningNode?.id ?? pausedNode
+    if (target) {
       setExpandedSteps(prev => {
-        if (prev.has(pausedNode)) return prev
+        if (prev.has(target)) return prev
         const next = new Set(prev)
-        next.add(pausedNode)
+        next.add(target)
         return next
       })
     }
-  }, [pausedNode])
+  }, [nodes, pausedNode])
 
   const toggleStep = (nodeId: string) => {
     setExpandedSteps((prev) => {
@@ -140,10 +203,18 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, auto
             const sClass = node ? stepClass(node, failedNode) : 'pending'
             const isExpanded = node ? expandedSteps.has(node.id) : false
             const isPaused = pausedNode === agent.id
+            const isRunning = status === 'running'
+            const isComplete = status === 'complete' || status === 'completed'
+            const logs = nodeLogs?.[agent.id] ?? []
+
+            // Duration from node timestamps
+            const duration = (node?.startedAt && node?.completedAt)
+              ? Math.round((node.completedAt - node.startedAt) / 1000)
+              : null
 
             return (
               <div key={agent.id} data-agent-id={agent.id} className={`pipeline-step ${sClass}`}>
-                <div className={`step-dot ${dotClass(status, isPaused)} ${status === 'running' ? 'ripple' : ''}`}>
+                <div className={`step-dot ${dotClass(status, isPaused)} ${isRunning ? 'ripple' : ''}`}>
                   <span className="leading-none">{agent.icon}</span>
                 </div>
 
@@ -166,30 +237,27 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, auto
 
                   {node && isExpanded && (
                     <div className="mb-3 mt-0 rounded-lg border border-gray-200 bg-gray-50 p-4">
-                      <div className="mb-3 text-xs font-bold text-gray-700">执行摘要</div>
-                      <div className="mb-3 text-xs leading-relaxed text-gray-600">
-                        {(() => {
-                          const logs = nodeLogs?.[node.id]
-                          if (logs && logs.length > 0) {
-                            return logs.map((msg, i) => (
-                              <p key={i}>{'•'} {msg}</p>
-                            ))
-                          }
-                          if (node.id === failedNode || node.status === 'failed') {
-                            return <p>执行失败</p>
-                          }
-                          if (node.status === 'running') {
-                            return <p>执行中...</p>
-                          }
-                          if (node.status === 'complete' || status === 'complete') {
-                            return <p>执行完成</p>
-                          }
-                          return <p>待执行</p>
-                        })()}
-                      </div>
+                      {/* Terminal-style logs */}
+                      <LogViewer logs={logs} isRunning={isRunning} />
 
-                      {!autoMode && (isPaused || node.status === 'complete') && onApprove && onRerun && (
-                        <div className="flex gap-2">
+                      {/* Execution summary — shown after completion or pause */}
+                      {logs.length > 0 && !isRunning && !isPaused && (
+                        <div className="mt-3 border-t border-gray-200 pt-3">
+                          <div className="mb-1.5 text-xs font-bold text-gray-700">
+                            {isComplete ? '✅ 执行摘要' : '📋 执行摘要'}
+                          </div>
+                          <div className="text-xs leading-relaxed text-gray-600">
+                            <span>
+                              状态：{isComplete ? '已完成' : '已暂停'}
+                              {duration !== null && ` · 耗时：${formatDuration(duration)}`}
+                              {' · '}日志：共 {logs.length} 条
+                            </span>
+                          </div>
+                        </div>
+                      )}
+
+                      {!autoMode && (isPaused || isComplete) && onApprove && onRerun && (
+                        <div className="mt-3 flex gap-2">
                           <button
                             type="button"
                             onClick={(e) => { e.stopPropagation(); onRerun() }}
@@ -256,6 +324,19 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, auto
         @keyframes pipeline-ripple {
           0% { transform: scale(1); opacity: 1; }
           100% { transform: scale(1.6); opacity: 0; }
+        }
+        .log-viewer::-webkit-scrollbar {
+          width: 4px;
+        }
+        .log-viewer::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .log-viewer::-webkit-scrollbar-thumb {
+          background: #cbd5e1;
+          border-radius: 4px;
+        }
+        .log-viewer::-webkit-scrollbar-thumb:hover {
+          background: #94a3b8;
         }
       `}</style>
     </section>
