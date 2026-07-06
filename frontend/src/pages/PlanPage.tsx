@@ -413,7 +413,7 @@ export function PlanPage() {
               导出 PDF
             </button>
             <button
-              onClick={() => exportWord(displayedChapters)}
+              onClick={() => exportPdf(displayedChapters)}
               style={{
                 padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600,
                 cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
