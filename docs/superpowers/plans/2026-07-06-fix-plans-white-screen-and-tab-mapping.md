@@ -25,9 +25,9 @@
 
 | 文件 | 改动 | 职责 |
 |------|------|------|
-| `frontend/src/hooks/usePlanRun.ts` | 修改 | 改 `processEvent` 加 try/catch；`tabAgentId` fallback 到 `pausedNode` |
-| `frontend/src/pages/PlanPage.tsx` | 修改 | `scrollToAgent` 加 height 防御；顶层加 `key={runId ?? 'idle'}` |
-| `frontend/src/__tests__/usePlanRun.test.tsx` | 修改 | 加 3 个新测试用例 |
+| `frontend/src/hooks/usePlanRun.ts` | 修改 | 改 `processEvent` 加 try/catch（Task 2） |
+| `frontend/src/pages/PlanPage.tsx` | 修改 | `scrollToAgent` 加 height 防御（Task 1）；tab 高亮 fallback 到 `pausedNode`（Task 3）；顶层加 `key={runId ?? 'idle'}`（Task 4） |
+| `frontend/src/__tests__/usePlanRun.test.tsx` | 修改 | 加 3 个新测试用例（Task 5） |
 
 ---
 

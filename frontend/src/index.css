@@ -35,13 +35,14 @@ body,
 @supports (height: 100dvh) { :root { --app-height: 100dvh; } }
 
 html, body, #root {
-  overflow: hidden;
   height: var(--app-height);
 }
 
 #root {
   display: flex;
   flex-direction: column;
+  min-height: 100dvh;
+  height: 100dvh;
 }
 
 @media (max-width: 1024px) {

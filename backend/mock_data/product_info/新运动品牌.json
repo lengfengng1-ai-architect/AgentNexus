@@ -1,17 +1,23 @@
 {
   "identity": {
     "product_name": {
-      "value": null,
+      "value": "Girlfriend Collective",
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
-      "method": "extracted",
-      "quote": null
+      "method": "quoted",
+      "quote": "这个新运动服品牌Girlfriend Collective的广告"
     },
     "brand": {
-      "value": null,
+      "value": "Girlfriend Collective",
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted",
       "quote": null
@@ -19,23 +25,32 @@
     "manufacturer": {
       "value": null,
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted",
       "quote": null
     },
     "industry": {
-      "value": "运动品牌",
+      "value": "运动服饰",
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted",
       "quote": null
     },
     "category": {
-      "value": null,
+      "value": "运动服",
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted",
       "quote": null
@@ -43,17 +58,23 @@
   },
   "official_description": {
     "description": {
-      "value": null,
+      "value": "Grilfriend Collective 想做的是时尚的运动服，使用100%可回收瓶子作为原料，在越南生产，并将环保理念融入产品。",
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted",
-      "quote": null
+      "quote": "Grilfriend Collective 想做的是时尚的运动服"
     },
     "tagline": {
       "value": null,
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted",
       "quote": null
@@ -61,46 +82,106 @@
     "statement": {
       "value": null,
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted",
       "quote": null
     }
   },
-  "features": [],
+  "features": [
+    {
+      "name": "免费赠送紧身裤",
+      "category": "促销策略",
+      "description": "通过Facebook等社交媒体账号注册即可获得一条免费紧身裤，邮费也无需支付。",
+      "evidence": [
+        "https://www.jiemian.com/article/637495.html"
+      ]
+    },
+    {
+      "name": "环保原料",
+      "category": "产品材质",
+      "description": "使用100%可回收瓶子作为原料，在越南生产产品。",
+      "evidence": [
+        "https://www.jiemian.com/article/637495.html"
+      ]
+    },
+    {
+      "name": "设计师团队",
+      "category": "产品研发",
+      "description": "挖来了Lululemon和Acne的设计团队主持产品研发。",
+      "evidence": [
+        "https://www.jiemian.com/article/637495.html"
+      ]
+    },
+    {
+      "name": "定价较低",
+      "category": "市场策略",
+      "description": "紧身裤定价58美元到68美元，市面上相似款为100美元左右。",
+      "evidence": [
+        "https://www.jiemian.com/article/637495.html"
+      ]
+    }
+  ],
   "specifications": {
-    "value": {},
+    "value": {
+      "产品类型": "紧身裤（促销品）",
+      "原料": "100%可回收瓶子",
+      "产地": "越南",
+      "定价": "58美元到68美元（正式发布后）"
+    },
     "sources": [
-      "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+      "https://www.jiemian.com/article/637495.html",
+      "https://www.bigants.net/brand-story",
+      "https://www.cnpp.cn/china/2026/list_6490.html",
+      "https://m.suning.com/dgzt/279vo.html"
     ],
     "method": "extracted"
   },
   "availability": {
     "status": {
-      "value": "unknown",
+      "value": "预售（2016年9月正式发布）",
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted",
       "quote": null
     },
-    "pricing": [],
+    "pricing": [
+      {
+        "label": "紧身裤",
+        "price": "$58 - $68",
+        "currency": "USD",
+        "source": "https://www.jiemian.com/article/637495.html"
+      }
+    ],
     "available_regions": {
       "value": [
-        "中国"
+        "美国（总部西雅图）"
       ],
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted"
     },
     "access_model": {
-      "value": "线下零售",
+      "value": "线上直销",
       "sources": [
-        "http://www.news.cn/fashion/20240712/e0cfb654d077457bba7ae9eb6a646ceb/c.html"
+        "https://www.jiemian.com/article/637495.html",
+        "https://www.bigants.net/brand-story",
+        "https://www.cnpp.cn/china/2026/list_6490.html",
+        "https://m.suning.com/dgzt/279vo.html"
       ],
       "method": "extracted",
-      "quote": "新开业的门店将以全新的设计语言诠释店面形象，对店面布局、产品陈列及购物氛围加以优化。迪卡侬未来1年到2年，计划每年在中国新开20家至30家门店。"
+      "quote": null
     }
   }
 }
