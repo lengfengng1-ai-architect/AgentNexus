@@ -7,6 +7,8 @@ import { PlanLogStream } from './PlanLogStream'
 import { PlanPreview } from './PlanPreview'
 import { PipelineTimeline } from './PipelineTimeline'
 
+import { IntentTestPage } from './IntentTestPage'
+
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
 const RUN_ID_KEY = 'allygo_plan_run_id'
@@ -38,6 +40,7 @@ interface PlanFormData {
 }
 
 export function PlanPage() {
+  const [showIntentTest, setShowIntentTest] = useState(false)
   const {
     status,
     nodes,
@@ -412,7 +415,22 @@ export function PlanPage() {
           display: 'flex', alignItems: 'center', justifyContent: 'space-between',
           padding: '0 28px', flexShrink: 0,
         }}>
-          <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', color: '#0f172a' }}>营销方案工作台</div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+            <span style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', color: '#0f172a' }}>
+              {showIntentTest ? '意图识别测试' : '营销方案工作台'}
+            </span>
+            <button
+              onClick={() => setShowIntentTest(v => !v)}
+              style={{
+                padding: '4px 12px', borderRadius: 12, fontSize: 11, fontWeight: 600,
+                cursor: 'pointer', border: '1px solid #d1d5db',
+                background: showIntentTest ? '#1e40af' : '#fff',
+                color: showIntentTest ? '#fff' : '#374151',
+              }}
+            >
+              意图测试
+            </button>
+          </div>
           <div style={{ display: 'flex', gap: 10 }}>
             <button
               onClick={() => window.print()}
@@ -448,31 +466,36 @@ export function PlanPage() {
           </div>
         </header>
 
-        <nav style={{
-          height: 52, background: '#fff', borderBottom: '1px solid #e2e8f0',
-          display: 'flex', alignItems: 'center', gap: 4, padding: '0 28px', flexShrink: 0,
-        }}
-        >
-          {TABS.map(t => (
-            <button
-              key={t.idx}
-              ref={el => { (tabRefs.current as (HTMLButtonElement | null)[])[t.idx] = el }}
-              onClick={() => { setActiveTab(t.idx); scrollToChapter(t.idx) }}
-              style={{
-                padding: '8px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
-                cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
-                background: activeTab === t.idx ? '#1e40af' : 'transparent',
-                color: activeTab === t.idx ? '#fff' : '#475569',
-              }}
-            >
-              {t.label}
-            </button>
-          ))}
-        </nav>
+        {!showIntentTest && (
+          <nav style={{
+            height: 52, background: '#fff', borderBottom: '1px solid #e2e8f0',
+            display: 'flex', alignItems: 'center', gap: 4, padding: '0 28px', flexShrink: 0,
+          }}
+          >
+            {TABS.map(t => (
+              <button
+                key={t.idx}
+                ref={el => { (tabRefs.current as (HTMLButtonElement | null)[])[t.idx] = el }}
+                onClick={() => { setActiveTab(t.idx); scrollToChapter(t.idx) }}
+                style={{
+                  padding: '8px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
+                  cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
+                  background: activeTab === t.idx ? '#1e40af' : 'transparent',
+                  color: activeTab === t.idx ? '#fff' : '#475569',
+                }}
+              >
+                {t.label}
+              </button>
+            ))}
+          </nav>
+        )}
 
-        <div style={{ flexShrink: 0 }}><PlanLogStream logs={logs} /></div>
+        {!showIntentTest && <div style={{ flexShrink: 0 }}><PlanLogStream logs={logs} /></div>}
 
-        <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#fafbfc' }}>
+        <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: showIntentTest ? 0 : 28, background: '#fafbfc' }}>
+          {showIntentTest ? (
+            <IntentTestPage />
+          ) : (
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             {auditPanel}
             <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} />
@@ -481,6 +504,7 @@ export function PlanPage() {
               <div id="actions-anchor"><PlanActionCards actions={actionItems} /></div>
             )}
           </div>
+          )}
         </div>
       </main>
 
