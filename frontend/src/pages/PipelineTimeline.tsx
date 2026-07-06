@@ -240,7 +240,6 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, auto
                       {/* Terminal-style logs */}
                       <LogViewer logs={logs} isRunning={isRunning} />
 
-                      {/* Execution summary — shown after completion or pause */}
                       {logs.length > 0 && !isRunning && !isPaused && (
                         <div className="mt-3 border-t border-gray-200 pt-3">
                           <div className="mb-1.5 text-xs font-bold text-gray-700">

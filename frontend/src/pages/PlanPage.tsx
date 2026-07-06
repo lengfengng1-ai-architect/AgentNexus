@@ -90,6 +90,7 @@ export function PlanPage() {
   }))
 
   const [autoMode, setAutoMode] = useState(false)
+  const userInteractedRef = useRef(false)
 
   const TABS = [
     { idx: 0, label: '概览', agentId: '' },
@@ -105,14 +106,35 @@ export function PlanPage() {
     { idx: 10, label: '方案生成', agentId: 'plan_generator' },
   ]
 
-  // Auto-highlight tab based on running/paused agent.
-  // 双源查找：先从 nodes 数组里找 running/paused 节点；
-  // 若 nodes 还没更新到（paused 事件刚到）则 fallback 到 pausedNode 单值
-  const activeAgentId =
-    nodes.find(n => n.status === 'running' || n.status === 'paused')?.id
+  // Agent 运行时自动高亮对应 tab（仅在用户未手动点击时生效）
+  const runningAgentId =
+    nodes.find(n => n.status === 'running')?.id
     ?? pausedNode
     ?? null
+  const runningTabIndex = runningAgentId
+    ? TABS.findIndex(t => t.agentId === runningAgentId)
+    : -1
 
+  // 用户手动点击 tab → 标记 interacted，防止自动高亮覆盖
+  const handleTabClick = (idx: number) => {
+    userInteractedRef.current = true
+    setActiveTab(idx)
+  }
+
+  // 新 agent 执行时，若用户未手动操作过，自动跟随到对应 tab
+  useEffect(() => {
+    if (!userInteractedRef.current && runningTabIndex >= 0 && runningTabIndex !== activeTab) {
+      setActiveTab(runningTabIndex)
+    }
+  }, [runningTabIndex]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 流水线完成后重置 interacted 状态
+  useEffect(() => {
+    if (status === 'idle' || status === 'completed') {
+      userInteractedRef.current = false
+      if (status === 'idle') setActiveTab(0)
+    }
+  }, [status])
   useEffect(() => {
     if (status === 'paused' && pausedNode && autoMode) {
       approve()
@@ -122,7 +144,7 @@ export function PlanPage() {
   const scrollToAgent = useCallback((agentId: string) => {
     const el = contentRef.current
     if (!el) return
-    if (!agentId) { el.scrollTo({ top: 0, behavior: 'smooth' }); return }
+    if (!agentId) { el.scrollTo?.({ top: 0, behavior: 'instant' }); return }
     const target = el.querySelector<HTMLElement>('[data-agent-id="' + agentId + '"]')
     if (!target) return
     const containerRect = el.getBoundingClientRect()
@@ -131,8 +153,13 @@ export function PlanPage() {
     if (containerRect.height === 0 || targetRect.height === 0) return
     const offsetRelativeToContainer = targetRect.top - containerRect.top
     const scrollTo = el.scrollTop + offsetRelativeToContainer - containerRect.height / 2 + targetRect.height / 2
-    el.scrollTo({ top: Math.max(0, scrollTo), behavior: 'smooth' })
+    el.scrollTo?.({ top: Math.max(0, scrollTo), behavior: 'smooth' })
   }, [])
+
+  // 点击 tab → setActiveTab → re-render 完成后 → 滚动到对应 agent
+  useEffect(() => {
+    scrollToAgent(TABS[activeTab]?.agentId ?? '')
+  }, [activeTab, scrollToAgent])
 
   const isPaused = status === 'paused'
 
@@ -238,11 +265,11 @@ export function PlanPage() {
                       color: '#fff',
                       fontSize: 12,
                       fontWeight: 600,
-                      cursor: 'pointer',
-                      opacity: isConnected ? 0.6 : 1,
+                      cursor: isLoading || isConnected ? 'not-allowed' : 'pointer',
+                      opacity: isLoading || isConnected ? 0.5 : 1,
                     }}
                   >
-                    ✓ 确认继续
+                    {isLoading ? '⏳ 提交中…' : '✓ 确认继续'}
                   </button>
                   <button
                     type="button"
@@ -370,13 +397,11 @@ export function PlanPage() {
         }}
         >
           {TABS.map(t => {
-            const isActive = t.agentId
-              ? t.agentId === activeAgentId
-              : !activeAgentId
+            const isActive = t.idx === activeTab
             return (
             <button
               key={t.idx}
-              onClick={() => scrollToAgent(t.agentId)}
+              onClick={() => handleTabClick(t.idx)}
               style={{
                 padding: '8px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
@@ -394,7 +419,7 @@ export function PlanPage() {
         <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#fafbfc' }}>
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             {auditPanel}
-            <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} autoMode={autoMode} onApprove={approve} onRerun={rerun} />
+            <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} autoMode={autoMode} isLoading={isLoading} isConnected={isConnected} onApprove={approve} onRerun={rerun} />
             {displayedChapters.length > 0 && <PlanPreview chapters={displayedChapters} />}
             {actionItems && actionItems.length > 0 && (
               <div id="actions-anchor"><PlanActionCards actions={actionItems} /></div>
@@ -529,4 +554,5 @@ function exportPdf(chapters: PlanChapter[]) {
 
 const _injectedStyle = document.createElement('style')
 _injectedStyle.textContent = `#action-modal.open { display: flex !important; }`
+// ponytail: 模块级 style 注入在 HMR 时重复执行，但因 ID 覆盖无实际影响
 document.head.appendChild(_injectedStyle)
