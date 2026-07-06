@@ -5,7 +5,7 @@ import { PlanActionCards } from './PlanActionCards'
 import { PlanForm } from './PlanForm'
 import { PlanPreview } from './PlanPreview'
 import { PipelineTimeline } from './PipelineTimeline'
-import { AgentConfirmDialog } from './AgentConfirmDialog'
+import { PlanLogStream } from './PlanLogStream'
 
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
@@ -90,22 +90,7 @@ export function PlanPage() {
   }))
 
   const [activeTab, setActiveTab] = useState(0)
-  const [dialogOpen, setDialogOpen] = useState(false)
   const [autoMode, setAutoMode] = useState(false)
-
-  useEffect(() => {
-    if (status === 'paused' && pausedNode) {
-      if (autoMode) {
-        approve()
-      } else {
-        setDialogOpen(true)
-      }
-    }
-  }, [status, pausedNode, autoMode, approve])
-
-  const pausedAgentNode = pausedNode
-    ? nodes.find(n => n.id === pausedNode) || { id: pausedNode, status: 'running' as const }
-    : null
 
   const TABS = [
     { idx: 0, label: '概览', agentId: '' },
@@ -118,99 +103,42 @@ export function PlanPage() {
     { idx: 7, label: '执行规划', agentId: 'execution_planning' },
     { idx: 8, label: '预算KPI', agentId: 'budget_kpi' },
     { idx: 9, label: '行动建议', agentId: 'action_recommendations' },
+    { idx: 10, label: '方案生成', agentId: 'plan_generator' },
   ]
 
-  const runningNode = nodes.find(n => n.status === 'running')
+  // Auto-highlight tab based on running/paused agent
+  const activeAgentNode = nodes.find(n => n.status === 'running' || n.status === 'paused')
+  const activeTabFromAgent = activeAgentNode
+    ? TABS.findIndex(t => t.agentId === activeAgentNode.id)
+    : -1
+
+  useEffect(() => {
+    if (status === 'paused' && pausedNode && autoMode) {
+      approve()
+    }
+  }, [status, pausedNode, autoMode, approve])
 
   const scrollToAgent = useCallback((agentId: string) => {
     const el = contentRef.current
     if (!el) return
     if (!agentId) { el.scrollTo({ top: 0, behavior: 'smooth' }); return }
-    const target = el.querySelector('[data-agent-id="' + agentId + '"]')
-    if (target) {
-      el.scrollTo({ top: target.offsetTop - el.offsetTop - 16, behavior: 'smooth' })
-    }
+    const target = el.querySelector<HTMLElement>('[data-agent-id="' + agentId + '"]')
+    if (!target) return
+    const containerRect = el.getBoundingClientRect()
+    const targetRect = target.getBoundingClientRect()
+    // 防御：父容器或目标元素高度为 0 时（flex 坍缩瞬间）直接放弃滚动
+    if (containerRect.height === 0 || targetRect.height === 0) return
+    const offsetRelativeToContainer = targetRect.top - containerRect.top
+    const scrollTo = el.scrollTop + offsetRelativeToContainer - containerRect.height / 2 + targetRect.height / 2
+    el.scrollTo({ top: Math.max(0, scrollTo), behavior: 'smooth' })
   }, [])
 
   const isPaused = status === 'paused'
 
-  const auditPanel = isPaused && pausedSnapshot && (
-    <div role="region" aria-label="人工审核面板" style={{
-      marginBottom: 20,
-      padding: 14,
-      borderRadius: 8,
-      background: '#fffbeb',
-      border: '1px solid #fcd34d',
-    }}>
-      <div style={{ fontSize: 13, fontWeight: 700, color: '#92400e', marginBottom: 8 }}>
-        ⏸ 等待人工审核：{pausedSnapshot.node_id}
-      </div>
-      <div style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
-        <button
-          type="button"
-          onClick={() => approve()}
-          disabled={isLoading || isConnected}
-          style={{
-            flex: 1,
-            padding: '8px 0',
-            borderRadius: 6,
-            border: 'none',
-            background: '#1e40af',
-            color: '#fff',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            opacity: isConnected ? 0.6 : 1,
-          }}
-        >
-          ✓ 确认继续
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const reason = window.prompt('请输入驳回原因（必填）：')
-            if (reason) reject(reason)
-          }}
-          disabled={isLoading || isConnected}
-          style={{
-            flex: 1,
-            padding: '8px 0',
-            borderRadius: 6,
-            border: '1px solid #d1d5db',
-            background: '#fff',
-            color: '#374151',
-            fontSize: 12,
-            fontWeight: 600,
-            cursor: 'pointer',
-            opacity: isConnected ? 0.6 : 1,
-          }}
-        >
-          ↻ 驳回重跑
-        </button>
-      </div>
-      <button
-        type="button"
-        onClick={() => {
-          if (window.confirm('确定取消本次方案生成？取消后将删除运行记录。')) cancel()
-        }}
-        style={{
-          width: '100%',
-          padding: '6px 0',
-          borderRadius: 6,
-          border: 'none',
-          background: 'transparent',
-          color: '#b45309',
-          fontSize: 12,
-          cursor: 'pointer',
-        }}
-      >
-        取消运行
-      </button>
-    </div>
-  )
+  const auditPanel = null
 
   return (
-    <div className="app" style={{ display: 'flex', height: '100%', overflow: 'hidden', backgroundColor: '#fafbfc' }}>
+    <div className="app" style={{ display: 'flex', minHeight: 'var(--app-height)', backgroundColor: '#fafbfc' }}>
       <aside style={{
         width: sidebarCollapsed ? 48 : 360,
         minWidth: sidebarCollapsed ? 48 : 360,
@@ -377,7 +305,7 @@ export function PlanPage() {
 
       <main style={{
         flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
-        overflow: 'hidden',
+        overflow: 'auto',
       }}>
         <header style={{
           height: 64, background: '#fff', borderBottom: '1px solid #e2e8f0',
@@ -438,31 +366,35 @@ export function PlanPage() {
 
         <nav style={{
           height: 52, background: '#fff', borderBottom: '1px solid #e2e8f0',
-          display: displayedChapters.length > 0 ? 'flex' : 'none', alignItems: 'center', gap: 4, padding: '0 28px', flexShrink: 0,
+          display: 'flex', alignItems: 'center', gap: 4, padding: '0 28px', flexShrink: 0,
         }}
         >
-          {TABS.map(t => (
+          {TABS.map(t => {
+            const isActive = t.agentId
+              ? activeAgentNode?.id === t.agentId
+              : !activeAgentNode
+            return (
             <button
               key={t.idx}
               onClick={() => { setActiveTab(t.idx); scrollToAgent(t.agentId) }}
               style={{
                 padding: '8px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
-                background: activeTab === t.idx ? '#1e40af' : 'transparent',
-                color: activeTab === t.idx ? '#fff' : '#475569',
+                background: isActive ? '#1e40af' : 'transparent',
+                color: isActive ? '#fff' : '#475569',
               }}
             >
               {t.label}
             </button>
-          ))}
+            )
+          })}
         </nav>
 
-        <div style={{ flexShrink: 0 }}><PlanLogStream logs={logs} /></div>
 
         <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#fafbfc' }}>
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             {auditPanel}
-            <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} onNodeClick={(id) => { setDialogOpen(true) }} />
+            <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} autoMode={autoMode} onApprove={approve} onRerun={rerun} />
             {displayedChapters.length > 0 && <PlanPreview chapters={displayedChapters} />}
             {actionItems && actionItems.length > 0 && (
               <div id="actions-anchor"><PlanActionCards actions={actionItems} /></div>
@@ -470,19 +402,6 @@ export function PlanPage() {
           </div>
         </div>
       </main>
-
-      <AgentConfirmDialog
-        node={pausedAgentNode}
-        pausedNodeId={pausedNode}
-        isOpen={dialogOpen}
-        isLoading={isLoading}
-        isConnected={isConnected}
-        autoMode={autoMode}
-        onApprove={() => { setDialogOpen(false); approve() }}
-        onRerun={() => { setDialogOpen(false); rerun() }}
-        onToggleAuto={() => setAutoMode(!autoMode)}
-        onClose={() => setDialogOpen(false)}
-      />
 
       {actionItems && actionItems.length > 0 && (
         <button
