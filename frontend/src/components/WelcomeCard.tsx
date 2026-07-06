@@ -88,19 +88,20 @@ export function WelcomeCard({ onScenarioClick }: WelcomeCardProps) {
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {scenarios.map((scenario) => (
-          <button
-            key={scenario.title}
-            type="button"
-            onClick={() => onScenarioClick?.(scenario.text)}
-            className="rounded-xl border border-line bg-white p-4 text-left shadow-sm transition-all hover:border-start hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
-          >
-            <span className="text-xs font-semibold uppercase tracking-wide text-start">
-              场景
-            </span>
-            <p className="mt-2 text-sm font-medium text-track">{scenario.title}</p>
-            <p className="mt-1 line-clamp-2 text-xs text-track/60">{scenario.text}</p>
-          </button>
-        ))}
+            <button
+              key={scenario.title}
+              type="button"
+              onClick={() => onScenarioClick?.(scenario.text)}
+              className="rounded-xl border border-line bg-white p-4 text-left shadow-sm transition-all hover:border-start hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
+            >
+              <span className="text-xs font-semibold uppercase tracking-wide text-start">
+                场景
+              </span>
+              <p className="mt-2 text-sm font-medium text-track">{scenario.title}</p>
+              <p className="mt-1 line-clamp-2 text-xs text-track/60">{scenario.text}</p>
+            </button>
+          ))}
+        </div>
       </div>
     </div>
   )
