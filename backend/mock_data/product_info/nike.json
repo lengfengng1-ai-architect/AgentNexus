@@ -2,31 +2,56 @@
   "identity": {
     "product_name": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "brand": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "manufacturer": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "industry": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "category": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     }
@@ -34,19 +59,34 @@
   "official_description": {
     "description": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "tagline": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "statement": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     }
@@ -54,25 +94,45 @@
   "features": [],
   "specifications": {
     "value": {},
-    "sources": [],
+    "sources": [
+      "https://support.apple.com/en-us/docs",
+      "https://fenghsin.com.tw/",
+      "https://www.nike.com/women",
+      "https://www.nike.com.cn/"
+    ],
     "method": "extracted"
   },
   "availability": {
     "status": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "pricing": [],
     "available_regions": {
       "value": [],
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted"
     },
     "access_model": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://support.apple.com/en-us/docs",
+        "https://fenghsin.com.tw/",
+        "https://www.nike.com/women",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     }
