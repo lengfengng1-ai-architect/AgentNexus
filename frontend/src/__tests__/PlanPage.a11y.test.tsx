@@ -1,6 +1,5 @@
 import { describe, expect, test, vi } from 'vitest'
 import { render, screen } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
 import { axe } from 'jest-axe'
 import { PlanPage } from '../pages/PlanPage'
 
@@ -45,7 +44,6 @@ describe('PlanPage accessibility', () => {
   })
 
   test('workbench header buttons are reachable by accessible names and keyboard', async () => {
-    const user = userEvent.setup()
     render(<PlanPage />)
 
     // Wait for PlanPage to render — sidebar auto-collapses when status !== 'idle',

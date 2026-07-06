@@ -62,7 +62,7 @@ function App() {
           )
         ))}
       </header>
-      <main style={{ flex: 1, overflow: 'auto' }}>
+      <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {page === 'chat' && <ChatPreviewPage />}
         {page === 'plan' && <PlanPage />}
         {page === 'intent' && <IntentTestPage />}

@@ -188,7 +188,7 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, auto
                         })()}
                       </div>
 
-                      {!autoMode && (isPaused || node.status === 'complete') && onApprove && onRerun && (
+                      {!autoMode && isPaused && node.status !== 'complete' && onApprove && onRerun && (
                         <div className="flex gap-2">
                           <button
                             type="button"

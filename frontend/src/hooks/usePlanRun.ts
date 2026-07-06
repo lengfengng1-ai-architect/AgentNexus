@@ -8,7 +8,6 @@ import {
   startPlanRun,
 } from '../api/plan'
 import type { PlanChapter, PlanLogEvent, PlanNode, PlanOutputs } from '../types/plan'
-import type { PlanRunStatus as ApiPlanRunStatus } from '../api/plan'
 
 const PIPELINE_NODES: { id: string; label: string }[] = [
   { id: 'product_research', label: '产品调研' },
@@ -127,6 +126,9 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
         isLoading: false,
         pausedNode: action.snapshot?.node_id ?? null,
         pausedSnapshot: action.snapshot,
+        nodes: state.nodes.map((n) =>
+          n.id === action.snapshot?.node_id ? { ...n, status: 'waiting' as const } : n
+        ),
       }
     case 'WORKFLOW_COMPLETE':
       return { ...state, status: 'completed', outputs: action.outputs, isConnected: false, isLoading: false }
@@ -165,6 +167,10 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
       if (action.failedNode) {
         const idx = nextNodes.findIndex(n => n.id === action.failedNode)
         if (idx >= 0) nextNodes[idx] = { ...nextNodes[idx], status: 'failed' }
+      }
+      if (action.pausedNode) {
+        const idx = nextNodes.findIndex(n => n.id === action.pausedNode)
+        if (idx >= 0) nextNodes[idx] = { ...nextNodes[idx], status: 'waiting' }
       }
       return {
         ...state,
@@ -304,7 +310,7 @@ export function usePlanRun() {
             dispatch({
               type: 'NODE_COMPLETE',
               nodeId: event.nodeId,
-              data: event.data?.output || event.data,
+              data: (event.data?.output || event.data) as Record<string, unknown> | undefined,
             })
           }
           break
@@ -318,11 +324,7 @@ export function usePlanRun() {
           })
           break
         case 'workflow.complete': {
-          const eventOutputs = event.data?.output || event.data
-          const completedNodeIds = Object.keys(eventOutputs || {})
-          const nextNodes = state.nodes.map((n) =>
-            completedNodeIds.includes(n.id) ? { ...n, status: 'complete' as const } : n
-          )
+          const eventOutputs = (event.data?.output || event.data) as Record<string, unknown>
           dispatch({ type: 'WORKFLOW_COMPLETE', outputs: eventOutputs as PlanOutputs })
           break
         }
@@ -388,6 +390,7 @@ export function usePlanRun() {
         try { localStorage.setItem('allygo_plan_run_id', runId) } catch { /* ignore */ }
         dispatch({ type: 'SET_RUN_ID', runId })
         dispatch({ type: 'SET_CONNECTED', connected: true })
+        dispatch({ type: 'NODE_START', nodeId: PIPELINE_NODES[0].id })
         await consumeStream(stream)
       } catch (error) {
         const message = error instanceof Error ? error.message : '启动失败'
@@ -401,9 +404,14 @@ export function usePlanRun() {
     async (editedInput?: Record<string, unknown>) => {
       const rid = runIdRef.current
       if (!rid) return
+      // 立即将暂停中的节点标记为 running，不等 SSE 响应
       dispatch({ type: 'SET_LOADING', loading: true })
+      if (statusRef.current === 'paused') {
+        dispatch({ type: 'SET_CONNECTED', connected: true })
+        const pn = state.pausedNode
+        if (pn) dispatch({ type: 'NODE_START', nodeId: pn })
+      }
       try {
-        // Check latest status from ref, not stale closure.
         if (statusRef.current !== 'paused') {
           const result = await getPlanRunStatus(rid)
           if (result.status !== 'paused') {
@@ -421,7 +429,7 @@ export function usePlanRun() {
         dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [consumeStream],
+    [consumeStream, state.pausedNode],
   )
 
   const reject = useCallback(
@@ -486,8 +494,7 @@ export function usePlanRun() {
   const refreshStatus = useCallback(async () => {
     if (!state.runId) return
     try {
-      const resp = await getPlanRunStatus(state.runId)
-      const result = 'data' in resp ? (resp as { data: PlanRunStatus }).data : resp
+      const result = await getPlanRunStatus(state.runId)
       if (result.status === 'completed') {
         dispatch({ type: 'WORKFLOW_COMPLETE', outputs: result.outputs as PlanOutputs })
       } else if (result.status === 'failed') {
@@ -528,11 +535,10 @@ export function usePlanRun() {
   const restoreFromRunId = useCallback(async (runId: string) => {
     dispatch({ type: 'SET_RUN_ID', runId })
     try {
-      const resp = await getPlanRunStatus(runId)
-      const result = 'data' in resp ? (resp as { data: PlanRunStatus }).data : resp
+      const result = await getPlanRunStatus(runId)
       dispatch({
         type: 'RESTORE_STATUS',
-        status: result.status,
+        status: result.status === 'canceled' ? 'idle' : result.status,
         outputs: result.outputs as PlanOutputs,
         failedNode: null,
         error: result.error || null,
