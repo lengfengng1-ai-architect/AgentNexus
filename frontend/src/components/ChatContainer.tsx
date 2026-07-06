@@ -1,11 +1,10 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '../hooks/useChat'
-import type { BrandInput, FieldKey } from '../types/chat'
+import type { BrandInput } from '../types/chat'
 import { ChatBubble } from './ChatBubble'
 import { ChatInput } from './ChatInput'
 import { ErrorBar } from './ErrorBar'
 import { LoadingBubble } from './LoadingBubble'
-import { ProgressTrack, getFieldEditPrompt } from './ProgressTrack'
 import { WelcomeCard } from './WelcomeCard'
 import { BrandConfirmCard } from './BrandConfirmCard'
 
@@ -18,7 +17,6 @@ export function ChatContainer() {
     inputValue,
     isLoading,
     error,
-    latestBrandInput,
     sendMessage,
     retryMessage,
     prefillInput,
@@ -30,6 +28,14 @@ export function ChatContainer() {
   const [showConfirm, setShowConfirm] = useState<string | null>(null)
   const [pendingBrandInput, setPendingBrandInput] = useState<BrandInput | null>(null)
 
+  // Find the latest brand input from any message that carries one
+  const latestBrandInput = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].brandInput) return messages[i].brandInput
+    }
+    return null
+  }, [messages])
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
@@ -39,10 +45,6 @@ export function ChatContainer() {
       sendMessage(inputValue.trim())
     }
   }, [inputValue, sendMessage])
-
-  const handleFieldClick = useCallback((_key: FieldKey, label: string) => {
-    prefillInput(getFieldEditPrompt(label))
-  }, [prefillInput])
 
   const handleGeneratePlan = useCallback((brandInput?: BrandInput) => {
     if (!brandInput) return
@@ -83,8 +85,6 @@ export function ChatContainer() {
           工作台
         </a>
       </header>
-
-      <ProgressTrack brandInput={latestBrandInput} onFieldClick={handleFieldClick} />
 
       {error && <ErrorBar message={error} onDismiss={() => setInputValue(inputValue)} />}
 
