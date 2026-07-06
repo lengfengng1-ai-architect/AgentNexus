@@ -3,7 +3,6 @@ import { usePlanRun } from '../hooks/usePlanRun'
 import type { BrandInput } from '../types/chat'
 import { PlanActionCards } from './PlanActionCards'
 import { PlanForm } from './PlanForm'
-import { PlanLogStream } from './PlanLogStream'
 import { PlanPreview } from './PlanPreview'
 import { PipelineTimeline } from './PipelineTimeline'
 
@@ -41,7 +40,6 @@ export function PlanPage() {
   const {
     status,
     nodes,
-    logs,
     outputs,
     failedNode,
     error,
