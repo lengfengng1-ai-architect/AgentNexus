@@ -6,6 +6,7 @@ interface PipelineTimelineProps {
   failedNode: string | null
   nodeLogs?: Record<string, string[]>
   pausedNode?: string | null
+  onNodeClick?: (nodeId: string) => void
 }
 
 interface AgentMeta {
@@ -84,7 +85,7 @@ function dotClass(status: PlanNode['status'], isPaused: boolean): string {
   }
 }
 
-export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode }: PipelineTimelineProps) {
+export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, onNodeClick }: PipelineTimelineProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
 
   const toggleStep = (nodeId: string) => {
@@ -124,7 +125,7 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode }: Pi
             const isPaused = pausedNode === agent.id
 
             return (
-              <div key={agent.id} className={`pipeline-step ${sClass}`}>
+              <div key={agent.id} data-agent-id={agent.id} className={`pipeline-step ${sClass}`}>
                 <div className={`step-dot ${dotClass(status, isPaused)} ${status === 'running' ? 'ripple' : ''}`}>
                   <span className="leading-none">{agent.icon}</span>
                 </div>

@@ -6,6 +6,7 @@ import { PlanForm } from './PlanForm'
 import { PlanLogStream } from './PlanLogStream'
 import { PlanPreview } from './PlanPreview'
 import { PipelineTimeline } from './PipelineTimeline'
+import { AgentConfirmDialog } from './AgentConfirmDialog'
 
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
@@ -55,6 +56,7 @@ export function PlanPage() {
     approve,
     reject,
     cancel,
+    rerun,
     restoreFromRunId,
   } = usePlanRun()
   const { seed, save } = usePlanSession()
@@ -90,59 +92,47 @@ export function PlanPage() {
   }))
 
   const [activeTab, setActiveTab] = useState(0)
-  const tabRefs = useRef<(HTMLButtonElement | null)[]>([])
-  const scrollTicking = useRef(false)
+  const [dialogOpen, setDialogOpen] = useState(false)
+  const [autoMode, setAutoMode] = useState(false)
 
-  const scrollToChapter = useCallback((idx: number) => {
-    setActiveTab(idx)
+  useEffect(() => {
+    if (status === 'paused' && pausedNode) {
+      if (autoMode) {
+        approve()
+      } else {
+        setDialogOpen(true)
+      }
+    }
+  }, [status, pausedNode, autoMode, approve])
+
+  const pausedAgentNode = pausedNode
+    ? nodes.find(n => n.id === pausedNode) || { id: pausedNode, status: 'running' as const }
+    : null
+
+  const TABS = [
+    { idx: 0, label: '概览', agentId: '' },
+    { idx: 1, label: '产品调研', agentId: 'product_research' },
+    { idx: 2, label: '市场研究', agentId: 'market_research' },
+    { idx: 3, label: '人群洞察', agentId: 'audience_insight' },
+    { idx: 4, label: '平台资源', agentId: 'plan_data_query' },
+    { idx: 5, label: '适配度分析', agentId: 'fitness_analysis' },
+    { idx: 6, label: '策略生成', agentId: 'strategy_generation' },
+    { idx: 7, label: '执行规划', agentId: 'execution_planning' },
+    { idx: 8, label: '预算KPI', agentId: 'budget_kpi' },
+    { idx: 9, label: '行动建议', agentId: 'action_recommendations' },
+  ]
+
+  const runningNode = nodes.find(n => n.status === 'running')
+
+  const scrollToAgent = useCallback((agentId: string) => {
     const el = contentRef.current
     if (!el) return
-    if (idx === 0) { el.scrollTo({ top: 0, behavior: 'smooth' }); return }
-    const target = el.querySelector<HTMLElement>(`[data-chapter-idx="${idx}"]`)
+    if (!agentId) { el.scrollTo({ top: 0, behavior: 'smooth' }); return }
+    const target = el.querySelector('[data-agent-id="' + agentId + '"]')
     if (target) {
-      target.classList.add('open')
       el.scrollTo({ top: target.offsetTop - el.offsetTop - 16, behavior: 'smooth' })
     }
   }, [])
-
-  useEffect(() => {
-    const el = contentRef.current
-    if (!el) return
-    const handleScroll = () => {
-      if (scrollTicking.current) return
-      scrollTicking.current = true
-      requestAnimationFrame(() => {
-        scrollTicking.current = false
-        const scrollTop = el!.scrollTop + 120
-        let bestIdx = 0
-        let bestDist = Infinity
-        for (let i = 1; i <= 9; i++) {
-          const target = el!.querySelector<HTMLElement>(`[data-chapter-idx="${i}"]`)
-          if (target) {
-            const d = Math.abs(target.offsetTop - el!.offsetTop - scrollTop)
-            if (d < bestDist) { bestDist = d; bestIdx = i }
-          }
-        }
-        if (el!.scrollTop < 100) bestIdx = 0
-        if (bestIdx !== activeTab) setActiveTab(bestIdx)
-      })
-    }
-    el.addEventListener('scroll', handleScroll, { passive: true })
-    return () => el.removeEventListener('scroll', handleScroll)
-  }, [activeTab])
-
-  const TABS = [
-    { idx: 0, label: '概览' },
-    { idx: 1, label: '1. 项目概述' },
-    { idx: 2, label: '2. 市场分析' },
-    { idx: 3, label: '3. 营销策略' },
-    { idx: 4, label: '4. 执行方案' },
-    { idx: 5, label: '5. 数字化运营' },
-    { idx: 6, label: '6. 达人体系' },
-    { idx: 7, label: '7. 时间规划' },
-    { idx: 8, label: '8. KPI' },
-    { idx: 9, label: '9. 预算' },
-  ]
 
   const isPaused = status === 'paused'
 
@@ -413,7 +403,23 @@ export function PlanPage() {
           padding: '0 28px', flexShrink: 0,
         }}>
           <div style={{ fontSize: 18, fontWeight: 700, letterSpacing: '-0.3px', color: '#0f172a' }}>营销方案工作台</div>
-          <div style={{ display: 'flex', gap: 10 }}>
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center' }}>
+            <button
+              type="button"
+              onClick={() => setAutoMode(!autoMode)}
+              style={{
+                padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600,
+                cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
+                background: autoMode ? '#059669' : '#fff',
+                border: autoMode ? 'none' : '1px solid #e2e8f0',
+                color: autoMode ? '#fff' : '#475569',
+              }}
+            >
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
+              </svg>
+              {autoMode ? '自动执行中' : '自动执行'}
+            </button>
             <button
               onClick={() => window.print()}
               style={{
@@ -456,8 +462,7 @@ export function PlanPage() {
           {TABS.map(t => (
             <button
               key={t.idx}
-              ref={el => { (tabRefs.current as (HTMLButtonElement | null)[])[t.idx] = el }}
-              onClick={() => { setActiveTab(t.idx); scrollToChapter(t.idx) }}
+              onClick={() => { setActiveTab(t.idx); scrollToAgent(t.agentId) }}
               style={{
                 padding: '8px 12px', borderRadius: 20, fontSize: 12, fontWeight: 600,
                 cursor: 'pointer', whiteSpace: 'nowrap', border: 'none',
@@ -475,7 +480,7 @@ export function PlanPage() {
         <div ref={contentRef} style={{ flex: 1, overflowY: 'auto', padding: 28, background: '#fafbfc' }}>
           <div style={{ maxWidth: 900, margin: '0 auto' }}>
             {auditPanel}
-            <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} />
+            <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} onNodeClick={(id) => { setDialogOpen(true) }} />
             {displayedChapters.length > 0 && <PlanPreview chapters={displayedChapters} />}
             {actionItems && actionItems.length > 0 && (
               <div id="actions-anchor"><PlanActionCards actions={actionItems} /></div>
@@ -483,6 +488,19 @@ export function PlanPage() {
           </div>
         </div>
       </main>
+
+      <AgentConfirmDialog
+        node={pausedAgentNode}
+        pausedNodeId={pausedNode}
+        isOpen={dialogOpen}
+        isLoading={isLoading}
+        isConnected={isConnected}
+        autoMode={autoMode}
+        onApprove={() => { setDialogOpen(false); approve() }}
+        onRerun={() => { setDialogOpen(false); rerun() }}
+        onToggleAuto={() => setAutoMode(!autoMode)}
+        onClose={() => setDialogOpen(false)}
+      />
 
       {actionItems && actionItems.length > 0 && (
         <button

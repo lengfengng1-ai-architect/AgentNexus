@@ -4,6 +4,7 @@ import {
   cancelPlanRun,
   getPlanRunStatus,
   rejectPlanRun,
+  rerunPlanRun,
   startPlanRun,
 } from '../api/plan'
 import type { PlanChapter, PlanLogEvent, PlanNode, PlanOutputs } from '../types/plan'
@@ -321,7 +322,7 @@ export function usePlanRun() {
         const nextNodes = state.nodes.map((n) =>
           completedNodeIds.includes(n.id) ? { ...n, status: 'complete' as const } : n
         )
-        dispatch({ type: 'WORKFLOW_COMPLETE', outputs: event.data as PlanOutputs })
+        dispatch({ type: 'WORKFLOW_COMPLETE', outputs: eventOutputs as PlanOutputs })
         break
       }
       case 'chapter.start': {
@@ -450,6 +451,22 @@ export function usePlanRun() {
     }
   }, [state.runId])
 
+  const rerun = useCallback(async () => {
+    const rid = runIdRef.current
+    if (!rid) return
+    dispatch({ type: 'SET_LOADING', loading: true })
+    try {
+      const stream = await rerunPlanRun(rid)
+      dispatch({ type: 'SET_CONNECTED', connected: true })
+      await consumeStream(stream)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '重新执行失败'
+      dispatch({ type: 'SET_ERROR', error: message })
+    } finally {
+      dispatch({ type: 'SET_LOADING', loading: false })
+    }
+  }, [consumeStream])
+
   const reset = useCallback(() => {
     abortRef.current?.()
     dispatch({ type: 'RESET' })
@@ -536,6 +553,7 @@ export function usePlanRun() {
     approve,
     reject,
     cancel,
+    rerun,
     reset,
     refreshStatus,
     restoreFromRunId,

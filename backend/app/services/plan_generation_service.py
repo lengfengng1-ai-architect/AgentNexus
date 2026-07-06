@@ -213,7 +213,7 @@ async def _get_graph() -> Any:
         saver = await _get_saver()
         _graph = _build_graph().compile(
             checkpointer=saver,
-            interrupt_before=_CHECKPOINT_INTERRUPT_NODES,
+            interrupt_after=_NODE_ORDER,
         )
     return _graph
 
@@ -344,11 +344,11 @@ async def _stream_events(
             yield translated
 
     # After the event stream finishes, check whether the graph paused at an
-    # interrupt checkpoint. LangGraph stops the stream before executing nodes
-    # listed in interrupt_before, so we emit workflow.paused from the checkpoint.
+    # interrupt checkpoint. With interrupt_after, the stream stops after each
+    # node completes. Emit workflow.paused whenever next is non-empty.
     state_obj = await graph.aget_state(_thread_config(run_id))
     next_nodes = list(getattr(state_obj, "next", ()) or [])
-    if next_nodes and next_nodes[0] in _CHECKPOINT_INTERRUPT_NODES:
+    if next_nodes:
         node_id = next_nodes[0]
         state_values = getattr(state_obj, "values", {}) or {}
         counter[0] += 1
@@ -428,11 +428,9 @@ def _status_for_state(
     for nid in _NODE_ORDER:
         if not state.get(nid):
             current_node = nid
-            if nid in _CHECKPOINT_INTERRUPT_NODES:
-                paused_snapshot = _paused_snapshot(state, nid)
-                status = "paused"
-            else:
-                status = "running"
+            # With interrupt_after all nodes, every non-completed node is paused
+            paused_snapshot = _paused_snapshot(state, nid)
+            status = "paused"
             break
     else:
         status = "completed"
@@ -581,6 +579,69 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
             data={
                 "run_id": run_id,
                 "node_id": "plan_generation",
+                "message": str(exc),
+                "code": ErrorCode.WORKFLOW_CONTROL_ERROR,
+            },
+        )
+
+
+async def rerun_run(run_id: str) -> AsyncGenerator[str, None]:
+    """Rerun the current paused node by clearing its output and resuming."""
+    graph = await _get_graph()
+    tuple_ = await _checkpoint_tuple(run_id)
+    if tuple_ is None:
+        yield _sse_frame(
+            event_id=0,
+            event="node.failed",
+            data={
+                "run_id": run_id,
+                "node_id": "plan_generation",
+                "message": f"Run {run_id} not found",
+                "code": ErrorCode.NOT_FOUND,
+            },
+        )
+        return
+
+    state_obj = await graph.aget_state(_thread_config(run_id))
+    next_nodes = list(getattr(state_obj, "next", ()) or [])
+    if not next_nodes:
+        yield _sse_frame(
+            event_id=0,
+            event="node.failed",
+            data={
+                "run_id": run_id,
+                "node_id": "plan_generation",
+                "message": "No paused node to rerun",
+                "code": ErrorCode.WORKFLOW_CONTROL_ERROR,
+            },
+        )
+        return
+
+    node_id = next_nodes[0]
+    # Clear the node's output from checkpoint state so it reruns fresh
+    checkpoint = tuple_.checkpoint
+    channel_values = checkpoint.setdefault("channel_values", {})
+    channel_values[node_id] = {}
+
+    saver = await _get_saver()
+    await saver.aput(
+        tuple_.config,
+        checkpoint,
+        tuple_.metadata,
+        checkpoint["channel_versions"],
+    )
+
+    try:
+        async for frame in _stream_events(graph, Command(resume={}), run_id):
+            yield frame
+    except Exception as exc:
+        logger.exception("plan rerun failed: %s", run_id)
+        yield _sse_frame(
+            event_id=0,
+            event="node.failed",
+            data={
+                "run_id": run_id,
+                "node_id": node_id,
                 "message": str(exc),
                 "code": ErrorCode.WORKFLOW_CONTROL_ERROR,
             },
