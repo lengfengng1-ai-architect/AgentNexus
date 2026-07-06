@@ -81,11 +81,7 @@ function NavDropdown({
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <div
-      style={{ position: 'relative' }}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-    >
+    <div style={{ position: 'relative' }}>
       <button
         onClick={() => setOpen(o => !o)}
         style={{
@@ -102,7 +98,7 @@ function NavDropdown({
       </button>
       {open && (
         <div style={{
-          position: 'absolute', top: 'calc(100% + 4px)', left: 0,
+          position: 'absolute', top: '100%', left: 0, marginTop: 2,
           background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
           boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden', minWidth: 120,
           zIndex: 1000,
@@ -124,6 +120,8 @@ function NavDropdown({
           ))}
         </div>
       )}
+      {/* 点击空白关闭 */}
+      {open && <div style={{ position: 'fixed', inset: 0, zIndex: 999 }} onClick={() => setOpen(false)} />}
     </div>
   )
 }
