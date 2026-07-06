@@ -4,6 +4,7 @@ import {
   cancelPlanRun,
   getPlanRunStatus,
   rejectPlanRun,
+  rerunPlanRun,
   startPlanRun,
 } from '../api/plan'
 import type { PlanChapter, PlanLogEvent, PlanNode, PlanOutputs } from '../types/plan'
@@ -290,58 +291,69 @@ export function usePlanRun() {
   const processEvent = useCallback((event: PlanLogEvent) => {
     dispatch({ type: 'APPEND_LOG', event })
 
-    switch (event.event) {
-      case 'workflow.start':
-        dispatch({ type: 'SET_CONNECTED', connected: true })
-        break
-      case 'node.start':
-        if (event.nodeId) dispatch({ type: 'NODE_START', nodeId: event.nodeId })
-        break
-      case 'node.complete':
-        if (event.nodeId) {
+    try {
+      switch (event.event) {
+        case 'workflow.start':
+          dispatch({ type: 'SET_CONNECTED', connected: true })
+          break
+        case 'node.start':
+          if (event.nodeId) dispatch({ type: 'NODE_START', nodeId: event.nodeId })
+          break
+        case 'node.complete':
+          if (event.nodeId) {
+            dispatch({
+              type: 'NODE_COMPLETE',
+              nodeId: event.nodeId,
+              data: event.data?.output || event.data,
+            })
+          }
+          break
+        case 'node.failed':
+          if (event.nodeId) dispatch({ type: 'NODE_FAILED', nodeId: event.nodeId, message: event.message || '节点失败' })
+          break
+        case 'workflow.paused':
           dispatch({
-            type: 'NODE_COMPLETE',
-            nodeId: event.nodeId,
-            data: event.data?.output || event.data,
+            type: 'WORKFLOW_PAUSED',
+            snapshot: event.data?.snapshot as PlanRunState['pausedSnapshot'],
           })
+          break
+        case 'workflow.complete': {
+          const outputs = (event.data?.output || event.data) as PlanOutputs
+          dispatch({ type: 'WORKFLOW_COMPLETE', outputs })
+          break
         }
-        break
-      case 'node.failed':
-        if (event.nodeId) dispatch({ type: 'NODE_FAILED', nodeId: event.nodeId, message: event.message || '节点失败' })
-        break
-      case 'workflow.paused':
-        dispatch({
-          type: 'WORKFLOW_PAUSED',
-          snapshot: event.data?.snapshot as PlanRunState['pausedSnapshot'],
-        })
-        break
-      case 'workflow.complete': {
-        const outputs = (event.data?.output || event.data) as PlanOutputs
-        dispatch({ type: 'WORKFLOW_COMPLETE', outputs })
-        break
-      }
-      case 'chapter.start': {
-        const data = event.data ?? {}
-        dispatch({
-          type: 'CHAPTER_START',
-          index: Number(data.index ?? 0),
-          title: String(data.title ?? ''),
-          subtitle: String(data.subtitle ?? ''),
-        })
-        break
-      }
-      case 'chapter.complete': {
-        const data = event.data ?? {}
-        dispatch({
-          type: 'CHAPTER_COMPLETE',
-          chapter: {
+        case 'chapter.start': {
+          const data = event.data ?? {}
+          dispatch({
+            type: 'CHAPTER_START',
+            index: Number(data.index ?? 0),
             title: String(data.title ?? ''),
             subtitle: String(data.subtitle ?? ''),
-            content: String(data.content ?? ''),
-          },
-        })
-        break
+          })
+          break
+        }
+        case 'chapter.complete': {
+          const data = event.data ?? {}
+          dispatch({
+            type: 'CHAPTER_COMPLETE',
+            chapter: {
+              title: String(data.title ?? ''),
+              subtitle: String(data.subtitle ?? ''),
+              content: String(data.content ?? ''),
+            },
+          })
+          break
+        }
+        default:
+          break
       }
+    } catch (err) {
+      // 单条 event dispatch 异常不能让整流中断，否则 PlanPage 卸载 → 白屏
+      console.error('processEvent error:', err, event)
+      dispatch({
+        type: 'SET_ERROR',
+        error: err instanceof Error ? err.message : '事件处理异常',
+      })
     }
   }, [])
 
@@ -446,6 +458,22 @@ export function usePlanRun() {
     }
   }, [state.runId])
 
+  const rerun = useCallback(async () => {
+    const rid = runIdRef.current
+    if (!rid) return
+    dispatch({ type: 'SET_LOADING', loading: true })
+    try {
+      const stream = await rerunPlanRun(rid)
+      dispatch({ type: 'SET_CONNECTED', connected: true })
+      await consumeStream(stream)
+    } catch (error) {
+      const message = error instanceof Error ? error.message : '重新执行失败'
+      dispatch({ type: 'SET_ERROR', error: message })
+    } finally {
+      dispatch({ type: 'SET_LOADING', loading: false })
+    }
+  }, [consumeStream])
+
   const reset = useCallback(() => {
     abortRef.current?.()
     dispatch({ type: 'RESET' })
@@ -532,6 +560,7 @@ export function usePlanRun() {
     approve,
     reject,
     cancel,
+    rerun,
     reset,
     refreshStatus,
     restoreFromRunId,

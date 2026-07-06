@@ -77,6 +77,22 @@ export async function rejectPlanRun(
   return response.body || new ReadableStream()
 }
 
+export async function rerunPlanRun(runId: string): Promise<ReadableStream<Uint8Array>> {
+  const response = await fetch(`${API_BASE_URL}/plan/runs/${runId}/rerun`, {
+    method: 'POST',
+    headers: {
+      Accept: 'text/event-stream',
+    },
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '重新执行失败')
+    throw new Error(text)
+  }
+
+  return response.body || new ReadableStream()
+}
+
 export async function cancelPlanRun(runId: string): Promise<{ run_id: string; status: string }> {
   const response = await fetch(`${API_BASE_URL}/plan/runs/${runId}/cancel`, {
     method: 'POST',

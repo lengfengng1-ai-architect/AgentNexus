@@ -50,6 +50,7 @@ def _patch_router(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(plan_router, "start_run", _mock_stream)
     monkeypatch.setattr(plan_router, "approve_run", _mock_stream)
     monkeypatch.setattr(plan_router, "reject_run", _mock_stream)
+    monkeypatch.setattr(plan_router, "rerun_run", _mock_stream)
     monkeypatch.setattr(plan_router, "delete_run", _mock_delete)
     monkeypatch.setattr(plan_router, "get_status", _mock_status)
     monkeypatch.setattr(plan_router, "run_exists", _mock_true)
@@ -135,6 +136,23 @@ async def test_reject_run_not_found_returns_404(
 ) -> None:
     monkeypatch.setattr(plan_router, "run_exists", _mock_false)
     response = await client.post("/api/v1/plan/runs/r1/reject", json={"reason": "x"})
+    assert response.status_code == 404
+    assert response.json()["code"] == "not_found"
+
+
+async def test_rerun_run_returns_sse(client: AsyncClient) -> None:
+    response = await client.post("/api/v1/plan/runs/r1/rerun")
+    assert response.status_code == 200
+    assert response.headers["x-run-id"] == "r1"
+    body = response.text
+    assert "workflow.start" in body
+
+
+async def test_rerun_run_not_found_returns_404(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setattr(plan_router, "run_exists", _mock_false)
+    response = await client.post("/api/v1/plan/runs/r1/rerun")
     assert response.status_code == 404
     assert response.json()["code"] == "not_found"
 
