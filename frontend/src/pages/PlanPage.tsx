@@ -106,10 +106,15 @@ export function PlanPage() {
     { idx: 10, label: '方案生成', agentId: 'plan_generator' },
   ]
 
-  // Auto-highlight tab based on running/paused agent
-  const activeAgentNode = nodes.find(n => n.status === 'running' || n.status === 'paused')
-  const activeTabFromAgent = activeAgentNode
-    ? TABS.findIndex(t => t.agentId === activeAgentNode.id)
+  // Auto-highlight tab based on running/paused agent.
+  // 双源查找：先从 nodes 数组里找 running/paused 节点；
+  // 若 nodes 还没更新到（paused 事件刚到）则 fallback 到 pausedNode 单值
+  const activeAgentId =
+    nodes.find(n => n.status === 'running' || n.status === 'paused')?.id
+    ?? pausedNode
+    ?? null
+  const activeTabFromAgent = activeAgentId
+    ? TABS.findIndex(t => t.agentId === activeAgentId)
     : -1
 
   useEffect(() => {
@@ -371,8 +376,8 @@ export function PlanPage() {
         >
           {TABS.map(t => {
             const isActive = t.agentId
-              ? activeAgentNode?.id === t.agentId
-              : !activeAgentNode
+              ? t.agentId === activeAgentId
+              : !activeAgentId
             return (
             <button
               key={t.idx}
