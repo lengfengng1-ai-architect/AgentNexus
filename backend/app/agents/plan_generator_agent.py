@@ -7,6 +7,7 @@ Corresponding in_scope ID: plan-generation
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -20,6 +21,8 @@ from app.schemas.plan_generation import (
     PlanChapter,
     PlanGeneratorOutput,
 )
+
+logger = logging.getLogger(__name__)
 
 _PROMPT_DIR = Path(__file__).parent.parent / "prompt_templates"
 
@@ -52,7 +55,11 @@ async def run_plan_generator(
     reject_reason = brand_input.get("_reject_reason")
 
     chapters: list[PlanChapter] = []
+    total = len(PLAN_CHAPTER_SPEC)
+    logger.info("[plan_generator] start: %s chapters for %s", total, brand_name)
+
     for index, (title, subtitle) in enumerate(PLAN_CHAPTER_SPEC):
+        logger.info("[plan_generator] chapter %d/%d: %s", index + 1, total, title)
         if writer is not None:
             writer(
                 {
@@ -84,10 +91,13 @@ async def run_plan_generator(
             action_recommendations=_serialize(state.get("action_recommendations", {})),
         )
 
+        logger.info("[plan_generator] chapter %d/%d LLM call starting: %s", index + 1, total, title)
         result = await invoke_json(
             prompt,
             f"请为 {brand_name} 撰写「{title}」章节内容。",
         )
+        logger.info("[plan_generator] chapter %d/%d LLM done: %s (%d chars)", index + 1, total, title, len(str(result.get("content", ""))))
+
         content = str(result.get("content", "")).strip()
         if not content:
             raise ValueError(f"Chapter {index} ({title}) produced empty content")
@@ -106,6 +116,7 @@ async def run_plan_generator(
                 }
             )
 
+    logger.info("[plan_generator] all %d chapters done for %s", total, brand_name)
     return PlanGeneratorOutput(chapters=chapters).model_dump()
 
 

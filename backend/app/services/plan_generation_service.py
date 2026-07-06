@@ -252,6 +252,7 @@ def _translate_event(
     data = event.get("data", {})
 
     if ev_type == "on_chain_start" and name == "LangGraph":
+        logger.info("[sse] workflow.start run=%s", run_id)
         return _sse_frame(
             event_id=_counter[0],
             event="workflow.start",
@@ -260,6 +261,7 @@ def _translate_event(
 
     if ev_type == "on_chain_start" and name in _NODE_LABELS:
         _counter[0] += 1
+        logger.info("[sse] node.start run=%s node=%s", run_id, name)
         return _sse_frame(
             event_id=_counter[0],
             event="node.start",
@@ -302,6 +304,7 @@ def _translate_event(
         # so on_chain_end passes the full output. For plan_generator specifically
         # the output is already complete with all 9 chapters.
         _counter[0] += 1
+        logger.info("[sse] node.end run=%s node=%s output_keys=%s", run_id, name, list(output.keys())[:3])
         return _sse_frame(
             event_id=_counter[0],
             event="node.complete",
@@ -315,6 +318,7 @@ def _translate_event(
     if ev_type == "on_chain_end" and name == "LangGraph":
         output = data.get("output", {})
         _counter[0] += 1
+        logger.info("[sse] workflow.complete run=%s", run_id)
         return _sse_frame(
             event_id=_counter[0],
             event="workflow.complete",
@@ -353,6 +357,7 @@ async def _stream_events(
         node_id = next_nodes[0]
         state_values = getattr(state_obj, "values", {}) or {}
         counter[0] += 1
+        logger.info("[sse] workflow.paused run=%s at node=%s", run_id, node_id)
         yield _sse_frame(
             event_id=counter[0],
             event="workflow.paused",
@@ -462,6 +467,7 @@ async def start_run(
     """Start a new plan generation run and stream SSE events."""
     run_id = run_id or str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
+    logger.info("[plan] start_run run=%s brand=%s", run_id, brand_input.get("brand_name"))
     # 持久化批次记录到 SQLite
     await _save_plan_record(run_id, brand_input, "running", now, now)
     graph = await _get_graph()
@@ -490,6 +496,7 @@ async def approve_run(
     edited_input: dict[str, Any] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Resume a paused run from an interrupt checkpoint."""
+    logger.info("[plan] approve_run run=%s", run_id)
     graph = await _get_graph()
 
     # If the user edited the node input, persist it into the checkpoint so the
