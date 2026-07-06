@@ -157,7 +157,7 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, auto
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-sm font-semibold text-gray-800">{agent.name}</div>
                         <span className={`whitespace-nowrap rounded-[10px] px-2 py-0.5 text-[11px] font-semibold ${statusBadgeClass(status)}`}>
-                          {isPaused && status !== 'running' ? '等待确认' : statusLabel(status)}
+                          {isPaused ? '等待确认' : statusLabel(status)}
                         </span>
                       </div>
                       <div className="mt-1 text-xs text-gray-500">{agent.desc}</div>

@@ -6,7 +6,6 @@ import { PlanForm } from './PlanForm'
 import { PlanPreview } from './PlanPreview'
 import type { PlanChapter } from '../types/plan'
 import { PipelineTimeline } from './PipelineTimeline'
-import { PlanLogStream } from './PlanLogStream'
 
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
@@ -42,8 +41,6 @@ export function PlanPage() {
   const {
     status,
     nodes,
-    runId,
-    logs,
     outputs,
     failedNode,
     error,
@@ -92,7 +89,7 @@ export function PlanPage() {
     buttonLabel: '查看详情',
   }))
 
-  const [activeTab, setActiveTab] = useState(0)
+  const [activeTab] = useState(0)
   const [autoMode, setAutoMode] = useState(false)
 
   const TABS = [
