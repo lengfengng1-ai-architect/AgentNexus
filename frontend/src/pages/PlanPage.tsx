@@ -139,7 +139,7 @@ export function PlanPage() {
   const auditPanel = null
 
   return (
-    <div className="app" style={{ display: 'flex', minHeight: 'var(--app-height)', backgroundColor: '#fafbfc' }}>
+    <div className="app" style={{ display: 'flex', height: '100%', backgroundColor: '#fafbfc' }}>
       <aside style={{
         width: sidebarCollapsed ? 48 : 360,
         minWidth: sidebarCollapsed ? 48 : 360,
@@ -306,7 +306,6 @@ export function PlanPage() {
 
       <main style={{
         flex: 1, minWidth: 0, display: 'flex', flexDirection: 'column',
-        overflow: 'auto',
       }}>
         <header style={{
           height: 64, background: '#fff', borderBottom: '1px solid #e2e8f0',
