@@ -621,10 +621,21 @@ async def rerun_run(run_id: str) -> AsyncGenerator[str, None]:
         return
 
     node_id = next_nodes[0]
-    # Clear the node's output from checkpoint state so it reruns fresh
+    # Clear this node's output AND all downstream nodes from checkpoint state,
+    # so they re-execute fresh when the graph resumes.
     checkpoint = tuple_.checkpoint
     channel_values = checkpoint.setdefault("channel_values", {})
-    channel_values[node_id] = {}
+    # Find index of current node to determine which nodes are downstream
+    try:
+        current_idx = _NODE_ORDER.index(node_id)
+    except ValueError:
+        current_idx = -1
+    if current_idx >= 0:
+        downstream = _NODE_ORDER[current_idx:]
+    else:
+        downstream = [node_id]
+    for key in downstream:
+        channel_values.pop(key, None)
 
     saver = await _get_saver()
     await saver.aput(
