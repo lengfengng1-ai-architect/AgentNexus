@@ -316,12 +316,8 @@ export function usePlanRun() {
         })
         break
       case 'workflow.complete': {
-        const eventOutputs = event.data?.output || event.data
-        const completedNodeIds = Object.keys(eventOutputs || {})
-        const nextNodes = state.nodes.map((n) =>
-          completedNodeIds.includes(n.id) ? { ...n, status: 'complete' as const } : n
-        )
-        dispatch({ type: 'WORKFLOW_COMPLETE', outputs: event.data as PlanOutputs })
+        const outputs = (event.data?.output || event.data) as PlanOutputs
+        dispatch({ type: 'WORKFLOW_COMPLETE', outputs })
         break
       }
       case 'chapter.start': {
