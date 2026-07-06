@@ -10,7 +10,6 @@
 
 from __future__ import annotations
 
-import asyncio
 import json
 import logging
 import uuid
@@ -26,7 +25,7 @@ from typing_extensions import TypedDict
 
 import aiosqlite
 
-from app.agents.llm_utils import drain_logs, set_flush_callback
+from app.agents.llm_utils import drain_logs
 from app.agents.registry import get_handler
 from app.schemas.common import ErrorCode
 
@@ -351,12 +350,20 @@ async def _stream_events(
     """Consume astream_events v2 and yield standard SSE frames."""
     counter = [0]
     started: set[str] = set()
-    queue: asyncio.Queue[str | None] = asyncio.Queue()
 
-    def _sync_flush() -> None:
+    async for event in graph.astream_events(
+        input_value,
+        _thread_config(run_id),
+        version="v2",
+    ):
+        translated = _translate_event(event, run_id, _counter=counter, _started=started)
+        if translated is not None:
+            yield translated
+
+        # Drain any logs written during handler execution
         for log_msg in drain_logs():
             counter[0] += 1
-            queue.put_nowait(_sse_frame(
+            yield _sse_frame(
                 event_id=counter[0],
                 event="node.log",
                 data={
@@ -364,44 +371,7 @@ async def _stream_events(
                     "node_id": log_msg["node_id"],
                     "message": log_msg["message"],
                 },
-            ))
-
-    set_flush_callback(_sync_flush)
-
-    async def _run_graph_and_enqueue() -> None:
-        """Run the LangGraph stream and push all events to the shared queue."""
-        try:
-            async for event in graph.astream_events(
-                input_value,
-                _thread_config(run_id),
-                version="v2",
-            ):
-                translated = _translate_event(event, run_id, _counter=counter, _started=started)
-                if translated is not None:
-                    queue.put_nowait(translated)
-        except Exception as exc:
-            logger.exception("graph stream failed: %s", run_id)
-            queue.put_nowait(_sse_frame(
-                event_id=counter[0],
-                event="node.failed",
-                data={"run_id": run_id, "node_id": "plan_generation", "message": str(exc)},
-            ))
-        finally:
-            queue.put_nowait(None)  # sentinel: stream ended
-
-    graph_task = asyncio.create_task(_run_graph_and_enqueue())
-
-    # Drain the queue: yields both graph events and log frames
-    # as they arrive, preserving order (flushed logs during handler
-    # execution are interleaved naturally).
-    while True:
-        frame = await queue.get()
-        if frame is None:
-            break
-        yield frame
-
-    await graph_task
-    set_flush_callback(None)
+            )
 
     # After the event stream finishes, check whether the graph paused at an
     # interrupt checkpoint. With interrupt_after, the stream stops after each
@@ -525,6 +495,13 @@ async def start_run(
     await _save_plan_record(run_id, brand_input, "running", now, now)
     graph = await _get_graph()
     state = _initial_state(brand_input)
+
+    # Emit workflow.start immediately so the frontend knows the run is live
+    yield _sse_frame(
+        event_id=0,
+        event="workflow.start",
+        data={"run_id": run_id},
+    )
 
     try:
         async for frame in _stream_events(graph, state, run_id):

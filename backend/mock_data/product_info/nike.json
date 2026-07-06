@@ -1,56 +1,46 @@
 {
   "identity": {
     "product_name": {
-      "value": null,
+      "value": "Nike",
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
-      "method": "extracted",
-      "quote": null
+      "method": "quoted",
+      "quote": "Nike"
     },
     "brand": {
-      "value": null,
+      "value": "Nike",
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
       "method": "extracted",
       "quote": null
     },
     "manufacturer": {
-      "value": null,
+      "value": "Nike, Inc.",
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
       "method": "extracted",
       "quote": null
     },
     "industry": {
-      "value": null,
+      "value": "运动服装与鞋类",
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
       "method": "extracted",
       "quote": null
     },
     "category": {
-      "value": null,
+      "value": "运动服饰与鞋类品牌",
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
       "method": "extracted",
       "quote": null
@@ -58,34 +48,28 @@
   },
   "official_description": {
     "description": {
-      "value": null,
+      "value": "提供运动鞋类、服装和配饰，专注于为各级运动员提供先进装备，强调创新和性能提升。",
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
       "method": "extracted",
-      "quote": null
+      "quote": "Offers athletic footwear, apparel, and accessories from leading sports brands. It provides advanced gear for aspiring and professional athletes across various sports. Product design emphasizes innovation and performance enhancement."
     },
     "tagline": {
-      "value": null,
+      "value": "Just Do It",
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
-      "method": "extracted",
-      "quote": null
+      "method": "quoted",
+      "quote": "Just Do It"
     },
     "statement": {
       "value": null,
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
       "method": "extracted",
       "quote": null
@@ -95,43 +79,38 @@
   "specifications": {
     "value": {},
     "sources": [
-      "https://support.apple.com/en-us/docs",
-      "https://fenghsin.com.tw/",
-      "https://www.nike.com/women",
-      "https://www.nike.com.cn/"
+      "https://www.jiemian.com/article/4613965.html",
+      "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
     ],
     "method": "extracted"
   },
   "availability": {
     "status": {
-      "value": null,
+      "value": "在售",
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
       "method": "extracted",
       "quote": null
     },
     "pricing": [],
     "available_regions": {
-      "value": [],
+      "value": [
+        "美国",
+        "中国"
+      ],
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
       "method": "extracted"
     },
     "access_model": {
-      "value": null,
+      "value": "线上直销（DTC）和线下零售",
       "sources": [
-        "https://support.apple.com/en-us/docs",
-        "https://fenghsin.com.tw/",
-        "https://www.nike.com/women",
-        "https://www.nike.com.cn/"
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
       ],
       "method": "extracted",
       "quote": null

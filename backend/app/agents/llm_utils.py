@@ -4,7 +4,7 @@ Corresponding in_scope ID: workflow-orchestration
 """
 
 import json
-from typing import Any, Callable
+from typing import Any
 
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
@@ -12,25 +12,11 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.config.settings import settings
 
 _log_buffer: list[dict[str, str]] = []
-_flush_callback: Callable[[], None] | None = None
-
-
-def set_flush_callback(cb: Callable[[], None] | None) -> None:
-    """Register a callback to flush logs immediately.
-
-    Called from _stream_events before the async for loop.
-    The callback is synchronous because write_log is called
-    from LangGraph thread-pool execution (not the async event loop).
-    """
-    global _flush_callback
-    _flush_callback = cb
 
 
 def write_log(node_id: str, message: str) -> None:
-    """Append a live operation log message and flush immediately."""
+    """Append a live operation log message to the shared buffer."""
     _log_buffer.append({"node_id": node_id, "message": message})
-    if _flush_callback is not None:
-        _flush_callback()
 
 
 def drain_logs() -> list[dict[str, str]]:
