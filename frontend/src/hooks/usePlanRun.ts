@@ -390,7 +390,10 @@ export function usePlanRun() {
         try { localStorage.setItem('allygo_plan_run_id', runId) } catch { /* ignore */ }
         dispatch({ type: 'SET_RUN_ID', runId })
         dispatch({ type: 'SET_CONNECTED', connected: true })
+        // 并行启动三个 agent：产品调研、市场调研、人群洞察
         dispatch({ type: 'NODE_START', nodeId: PIPELINE_NODES[0].id })
+        dispatch({ type: 'NODE_START', nodeId: PIPELINE_NODES[1].id })
+        dispatch({ type: 'NODE_START', nodeId: PIPELINE_NODES[2].id })
         await consumeStream(stream)
       } catch (error) {
         const message = error instanceof Error ? error.message : '启动失败'

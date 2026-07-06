@@ -19,7 +19,7 @@ from typing import Any
 
 from langgraph.checkpoint.sqlite.aio import AsyncSqliteSaver
 from langgraph.graph import END, StateGraph
-from langgraph.types import Command
+from langgraph.types import Command, Send
 from pydantic import BaseModel
 from typing_extensions import TypedDict
 
@@ -36,6 +36,7 @@ _CHECKPOINT_INTERRUPT_NODES = [
     "execution_planning",
     "plan_generator",
 ]
+_PARALLEL_NODES = ["product_research", "market_research", "audience_insight"]
 
 
 class PlanRunRecord(BaseModel):
@@ -171,11 +172,20 @@ def _build_node(node_id: str) -> Any:
 
     async def node_fn(state: PlanState) -> dict[str, Any]:
         inputs = _node_inputs(node_id, state)
-        return {node_id: await handler(inputs)}
+        try:
+            return {node_id: await handler(inputs)}
+        except Exception:
+            logger.exception("node %s failed, skipping with empty output", node_id)
+            return {node_id: {}}
 
     node_fn.__name__ = f"{node_id}_node"
     node_fn.__qualname__ = f"{node_id}_node"
     return node_fn
+
+
+def _dispatch_init(state: PlanState) -> list[Send]:
+    """Fan out to all three parallel research nodes."""
+    return [Send(nid, state) for nid in _PARALLEL_NODES]
 
 
 def _build_graph() -> Any:
@@ -193,9 +203,12 @@ def _build_graph() -> Any:
     graph.add_node("action_recommendations", _build_node("action_recommendations"))
     graph.add_node("plan_generator", _build_node("plan_generator"))
 
-    graph.set_entry_point("product_research")
-    graph.add_edge("product_research", "market_research")
-    graph.add_edge("market_research", "audience_insight")
+    graph.set_conditional_entry_point(
+        _dispatch_init,
+        {nid: nid for nid in _PARALLEL_NODES},
+    )
+    graph.add_edge("product_research", "plan_data_query")
+    graph.add_edge("market_research", "plan_data_query")
     graph.add_edge("audience_insight", "plan_data_query")
     graph.add_edge("plan_data_query", "fitness_analysis")
     graph.add_edge("fitness_analysis", "strategy_generation")
@@ -215,7 +228,7 @@ async def _get_graph() -> Any:
         saver = await _get_saver()
         _graph = _build_graph().compile(
             checkpointer=saver,
-            interrupt_after=_NODE_ORDER,
+            interrupt_after=_NODE_ORDER[:1] + _CHECKPOINT_INTERRUPT_NODES,
         )
     return _graph
 
@@ -375,6 +388,14 @@ def _paused_snapshot(state: PlanState, node_id: str) -> dict[str, Any]:
     }
 
 
+def _next_node(state: PlanState) -> str | None:
+    """Return the first non-completed node (sequential order), or None."""
+    for nid in _NODE_ORDER:
+        if not state.get(nid):
+            return nid
+    return None
+
+
 async def _checkpoint_tuple(run_id: str) -> Any:
     """Fetch the latest checkpoint tuple for a run_id."""
     saver = await _get_saver()
@@ -428,13 +449,11 @@ def _status_for_state(
     # Determine next expected node based on completed outputs.
     current_node: str | None = None
     paused_snapshot: dict[str, Any] | None = None
-    for nid in _NODE_ORDER:
-        if not state.get(nid):
-            current_node = nid
-            # With interrupt_after all nodes, every non-completed node is paused
-            paused_snapshot = _paused_snapshot(state, nid)
-            status = "paused"
-            break
+    cn = _next_node(state)
+    if cn:
+        current_node = cn
+        paused_snapshot = _paused_snapshot(state, cn)
+        status = "paused"
     else:
         status = "completed"
 
