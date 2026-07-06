@@ -80,7 +80,14 @@ export function ChatContainer() {
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pb-6 sm:px-6">
             {messages.map((message) =>
-              message.isLoading ? (
+              message.intent === 'thinking' ? (
+                <ChatBubble
+                  key={message.id}
+                  message={{...message, isLoading: false}}
+                  onRetry={message.retryable ? retryMessage : undefined}
+                  onGeneratePlan={latestBrandInput ? () => handleGeneratePlan(latestBrandInput) : undefined}
+                />
+              ) : message.isLoading ? (
                 <LoadingBubble key={message.id} />
               ) : (
                 <ChatBubble

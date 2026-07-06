@@ -75,10 +75,11 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         id: sid,
         role: 'ai',
         content: '',
-        isLoading: true,
+        isLoading: false,
         reasoning: '',
+        intent: 'thinking' as ChatMessage['intent'],
       }
-      return { ...state, isLoading: true, messages: [...state.messages.filter(m => !m.isLoading), streamMsg] }
+      return { ...state, isLoading: true, messages: [...state.messages, streamMsg] }
     }
 
     case 'STREAM_REASONING': {
