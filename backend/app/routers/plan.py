@@ -18,6 +18,7 @@ from app.services.plan_generation_service import (
     get_status,
     list_runs,
     reject_run,
+    rerun_run,
     run_exists,
     start_run,
 )
@@ -104,6 +105,20 @@ async def plan_run_reject(
         return not_found
     return StreamingResponse(
         reject_run(run_id, reason=body.reason),
+        media_type="text/event-stream",
+        headers=_sse_headers(run_id),
+    )
+
+
+@router.post("/plan/runs/{run_id}/rerun")
+async def plan_run_rerun(
+    run_id: str = Path(..., description="运行实例 ID"),
+):
+    """重新执行当前 pause 的 agent，清空结果后重新运行。"""
+    if not_found := await _require_run(run_id):
+        return not_found
+    return StreamingResponse(
+        rerun_run(run_id),
         media_type="text/event-stream",
         headers=_sse_headers(run_id),
     )
