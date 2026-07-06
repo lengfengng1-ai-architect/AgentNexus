@@ -96,6 +96,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         id: `ai-${Date.now()}`,
         role: 'ai',
         content: action.reply,
+        isLoading: false,
         brandInput: action.brandInput,
         intent: action.intent as ChatMessage['intent'],
         canGeneratePlan,
