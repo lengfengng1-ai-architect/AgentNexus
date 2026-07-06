@@ -75,7 +75,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         id: sid,
         role: 'ai',
         content: '',
-        isLoading: false,
+        isLoading: true,
         reasoning: '',
       }
       return { ...state, isLoading: true, messages: [...state.messages.filter(m => !m.isLoading), streamMsg] }
