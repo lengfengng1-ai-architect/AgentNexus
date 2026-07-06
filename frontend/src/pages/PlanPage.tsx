@@ -82,8 +82,8 @@ export function PlanPage() {
     start({ ...brandInput })
   }, [save, start])
 
-  const displayedChapters = chapters.length > 0 ? chapters : (outputs.plan_generator?.chapters || [])
-  const actionItems = outputs.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
+  const displayedChapters = chapters.length > 0 ? chapters : (outputs?.plan_generator?.chapters || [])
+  const actionItems = outputs?.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
     title: a.title,
     description: a.description,
     buttonLabel: '查看详情',
