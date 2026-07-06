@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import type { PlanNode } from '../types/plan'
 
 interface PipelineTimelineProps {
@@ -6,6 +6,11 @@ interface PipelineTimelineProps {
   failedNode: string | null
   nodeLogs?: Record<string, string[]>
   pausedNode?: string | null
+  autoMode?: boolean
+  isLoading?: boolean
+  isConnected?: boolean
+  onApprove?: () => void
+  onRerun?: () => void
   onNodeClick?: (nodeId: string) => void
 }
 
@@ -17,16 +22,16 @@ interface AgentMeta {
 }
 
 const agents: AgentMeta[] = [
-  { id: 'product_research', name: '产品调研 Agent', desc: '搜索并分析品牌产品信息与市场定位', icon: '50e' },
-  { id: 'market_research', name: '市场调研 Agent', desc: '收集行业趋势、竞品格局、消费洞察', icon: '4ca' },
-  { id: 'audience_insight', name: '人群洞察 Agent', desc: '分析目标城市运动人群画像', icon: '465' },
-  { id: 'plan_data_query', name: '数据查询 Agent', desc: '调取 AllyGo 盟域/赛事/达人/场馆/经营社数据', icon: '50d' },
-  { id: 'fitness_analysis', name: '适配度分析 Agent', desc: '计算品牌品类 × 运动场景适配度', icon: '3af' },
-  { id: 'strategy_generation', name: '策略生成 Agent', desc: '制定营销策略、核心定位、4M+1C框架', icon: '4a1' },
-  { id: 'execution_planning', name: '执行规划 Agent', desc: '规划赛事/盟域/达人/内容/运营落地方案', icon: '680' },
-  { id: 'budget_kpi', name: '预算与 KPI Agent', desc: '测算预算分配、KPI预测、时间表', icon: '4b0' },
-  { id: 'action_recommendations', name: '行动建议 Agent', desc: '生成可执行的系统操作指导', icon: '3af' },
-  { id: 'plan_generator', name: '方案生成 Agent', desc: '汇总上游输出为 9 章 Markdown 方案', icon: '4cb' },
+  { id: 'product_research', name: '产品调研 Agent', desc: '搜索并分析品牌产品信息与市场定位', icon: '\u{1F50E}' },
+  { id: 'market_research', name: '市场调研 Agent', desc: '收集行业趋势、竞品格局、消费洞察', icon: '\u{1F4CA}' },
+  { id: 'audience_insight', name: '人群洞察 Agent', desc: '分析目标城市运动人群画像', icon: '\u{1F465}' },
+  { id: 'plan_data_query', name: '数据查询 Agent', desc: '调取 AllyGo 盟域/赛事/达人/场馆/经营社数据', icon: '\u{1F50D}' },
+  { id: 'fitness_analysis', name: '适配度分析 Agent', desc: '计算品牌品类 × 运动场景适配度', icon: '\u{1F3AF}' },
+  { id: 'strategy_generation', name: '策略生成 Agent', desc: '制定营销策略、核心定位、4M+1C框架', icon: '\u{1F4A1}' },
+  { id: 'execution_planning', name: '执行规划 Agent', desc: '规划赛事/盟域/达人/内容/运营落地方案', icon: '\u{1F680}' },
+  { id: 'budget_kpi', name: '预算与 KPI Agent', desc: '测算预算分配、KPI预测、时间表', icon: '\u{1F4B0}' },
+  { id: 'action_recommendations', name: '行动建议 Agent', desc: '生成可执行的系统操作指导', icon: '\u{1F3AF}' },
+  { id: 'plan_generator', name: '方案生成 Agent', desc: '汇总上游输出为 9 章 Markdown 方案', icon: '\u{1F4CB}' },
 ]
 
 function statusLabel(status: PlanNode['status']): string {
@@ -85,8 +90,20 @@ function dotClass(status: PlanNode['status'], isPaused: boolean): string {
   }
 }
 
-export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, onNodeClick }: PipelineTimelineProps) {
+export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, autoMode = false, isLoading = false, isConnected = false, onApprove, onRerun  }: PipelineTimelineProps) {
   const [expandedSteps, setExpandedSteps] = useState<Set<string>>(new Set())
+
+  // Auto-expand the paused node
+  useEffect(() => {
+    if (pausedNode) {
+      setExpandedSteps(prev => {
+        if (prev.has(pausedNode)) return prev
+        const next = new Set(prev)
+        next.add(pausedNode)
+        return next
+      })
+    }
+  }, [pausedNode])
 
   const toggleStep = (nodeId: string) => {
     setExpandedSteps((prev) => {
@@ -140,7 +157,7 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, onNo
                       <div className="flex items-center justify-between gap-3">
                         <div className="text-sm font-semibold text-gray-800">{agent.name}</div>
                         <span className={`whitespace-nowrap rounded-[10px] px-2 py-0.5 text-[11px] font-semibold ${statusBadgeClass(status)}`}>
-                          {isPaused ? '等待确认' : statusLabel(status)}
+                          {isPaused && status !== 'running' ? '等待确认' : statusLabel(status)}
                         </span>
                       </div>
                       <div className="mt-1 text-xs text-gray-500">{agent.desc}</div>
@@ -148,9 +165,9 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, onNo
                   </button>
 
                   {node && isExpanded && (
-                    <div className="mb-3 mt-0 rounded-md border-l-[3px] border-[#1e40af] bg-blue-50/50 p-3">
-                      <div className="mb-2 text-xs font-bold text-[#1e40af]">执行摘要</div>
-                      <div className="text-xs leading-relaxed text-gray-600">
+                    <div className="mb-3 mt-0 rounded-lg border border-gray-200 bg-gray-50 p-4">
+                      <div className="mb-3 text-xs font-bold text-gray-700">执行摘要</div>
+                      <div className="mb-3 text-xs leading-relaxed text-gray-600">
                         {(() => {
                           const logs = nodeLogs?.[node.id]
                           if (logs && logs.length > 0) {
@@ -164,9 +181,38 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, onNo
                           if (node.status === 'running') {
                             return <p>执行中...</p>
                           }
-                          return <p>执行完成</p>
+                          if (node.status === 'complete' || status === 'complete') {
+                            return <p>执行完成</p>
+                          }
+                          return <p>待执行</p>
                         })()}
                       </div>
+
+                      {!autoMode && (isPaused || node.status === 'complete') && onApprove && onRerun && (
+                        <div className="flex gap-2">
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); onRerun() }}
+                            className="inline-flex items-center gap-1.5 rounded-md border border-gray-300 bg-white px-3.5 py-1.5 text-xs font-semibold text-gray-700 hover:bg-gray-100"
+                          >
+                            ↻ 重新执行
+                          </button>
+                          {isPaused && (
+                            <button
+                              type="button"
+                              onClick={(e) => { e.stopPropagation(); onApprove() }}
+                              disabled={isConnected || isLoading}
+                              className="inline-flex items-center gap-1.5 rounded-md border border-transparent px-3.5 py-1.5 text-xs font-semibold text-white"
+                              style={{
+                                background: isConnected || isLoading ? '#9ca3af' : '#1e40af',
+                                cursor: isConnected || isLoading ? 'not-allowed' : 'pointer',
+                              }}
+                            >
+                              ✓ 确认继续
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
