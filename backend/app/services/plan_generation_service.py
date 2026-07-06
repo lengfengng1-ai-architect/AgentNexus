@@ -172,7 +172,11 @@ def _build_node(node_id: str) -> Any:
 
     async def node_fn(state: PlanState) -> dict[str, Any]:
         inputs = _node_inputs(node_id, state)
-        return {node_id: await handler(inputs)}
+        try:
+            return {node_id: await handler(inputs)}
+        except Exception:
+            logger.exception("node %s failed, skipping with empty output", node_id)
+            return {node_id: {}}
 
     node_fn.__name__ = f"{node_id}_node"
     node_fn.__qualname__ = f"{node_id}_node"

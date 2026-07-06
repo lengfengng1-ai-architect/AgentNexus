@@ -8,6 +8,7 @@ superpowers in_scope ID: product-research
 """
 
 import asyncio
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -18,6 +19,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
+from openai import BadRequestError
 from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model
@@ -30,6 +32,7 @@ from urllib.parse import urlparse
 
 # ── mock_data 持久化 ──
 
+logger = logging.getLogger(__name__)
 MOCK_DATA_DIR = Path("mock_data") / "product_info"
 
 
@@ -57,6 +60,9 @@ PRIORITY_DOMAINS = {
     "zol.com.cn", "smzdm.com", "ithome.com", "pcpop.com",
 }
 
+# 记录最近一次抓取的 URL，供 retry 时排除
+_last_fetched_urls: list[str] = []
+
 
 class SearchResult(BaseModel):
     url: str
@@ -76,6 +82,7 @@ class ProductResearchState(BaseModel):
     search_results: list[SearchResult] = Field(default_factory=list)
     fetched_pages: list[FetchedPage] = Field(default_factory=list)
     output: ProductResearchResult | None = None
+    exclude_urls: list[str] = Field(default_factory=list)
 
 
 # ── 辅助函数 ────────────────────────────────────────────────
@@ -125,7 +132,7 @@ async def search_node(state: ProductResearchState) -> dict:
     product = state.product_name
     all_results: list[SearchResult] = []
     keywords = [product, f"{product} 产品规格", product]
-    seen_urls: set[str] = set()
+    seen_urls: set[str] = set(state.exclude_urls)
 
     for kw in keywords:
         try:
@@ -172,6 +179,10 @@ async def fetch_node(state: ProductResearchState) -> dict:
 
     tasks = [fetch_one(url) for url in urls]
     results = await asyncio.gather(*tasks)
+
+    global _last_fetched_urls
+    _last_fetched_urls = [r.url for r in results if r.fetched]
+
     return {"fetched_pages": list(results)}
 
 
@@ -262,9 +273,9 @@ def _build_graph():
 _graph = _build_graph()
 
 
-async def research_product(product_name: str) -> ProductResearchResult:
+async def research_product(product_name: str, exclude_urls: list[str] | None = None) -> ProductResearchResult:
     """执行产品信息调研。"""
-    result = await _graph.ainvoke({"product_name": product_name})
+    result = await _graph.ainvoke({"product_name": product_name, "exclude_urls": exclude_urls or []})
     output = result.get("output")
     if output is None:
         raise ValueError("Agent did not return structured output")
@@ -276,13 +287,28 @@ async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
 
     Expects state keys: product_name or brand_name.
     Uses brand_name as the product to research.
+
+    异常重试：OpenAI 内容审核拒绝时自动重试，跳过首次抓取的来源 URL。
     """
     brand_name = state.get("brand_name") or state.get("product_name")
     if not brand_name:
         raise ValueError("Missing required input: brand_name or product_name")
-    result = await research_product(brand_name)
-    _save_to_cache(brand_name, result)
-    return result.model_dump()
+
+    for attempt in (1, 2):
+        try:
+            exclude = state.get("_exclude_urls", []) if attempt == 2 else []
+            result = await research_product(brand_name, exclude_urls=exclude)
+            _save_to_cache(brand_name, result)
+            return result.model_dump()
+        except BadRequestError as e:
+            if attempt == 1 and "data_inspection_failed" in str(e):
+                logger.warning("product_research blocked (attempt 1/2), retrying with different sources…")
+                # Collect URLs used in this failed attempt and pass to next try
+                state["_exclude_urls"] = [p.url for p in _last_fetched_urls] if _last_fetched_urls else []
+            else:
+                raise
+
+    return {}  # Should not reach here
 
 
 register("product_research", run_product_research)
