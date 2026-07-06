@@ -81,10 +81,13 @@ function NavDropdown({
 }) {
   const [open, setOpen] = useState(false)
   return (
-    <div style={{ position: 'relative' }} onMouseLeave={() => setOpen(false)}>
+    <div
+      style={{ position: 'relative' }}
+      onMouseEnter={() => setOpen(true)}
+      onMouseLeave={() => setOpen(false)}
+    >
       <button
         onClick={() => setOpen(o => !o)}
-        onMouseEnter={() => setOpen(true)}
         style={{
           padding: '4px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600,
           cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: 4,
@@ -99,9 +102,10 @@ function NavDropdown({
       </button>
       {open && (
         <div style={{
-          position: 'absolute', top: '100%', left: 0, marginTop: 4,
+          position: 'absolute', top: 'calc(100% + 4px)', left: 0,
           background: '#fff', border: '1px solid #e2e8f0', borderRadius: 8,
           boxShadow: '0 4px 12px rgba(0,0,0,0.08)', overflow: 'hidden', minWidth: 120,
+          zIndex: 1000,
         }}>
           {children.map(child => (
             <button
