@@ -29,7 +29,7 @@ export function ChatBubble({ message, onRetry, onGeneratePlan }: ChatBubbleProps
           message.isError ? 'ring-2 ring-start/50' : '',
         ].join(' ')}
       >
-        {!isUser && message.reasoning && !message.content && (
+        {!isUser && message.reasoning && (
           <div
             ref={reasoningRef}
             className="mb-3 max-h-28 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-500 whitespace-pre-wrap"
