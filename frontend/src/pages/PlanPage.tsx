@@ -230,9 +230,9 @@ export function PlanPage() {
   const [autoMode, setAutoMode] = useState(false)
   const userInteractedRef = useRef(false)
   const [activeTab, setActiveTab] = useState(0)
-  // 宣传视频轮询：流水线完成后如果视频不存在或还在生成中，定时轮询
+  // 宣传视频轮询：workflow 完成或暂停态下,如果视频不存在或还在生成中,定时轮询
   useEffect(() => {
-    if (status !== 'completed') return
+    if (status !== 'completed' && status !== 'paused') return
 
     const pv = outputs?.promo_video
     // 视频已完成或已失败 → 停止轮询
