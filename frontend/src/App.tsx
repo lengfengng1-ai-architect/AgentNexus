@@ -2,8 +2,9 @@ import { useState } from 'react'
 import { ChatPreviewPage } from './pages/ChatPreviewPage'
 import { PlanPage } from './pages/PlanPage'
 import { IntentTestPage } from './pages/IntentTestPage'
+import { VideoTestPage } from './pages/VideoTestPage'
 
-type Page = 'chat' | 'plan' | 'intent'
+type Page = 'chat' | 'plan' | 'intent' | 'video'
 
 const NAV: { key: Page; label: string; children?: { key: string; label: string }[] }[] = [
   { key: 'chat', label: '对话' },
@@ -11,7 +12,10 @@ const NAV: { key: Page; label: string; children?: { key: string; label: string }
   {
     key: 'intent',
     label: '测试',
-    children: [{ key: 'intent', label: '意图识别' }],
+    children: [
+      { key: 'intent', label: '意图识别' },
+      { key: 'video', label: '文生视频' },
+    ],
   },
 ]
 
@@ -19,12 +23,13 @@ function App() {
   const [page, setPage] = useState<Page>(() => {
     if (window.location.pathname === '/plan') return 'plan'
     if (window.location.pathname === '/intent-test') return 'intent'
+    if (window.location.pathname === '/video-test') return 'video'
     return 'chat'
   })
 
   const navigate = (p: Page) => {
     setPage(p)
-    const path = p === 'chat' ? '/' : p === 'plan' ? '/plan' : '/intent-test'
+    const path = p === 'chat' ? '/' : p === 'plan' ? '/plan' : p === 'intent' ? '/intent-test' : '/video-test'
     window.history.pushState(null, '', path)
   }
 
@@ -66,6 +71,7 @@ function App() {
         {page === 'chat' && <ChatPreviewPage />}
         {page === 'plan' && <PlanPage />}
         {page === 'intent' && <IntentTestPage />}
+        {page === 'video' && <VideoTestPage />}
       </main>
     </div>
   )
