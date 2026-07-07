@@ -46,4 +46,32 @@ describe('PlanPreview', () => {
     fireEvent.click(screen.getByText('折叠全部'))
     expect(screen.queryByText('市场内容概述')).not.toBeInTheDocument()
   })
+
+  test('renders markdown headers with correct hierarchy', () => {
+    const mdChapters: PlanChapter[] = [
+      { title: '测试章节', subtitle: '测试副标题', content: '## 二级标题\n\n### 三级标题\n\n正文段落' },
+    ]
+    render(<PlanPreview chapters={mdChapters} />)
+    expect(screen.getByText('二级标题')).toBeInTheDocument()
+    expect(screen.getByText('三级标题')).toBeInTheDocument()
+    expect(screen.getByText('正文段落')).toBeInTheDocument()
+  })
+
+  test('renders markdown lists', () => {
+    const mdChapters: PlanChapter[] = [
+      { title: '列表章节', subtitle: 'sub', content: '- 第一项\n- 第二项\n- 第三项' },
+    ]
+    render(<PlanPreview chapters={mdChapters} />)
+    expect(screen.getByText('第一项')).toBeInTheDocument()
+    expect(screen.getByText('第二项')).toBeInTheDocument()
+    expect(screen.getByText('第三项')).toBeInTheDocument()
+  })
+
+  test('renders markdown bold text', () => {
+    const mdChapters: PlanChapter[] = [
+      { title: '粗体章节', subtitle: 'sub', content: '这是**重要**内容' },
+    ]
+    render(<PlanPreview chapters={mdChapters} />)
+    expect(screen.getByText('重要')).toBeInTheDocument()
+  })
 })

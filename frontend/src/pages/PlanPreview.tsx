@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback } from 'react'
+import { marked } from 'marked'
 import type { PlanChapter } from '../types/plan'
 
 interface PlanPreviewProps {
@@ -134,7 +135,7 @@ export function PlanPreview({ chapters }: PlanPreviewProps) {
                 <div className="pb-6 pl-[50px]">
                   <div
                     className="chapter-content text-sm leading-relaxed text-slate-600"
-                    dangerouslySetInnerHTML={{ __html: chapter.content }}
+                    dangerouslySetInnerHTML={{ __html: marked.parse(chapter.content) }}
                   />
                 </div>
               )}
@@ -145,3 +146,95 @@ export function PlanPreview({ chapters }: PlanPreviewProps) {
     </section>
   )
 }
+
+// ponytail: 组件级样式注入，仅影响 .chapter-content 内的 Markdown 渲染
+const _previewStyle = document.createElement('style')
+_previewStyle.textContent = `
+.chapter-content h2 {
+  font-size: 1.25rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin-top: 1.5em;
+  margin-bottom: 0.75em;
+}
+.chapter-content h3 {
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: #1e293b;
+  margin-top: 1.25em;
+  margin-bottom: 0.5em;
+}
+.chapter-content h4 {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #334155;
+  margin-top: 1em;
+  margin-bottom: 0.5em;
+}
+.chapter-content p {
+  margin-bottom: 0.75em;
+  line-height: 1.8;
+}
+.chapter-content strong {
+  font-weight: 600;
+}
+.chapter-content em {
+  font-style: italic;
+}
+.chapter-content ul,
+.chapter-content ol {
+  margin: 0.5em 0;
+  padding-left: 1.5em;
+}
+.chapter-content li {
+  margin-bottom: 0.3em;
+  line-height: 1.7;
+}
+.chapter-content table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+.chapter-content th,
+.chapter-content td {
+  border: 1px solid #e2e8f0;
+  padding: 8px 12px;
+  text-align: left;
+}
+.chapter-content th {
+  background: #f8fafc;
+  font-weight: 600;
+}
+.chapter-content blockquote {
+  border-left: 3px solid #3b82f6;
+  padding: 8px 16px;
+  margin: 1em 0;
+  background: #f8fafc;
+  color: #475569;
+}
+.chapter-content code {
+  background: #f1f5f9;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.875em;
+}
+.chapter-content pre {
+  background: #1e293b;
+  color: #e2e8f0;
+  padding: 16px;
+  border-radius: 8px;
+  overflow-x: auto;
+  margin: 1em 0;
+}
+.chapter-content pre code {
+  background: transparent;
+  padding: 0;
+  color: inherit;
+}
+.chapter-content hr {
+  margin: 1.5em 0;
+  border: none;
+  border-top: 1px solid #e2e8f0;
+}
+`
+document.head.appendChild(_previewStyle)
