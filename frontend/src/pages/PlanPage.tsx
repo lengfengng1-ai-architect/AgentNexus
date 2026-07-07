@@ -57,6 +57,7 @@ export function PlanPage() {
     cancel,
     rerun,
     restoreFromRunId,
+    refreshStatus,
   } = usePlanRun()
   const { seed, save } = usePlanSession()
 
@@ -84,18 +85,54 @@ export function PlanPage() {
   }, [save, start])
 
   const displayedChapters = chapters.length > 0 ? chapters : (outputs?.plan_generator?.chapters || [])
+
   // 下一步建议只在完整方案生成后展示（completed 状态）
-  const actionItems = status === 'completed'
-    ? outputs?.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
-      title: a.title,
-      description: a.description,
-      buttonLabel: '查看详情',
-    }))
-    : undefined
+  const promoVideo = outputs?.promo_video
+  const actionItemsBase = outputs?.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
+    title: a.title,
+    description: a.description,
+    buttonLabel: '查看详情',
+    type: 'normal' as const,
+  })) ?? []
+
+  const actionItems = status !== 'completed'
+    ? undefined
+    : promoVideo
+      ? [
+          {
+            title: promoVideo.status === 'completed'
+              ? '🎬 宣传视频'
+              : promoVideo.status === 'failed'
+                ? '🎬 视频生成失败'
+                : '🎬 宣传视频生成中…',
+            description: promoVideo.status === 'completed'
+              ? '点击播放查看营销方案宣传视频'
+              : promoVideo.status === 'failed'
+                ? `视频生成失败: ${promoVideo.error || ''}`
+                : '视频正在生成中，请耐心等待…',
+            buttonLabel: '查看详情',
+            type: 'video' as const,
+            videoUrl: promoVideo.video_url,
+            promoVideo: promoVideo,
+          },
+          ...actionItemsBase,
+        ]
+      : actionItemsBase
 
   const [autoMode, setAutoMode] = useState(false)
   const userInteractedRef = useRef(false)
   const [activeTab, setActiveTab] = useState(0)
+  // 宣传视频轮询：流水线完成后如果视频还在生成中，定时轮询
+  useEffect(() => {
+    const pv = outputs?.promo_video
+    if (status !== 'completed' || !pv || pv.status !== 'generating') return
+
+    const interval = setInterval(() => {
+      refreshStatus()
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [status, outputs?.promo_video?.status, refreshStatus])
 
   const TABS = [
     { idx: 0, label: '概览', agentId: '' },
