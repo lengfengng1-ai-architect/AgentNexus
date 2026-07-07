@@ -1,184 +1,128 @@
 {
   "identity": {
     "product_name": {
-      "value": "Nike, Inc.",
+      "value": "Nike",
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
-      "method": "quoted",
-      "quote": "Nike, Inc. is an American athletic footwear and apparel corporation"
+      "method": "extracted",
+      "quote": null
     },
     "brand": {
       "value": "Nike",
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
       "method": "extracted",
-      "quote": ""
+      "quote": null
     },
     "manufacturer": {
-      "value": "Nike, Inc.",
+      "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
       "method": "extracted",
-      "quote": ""
+      "quote": null
     },
     "industry": {
-      "value": "Apparel, Accessories, Sports equipment",
+      "value": "体育用品",
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
       "method": "extracted",
-      "quote": ""
+      "quote": null
     },
     "category": {
-      "value": "Athletic footwear and apparel",
+      "value": "鞋服/运动产品",
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
       "method": "extracted",
-      "quote": ""
+      "quote": null
     }
   },
   "official_description": {
     "description": {
-      "value": "Nike, Inc. is an American athletic footwear and apparel corporation headquartered near Beaverton, Oregon. It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment, with revenue in excess of US$46 billion in its fiscal year 2022.",
+      "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
-      "method": "quoted",
-      "quote": "Nike, Inc. is an American athletic footwear and apparel corporation headquartered near Beaverton, Oregon. It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment, with revenue in excess of US$46 billion in its fiscal year 2022."
+      "method": "extracted",
+      "quote": null
     },
     "tagline": {
-      "value": "Just Do It",
+      "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
-      "method": "quoted",
-      "quote": "the highly recognized trademarks of \"Just Do It\" and the Swoosh logo"
+      "method": "extracted",
+      "quote": null
     },
     "statement": {
-      "value": "Nike, Inc. is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment.",
+      "value": null,
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
-      "method": "quoted",
-      "quote": "It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment"
+      "method": "extracted",
+      "quote": null
     }
   },
-  "features": [
-    {
-      "name": "Swoosh logo",
-      "category": "branding",
-      "description": "The Swoosh, designed by Carolyn Davidson, is the widely recognized logo of Nike, Inc., first used in 1971.",
-      "evidence": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc."
-      ]
-    },
-    {
-      "name": "Just Do It slogan",
-      "category": "branding",
-      "description": "Coined by Dan Wieden in 1988, 'Just Do It' is a famous advertising slogan used by Nike.",
-      "evidence": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc."
-      ]
-    },
-    {
-      "name": "Moon Shoe and Waffle Trainer",
-      "category": "innovation",
-      "description": "Bowerman used a waffle iron to create a new sole design, leading to the 'Moon Shoe' in 1972 and the 'Waffle Trainer' in 1974.",
-      "evidence": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc."
-      ]
-    },
-    {
-      "name": "Nike+ ecosystem",
-      "category": "technology",
-      "description": "Nike markets products under its own brand, including Nike+, a technology platform for fitness tracking.",
-      "evidence": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc."
-      ]
-    },
-    {
-      "name": "Skateboarding line",
-      "category": "product line",
-      "description": "Nike Skateboarding (Nike SB) is a sub-brand focused on skateboarding footwear and apparel.",
-      "evidence": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc."
-      ]
-    }
-  ],
+  "features": [],
   "specifications": {
-    "value": {
-      "产品类型": "Athletic shoes, athletic apparel, sporting goods, accessories",
-      "总部": "Nike World Headquarters, Washington County, Oregon, US",
-      "成立时间": "January 25, 1964",
-      "创始人": "Bill Bowerman, Phil Knight",
-      "收入": "US$46.3 billion (2025)",
-      "员工数量": "77,800 (2025)",
-      "子公司": "Converse",
-      "网站": "nike.com",
-      "标志": "Swoosh（1995年启用）",
-      "口号": "Just Do It",
-      "主要品牌": "Nike Golf, Nike Pro, Nike+, Nike Blazers, Air Force 1, Nike Dunk, Air Max, Foamposite, Nike Skateboarding, Nike CR7",
-      "上市信息": "NYSE: NKE (Class B), DJIA component, S&P 100 component, S&P 500 component"
-    },
+    "value": {},
     "sources": [
-      "https://en.wikipedia.org/wiki/Nike,_Inc.",
-      "https://en.wikipedia.org/wiki/Nike",
-      "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+      "https://lolo.com.cn/product/",
+      "https://www.nike.com/launch/",
+      "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
     ],
     "method": "extracted"
   },
   "availability": {
     "status": {
-      "value": "在售",
+      "value": "unknown",
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
       "method": "extracted",
-      "quote": ""
+      "quote": null
     },
     "pricing": [],
     "available_regions": {
-      "value": [
-        "全球（Worldwide）"
-      ],
+      "value": [],
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
       "method": "extracted"
     },
     "access_model": {
-      "value": "线下零售（Niketown stores）、线上直销（nike.com）、经销商",
+      "value": "unknown",
       "sources": [
-        "https://en.wikipedia.org/wiki/Nike,_Inc.",
-        "https://en.wikipedia.org/wiki/Nike",
-        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
+        "https://lolo.com.cn/product/",
+        "https://www.nike.com/launch/",
+        "https://www.pbasystems.com.cn/?product=ironless-linear-motor-dx-f-series"
       ],
       "method": "extracted",
-      "quote": ""
+      "quote": null
     }
   }
 }
