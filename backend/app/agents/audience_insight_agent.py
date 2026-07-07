@@ -69,7 +69,7 @@ def _load_template(name: str, **kwargs) -> str:
 
 
 async def search_node(state: State) -> dict:
-    """搜索目标人群信息。"""
+    """搜索目标人群信息（关键词并行）。"""
     product = state.product_name
     all_results: list[SearchResult] = []
     keywords = [
@@ -80,18 +80,23 @@ async def search_node(state: State) -> dict:
     ]
     seen: set[str] = set()
 
-    for kw in keywords:
-        write_log("audience_insight", f"🔍 正在用关键词「{kw}」搜索…")
+    write_log("audience_insight", f"🔍 正在用 {len(keywords)} 个关键词并行搜索…")
+
+    async def search_one(kw: str) -> list[dict[str, str]]:
         try:
-            raw = await duckduckgo_search(kw, max_results=SEARCH_MAX)
-            for item in raw:
-                url = item.get("href", "")
-                if url and url not in seen:
-                    seen.add(url)
-                    all_results.append(SearchResult(url=url, title=item.get("title", ""), snippet=item.get("body", "")))
+            return await duckduckgo_search(kw, max_results=SEARCH_MAX)
         except Exception:
             write_log("audience_insight", f"⚠️ 关键词「{kw}」搜索失败，跳过")
-            continue
+            return []
+
+    batches = await asyncio.gather(*[search_one(kw) for kw in keywords])
+
+    for raw in batches:
+        for item in raw:
+            url = item.get("href", "")
+            if url and url not in seen:
+                seen.add(url)
+                all_results.append(SearchResult(url=url, title=item.get("title", ""), snippet=item.get("body", "")))
 
     write_log("audience_insight", f"📄 搜索完成，获得 {len(all_results)} 条相关结果")
     return {"search_results": all_results[:FETCH_TOP]}
