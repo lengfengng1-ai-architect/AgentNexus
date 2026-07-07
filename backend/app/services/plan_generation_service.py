@@ -466,7 +466,18 @@ async def _stream_events(
 ) -> AsyncGenerator[str, None]:
     """Consume astream_events v2 and yield standard SSE frames."""
     counter = [0]
-    started: set[str] = set()
+    # Pre-seed started with already-completed nodes so LangGraph resume
+    # replay doesn't emit duplicate node.start events.
+    completed: set[str] = set()
+    try:
+        state_obj = await graph.aget_state(_thread_config(run_id))
+        state_values = getattr(state_obj, "values", {}) or {}
+        for nid in _NODE_ORDER:
+            if state_values.get(nid):
+                completed.add(nid)
+    except Exception:
+        pass
+    started: set[str] = set(completed)
 
     async for event in graph.astream_events(
         input_value,
