@@ -1,86 +1,149 @@
 {
   "identity": {
     "product_name": {
-      "value": "Nike",
+      "value": "Nike, Inc.",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
       "method": "quoted",
-      "quote": "Nike"
+      "quote": "Nike, Inc. is an American athletic footwear and apparel corporation"
     },
     "brand": {
       "value": "Nike",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
       "method": "extracted",
-      "quote": null
+      "quote": ""
     },
     "manufacturer": {
       "value": "Nike, Inc.",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
       "method": "extracted",
-      "quote": null
+      "quote": ""
     },
     "industry": {
-      "value": "运动服装与鞋类",
+      "value": "Apparel, Accessories, Sports equipment",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
       "method": "extracted",
-      "quote": null
+      "quote": ""
     },
     "category": {
-      "value": "运动服饰与鞋类品牌",
+      "value": "Athletic footwear and apparel",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
       "method": "extracted",
-      "quote": null
+      "quote": ""
     }
   },
   "official_description": {
     "description": {
-      "value": "提供运动鞋类、服装和配饰，专注于为各级运动员提供先进装备，强调创新和性能提升。",
+      "value": "Nike, Inc. is an American athletic footwear and apparel corporation headquartered near Beaverton, Oregon. It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment, with revenue in excess of US$46 billion in its fiscal year 2022.",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
-      "method": "extracted",
-      "quote": "Offers athletic footwear, apparel, and accessories from leading sports brands. It provides advanced gear for aspiring and professional athletes across various sports. Product design emphasizes innovation and performance enhancement."
+      "method": "quoted",
+      "quote": "Nike, Inc. is an American athletic footwear and apparel corporation headquartered near Beaverton, Oregon. It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment, with revenue in excess of US$46 billion in its fiscal year 2022."
     },
     "tagline": {
       "value": "Just Do It",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
       "method": "quoted",
-      "quote": "Just Do It"
+      "quote": "the highly recognized trademarks of \"Just Do It\" and the Swoosh logo"
     },
     "statement": {
-      "value": null,
+      "value": "Nike, Inc. is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment.",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
-      "method": "extracted",
-      "quote": null
+      "method": "quoted",
+      "quote": "It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment"
     }
   },
-  "features": [],
+  "features": [
+    {
+      "name": "Swoosh logo",
+      "category": "branding",
+      "description": "The Swoosh, designed by Carolyn Davidson, is the widely recognized logo of Nike, Inc., first used in 1971.",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc."
+      ]
+    },
+    {
+      "name": "Just Do It slogan",
+      "category": "branding",
+      "description": "Coined by Dan Wieden in 1988, 'Just Do It' is a famous advertising slogan used by Nike.",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc."
+      ]
+    },
+    {
+      "name": "Moon Shoe and Waffle Trainer",
+      "category": "innovation",
+      "description": "Bowerman used a waffle iron to create a new sole design, leading to the 'Moon Shoe' in 1972 and the 'Waffle Trainer' in 1974.",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc."
+      ]
+    },
+    {
+      "name": "Nike+ ecosystem",
+      "category": "technology",
+      "description": "Nike markets products under its own brand, including Nike+, a technology platform for fitness tracking.",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc."
+      ]
+    },
+    {
+      "name": "Skateboarding line",
+      "category": "product line",
+      "description": "Nike Skateboarding (Nike SB) is a sub-brand focused on skateboarding footwear and apparel.",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc."
+      ]
+    }
+  ],
   "specifications": {
-    "value": {},
+    "value": {
+      "产品类型": "Athletic shoes, athletic apparel, sporting goods, accessories",
+      "总部": "Nike World Headquarters, Washington County, Oregon, US",
+      "成立时间": "January 25, 1964",
+      "创始人": "Bill Bowerman, Phil Knight",
+      "收入": "US$46.3 billion (2025)",
+      "员工数量": "77,800 (2025)",
+      "子公司": "Converse",
+      "网站": "nike.com",
+      "标志": "Swoosh（1995年启用）",
+      "口号": "Just Do It",
+      "主要品牌": "Nike Golf, Nike Pro, Nike+, Nike Blazers, Air Force 1, Nike Dunk, Air Max, Foamposite, Nike Skateboarding, Nike CR7",
+      "上市信息": "NYSE: NKE (Class B), DJIA component, S&P 100 component, S&P 500 component"
+    },
     "sources": [
-      "https://www.jiemian.com/article/4613965.html",
-      "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      "https://en.wikipedia.org/wiki/Nike,_Inc.",
+      "https://en.wikipedia.org/wiki/Nike",
+      "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
     ],
     "method": "extracted"
   },
@@ -88,32 +151,34 @@
     "status": {
       "value": "在售",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
       "method": "extracted",
-      "quote": null
+      "quote": ""
     },
     "pricing": [],
     "available_regions": {
       "value": [
-        "美国",
-        "中国"
+        "全球（Worldwide）"
       ],
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
       "method": "extracted"
     },
     "access_model": {
-      "value": "线上直销（DTC）和线下零售",
+      "value": "线下零售（Niketown stores）、线上直销（nike.com）、经销商",
       "sources": [
-        "https://www.jiemian.com/article/4613965.html",
-        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://s.apifox.cn/92e9421b-6586-48b5-ae8f-c34612b3d71b/api-160642533"
       ],
       "method": "extracted",
-      "quote": null
+      "quote": ""
     }
   }
 }
