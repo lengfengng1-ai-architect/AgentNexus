@@ -4,7 +4,6 @@ import type { BrandInput } from '../types/chat'
 import { ChatBubble } from './ChatBubble'
 import { ChatInput } from './ChatInput'
 import { ErrorBar } from './ErrorBar'
-import { LoadingBubble } from './LoadingBubble'
 import { WelcomeCard } from './WelcomeCard'
 import { BrandConfirmCard } from './BrandConfirmCard'
 

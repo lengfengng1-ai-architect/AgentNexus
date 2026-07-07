@@ -46,7 +46,7 @@ async def chat_stream(request: Request):
                 if reasoning_chunk:
                     yield f"id: {event_id}\nevent: reasoning\ndata: {json.dumps({'text': reasoning_chunk})}\n\n"
                     event_id += 1
-                elif intent_dict:
+                if intent_dict:
                     yield f"id: {event_id}\nevent: intent\ndata: {json.dumps(intent_dict)}\n\n"
                     event_id += 1
         except Exception as exc:

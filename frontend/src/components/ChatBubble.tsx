@@ -1,5 +1,43 @@
-import { useRef, useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '../types/chat'
+
+function TypingIndicator() {
+  return (
+    <div className="flex items-center gap-1 py-2" aria-label="正在输入">
+      <span className="h-2 w-2 animate-bounce rounded-full bg-track/50 [animation-delay:-0.3s]" />
+      <span className="h-2 w-2 animate-bounce rounded-full bg-track/50 [animation-delay:-0.15s]" />
+      <span className="h-2 w-2 animate-bounce rounded-full bg-track/50" />
+    </div>
+  )
+}
+
+function TypingReasoning({ text }: { text: string }) {
+  const [displayed, setDisplayed] = useState('')
+  const indexRef = useRef(0)
+
+  useEffect(() => {
+    if (indexRef.current >= text.length) return
+    const id = setInterval(() => {
+      if (indexRef.current < text.length) {
+        indexRef.current += 1
+        setDisplayed(text.slice(0, indexRef.current))
+      } else {
+        clearInterval(id)
+      }
+    }, 12)
+    return () => clearInterval(id)
+  }, [text])
+
+  return (
+    <>
+      {displayed}
+      <span
+        className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-current align-middle"
+        aria-hidden="true"
+      />
+    </>
+  )
+}
 
 interface ChatBubbleProps {
   message: ChatMessage
@@ -9,14 +47,7 @@ interface ChatBubbleProps {
 
 export function ChatBubble({ message, onRetry, onGeneratePlan }: ChatBubbleProps) {
   const isUser = message.role === 'user'
-  const reasoningRef = useRef<HTMLDivElement>(null)
-
-  // Auto-scroll reasoning box
-  useEffect(() => {
-    if (reasoningRef.current) {
-      reasoningRef.current.scrollTop = reasoningRef.current.scrollHeight
-    }
-  })
+  const isStreaming = message.id.startsWith('stream-')
 
   return (
     <div className={['flex w-full', isUser ? 'justify-end' : 'justify-start'].join(' ')}>
@@ -29,24 +60,17 @@ export function ChatBubble({ message, onRetry, onGeneratePlan }: ChatBubbleProps
           message.isError ? 'ring-2 ring-start/50' : '',
         ].join(' ')}
       >
-        {!isUser && message.reasoning && (
-          <div
-            ref={reasoningRef}
-            className="mb-3 max-h-28 overflow-y-auto rounded-lg border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-500 whitespace-pre-wrap"
-          >
-            <div className="mb-2 flex items-center gap-2 text-gray-400">
-              <svg className="h-3.5 w-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-              </svg>
-              <span className="text-[11px] font-medium text-gray-400">思考中</span>
-            </div>
-            {message.reasoning}
-          </div>
-        )}
-        <p className="whitespace-pre-wrap text-sm leading-relaxed sm:text-base">
-          {message.content}
-        </p>
+        <div className="whitespace-pre-wrap text-sm leading-relaxed sm:text-base">
+          {isStreaming ? (
+            message.reasoning ? (
+              <TypingReasoning text={message.reasoning} />
+            ) : (
+              <TypingIndicator />
+            )
+          ) : (
+            message.content
+          )}
+        </div>
         {!isUser && message.canGeneratePlan && onGeneratePlan && (
           <button
             type="button"
