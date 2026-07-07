@@ -165,26 +165,28 @@ export function PlanPage() {
 
   const posterPromptText = buildPosterPrompt(displayedChapters) || '基于当前营销方案自动生成主视觉海报'
 
-  // 视频卡片:只看 promo_video 自己的数据,不关心 workflow 走到哪一步
+  // 视频卡片:始终占位,没数据时显示生成中
   const pv = outputs?.promo_video
-  const promoVideoItem = pv
-    ? [{
-        title: pv.status === 'completed'
-          ? '🎬 宣传视频'
-          : pv.status === 'failed'
-            ? '🎬 视频生成失败'
-            : '🎬 宣传视频生成中…',
-        description: pv.status === 'completed'
-          ? '点击播放查看营销方案宣传视频'
-          : pv.status === 'failed'
-            ? `视频生成失败: ${pv.error || ''}`
-            : '视频正在生成中，请耐心等待…',
-        buttonLabel: '查看详情',
-        type: 'video' as const,
-        videoUrl: pv.video_url,
-        promoVideo: pv,
-      }]
-    : []
+  const promoVideoCard = {
+    title: !pv
+      ? '🎬 宣传视频生成中…'
+      : pv.status === 'completed'
+        ? '🎬 宣传视频'
+        : pv.status === 'failed'
+          ? '🎬 视频生成失败'
+          : '🎬 宣传视频生成中…',
+    description: !pv
+      ? '视频正在生成中，请耐心等待…'
+      : pv.status === 'completed'
+        ? '点击播放查看营销方案宣传视频'
+        : pv.status === 'failed'
+          ? `视频生成失败: ${pv.error || ''}`
+          : '视频正在生成中，请耐心等待…',
+    buttonLabel: '查看详情',
+    type: 'video' as const,
+    videoUrl: pv?.video_url,
+    promoVideo: pv ?? { status: 'generating' as const },
+  }
 
   const actionItemsBase = outputs?.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
     title: a.title,
@@ -193,11 +195,12 @@ export function PlanPage() {
     type: 'normal' as const,
   })) ?? []
 
-  // 下一步建议只在完整方案生成后展示(completed 状态 + plan_generator 节点完成)
+  // "下一步建议"区域:plan_generator 有输出就展示,视频和海报各自轮询
   const planGeneratorDone = Array.isArray(outputs?.plan_generator?.chapters) && outputs!.plan_generator!.chapters.length > 0
-  const actionItems = status !== 'completed' || !planGeneratorDone
+  const actionItems = !planGeneratorDone
     ? undefined
     : [
+        promoVideoCard,
         {
           title: '根据方案生成海报',
           description: posterPromptText,
@@ -217,9 +220,9 @@ export function PlanPage() {
   const [autoMode, setAutoMode] = useState(false)
   const userInteractedRef = useRef(false)
   const [activeTab, setActiveTab] = useState(0)
-  // 视频轮询:只要 promo_video 在 generating 就拉,有结果自动停
+  // 视频轮询:generating 或 undefined 时拉,有结果自动停
   useEffect(() => {
-    if (pv?.status !== 'generating') return
+    if (pv?.status === 'completed' || pv?.status === 'failed') return
     const interval = setInterval(refreshStatus, 5000)
     return () => clearInterval(interval)
   }, [pv?.status, refreshStatus])
@@ -555,9 +558,6 @@ export function PlanPage() {
             {auditPanel}
             <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} autoMode={autoMode} isLoading={isLoading} isConnected={isConnected} onApprove={approve} onRerun={rerun} />
             {displayedChapters.length > 0 && <PlanPreview chapters={displayedChapters} />}
-            {promoVideoItem.length > 0 && (
-              <div id="promo-video-anchor"><PlanActionCards actions={promoVideoItem} /></div>
-            )}
             {actionItems && actionItems.length > 0 && (
               <div id="actions-anchor"><PlanActionCards actions={actionItems} /></div>
             )}
