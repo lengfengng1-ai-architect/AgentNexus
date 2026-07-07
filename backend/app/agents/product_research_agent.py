@@ -13,7 +13,6 @@ from pathlib import Path
 from typing import Any
 
 from bs4 import BeautifulSoup
-from ddgs import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
 
@@ -22,7 +21,7 @@ from langgraph.graph import END, StateGraph
 from openai import BadRequestError
 from pydantic import BaseModel, Field
 
-from app.agents.llm_utils import build_chat_model, write_log
+from app.agents.llm_utils import build_chat_model, duckduckgo_search, write_log
 from app.agents.registry import register
 from app.schemas.product_info import (
     ProductResearchResult,
@@ -138,21 +137,20 @@ async def search_node(state: ProductResearchState) -> dict:
     for i, kw in enumerate(keywords):
         write_log("product_research", f"🔍 正在用关键词「{kw}」搜索…")
         try:
-            with DDGS() as ddgs:
-                raw = list(ddgs.text(kw, max_results=SEARCH_MAX_RESULTS))
-                if not raw:
-                    write_log("product_research", f"⚠️ 关键词「{kw}」搜索无结果，跳过")
-                    continue
-                for item in raw:
-                    url = item.get("href", "")
-                    if url and url not in seen_urls:
-                        seen_urls.add(url)
-                        all_results.append(SearchResult(
-                            url=url,
-                            title=item.get("title", ""),
-                            snippet=item.get("body", ""),
-                        ))
-                write_log("product_research", f"📄 第 {i+1} 轮搜索完成，累计发现 {len(seen_urls)} 条结果")
+            raw = await duckduckgo_search(kw, max_results=SEARCH_MAX_RESULTS)
+            if not raw:
+                write_log("product_research", f"⚠️ 关键词「{kw}」搜索无结果，跳过")
+                continue
+            for item in raw:
+                url = item.get("href", "")
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    all_results.append(SearchResult(
+                        url=url,
+                        title=item.get("title", ""),
+                        snippet=item.get("body", ""),
+                    ))
+            write_log("product_research", f"📄 第 {i+1} 轮搜索完成，累计发现 {len(seen_urls)} 条结果")
         except Exception:
             write_log("product_research", f"⚠️ 关键词「{kw}」搜索失败，跳过")
             continue
@@ -259,12 +257,11 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
         return {}
 
     try:
-        with DDGS() as ddgs:
-            results = list(ddgs.text(f"{product} 官方网站", max_results=5))
+        raw = await duckduckgo_search(f"{product} 官方网站", max_results=5)
     except Exception:
         return {}
 
-    for item in results:
+    for item in raw:
         url = item.get("href", "")
         if not url:
             continue

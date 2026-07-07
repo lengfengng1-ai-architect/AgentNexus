@@ -6,6 +6,8 @@ Corresponding in_scope ID: workflow-orchestration
 import json
 from typing import Any
 
+from bs4 import BeautifulSoup
+from httpx import AsyncClient
 from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 
@@ -24,6 +26,62 @@ def drain_logs() -> list[dict[str, str]]:
     items = list(_log_buffer)
     _log_buffer.clear()
     return items
+
+
+_HTTP_TIMEOUT = 15
+_USER_AGENT = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+    "AppleWebKit/537.36 (KHTML, like Gecko) "
+    "Chrome/120.0.0.0 Safari/537.36"
+)
+
+
+async def duckduckgo_search(keyword: str, max_results: int = 10) -> list[dict[str, str]]:
+    """Search DuckDuckGo via its HTML endpoint.
+
+    Single HTTP request to html.duckduckgo.com, avoids DDGS library's
+    multi-engine fan-out that waits for slow/timeout engines.
+
+    Returns a list of {href, title, body} dicts, same shape as DDGS.text().
+    """
+    from urllib.parse import parse_qs, urlparse
+
+    async with AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+        resp = await client.post(
+            "https://html.duckduckgo.com/html/",
+            headers={"User-Agent": _USER_AGENT},
+            data={"q": keyword},
+            follow_redirects=True,
+        )
+        resp.raise_for_status()
+
+    soup = BeautifulSoup(resp.text, "html.parser")
+    results: list[dict[str, str]] = []
+
+    for el in soup.select(".result"):
+        link = el.select_one(".result__a")
+        snippet = el.select_one(".result__snippet")
+        if not link:
+            continue
+
+        raw_href = link.get("href", "")
+        # DDG uses redirect links like //duckduckgo.com/l/?uddg=<encoded_url>
+        parsed = urlparse(raw_href)
+        if parsed.netloc and "duckduckgo.com" in parsed.netloc:
+            qs = parse_qs(parsed.query)
+            actual_url = qs.get("uddg", [None])[0] or raw_href
+        else:
+            actual_url = raw_href
+
+        results.append({
+            "href": actual_url,
+            "title": link.get_text(strip=True),
+            "body": snippet.get_text(strip=True) if snippet else "",
+        })
+        if len(results) >= max_results:
+            break
+
+    return results
 
 
 def build_chat_model():

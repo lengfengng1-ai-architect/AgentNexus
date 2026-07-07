@@ -1,5 +1,5 @@
 """Additional coverage tests for product research agent helpers and nodes."""
-from unittest.mock import MagicMock, patch
+from unittest.mock import patch
 
 import pytest
 
@@ -20,7 +20,6 @@ from app.schemas.product_info import (
     ProductResearchResult,
     SourcedDict,
     SourcedStr,
-    SourcedStrList,
 )
 
 
@@ -62,11 +61,8 @@ async def test_search_node_sorts_and_dedupes():
         {"href": "https://a.com", "title": "A2", "body": "dup"},
         {"href": "https://apple.com", "title": "Official", "body": "official"},
     ]
-    with patch("app.agents.product_research_agent.DDGS") as mock_ddgs:
-        instance = MagicMock()
-        instance.__enter__.return_value = instance
-        instance.text.return_value = raw
-        mock_ddgs.return_value = instance
+    with patch("app.agents.product_research_agent.duckduckgo_search") as mock_search:
+        mock_search.return_value = raw
 
         result = await search_node(ProductResearchState(product_name="iPhone"))
         assert len(result["search_results"]) == 2
