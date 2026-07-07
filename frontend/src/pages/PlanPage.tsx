@@ -4,7 +4,7 @@ import { usePlanRun } from '../hooks/usePlanRun'
 import type { BrandInput } from '../types/chat'
 import { PlanActionCards } from './PlanActionCards'
 import { PlanForm } from './PlanForm'
-import { PlanPreview } from './PlanPreview'
+import { PlanPreview, stripDuplicateTitleHeading } from './PlanPreview'
 import type { PlanChapter } from '../types/plan'
 import { PipelineTimeline } from './PipelineTimeline'
 
@@ -592,7 +592,7 @@ function exportPdf(chapters: PlanChapter[]) {
   <div class="chapter">
     <h2>${i + 1}. ${ch.title}</h2>
     <div class="subtitle">${ch.subtitle}</div>
-    <div class="chapter-content">${(() => { try { return marked.parse(ch.content) } catch { return ch.content } })()}</div>
+    <div class="chapter-content">${(() => { try { return marked.parse(stripDuplicateTitleHeading(ch.content, ch.title)) } catch { return ch.content } })()}</div>
   </div>`).join('\n  ')}
 </body>
 </html>`

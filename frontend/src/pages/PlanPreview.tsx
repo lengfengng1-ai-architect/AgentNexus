@@ -2,6 +2,30 @@ import { useState, useRef, useCallback } from 'react'
 import { marked } from 'marked'
 import type { PlanChapter } from '../types/plan'
 
+/**
+ * 剥离开头与章节标题重复的 Markdown ATX 标题。
+ *
+ * LLM 生成的 content 常以 `# {title}` 或 `# {title}：{subtitle}` 开头，
+ * 而 UI 已单独渲染了 title/subtitle，会导致标题重复显示。在 marked.parse 之前调用本函数去重。
+ *
+ * ponytail: 仅处理 ATX（#）标题；Setext（title\n===）LLM 输出罕见，不支持。
+ *           多行「目录块」（1. xxx；2. yyy）属内容质量问题，留给 prompt 端根治。
+ */
+export function stripDuplicateTitleHeading(content: string, title: string): string {
+  // 空 title 直接返回，避免「以空串开头」恒真导致误剥任意标题
+  if (!title) return content
+  const m = content.match(/^#{1,6}\s+(.+?)[ \t#]*(?:\r?\n)+/)
+  if (!m) return content
+  // 去掉行内 markdown 标记（* _ `）和首尾空白后再比对
+  const headingText = m[1].replace(/[*_`]/g, '').trim()
+  if (headingText === title) return content.slice(m[0].length)
+  // 以 title 开头时，仅当紧随其后是分隔符才视为重复，避免误剥「title深度报告」这类合法标题
+  if (headingText.startsWith(title) && /[：:—\-\s]/.test(headingText[title.length] ?? '')) {
+    return content.slice(m[0].length)
+  }
+  return content
+}
+
 interface PlanPreviewProps {
   chapters: PlanChapter[]
 }
@@ -135,7 +159,7 @@ export function PlanPreview({ chapters }: PlanPreviewProps) {
                 <div className="pb-6 pl-[50px]">
                   <div
                     className="chapter-content text-sm leading-relaxed text-slate-600"
-                    dangerouslySetInnerHTML={{ __html: marked.parse(chapter.content) }}
+                    dangerouslySetInnerHTML={{ __html: marked.parse(stripDuplicateTitleHeading(chapter.content, chapter.title)) }}
                   />
                 </div>
               )}
