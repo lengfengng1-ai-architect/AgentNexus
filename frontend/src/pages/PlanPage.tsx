@@ -123,22 +123,15 @@ export function PlanPage() {
   const userInteractedRef = useRef(false)
   const [activeTab, setActiveTab] = useState(0)
   // 宣传视频轮询：流水线完成后如果视频还在生成中，定时轮询
-  const [promoVideoPolling, setPromoVideoPolling] = useState(false)
-
   useEffect(() => {
-    // Use outputs directly from the hook which gets updated via refreshStatus
     const pv = outputs?.promo_video
-    if (status !== 'completed' || !pv || pv.status !== 'generating') {
-      setPromoVideoPolling(false)
-      return
-    }
+    if (status !== 'completed' || !pv || pv.status !== 'generating') return
 
-    setPromoVideoPolling(true)
     const interval = setInterval(() => {
       refreshStatus()
     }, 5000)
 
-    return () => { clearInterval(interval); setPromoVideoPolling(false) }
+    return () => clearInterval(interval)
   }, [status, outputs?.promo_video?.status, refreshStatus])
 
   const TABS = [
