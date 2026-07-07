@@ -82,11 +82,14 @@ export function PlanPage() {
   }, [save, start])
 
   const displayedChapters = chapters.length > 0 ? chapters : outputs.plan_generator?.chapters || []
-  const actionItems = outputs.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
-    title: a.title,
-    description: a.description,
-    buttonLabel: '查看详情',
-  }))
+  // 下一步建议只在完整方案生成后展示（completed 状态）
+  const actionItems = status === 'completed'
+    ? outputs.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
+      title: a.title,
+      description: a.description,
+      buttonLabel: '查看详情',
+    }))
+    : undefined
 
   const [activeTab, setActiveTab] = useState(0)
   const [autoMode, setAutoMode] = useState(false)
