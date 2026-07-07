@@ -10,6 +10,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import uuid
@@ -25,8 +26,9 @@ from typing_extensions import TypedDict
 
 import aiosqlite
 
-from app.agents.llm_utils import drain_logs
+from app.agents.llm_utils import drain_logs, write_log
 from app.agents.registry import get_handler
+from app.agents.video_generation_agent import create_video_task, poll_video_task
 from app.schemas.common import ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -58,6 +60,74 @@ class PlanRunRecord(BaseModel):
 
 _RUN_RECORDS: dict[str, PlanRunRecord] = {}
 _plan_db_initialized = False
+
+# ── 宣传视频缓存 ──────────────────────────────────────────
+# key: run_id, value: {status, video_url?, error?, task_id?}
+_promo_video_cache: dict[str, dict[str, Any]] = {}
+_current_run_id: str | None = None  # 跟踪当前正在执行的 run_id
+
+
+async def _build_promo_video_prompt(state: PlanState) -> str:
+    """用 LLM 优化宣传视频 prompt，输出后用于 HappyHorse 文生视频。
+
+    基于品牌调性、策略定位和营销目标生成更具画面感和节奏感的 prompt。
+    """
+    from app.agents.llm_utils import invoke_json
+
+    brand = state.get("brand_input", {})
+    brand_name = brand.get("brand_name", "")
+    category = brand.get("category", "")
+    strategy = state.get("strategy_generation", {})
+    positioning = strategy.get("positioning", "")
+    marketing_goal = strategy.get("marketing_goal", "")
+    key_messages = strategy.get("key_messages", [])
+
+    raw_prompt = (
+        f"品牌名：{brand_name}\n"
+        f"品类：{category}\n"
+        f"核心主张：{positioning}\n"
+        f"营销目标：{marketing_goal}\n"
+        f"核心传播信息：{'；'.join(key_messages) if key_messages else '无'}"
+    )
+    # ponytail: 先用 LLM 优化，后续可改为模板 + 风格参数
+    result = await invoke_json(
+        "你是一个专业的营销视频 prompt 工程师。"
+        "根据品牌信息和营销策略，生成一段 HappyHorse 文生视频模型的 prompt。"
+        "要求：画面感强、节奏明快、有品牌感，15 秒以内的短视频风格。"
+        "输出 JSON 格式 {\"prompt\": \"...\"}。",
+        raw_prompt,
+    )
+    return result.get("prompt", raw_prompt)
+
+
+async def _run_promo_video(run_id: str, prompt: str) -> None:
+    """后台异步执行宣传视频生成，结果写入缓存。"""
+    try:
+        task = await create_video_task(prompt, ratio="16:9", resolution="720P", duration=5)
+        _promo_video_cache[run_id] = {
+            "status": "generating",
+            "task_id": task["task_id"],
+        }
+        output = await poll_video_task(task["task_id"])
+        if output.get("task_status") == "SUCCEEDED":
+            _promo_video_cache[run_id] = {
+                "status": "completed",
+                "video_url": output.get("video_url"),
+                "task_id": task["task_id"],
+                "usage": {
+                    "resolution": output.get("SR"),
+                    "ratio": output.get("ratio"),
+                    "duration": output.get("output_video_duration"),
+                },
+            }
+        else:
+            _promo_video_cache[run_id] = {
+                "status": "failed",
+                "error": output.get("message", output.get("code", "视频生成失败")),
+            }
+    except Exception as exc:
+        logger.exception("[promo_video] background task failed run=%s", run_id)
+        _promo_video_cache[run_id] = {"status": "failed", "error": str(exc)}
 
 
 async def _ensure_plan_db_conn() -> aiosqlite.Connection:
@@ -179,10 +249,26 @@ def _build_node(node_id: str) -> Any:
     async def node_fn(state: PlanState) -> dict[str, Any]:
         inputs = _node_inputs(node_id, state)
         try:
-            return {node_id: await handler(inputs)}
+            result = {node_id: await handler(inputs)}
         except Exception:
             logger.exception("node %s failed, skipping with empty output", node_id)
             return {node_id: {}}
+
+        # After action_recommendations completes, async trigger promo video.
+        # 独立 try：视频触发的任何异常都不能影响节点主输出。
+        if node_id == "action_recommendations":
+            try:
+                rid = _current_run_id or ""
+                prompt = await _build_promo_video_prompt(state)
+                logger.info("[promo_video] run=%s optimized prompt: %s", rid, prompt)
+                write_log("action_recommendations", f"📹 宣传视频提示词: {prompt}")
+                _promo_video_cache[rid] = {"status": "generating", "prompt": prompt}
+                asyncio.create_task(_run_promo_video(rid, prompt))
+                logger.info("[promo_video] triggered async task for run=%s", rid)
+            except Exception:
+                logger.exception("[promo_video] trigger failed, skipping video generation")
+
+        return result
 
     node_fn.__name__ = f"{node_id}_node"
     node_fn.__qualname__ = f"{node_id}_node"
@@ -339,6 +425,9 @@ def _translate_event(
         output = data.get("output", {})
         _counter[0] += 1
         logger.info("[sse] workflow.complete run=%s", run_id)
+        # 合并宣传视频状态，让前端能在 workflow.complete 时就收到 promo_video
+        if run_id in _promo_video_cache:
+            output["promo_video"] = _promo_video_cache[run_id]
         return _sse_frame(
             event_id=_counter[0],
             event="workflow.complete",
@@ -504,7 +593,9 @@ async def start_run(
     run_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Start a new plan generation run and stream SSE events."""
+    global _current_run_id
     run_id = run_id or str(uuid.uuid4())
+    _current_run_id = run_id
     now = datetime.now(timezone.utc).isoformat()
     logger.info("[plan] start_run run=%s brand=%s", run_id, brand_input.get("brand_name"))
     # 持久化批次记录到 SQLite
@@ -721,12 +812,16 @@ async def delete_run(run_id: str) -> None:
     """Delete all checkpoints for a run_id (cancel semantics)."""
     saver = await _get_saver()
     await saver.adelete_thread(run_id)
+    _promo_video_cache.pop(run_id, None)
 
 
 async def get_status(run_id: str) -> dict[str, Any]:
     """Return current run status including paused snapshot if applicable."""
     state = await _checkpoint_state(run_id)
     st = _status_for_state(state, run_id)
+    # 合并宣传视频状态到 outputs
+    if run_id in _promo_video_cache:
+        st.setdefault("outputs", {})["promo_video"] = _promo_video_cache[run_id]
     # 更新批次记录的状态和更新时间
     await _update_plan_record(run_id, st["status"], st.get("current_node"))
     # 同步删除已 canceled 的旧记录（超过 50 条时清理）
