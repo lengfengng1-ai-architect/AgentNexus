@@ -34,6 +34,8 @@ class Settings(BaseSettings):
     myself_base_url: str = ""
     myself_model: str = "deepseek-v4-flash"
 
+    image_gen_model: str = "qwen-image-2.0-pro"
+
     enable_thinking: bool = False
 
     use_mock_data: bool = False

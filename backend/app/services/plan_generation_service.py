@@ -35,11 +35,15 @@ logger = logging.getLogger(__name__)
 
 _CHECKPOINT_DB_PATH = "data/checkpoints.db"
 _CHECKPOINT_INTERRUPT_NODES = [
+    "fitness_analysis",
     "strategy_generation",
     "execution_planning",
+    "budget_kpi",
+    "action_recommendations",
     "plan_generator",
 ]
 _PARALLEL_NODES = ["product_research", "market_research", "audience_insight"]
+_INTERRUPT_AFTER = ["plan_data_query", "fitness_analysis"] + _CHECKPOINT_INTERRUPT_NODES
 
 
 class PlanRunRecord(BaseModel):
@@ -314,7 +318,7 @@ async def _get_graph() -> Any:
         saver = await _get_saver()
         _graph = _build_graph().compile(
             checkpointer=saver,
-            interrupt_after=_NODE_ORDER[:1] + _CHECKPOINT_INTERRUPT_NODES,
+            interrupt_after=_INTERRUPT_AFTER,
         )
     return _graph
 
@@ -391,17 +395,11 @@ def _translate_event(
     if ev_type == "on_chain_stream" and name in _NODE_LABELS:
         chunk = data.get("chunk", {})
         # Skip checkpoint interrupt markers from public stream.
+        # Also skip intermediate output — only broadcast on_chain_end which
+        # carries the complete node output. This avoids overwriting outputs
+        # with partial data on the frontend.
         if chunk and "__interrupt__" not in chunk:
-            _counter[0] += 1
-            return _sse_frame(
-                event_id=_counter[0],
-                event="node.complete",
-                data={
-                    "run_id": run_id,
-                    "node_id": name,
-                    "output": chunk,
-                },
-            )
+            pass  # defer to on_chain_end
 
     if ev_type == "on_chain_end" and name in _NODE_LABELS:
         # Confirm completion with the structured output if available.
