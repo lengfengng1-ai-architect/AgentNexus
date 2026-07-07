@@ -17,7 +17,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
-from app.agents.llm_utils import build_chat_model
+from app.agents.llm_utils import write_log,  build_chat_model
 from app.agents.registry import register
 from app.config.cache_paths import AUDIENCE_DIR, persona_path
 from app.schemas.audience_insight import AudienceRawData, UserPersona
@@ -83,6 +83,7 @@ async def search_node(state: State) -> dict:
     seen: set[str] = set()
 
     for kw in keywords:
+        write_log("audience_insight", f"🔍 正在用关键词「{kw}」搜索…")
         try:
             with DDGS() as ddgs:
                 for item in ddgs.text(kw, max_results=SEARCH_MAX):
@@ -91,31 +92,40 @@ async def search_node(state: State) -> dict:
                         seen.add(url)
                         all_results.append(SearchResult(url=url, title=item.get("title", ""), snippet=item.get("body", "")))
         except Exception:
+            write_log("audience_insight", f"⚠️ 关键词「{kw}」搜索失败，跳过")
             continue
 
+    write_log("audience_insight", f"📄 搜索完成，获得 {len(all_results)} 条相关结果")
     return {"search_results": all_results[:FETCH_TOP]}
 
 
 async def fetch_node(state: State) -> dict:
     """并发读取页面内容。"""
+    write_log("audience_insight", f"📄 开始并发抓取 {len(state.search_results)} 个页面…")
     async def fetch_one(url: str) -> FetchedPage:
+        write_log("audience_insight", f"📄 正在请求 {url}…")
         try:
             async with AsyncClient(timeout=FETCH_TIMEOUT) as client:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
                 resp.raise_for_status()
                 if "text/html" not in resp.headers.get("content-type", ""):
+                    write_log("audience_insight", f"⚠️ {url} 非 HTML 内容，跳过")
                     return FetchedPage(url=url, title=None, content="", fetched=False)
                 text = extract_text_from_html(resp.text)
                 if len(text) > MAX_PAGE_CHARS:
                     text = text[:MAX_PAGE_CHARS] + "\n...[截断]"
                 soup = BeautifulSoup(resp.text, "lxml")
                 title = soup.title.string.strip() if soup.title and soup.title.string else None
+                write_log("audience_insight", f"✓ 成功读取 {url}（{len(text)} 字符）")
                 return FetchedPage(url=url, title=title, content=text)
         except (TimeoutException, HTTPError, Exception):
+            write_log("audience_insight", f"⚠️ {url} 读取失败，跳过")
             return FetchedPage(url=url, title=None, content="", fetched=False)
 
     tasks = [fetch_one(r.url) for r in state.search_results]
     results = await asyncio.gather(*tasks)
+    fetched_count = sum(1 for p in results if p.fetched)
+    write_log("audience_insight", f"📄 抓取完成：成功 {fetched_count}/{len(results)} 个页面")
     return {"fetched_pages": list(results)}
 
 
@@ -123,8 +133,10 @@ async def extract_audience_node(state: State) -> dict:
     """从页面内容提取人群数据。"""
     valid = [p for p in state.fetched_pages if p.fetched and p.content]
     if not valid:
+        write_log("audience_insight", "⚠️ 没有有效页面内容可供分析")
         return {"audience_data": AudienceRawData()}
 
+    write_log("audience_insight", f"🤖 正在用 AI 分析 {len(valid)} 个页面的人群数据…")
     prompt = _load_template("audience_insight.md.j2", product_name=state.product_name, fetched_pages=valid)
     llm = build_chat_model().with_structured_output(AudienceRawData)
 
@@ -133,6 +145,7 @@ async def extract_audience_node(state: State) -> dict:
         HumanMessage(content=f"请提取产品「{state.product_name}」的目标人群信息。"),
     ])
 
+    write_log("audience_insight", "🤖 AI 提取完成，正在整理数据来源…")
     # 补 sources
     all_urls = [p.url for p in valid]
     result.sources = all_urls
@@ -147,8 +160,10 @@ async def extract_audience_node(state: State) -> dict:
 async def generate_persona_node(state: State) -> dict:
     """生成用户画像。"""
     if not state.audience_data:
+        write_log("audience_insight", "⚠️ 没有人群数据可生成画像")
         return {"persona": UserPersona()}
 
+    write_log("audience_insight", "🤖 正在基于人群数据生成用户画像…")
     product_info_str = json.dumps(state.product_info, ensure_ascii=False)[:2000] if state.product_info else ""
 
     market_info_str = json.dumps(state.market_info, ensure_ascii=False)[:2000] if state.market_info else ""
@@ -165,6 +180,7 @@ async def generate_persona_node(state: State) -> dict:
         HumanMessage(content=f"请为产品「{state.product_name}」生成用户画像。"),
     ])
 
+    write_log("audience_insight", "✓ 用户画像生成完成")
     return {"persona": result}
 
 
@@ -276,16 +292,32 @@ async def run_audience_insight_full(state: dict[str, Any]) -> dict[str, Any]:
     if not product_name:
         raise ValueError("Missing required input: product_name or brand_name")
 
-    s = await _graph.ainvoke({
-        "product_name": product_name,
-        "product_info": state.get("product_info", {}),
-        "market_info": state.get("market_info", {}),
-    })
+    # Step 1: Search
+    s = State(product_name=product_name, product_info=state.get("product_info", {}), market_info=state.get("market_info", {}))
+    search_result = await search_node(s)
+    results = search_result["search_results"]
 
-    audience = s.get("audience_data")
-    persona = s.get("persona")
+    # Step 2: Fetch pages
+    fetch_state = State(product_name=product_name, search_results=results)
+    fetch_result = await fetch_node(fetch_state)
+    pages = fetch_result["fetched_pages"]
+
+    # Step 3: Extract audience data
+    extract_state = State(product_name=product_name, search_results=results, fetched_pages=pages)
+    extract_result = await extract_audience_node(extract_state)
+    extract_state = State(product_name=product_name, search_results=results, fetched_pages=pages)
+    extract_result = await extract_audience_node(extract_state)
+    audience = extract_result["audience_data"]
+
+    # Step 4: Generate persona
+    generate_state = State(product_name=product_name, product_info=state.get("product_info", {}), market_info=state.get("market_info", {}), audience_data=audience)
+    persona_result = await generate_persona_node(generate_state)
+    persona = persona_result["persona"]
+
     if audience is None or persona is None:
         raise ValueError("Agent did not return complete result")
+
+    write_log("audience_insight", "✓ 人群洞察完成")
 
     return {
         "audience_data": audience.model_dump() if hasattr(audience, "model_dump") else audience,

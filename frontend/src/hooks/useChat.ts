@@ -78,7 +78,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         isLoading: false,
         reasoning: '',
       }
-      return { ...state, isLoading: true, messages: [...state.messages.filter(m => !m.isLoading), streamMsg] }
+      return { ...state, isLoading: true, messages: [...state.messages, streamMsg] }
     }
 
     case 'STREAM_REASONING': {
@@ -96,6 +96,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         id: `ai-${Date.now()}`,
         role: 'ai',
         content: action.reply,
+        isLoading: false,
         brandInput: action.brandInput,
         intent: action.intent as ChatMessage['intent'],
         canGeneratePlan,
@@ -171,12 +172,16 @@ export function useChat() {
 
     try {
       let intentReceived = false
+      let reasoningBuffer = ''
       for await (const chunk of streamChat(content.trim(), context)) {
         if (chunk.reasoning) {
+          reasoningBuffer += chunk.reasoning
           dispatch({ type: 'STREAM_REASONING', text: chunk.reasoning })
         }
         if (chunk.intent && !intentReceived) {
           intentReceived = true
+          const waitMs = Math.min(reasoningBuffer.length * 12 + 100, 2500)
+          if (waitMs > 0) await new Promise(r => setTimeout(r, waitMs))
           dispatch({
             type: 'INTENT_RECEIVED',
             intent: chunk.intent.intent,
@@ -208,12 +213,16 @@ export function useChat() {
 
     try {
       let intentReceived = false
+      let reasoningBuffer = ''
       for await (const chunk of streamChat(messageToRetry.content, context)) {
         if (chunk.reasoning) {
+          reasoningBuffer += chunk.reasoning
           dispatch({ type: 'STREAM_REASONING', text: chunk.reasoning })
         }
         if (chunk.intent && !intentReceived) {
           intentReceived = true
+          const waitMs = Math.min(reasoningBuffer.length * 12 + 100, 2500)
+          if (waitMs > 0) await new Promise(r => setTimeout(r, waitMs))
           dispatch({
             type: 'INTENT_RECEIVED',
             intent: chunk.intent.intent,

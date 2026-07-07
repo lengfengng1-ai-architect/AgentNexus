@@ -163,7 +163,7 @@ class ActionRecommendation(BaseModel):
     """行动建议条目。"""
 
     title: str = Field(..., description="行动标题")
-    description: str = Field(..., description="行动描述")
+    description: str = Field(default="", description="行动描述")
 
 
 class ActionRecommendationsOutput(BaseModel):

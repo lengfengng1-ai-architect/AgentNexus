@@ -9,7 +9,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 
-from app.agents.llm_utils import invoke_json
+from app.agents.llm_utils import write_log,  invoke_json
 from app.agents.registry import register
 from app.schemas.plan_generation import StrategyOutput
 
@@ -42,6 +42,7 @@ async def run_strategy_generation(state: dict[str, Any]) -> dict[str, Any]:
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
+    write_log("strategy_generation", f"🤖 正在为 {brand_name} 制定营销策略…")
     result = await invoke_json(
         _render(
             "strategy_generation",
@@ -56,6 +57,7 @@ async def run_strategy_generation(state: dict[str, Any]) -> dict[str, Any]:
         ),
         f"请为 {brand_name} 生成营销策略。",
     )
+    write_log("strategy_generation", "✓ 策略生成完成")
     return StrategyOutput.model_validate(result).model_dump()
 
 
