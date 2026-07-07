@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { marked } from 'marked'
 import { usePlanRun } from '../hooks/usePlanRun'
 import type { BrandInput } from '../types/chat'
 import { PlanActionCards } from './PlanActionCards'
@@ -526,14 +527,22 @@ function exportPdf(chapters: PlanChapter[]) {
   .chapter h2 { font-size: 1.6em; font-weight: 700; color: #1e40af; padding-bottom: 0.5rem; border-bottom: 2px solid #e2e8f0; margin-bottom: 1.5rem; }
   .chapter .subtitle { font-size: 0.9em; color: #94a3b8; margin-top: -1rem; margin-bottom: 1.5rem; }
   .chapter-content { font-size: 0.95em; }
-  .chapter-content p { margin-bottom: 0.8em; }
-  .chapter-content h1, .chapter-content h2, .chapter-content h3, .chapter-content h4 { margin-top: 1.2em; margin-bottom: 0.5em; font-weight: 600; color: #0f172a; }
-  .chapter-content ul, .chapter-content ol { margin: 0.5em 0 0.8em 1.5em; }
-  .chapter-content li { margin-bottom: 0.3em; }
-  .chapter-content table { width: 100%; border-collapse: collapse; margin: 1em 0; }
-  .chapter-content th, .chapter-content td { border: 1px solid #d1d5db; padding: 0.5em 0.8em; text-align: left; }
-  .chapter-content th { background: #f8fafc; font-weight: 600; }
+  .chapter-content h2 { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin-top: 1.5em; margin-bottom: 0.75em; }
+  .chapter-content h3 { font-size: 1.1rem; font-weight: 600; color: #1e293b; margin-top: 1.25em; margin-bottom: 0.5em; }
+  .chapter-content h4 { font-size: 1rem; font-weight: 600; color: #334155; margin-top: 1em; margin-bottom: 0.5em; }
+  .chapter-content p { margin-bottom: 0.75em; line-height: 1.8; }
   .chapter-content strong { font-weight: 600; }
+  .chapter-content em { font-style: italic; }
+  .chapter-content ul, .chapter-content ol { margin: 0.5em 0; padding-left: 1.5em; }
+  .chapter-content li { margin-bottom: 0.3em; line-height: 1.7; }
+  .chapter-content table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+  .chapter-content th, .chapter-content td { border: 1px solid #d1d5db; padding: 8px 12px; text-align: left; }
+  .chapter-content th { background: #f8fafc; font-weight: 600; }
+  .chapter-content blockquote { border-left: 3px solid #3b82f6; padding: 8px 16px; margin: 1em 0; background: #f8fafc; color: #475569; }
+  .chapter-content code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.875em; }
+  .chapter-content pre { background: #1e293b; color: #e2e8f0; padding: 16px; border-radius: 8px; overflow-x: auto; margin: 1em 0; }
+  .chapter-content pre code { background: transparent; padding: 0; color: inherit; }
+  .chapter-content hr { margin: 1.5em 0; border: none; border-top: 1px solid #e2e8f0; }
   @media print { .no-print { display: none; } }
 </style>
 </head>
@@ -546,7 +555,7 @@ function exportPdf(chapters: PlanChapter[]) {
   <div class="chapter">
     <h2>${i + 1}. ${ch.title}</h2>
     <div class="subtitle">${ch.subtitle}</div>
-    <div class="chapter-content">${ch.content}</div>
+    <div class="chapter-content">${(() => { try { return marked.parse(ch.content) } catch { return ch.content } })()}</div>
   </div>`).join('\n  ')}
 </body>
 </html>`
