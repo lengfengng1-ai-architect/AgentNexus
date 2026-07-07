@@ -165,12 +165,20 @@ export function PlanPage() {
 
   const posterPromptText = buildPosterPrompt(displayedChapters) || '基于当前营销方案自动生成主视觉海报'
 
-  // 视频卡片:只看 promo_video 自己的数据,不关心 workflow 状态
+  // 视频卡片:只看 promo_video 自己的数据,不关心 workflow 走到哪一步
   const pv = outputs?.promo_video
-  const promoVideoItem = pv?.status === 'completed'
+  const promoVideoItem = pv
     ? [{
-        title: '🎬 宣传视频',
-        description: '点击播放查看营销方案宣传视频',
+        title: pv.status === 'completed'
+          ? '🎬 宣传视频'
+          : pv.status === 'failed'
+            ? '🎬 视频生成失败'
+            : '🎬 宣传视频生成中…',
+        description: pv.status === 'completed'
+          ? '点击播放查看营销方案宣传视频'
+          : pv.status === 'failed'
+            ? `视频生成失败: ${pv.error || ''}`
+            : '视频正在生成中，请耐心等待…',
         buttonLabel: '查看详情',
         type: 'video' as const,
         videoUrl: pv.video_url,
