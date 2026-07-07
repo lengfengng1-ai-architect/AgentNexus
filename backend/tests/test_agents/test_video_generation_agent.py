@@ -12,7 +12,11 @@ import pytest
 
 from app.agents.video_generation_agent import (
     _build_create_body,
+    _estimate_max_poll_seconds,
     stream_video_generation,
+    POLL_INTERVAL_FAST,
+    POLL_INTERVAL_SLOW,
+    FAST_PHASE_DURATION,
 )
 
 
@@ -107,6 +111,12 @@ async def test_stream_yields_polling_progress_during_long_running_task(monkeypat
     assert polling_count >= 2, f"轮询期间至少 yield 2 次 polling progress,实际 {polling_count}"
     assert "completed" in stages, f"缺 completed: {stages}"
 
+    # progress_pct 字段存在且为整数
+    for ev in events:
+        if ev["event"] == "progress":
+            assert "progress_pct" in ev["data"], f"progress event 缺 progress_pct: {ev['data']}"
+            assert isinstance(ev["data"]["progress_pct"], int), f"progress_pct 应为整数: {ev['data']['progress_pct']}"
+
     # 必须有 result event 且包含 video_url
     result_events = [e for e in events if e["event"] == "result"]
     assert len(result_events) == 1
@@ -199,6 +209,29 @@ async def test_stream_handles_network_blip_without_crashing(monkeypatch):
     assert result_events[0]["data"]["video_url"] == "https://x/v.mp4"
 
 
+# ── _estimate_max_poll_seconds 测试 ────────────────────────
+
+
+def test_estimate_max_poll_seconds():
+    """_estimate_max_poll_seconds 动态分母计算公式正确。"""
+    # 1.5s → clamp(120+60, 180, 600) = 180
+    assert _estimate_max_poll_seconds(1) == 180
+    # 3s → clamp(120+120, 180, 600) = 240
+    assert _estimate_max_poll_seconds(3) == 240
+    # 5s → clamp(120+200, 180, 600) = 320
+    assert _estimate_max_poll_seconds(5) == 320
+    # 10s → clamp(120+400, 180, 600) = 520
+    assert _estimate_max_poll_seconds(10) == 520
+    # 15s → clamp(120+600, 180, 600) = 600
+    assert _estimate_max_poll_seconds(15) == 600
+    # 默认值 5s
+    assert _estimate_max_poll_seconds() == 320
+    # 下限 180
+    assert _estimate_max_poll_seconds(0) == 180
+    # 上限 600
+    assert _estimate_max_poll_seconds(20) == 600
+
+
 # ── _build_create_body 测试 ──────────────────────────────
 
 
@@ -244,3 +277,13 @@ def test_build_body_custom_params():
     assert body["parameters"]["ratio"] == "9:16"
     assert body["parameters"]["duration"] == 10
     assert body["parameters"]["seed"] == 42
+
+
+# ── 动态轮询间隔测试 ──────────────────────────
+
+
+def test_poll_interval_constants():
+    """动态轮询间隔常量正确。"""
+    assert POLL_INTERVAL_FAST == 5
+    assert POLL_INTERVAL_SLOW == 10
+    assert FAST_PHASE_DURATION == 30

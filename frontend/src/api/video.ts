@@ -1,7 +1,7 @@
 import type { VideoParams, VideoResult } from '../types/video'
 
 export interface VideoStreamEvent {
-  progress?: { stage: string; task_id?: string; status: string; message: string }
+  progress?: { stage: string; task_id?: string; status: string; message: string; elapsed?: number; progress_pct?: number }
   result?: VideoResult
   error?: { detail: string; code: string }
 }
