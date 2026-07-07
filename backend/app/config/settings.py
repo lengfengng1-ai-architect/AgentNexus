@@ -23,6 +23,8 @@ class Settings(BaseSettings):
     dashscope_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     dashscope_model: str = "qwen-turbo"
 
+    dashscope_video_model: str = "happyhorse-1.1-t2v"
+
     agnes_api_key: str = ""
     agnes_base_url: str = "https://apihub.agnes-ai.com/v1"
     agnes_model: str = "agnes-2.0-flash"
