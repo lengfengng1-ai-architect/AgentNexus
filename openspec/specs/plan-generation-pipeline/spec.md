@@ -38,17 +38,19 @@
 - **THEN** 系统 SHALL 生成 `uuid4` 作为 `thread_id` 和 `run_id`
 - **AND** LangGraph SHALL 在每次节点完成后自动写入该 thread_id 对应的 checkpoint
 
-### Requirement: 流水线 SHALL 在三个强审核点前中断
+### Requirement: 流水线 SHALL 在确认节点前中断(interrupt_before)
 
-系统 SHALL 在编译流水线时声明 `interrupt_before=["strategy_generation","execution_planning","plan_generator"]`。当执行到审核点节点前，LangGraph SHALL 自动中断并落盘 checkpoint。系统 SHALL 在 SSE 流末尾 emit `workflow.paused` 事件，data 包含 `run_id`、`awaiting_node`、`snapshot` (当前 state values)、`reason`（`"review"` 或 `"failure"`）。
+系统 SHALL 在编译流水线时声明 `interrupt_before=["plan_data_query","fitness_analysis","strategy_generation","execution_planning","budget_kpi","action_recommendations","plan_generator"]`。从 `plan_data_query` 起每个节点执行前暂停,`workflow.paused` 的 `snapshot.node_id` SHALL 等于即将执行的节点(而非已完成节点),使用户的确认按钮出现在"谁需要确认"的节点上。
 
-#### Scenario: 跑到 strategy_generation 前自动暂停
-- **GIVEN** 一个新 run 已完成 `product_research`、`market_research`、`audience_insight`、`plan_data_query`、`fitness_analysis`
-- **WHEN** 流水线到达 `strategy_generation` 节点前
+当执行到审核点节点前，LangGraph SHALL 自动中断并落盘 checkpoint。系统 SHALL 在 SSE 流末尾 emit `workflow.paused` 事件，data 包含 `run_id`、`snapshot` (当前 state values)、`reason`（`"review"` 或 `"failure"`）。
+
+#### Scenario: 首次 pause 在 plan_data_query
+- **GIVEN** 一个新 run 已完成 3 个并行调研节点(`product_research` / `market_research` / `audience_insight`)
+- **WHEN** 流水线到达 `plan_data_query` 节点前
 - **THEN** LangGraph SHALL 中断执行并写入 checkpoint
-- **AND** SSE 流 SHALL emit `workflow.paused`，data 中 `awaiting_node` SHALL 为 `"strategy_generation"`
+- **AND** SSE 流 SHALL emit `workflow.paused`，data 中 `snapshot.node_id` SHALL 为 `"plan_data_query"`
 - **AND** data 中 `reason` SHALL 为 `"review"`
-- **AND** data 中 `snapshot` SHALL 包含 `strategy_generation` 即将读取的所有字段
+- **AND** data 中 `snapshot` SHALL 包含 `plan_data_query` 即将读取的所有字段
 
 #### Scenario: 节点抛异常也走 paused 语义
 - **GIVEN** `market_research` 节点执行时抛出异常
@@ -220,3 +222,27 @@ action_recommendations 节点 handler 返回后，系统 SHALL 自动读取当�
 - **THEN** 响应中的 `outputs` SHALL 包含 `promo_video` 字段
 - **AND** promo_video 字段 SHALL 包含 `status`（generating / completed / failed）
 - **AND** status 为 completed 时 SHALL 包含 `video_url`
+
+### Requirement: 并行 fan-in 节点 pause 前 SHALL 校验前置完成
+
+系统在发出 `workflow.paused` 之前,对于并行 fan-in 节点(`plan_data_query`),SHALL 校验所有并行前置节点(`product_research` / `market_research` / `audience_insight`)的 channel 输出均已存在。若任一前置未完成,ＤEFER 该 pause 事件。
+
+#### Scenario: 并行未完成不提前 pause
+- **WHEN** plan_data_query 被设為 next 但 3 个并行前置中尚有未完成输出
+- **THEN** 不发 workflow.paused,前端继续通过 node.complete 自然收敛
+
+### Requirement: Resume SHALL 不重跑已完成节点
+
+`Command(resume={})` 触发的 entry point 重入 SHALL 跳过 channel 已有输出的并行节点,避免已完成节点被再次执行。
+
+#### Scenario: 确认 plan_data_query 不重跑并行调研
+- **WHEN** 用户确认 plan_data_query,resume 触发 `_dispatch_init`
+- **THEN** 已完成的 product_research/market_research/audience_insight 不被重新 Send,plan_data_query 直接执行
+
+### Requirement: workflow.complete SHALL 校验 plan_generator 输出
+
+发出 `workflow.complete` 之前,系统 SHALL 校验 `output.plan_generator.chapters` 存在且非空。若缺失则不发 complete,防止 action 卡片在 plan_generator 未完成时提前显示。
+
+#### Scenario: plan_generator 未完成不误发 complete
+- **WHEN** LangGraph on_chain_end 触发但 plan_generator 输出缺失
+- **THEN** 不发 workflow.complete,前端 action 卡片守卫隐藏下一步行动建议
