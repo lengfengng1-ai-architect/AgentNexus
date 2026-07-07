@@ -1,5 +1,6 @@
-"""HappyHorse 文生视频 Agent — 阿里云百炼 DashScope API 异步调用。
+"""HappyHorse 文生视频 / 图生视频 Agent — 阿里云百炼 DashScope API 异步调用。
 
+支持 T2V（文本→视频）和 I2V（图片→视频）两种模式。
 流程：创建任务 → 轮询获取结果。
 创建任务使用 POST 异步接口，轮询使用 GET 查询接口。
 
@@ -53,9 +54,49 @@ def _headers() -> dict[str, str]:
     }
 
 
+def _build_create_body(
+    *,
+    prompt: str,
+    image_url: str | None = None,
+    resolution: str = DEFAULT_RESOLUTION,
+    ratio: str = DEFAULT_RATIO,
+    duration: int = DEFAULT_DURATION,
+    seed: int | None = None,
+) -> dict[str, Any]:
+    """根据 image_url 决定 T2V / I2V 的请求体结构。
+
+    - 有 image_url → HappyHorse I2V（model + input.media + input.prompt?）
+    - 无 image_url → HappyHorse T2V（model + input.prompt）
+    """
+    if image_url:
+        model = settings.dashscope_i2v_model
+        inp: dict[str, Any] = {
+            "media": [{"type": "first_frame", "url": image_url}],
+        }
+        if prompt:
+            inp["prompt"] = prompt
+    else:
+        model = settings.dashscope_video_model
+        inp = {"prompt": prompt}
+
+    body: dict[str, Any] = {
+        "model": model,
+        "input": inp,
+        "parameters": {
+            "resolution": resolution,
+            "ratio": ratio,
+            "duration": duration,
+        },
+    }
+    if seed is not None:
+        body["parameters"]["seed"] = seed
+    return body
+
+
 async def create_video_task(
     prompt: str,
     *,
+    image_url: str | None = None,
     resolution: str = DEFAULT_RESOLUTION,
     ratio: str = DEFAULT_RATIO,
     duration: int = DEFAULT_DURATION,
@@ -68,17 +109,14 @@ async def create_video_task(
     base = _build_base_url()
     url = f"{base}/api/v1/services/aigc/video-generation/video-synthesis"
 
-    body: dict[str, Any] = {
-        "model": settings.dashscope_video_model,
-        "input": {"prompt": prompt},
-        "parameters": {
-            "resolution": resolution,
-            "ratio": ratio,
-            "duration": duration,
-        },
-    }
-    if seed is not None:
-        body["parameters"]["seed"] = seed
+    body = _build_create_body(
+        prompt=prompt,
+        image_url=image_url,
+        resolution=resolution,
+        ratio=ratio,
+        duration=duration,
+        seed=seed,
+    )
 
     headers = _headers()
     headers["X-DashScope-Async"] = "enable"
@@ -157,6 +195,7 @@ async def poll_video_task(task_id: str) -> dict[str, Any]:
 async def stream_video_generation(
     prompt: str,
     *,
+    image_url: str | None = None,
     resolution: str = DEFAULT_RESOLUTION,
     ratio: str = DEFAULT_RATIO,
     duration: int = DEFAULT_DURATION,
@@ -174,6 +213,7 @@ async def stream_video_generation(
         # 创建任务
         create_result = await create_video_task(
             prompt,
+            image_url=image_url,
             resolution=resolution,
             ratio=ratio,
             duration=duration,

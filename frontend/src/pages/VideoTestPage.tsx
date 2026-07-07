@@ -11,6 +11,7 @@ interface ProgressEvent {
 
 export function VideoTestPage() {
   const [prompt, setPrompt] = useState('')
+  const [imageUrl, setImageUrl] = useState('')
   const [resolution, setResolution] = useState('720P')
   const [ratio, setRatio] = useState('16:9')
   const [duration, setDuration] = useState(5)
@@ -31,6 +32,7 @@ export function VideoTestPage() {
 
     const params: VideoParams = {
       prompt: trimmed,
+      image_url: imageUrl.trim() || null,
       resolution,
       ratio,
       duration,
@@ -81,6 +83,22 @@ export function VideoTestPage() {
           disabled={isLoading}
           placeholder="描述你想生成的视频内容，例如：一只毛茸茸的柯基犬在沙滩上奔跑，夕阳西下，海浪拍打岸边"
           className="w-full resize-none rounded-2xl border border-line bg-white p-4 text-sm outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:bg-mist"
+        />
+      </div>
+
+      {/* 图片 URL（可选） */}
+      <div>
+        <label htmlFor="video-image-url" className="mb-2 block text-sm font-medium text-track">
+          图片 URL <span className="text-xs text-track/40">（可选，有则走图生视频）</span>
+        </label>
+        <input
+          id="video-image-url"
+          type="text"
+          value={imageUrl}
+          onChange={e => setImageUrl(e.target.value)}
+          disabled={isLoading}
+          placeholder="https://… 输入图片 URL 将图片变为动态视频"
+          className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:bg-mist"
         />
       </div>
 
