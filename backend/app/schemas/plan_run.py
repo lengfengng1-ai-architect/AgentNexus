@@ -49,7 +49,17 @@ class PausedSnapshot(BaseModel):
     node_id: str = Field(
         ...,
         description="即将执行的节点 ID",
-        json_schema_extra={"enum": ["strategy_generation", "execution_planning", "plan_generator"]},
+        json_schema_extra={
+            "enum": [
+                "plan_data_query",
+                "fitness_analysis",
+                "strategy_generation",
+                "execution_planning",
+                "budget_kpi",
+                "action_recommendations",
+                "plan_generator",
+            ]
+        },
     )
     node_input: dict = Field(..., description="即将执行节点的输入 payload")
     upstream_outputs: dict = Field(

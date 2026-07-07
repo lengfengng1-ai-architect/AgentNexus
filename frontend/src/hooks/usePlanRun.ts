@@ -131,7 +131,16 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
         ),
       }
     case 'WORKFLOW_COMPLETE':
-      return { ...state, status: 'completed', outputs: action.outputs, isConnected: false, isLoading: false }
+      // 方案完成时清理暂停态,避免 plan_generator 残留「等待确认」徽章/按钮
+      return {
+        ...state,
+        status: 'completed',
+        outputs: action.outputs,
+        isConnected: false,
+        isLoading: false,
+        pausedNode: null,
+        pausedSnapshot: null,
+      }
     case 'WORKFLOW_CANCELED':
       return { ...state, status: 'idle', runId: null, isConnected: false, isLoading: false, pausedNode: null, pausedSnapshot: null }
     case 'SET_ERROR':
