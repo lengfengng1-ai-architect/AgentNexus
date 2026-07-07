@@ -128,32 +128,40 @@ def _fill_sourced_fields(result: ProductResearchResult, all_urls: list[str]) -> 
 
 
 async def search_node(state: ProductResearchState) -> dict:
-    """搜索产品信息。"""
+    """搜索产品信息（关键词并行）。"""
     product = state.product_name
     all_results: list[SearchResult] = []
     keywords = [product, f"{product} 产品规格", product]
     seen_urls: set[str] = set(state.exclude_urls)
 
-    for i, kw in enumerate(keywords):
-        write_log("product_research", f"🔍 正在用关键词「{kw}」搜索…")
+    write_log("product_research", f"🔍 正在用 {len(keywords)} 个关键词并行搜索…")
+
+    async def search_one(kw: str, idx: int) -> tuple[int, list[dict[str, str]]]:
         try:
             raw = await duckduckgo_search(kw, max_results=SEARCH_MAX_RESULTS)
-            if not raw:
-                write_log("product_research", f"⚠️ 关键词「{kw}」搜索无结果，跳过")
-                continue
-            for item in raw:
-                url = item.get("href", "")
-                if url and url not in seen_urls:
-                    seen_urls.add(url)
-                    all_results.append(SearchResult(
-                        url=url,
-                        title=item.get("title", ""),
-                        snippet=item.get("body", ""),
-                    ))
-            write_log("product_research", f"📄 第 {i+1} 轮搜索完成，累计发现 {len(seen_urls)} 条结果")
+            return idx, raw or []
         except Exception:
             write_log("product_research", f"⚠️ 关键词「{kw}」搜索失败，跳过")
+            return idx, []
+
+    batches = await asyncio.gather(*[search_one(kw, i) for i, kw in enumerate(keywords)])
+
+    for _i, raw in sorted(batches, key=lambda x: x[0]):
+        kw = keywords[_i]
+        if not raw:
+            write_log("product_research", f"⚠️ 关键词「{kw}」搜索无结果，跳过")
             continue
+        for item in raw:
+            url = item.get("href", "")
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                all_results.append(SearchResult(
+                    url=url,
+                    title=item.get("title", ""),
+                    snippet=item.get("body", ""),
+                ))
+
+    write_log("product_research", f"📄 搜索完成，累计发现 {len(seen_urls)} 条结果")
 
     all_results.sort(key=lambda r: (_domain_priority(r.url), r.title), reverse=True)
     # Filter out binary file URLs and datasheet/download links
