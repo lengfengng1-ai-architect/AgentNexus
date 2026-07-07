@@ -183,6 +183,12 @@ _NODE_LABELS: dict[str, str] = {
 
 _NODE_ORDER = list(_NODE_LABELS.keys())
 
+# 并行 fan-in 节点的并行前置节点列表:next 是 X 时,X 的所有并行分支必须都已完成才能 pause。
+# 当前 graph 只有 plan_data_query 是并行 fan-in 节点。
+_PARALLEL_PREDECESSORS: dict[str, list[str]] = {
+    "plan_data_query": ["product_research", "market_research", "audience_insight"],
+}
+
 # Lazy singleton: created on first use so imports stay cheap during tests.
 _saver: AsyncSqliteSaver | None = None
 _conn: aiosqlite.Connection | None = None
@@ -276,8 +282,12 @@ def _build_node(node_id: str) -> Any:
 
 
 def _dispatch_init(state: PlanState) -> list[Send]:
-    """Fan out to all three parallel research nodes."""
-    return [Send(nid, state) for nid in _PARALLEL_NODES]
+    """Fan out to all three parallel research nodes。
+
+    Skip already-completed ones so that Command(resume={}) does NOT re-execute
+    finished parallel nodes (which would make plan_data_query need a second confirm).
+    """
+    return [Send(nid, state) for nid in _PARALLEL_NODES if not state.get(nid)]
 
 
 def _build_graph() -> Any:
@@ -423,6 +433,14 @@ def _translate_event(
 
     if ev_type == "on_chain_end" and name == "LangGraph":
         output = data.get("output", {})
+        # 防御:LangGraph 在异常或部分边界场景下可能发 on_chain_end 而图未真正完成
+        # 校验最后一个节点 plan_generator 的输出存在,否则降级为 workflow.paused
+        if not output.get("plan_generator") or not output["plan_generator"].get("chapters"):
+            logger.warning(
+                "[sse] workflow.complete skipped (no plan_generator output) run=%s keys=%s",
+                run_id, list(output.keys()),
+            )
+            return None
         _counter[0] += 1
         logger.info("[sse] workflow.complete run=%s", run_id)
         # 合并宣传视频状态，让前端能在 workflow.complete 时就收到 promo_video
@@ -477,18 +495,28 @@ async def _stream_events(
     # confirm-required node runs. Emit workflow.paused whenever next is non-empty.
     state_obj = await graph.aget_state(_thread_config(run_id))
     next_nodes = list(getattr(state_obj, "next", ()) or [])
+    state_values = getattr(state_obj, "values", {}) or {}
+
+    # 防御:LangGraph 在并行 fan-in 边界场景下,next 可能比预期提前非空(部分并行
+    # 分支未完成但 next 已含 fan-in 节点)。手动校验并行前置节点全部完成才 paused。
     if next_nodes:
         node_id = next_nodes[0]
-        state_values = getattr(state_obj, "values", {}) or {}
-        counter[0] += 1
-        logger.info("[sse] workflow.paused run=%s at node=%s", run_id, node_id)
-        yield _sse_frame(
-            event_id=counter[0],
-            event="workflow.paused",
-            data={
-                "run_id": run_id,
-                "snapshot": _paused_snapshot(state_values, node_id),  # type: ignore[arg-type]
-                "reason": "review",
+        required = _PARALLEL_PREDECESSORS.get(node_id, [])
+        if required and not all(state_values.get(p) for p in required):
+            logger.warning(
+                "[sse] workflow.paused deferred: next=%s but parallel predecessors %s not all complete",
+                node_id, required,
+            )
+        else:
+            counter[0] += 1
+            logger.info("[sse] workflow.paused run=%s at node=%s", run_id, node_id)
+            yield _sse_frame(
+                event_id=counter[0],
+                event="workflow.paused",
+                data={
+                    "run_id": run_id,
+                    "snapshot": _paused_snapshot(state_values, node_id),  # type: ignore[arg-type]
+                    "reason": "review",
             },
         )
 
@@ -515,7 +543,6 @@ def _next_node(state: PlanState) -> str | None:
 async def _checkpoint_tuple(run_id: str) -> Any:
     """Fetch the latest checkpoint tuple for a run_id."""
     saver = await _get_saver()
-    from langgraph.graph.state import CompiledStateGraph
     config: Any = {"configurable": {"thread_id": run_id}}
     return await saver.aget_tuple(config)
 
@@ -666,6 +693,7 @@ async def approve_run(
             checkpoint["channel_versions"],
         )
 
+    resume_value: dict[str, Any] = {}
     resume_value: dict[str, Any] = {}
     try:
         async for frame in _stream_events(graph, Command(resume=resume_value), run_id):

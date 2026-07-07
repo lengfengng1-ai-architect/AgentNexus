@@ -95,9 +95,6 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
     case 'NODE_START':
       return {
         ...state,
-        // 节点开始执行时,清理它身上的暂停态(点确认后徽章应立即从「等待确认」变为「执行中」)
-        pausedNode: state.pausedNode === action.nodeId ? null : state.pausedNode,
-        pausedSnapshot: state.pausedNode === action.nodeId ? null : state.pausedSnapshot,
         nodes: state.nodes.map((n) =>
           n.id === action.nodeId ? { ...n, status: 'running', startedAt: Date.now() } : n,
         ),

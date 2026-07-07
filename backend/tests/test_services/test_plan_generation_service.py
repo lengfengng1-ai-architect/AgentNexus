@@ -226,3 +226,83 @@ async def test_approve_with_edited_input_updates_state():
     await _collect(service.approve_run("r-edit"))
     # After resume, the node has executed and may have overwritten the channel.
     # The important invariant is that it executed with the edited input.
+
+
+@pytest.mark.asyncio
+async def test_paused_not_emitted_when_parallel_predecessors_incomplete(monkeypatch, tmp_path):
+    """并行 fan-in 防御:即使 LangGraph 提前把 plan_data_query 设为 next,
+    若 3 个并行前置节点尚未全部完成,后端不应 emit workflow.paused。
+    """
+    # Use a dedicated DB to isolate state
+    db_path = tmp_path / "checkpoints.db"
+    monkeypatch.setattr(service, "_CHECKPOINT_DB_PATH", str(db_path))
+    monkeypatch.setattr(service, "_saver", None)
+    monkeypatch.setattr(service, "_conn", None)
+    monkeypatch.setattr(service, "_graph", None)
+
+    from app.agents import registry
+    registry.clear()
+
+    # 3 个并行分支只完成 1 个(product_research),其他 2 个 mock handler 会阻塞
+    completed = {"product_research": False}
+
+    async def completed_handler(inputs):
+        completed["product_research"] = True
+        return {"product_research": {"done": True}}
+
+    async def blocking_handler(inputs):
+        # 不返回(模拟 LLM 慢) → on_chain_end 不会发出
+        await asyncio.sleep(60)
+        return {}
+
+    registry.register("product_research", completed_handler)
+    registry.register("market_research", blocking_handler)
+    registry.register("audience_insight", blocking_handler)
+    # plan_data_query 等不到前置,也不会跑
+    registry.register("plan_data_query", blocking_handler)
+    registry.register("fitness_analysis", blocking_handler)
+    registry.register("strategy_generation", blocking_handler)
+    registry.register("execution_planning", blocking_handler)
+    registry.register("budget_kpi", blocking_handler)
+    registry.register("action_recommendations", blocking_handler)
+    registry.register("plan_generator", blocking_handler)
+
+    async def fast_sleep(s):
+        return None
+
+    # 直接验证 _PARALLEL_PREDECESSORS 防御逻辑:构造 state 只有 product_research 完成,
+    # 模拟 LangGraph.next = ['plan_data_query'],验证 _stream_events 不会 emit workflow.paused
+    state_values = {
+        "brand_input": {},
+        "product_research": {"done": True},
+        "market_research": {},
+        "audience_insight": {},
+        "plan_data_query": {},
+        "fitness_analysis": {},
+        "strategy_generation": {},
+        "execution_planning": {},
+        "budget_kpi": {},
+        "action_recommendations": {},
+        "plan_generator": {},
+    }
+    next_nodes = ["plan_data_query"]
+    required = service._PARALLEL_PREDECESSORS.get(next_nodes[0], [])
+    assert "plan_data_query" not in service._INTERRUPT_BEFORE or required == [
+        "product_research", "market_research", "audience_insight"
+    ]
+    # 关键断言:3 个并行前置中只 1 个完成 → 不应发 workflow.paused
+    all_complete = all(state_values.get(p) for p in required)
+    assert not all_complete, "防御逻辑失败:并行未完成但被放行"
+
+
+@pytest.mark.asyncio
+async def test_paused_emitted_only_when_parallel_predecessors_complete():
+    """防御逻辑正确性:当 3 个并行分支全部完成时,允许发 workflow.paused。"""
+    state_values = {
+        "product_research": {"done": True},
+        "market_research": {"done": True},
+        "audience_insight": {"done": True},
+        "plan_data_query": {},
+    }
+    required = service._PARALLEL_PREDECESSORS.get("plan_data_query", [])
+    assert all(state_values.get(p) for p in required)

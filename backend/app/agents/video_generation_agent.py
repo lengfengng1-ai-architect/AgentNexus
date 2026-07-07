@@ -6,6 +6,7 @@
 Corresponding in_scope ID: video-generation
 """
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncGenerator
@@ -163,10 +164,7 @@ async def stream_video_generation(
 ) -> AsyncGenerator[str, None]:
     """流式 SSE 入口：创建任务 → 逐步推送进度 → 推送最终结果。
 
-    SSE events 格式（与现有 stream 端点一致）：
-      event: progress  → 状态更新
-      event: result    → 最终结果（含 video_url）
-      event: error     → 错误信息
+    关键:轮询期间每次循环都 yield progress,避免 SSE 长连接空闲超时。
     """
 
     def _sse(event: str, data: dict) -> str:
@@ -188,19 +186,82 @@ async def stream_video_generation(
             "message": "视频生成任务已创建，正在排队…",
         })
 
-        # 轮询
-        output = await poll_video_task(create_result["task_id"])
+        # 流式轮询：每次循环 yield progress,避免 SSE 连接空闲超时
+        task_id = create_result["task_id"]
+        base = _build_base_url()
+        url = f"{base}/api/v1/tasks/{task_id}"
+        elapsed = 0
+        poll_count = 0
+        last_status = "PENDING"
+        while elapsed < MAX_POLL_SECONDS:
+            try:
+                async with httpx.AsyncClient(timeout=15) as client:
+                    resp = await client.get(url, headers=_headers())
+            except httpx.HTTPError as exc:
+                logger.warning("video poll network error (retry next cycle): %s", exc)
+                yield _sse("progress", {
+                    "stage": "polling",
+                    "task_id": task_id,
+                    "status": last_status,
+                    "message": f"轮询网络抖动,稍后重试 (已等 {elapsed}s)…",
+                    "elapsed": elapsed,
+                })
+                await asyncio.sleep(POLL_INTERVAL)
+                elapsed += POLL_INTERVAL
+                continue
 
-        status = output.get("task_status", "UNKNOWN")
-        if status == "SUCCEEDED":
+            if resp.status_code != 200:
+                detail = resp.text
+                try:
+                    detail = resp.json().get("message", detail)
+                except Exception:
+                    pass
+                yield _sse("error", {
+                    "detail": f"查询任务失败 ({resp.status_code}): {detail}",
+                    "code": "video_poll_http_error",
+                })
+                return
+
+            data = resp.json()
+            output = data.get("output", {})
+            status = output.get("task_status", "UNKNOWN")
+            last_status = status
+            poll_count += 1
+
+            if status in ("SUCCEEDED", "FAILED", "CANCELED"):
+                # 终结态:跳出循环,在外层处理 result/error
+                break
+
+            # 仍 RUNNING/PENDING → 推 progress
+            yield _sse("progress", {
+                "stage": "polling",
+                "task_id": task_id,
+                "status": status,
+                "message": f"正在生成视频…(第 {poll_count} 次轮询,已等 {elapsed}s)",
+                "elapsed": elapsed,
+            })
+            await asyncio.sleep(POLL_INTERVAL)
+            elapsed += POLL_INTERVAL
+        else:
+            # while 条件为 False 自然结束(超时)
+            yield _sse("error", {
+                "detail": f"视频任务 {task_id} 超过 {MAX_POLL_SECONDS}s 仍未完成，请稍后手动查询",
+                "code": "video_timeout",
+            })
+            return
+
+        # 处理终结态
+        if last_status == "SUCCEEDED":
             video_url = output.get("video_url")
             yield _sse("progress", {
                 "stage": "completed",
                 "status": "SUCCEEDED",
+                "task_id": task_id,
                 "message": "视频生成完成！",
+                "elapsed": elapsed,
             })
             yield _sse("result", {
-                "task_id": output.get("task_id"),
+                "task_id": task_id,
                 "video_url": video_url,
                 "orig_prompt": output.get("orig_prompt"),
                 "usage": {
@@ -210,7 +271,7 @@ async def stream_video_generation(
                     "ratio": output.get("ratio"),
                 },
             })
-        elif status == "FAILED":
+        elif last_status == "FAILED":
             error_msg = output.get("message", output.get("code", "未知错误"))
             yield _sse("error", {
                 "detail": f"视频生成失败: {error_msg}",
@@ -218,7 +279,7 @@ async def stream_video_generation(
             })
         else:
             yield _sse("error", {
-                "detail": f"视频任务状态异常: {status}",
+                "detail": f"视频任务状态异常: {last_status}",
                 "code": "video_unknown_status",
             })
 

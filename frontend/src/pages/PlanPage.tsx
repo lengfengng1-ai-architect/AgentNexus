@@ -165,7 +165,6 @@ export function PlanPage() {
 
   const posterPromptText = buildPosterPrompt(displayedChapters) || '基于当前营销方案自动生成主视觉海报'
 
-  // 下一步建议只在完整方案生成后展示(completed 状态)
   // 卡片顺序: 宣传视频(若有) → 海报生成 → 基础建议
   const promoVideo = outputs?.promo_video
   const actionItemsBase = outputs?.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
@@ -175,7 +174,11 @@ export function PlanPage() {
     type: 'normal' as const,
   })) ?? []
 
-  const actionItems = status !== 'completed'
+  // 下一步建议只在完整方案生成后展示(completed 状态 + plan_generator 节点完成)
+  // 双重守卫:status 仅在 WORKFLOW_COMPLETE 时为 completed,但部分边界场景下 LangGraph 可能
+  // 提前发 on_chain_end,导致 status=completed 但 plan_generator 还没跑。所以加 outputs.plan_generator 存在性检查。
+  const planGeneratorDone = Array.isArray(outputs?.plan_generator?.chapters) && outputs!.plan_generator!.chapters.length > 0
+  const actionItems = status !== 'completed' || !planGeneratorDone
     ? undefined
     : [
         ...(promoVideo
