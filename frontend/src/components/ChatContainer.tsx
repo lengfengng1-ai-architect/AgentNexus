@@ -4,7 +4,6 @@ import type { BrandInput } from '../types/chat'
 import { ChatBubble } from './ChatBubble'
 import { ChatInput } from './ChatInput'
 import { ErrorBar } from './ErrorBar'
-import { LoadingBubble } from './LoadingBubble'
 import { WelcomeCard } from './WelcomeCard'
 import { BrandConfirmCard } from './BrandConfirmCard'
 
@@ -79,10 +78,7 @@ export function ChatContainer() {
           <WelcomeCard onScenarioClick={prefillInput} />
         ) : (
           <div className="mx-auto flex max-w-3xl flex-col gap-4 px-4 pb-6 sm:px-6">
-            {messages.map((message) =>
-              message.isLoading ? (
-                <LoadingBubble key={message.id} />
-              ) : (
+            {messages.map((message) => (
                 <ChatBubble
                   key={message.id}
                   message={message}

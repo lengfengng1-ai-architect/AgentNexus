@@ -9,7 +9,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 
-from app.agents.llm_utils import invoke_json
+from app.agents.llm_utils import write_log,  invoke_json
 from app.agents.registry import register
 from app.schemas.plan_generation import BudgetKpiOutput
 from app.utils import parse_budget, parse_period
@@ -35,6 +35,7 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
+    write_log("budget_kpi", f"📊 正在为 {brand_name} 测算预算分配和 KPI…")
     result = await invoke_json(
         _render(
             "budget_kpi",
@@ -51,6 +52,7 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
         ),
         f"请为 {brand_name} 生成预算与 KPI。",
     )
+    write_log("budget_kpi", "✓ 预算 KPI 测算完成")
     return BudgetKpiOutput.model_validate(result).model_dump()
 
 

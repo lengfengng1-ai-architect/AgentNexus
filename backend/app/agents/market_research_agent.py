@@ -6,6 +6,7 @@ Corresponding in_scope ID: plan-generation
 
 from typing import Any
 
+
 from app.agents.market_analysis_agent import (
     call_node_assess,
     call_node_competitors,
@@ -15,6 +16,7 @@ from app.agents.market_analysis_agent import (
     call_node_trends,
     call_node_users,
 )
+from app.agents.llm_utils import write_log
 from app.agents.registry import register
 from app.schemas.plan_generation import MarketResearchOutput, MarketTrend
 
@@ -40,6 +42,8 @@ async def run_market_research(state: dict[str, Any]) -> dict[str, Any]:
     if not brand_name or not category:
         raise ValueError("Missing required inputs: brand_name and category")
 
+    write_log("market_research", f"🔍 开始对 {brand_name}（{category}）进行市场分析…")
+
     d1 = await call_node_define(brand_name, category)
     d2 = await call_node_size(brand_name, d1)
     d3 = await call_node_trends(brand_name, d2)
@@ -48,6 +52,7 @@ async def run_market_research(state: dict[str, Any]) -> dict[str, Any]:
     d6 = await call_node_assess(brand_name, d5)
     report = await call_node_synthesize(brand_name, d1, d2, d3, d4, d5, d6)
 
+    write_log("market_research", "✓ 市场分析完成")
     output = _build_output(brand_name, category, d3, d6, report)
     return output.model_dump()
 

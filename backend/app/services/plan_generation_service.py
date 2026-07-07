@@ -25,6 +25,7 @@ from typing_extensions import TypedDict
 
 import aiosqlite
 
+from app.agents.llm_utils import drain_logs
 from app.agents.registry import get_handler
 from app.schemas.common import ErrorCode
 
@@ -163,10 +164,9 @@ def _node_inputs(node_id: str, state: PlanState) -> dict[str, Any]:
 def _build_node(node_id: str) -> Any:
     """Create a LangGraph node that calls get_handler(node_id).
 
-    ponytail: plan_generator 接受 writer 参数用于发送 chapter progress 事件。
-    LangGraph 在 astream_events 模式下不会自动注入 writer，
-    所以当前 plan_generator 节点不传 writer (None)。
-    如果后续需要前端显示逐章进度，需要通过其他方式(如自定义事件)实现。
+    Live operation logs from the handler are pushed via write_log()
+    into a shared buffer; _stream_events drains this buffer and emits
+    node.log SSE.
     """
     handler = get_handler(node_id)
 
@@ -258,6 +258,7 @@ def _translate_event(
     run_id: str,
     *,
     _counter: list[int],
+    _started: set[str] | None = None,
 ) -> str | None:
     """Map astream_events v2 event to our SSE frame, or return None to skip."""
     ev_type = event.get("event")
@@ -265,6 +266,7 @@ def _translate_event(
     data = event.get("data", {})
 
     if ev_type == "on_chain_start" and name == "LangGraph":
+        logger.info("[sse] workflow.start run=%s", run_id)
         return _sse_frame(
             event_id=_counter[0],
             event="workflow.start",
@@ -272,7 +274,14 @@ def _translate_event(
         )
 
     if ev_type == "on_chain_start" and name in _NODE_LABELS:
+        # Deduplicate: LangGraph may emit on_chain_start multiple times
+        # for the same node (outer chain + nested chain).
+        if _started is not None:
+            if name in _started:
+                return None
+            _started.add(name)
         _counter[0] += 1
+        logger.info("[sse] node.start run=%s node=%s", run_id, name)
         return _sse_frame(
             event_id=_counter[0],
             event="node.start",
@@ -315,6 +324,7 @@ def _translate_event(
         # so on_chain_end passes the full output. For plan_generator specifically
         # the output is already complete with all 9 chapters.
         _counter[0] += 1
+        logger.info("[sse] node.end run=%s node=%s output_keys=%s", run_id, name, list(output.keys())[:3])
         return _sse_frame(
             event_id=_counter[0],
             event="node.complete",
@@ -328,6 +338,7 @@ def _translate_event(
     if ev_type == "on_chain_end" and name == "LangGraph":
         output = data.get("output", {})
         _counter[0] += 1
+        logger.info("[sse] workflow.complete run=%s", run_id)
         return _sse_frame(
             event_id=_counter[0],
             event="workflow.complete",
@@ -348,14 +359,29 @@ async def _stream_events(
 ) -> AsyncGenerator[str, None]:
     """Consume astream_events v2 and yield standard SSE frames."""
     counter = [0]
+    started: set[str] = set()
+
     async for event in graph.astream_events(
         input_value,
         _thread_config(run_id),
         version="v2",
     ):
-        translated = _translate_event(event, run_id, _counter=counter)
+        translated = _translate_event(event, run_id, _counter=counter, _started=started)
         if translated is not None:
             yield translated
+
+        # Drain any logs written during handler execution
+        for log_msg in drain_logs():
+            counter[0] += 1
+            yield _sse_frame(
+                event_id=counter[0],
+                event="node.log",
+                data={
+                    "run_id": run_id,
+                    "node_id": log_msg["node_id"],
+                    "message": log_msg["message"],
+                },
+            )
 
     # After the event stream finishes, check whether the graph paused at an
     # interrupt checkpoint. With interrupt_after, the stream stops after each
@@ -366,6 +392,7 @@ async def _stream_events(
         node_id = next_nodes[0]
         state_values = getattr(state_obj, "values", {}) or {}
         counter[0] += 1
+        logger.info("[sse] workflow.paused run=%s at node=%s", run_id, node_id)
         yield _sse_frame(
             event_id=counter[0],
             event="workflow.paused",
@@ -479,10 +506,18 @@ async def start_run(
     """Start a new plan generation run and stream SSE events."""
     run_id = run_id or str(uuid.uuid4())
     now = datetime.now(timezone.utc).isoformat()
+    logger.info("[plan] start_run run=%s brand=%s", run_id, brand_input.get("brand_name"))
     # 持久化批次记录到 SQLite
     await _save_plan_record(run_id, brand_input, "running", now, now)
     graph = await _get_graph()
     state = _initial_state(brand_input)
+
+    # Emit workflow.start immediately so the frontend knows the run is live
+    yield _sse_frame(
+        event_id=0,
+        event="workflow.start",
+        data={"run_id": run_id},
+    )
 
     try:
         async for frame in _stream_events(graph, state, run_id):
@@ -507,6 +542,7 @@ async def approve_run(
     edited_input: dict[str, Any] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Resume a paused run from an interrupt checkpoint."""
+    logger.info("[plan] approve_run run=%s", run_id)
     graph = await _get_graph()
 
     # If the user edited the node input, persist it into the checkpoint so the

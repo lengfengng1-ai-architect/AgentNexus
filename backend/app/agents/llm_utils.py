@@ -11,6 +11,20 @@ from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config.settings import settings
 
+_log_buffer: list[dict[str, str]] = []
+
+
+def write_log(node_id: str, message: str) -> None:
+    """Append a live operation log message to the shared buffer."""
+    _log_buffer.append({"node_id": node_id, "message": message})
+
+
+def drain_logs() -> list[dict[str, str]]:
+    """Drain and return all pending log messages."""
+    items = list(_log_buffer)
+    _log_buffer.clear()
+    return items
+
 
 def build_chat_model():
     """Initialize the configured chat model."""

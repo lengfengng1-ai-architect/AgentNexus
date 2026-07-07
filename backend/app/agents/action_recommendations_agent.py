@@ -9,7 +9,7 @@ from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
 
-from app.agents.llm_utils import invoke_json
+from app.agents.llm_utils import write_log,  invoke_json
 from app.agents.registry import register
 from app.schemas.plan_generation import ActionRecommendationsOutput
 from app.utils import parse_budget, parse_period
@@ -35,6 +35,7 @@ async def run_action_recommendations(state: dict[str, Any]) -> dict[str, Any]:
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
+    write_log("action_recommendations", f"📊 正在为 {brand_name} 生成行动建议…")
     result = await invoke_json(
         _render(
             "action_recommendations",
@@ -50,6 +51,7 @@ async def run_action_recommendations(state: dict[str, Any]) -> dict[str, Any]:
         ),
         f"请为 {brand_name} 生成行动建议。",
     )
+    write_log("action_recommendations", "✓ 行动建议生成完成")
     return ActionRecommendationsOutput.model_validate(result).model_dump()
 
 

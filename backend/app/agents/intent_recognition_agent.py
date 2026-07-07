@@ -235,6 +235,8 @@ async def stream_intent_recognition(
         llm = _build_structured_llm()
         result = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=message)])
         logger.debug("Streaming intent recognition structured result: %s", result.model_dump_json(ensure_ascii=False))
+        if result.reasoning:
+            yield (result.reasoning, None)
 
     if result.intent == "update_context":
         result = _merge_context(context, result)

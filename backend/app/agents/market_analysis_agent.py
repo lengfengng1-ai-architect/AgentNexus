@@ -11,7 +11,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from typing_extensions import TypedDict
 
-from app.agents.llm_utils import build_chat_model
+from app.agents.llm_utils import build_chat_model, write_log
 from app.agents.registry import register
 from app.schemas.market_analysis import (
     CompetitorItem,
@@ -73,6 +73,7 @@ async def _llm_json(system_prompt: str, user_msg: str) -> dict:
 
 async def call_node_define(market_name: str, category: str) -> dict:
     """Node 1: market definition → returns dict with included_scope, etc."""
+    write_log("market_research", f"📋 正在定义 {market_name} 的市场范围…")
     return await _llm_json(
         _render("research_define", market_name=market_name, category=category),
         f"请对「{market_name}」进行市场定义和分析。",
@@ -81,6 +82,7 @@ async def call_node_define(market_name: str, category: str) -> dict:
 
 async def call_node_size(market_name: str, definition_dict: dict) -> dict:
     """Node 2: market size → returns dict with tam/sam/som/cagr."""
+    write_log("market_research", f"📋 正在测算 {market_name} 的市场规模 TAM/SAM/SOM…")
     return await _llm_json(
         _render("research_size", market_name=market_name,
                 definition_context=json.dumps(definition_dict, ensure_ascii=False)),
@@ -90,6 +92,7 @@ async def call_node_size(market_name: str, definition_dict: dict) -> dict:
 
 async def call_node_trends(market_name: str, size_dict: dict) -> dict:
     """Node 3: trend signals → returns dict or list of signals."""
+    write_log("market_research", f"📋 正在扫描 {market_name} 的行业趋势…")
     return await _llm_json(
         _render("research_trends", market_name=market_name,
                 size_context=json.dumps(size_dict, ensure_ascii=False)),
@@ -99,6 +102,7 @@ async def call_node_trends(market_name: str, size_dict: dict) -> dict:
 
 async def call_node_users(market_name: str, trends_dict: dict) -> dict:
     """Node 4: target users → returns dict or list of user segments."""
+    write_log("market_research", f"📋 正在分析 {market_name} 的目标用户群体…")
     return await _llm_json(
         _render("research_users", market_name=market_name,
                 trend_context=json.dumps(trends_dict, ensure_ascii=False)),
@@ -108,6 +112,7 @@ async def call_node_users(market_name: str, trends_dict: dict) -> dict:
 
 async def call_node_competitors(market_name: str, users_dict: dict) -> dict:
     """Node 5: competitors → returns dict or list of competitors."""
+    write_log("market_research", f"📋 正在梳理 {market_name} 的竞争格局…")
     return await _llm_json(
         _render("research_competitors", market_name=market_name,
                 context=json.dumps(users_dict, ensure_ascii=False)),
@@ -117,6 +122,7 @@ async def call_node_competitors(market_name: str, users_dict: dict) -> dict:
 
 async def call_node_assess(market_name: str, competitors_dict: dict) -> dict:
     """Node 6: opportunity assessment → returns dict with scores."""
+    write_log("market_research", f"📋 正在评估 {market_name} 的市场机会…")
     return await _llm_json(
         _render("research_assess", market_name=market_name,
                 context=json.dumps(competitors_dict, ensure_ascii=False)),
@@ -127,6 +133,7 @@ async def call_node_assess(market_name: str, competitors_dict: dict) -> dict:
 async def call_node_synthesize(market_name: str, d1: dict, d2: dict, d3: dict,
                                  d4: dict, d5: dict, d6: dict) -> str:
     """Node 7: synthesize full report → returns markdown string."""
+    write_log("market_research", f"📝 正在汇总生成 {market_name} 的完整分析报告…")
     msg = await _build_model().ainvoke([
         SystemMessage(content=_render("research_synthesize",
             market_name=market_name,

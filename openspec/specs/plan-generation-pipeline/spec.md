@@ -130,6 +130,12 @@
 - **AND** data JSON SHALL 包含 `run_id`
 - **AND** 响应头 SHALL 包含 `X-Run-Id: <run_id>`
 
+#### Scenario: node.log 包含操作步骤消息
+- **WHEN** Agent 节点调用 `dispatch_custom_event("log", {"node_id": "...", "message": "..."})`
+- **THEN** SSE 流 SHALL 推送 `event: node.log`
+- **AND** data SHALL 包含 `run_id`、`node_id`、`message`
+- **AND** `message` SHALL 为 Agent 当前执行步骤的中文描述文本
+
 ### Requirement: plan_generator 节点 SHALL 按 9 章顺序流式生成
 
 `plan_generator` 节点 SHALL 按 `PLAN_CHAPTER_SPEC` 常量中定义的 9 章顺序（详见 design.md）逐章调用 LLM，每章调用完成后 SHALL 通过 `dispatch_custom_event` emit `chapter.complete` 事件。9 章的 `title` 和 `subtitle` SHALL 完全由 `PLAN_CHAPTER_SPEC` 决定，LLM SHALL 只生成 `content` 字段。每章生成时 handler SHALL 把已完成章节数组作为上下文传入 prompt。

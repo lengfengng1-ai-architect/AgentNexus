@@ -557,11 +557,20 @@ export function usePlanRun() {
   const nodeLogs = useMemo(() => {
     const logsByNode: Record<string, string[]> = {}
     for (const log of state.logs) {
-      if (log.nodeId && log.message) {
-        const list = logsByNode[log.nodeId] ?? []
-        list.push(log.message)
-        logsByNode[log.nodeId] = list
+      if (!log.nodeId) continue
+      const list = logsByNode[log.nodeId] ?? []
+      let msg = log.message
+      if (!msg) {
+        switch (log.event) {
+          case 'node.start': msg = '开始执行…'; break
+          case 'node.complete': msg = '✓ 执行完成'; break
+          case 'node.failed': msg = '✗ 执行失败: ' + ((log.data?.message as string) ?? '未知错误'); break
+          case 'workflow.paused': msg = '⏸ 等待人工确认'; break
+          default: msg = log.event; break
+        }
       }
+      list.push(msg)
+      logsByNode[log.nodeId] = list
     }
     return logsByNode
   }, [state.logs])

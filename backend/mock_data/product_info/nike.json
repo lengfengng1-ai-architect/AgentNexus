@@ -1,52 +1,76 @@
 {
   "identity": {
     "product_name": {
-      "value": null,
-      "sources": [],
-      "method": "extracted",
-      "quote": null
+      "value": "Nike",
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
+      "method": "quoted",
+      "quote": "Nike"
     },
     "brand": {
-      "value": null,
-      "sources": [],
+      "value": "Nike",
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
       "method": "extracted",
       "quote": null
     },
     "manufacturer": {
-      "value": null,
-      "sources": [],
+      "value": "Nike, Inc.",
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
       "method": "extracted",
       "quote": null
     },
     "industry": {
-      "value": null,
-      "sources": [],
+      "value": "运动服装与鞋类",
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
       "method": "extracted",
       "quote": null
     },
     "category": {
-      "value": null,
-      "sources": [],
+      "value": "运动服饰与鞋类品牌",
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
       "method": "extracted",
       "quote": null
     }
   },
   "official_description": {
     "description": {
-      "value": null,
-      "sources": [],
+      "value": "提供运动鞋类、服装和配饰，专注于为各级运动员提供先进装备，强调创新和性能提升。",
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
       "method": "extracted",
-      "quote": null
+      "quote": "Offers athletic footwear, apparel, and accessories from leading sports brands. It provides advanced gear for aspiring and professional athletes across various sports. Product design emphasizes innovation and performance enhancement."
     },
     "tagline": {
-      "value": null,
-      "sources": [],
-      "method": "extracted",
-      "quote": null
+      "value": "Just Do It",
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
+      "method": "quoted",
+      "quote": "Just Do It"
     },
     "statement": {
       "value": null,
-      "sources": [],
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
       "method": "extracted",
       "quote": null
     }
@@ -54,25 +78,40 @@
   "features": [],
   "specifications": {
     "value": {},
-    "sources": [],
+    "sources": [
+      "https://www.jiemian.com/article/4613965.html",
+      "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+    ],
     "method": "extracted"
   },
   "availability": {
     "status": {
-      "value": null,
-      "sources": [],
+      "value": "在售",
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
       "method": "extracted",
       "quote": null
     },
     "pricing": [],
     "available_regions": {
-      "value": [],
-      "sources": [],
+      "value": [
+        "美国",
+        "中国"
+      ],
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
       "method": "extracted"
     },
     "access_model": {
-      "value": null,
-      "sources": [],
+      "value": "线上直销（DTC）和线下零售",
+      "sources": [
+        "https://www.jiemian.com/article/4613965.html",
+        "https://www.google.com/storepages?q=nike.com&c=US&v=19&hl=en"
+      ],
       "method": "extracted",
       "quote": null
     }

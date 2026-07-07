@@ -22,7 +22,7 @@ from langgraph.graph import END, StateGraph
 from openai import BadRequestError
 from pydantic import BaseModel, Field
 
-from app.agents.llm_utils import build_chat_model
+from app.agents.llm_utils import build_chat_model, write_log
 from app.agents.registry import register
 from app.schemas.product_info import (
     ProductResearchResult,
@@ -46,6 +46,7 @@ SEARCH_MAX_RESULTS = 10
 FETCH_TOP_N = 5
 FETCH_TIMEOUT = 15
 MAX_PAGE_CHARS = 8000
+SKIP_EXTENSIONS = {'.pdf', '.doc', '.docx', '.zip', '.jpg', '.png', '.gif', '.ppt', '.pptx', '.xls', '.xlsx'}
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -134,10 +135,14 @@ async def search_node(state: ProductResearchState) -> dict:
     keywords = [product, f"{product} 产品规格", product]
     seen_urls: set[str] = set(state.exclude_urls)
 
-    for kw in keywords:
+    for i, kw in enumerate(keywords):
+        write_log("product_research", f"🔍 正在用关键词「{kw}」搜索…")
         try:
             with DDGS() as ddgs:
                 raw = list(ddgs.text(kw, max_results=SEARCH_MAX_RESULTS))
+                if not raw:
+                    write_log("product_research", f"⚠️ 关键词「{kw}」搜索无结果，跳过")
+                    continue
                 for item in raw:
                     url = item.get("href", "")
                     if url and url not in seen_urls:
@@ -147,25 +152,41 @@ async def search_node(state: ProductResearchState) -> dict:
                             title=item.get("title", ""),
                             snippet=item.get("body", ""),
                         ))
+                write_log("product_research", f"📄 第 {i+1} 轮搜索完成，累计发现 {len(seen_urls)} 条结果")
         except Exception:
+            write_log("product_research", f"⚠️ 关键词「{kw}」搜索失败，跳过")
             continue
 
     all_results.sort(key=lambda r: (_domain_priority(r.url), r.title), reverse=True)
-    top = all_results[:FETCH_TOP_N]
+    # Filter out binary file URLs and datasheet/download links
+    filtered = [
+        r for r in all_results
+        if not any(r.url.split('?')[0].lower().endswith(ext) for ext in SKIP_EXTENSIONS)
+        and not any(kw in (r.title + r.snippet).lower() for kw in ['datasheet', '规格书', '数据手册', 'download', 'pdf'])
+    ]
+    top = filtered[:FETCH_TOP_N]
+    write_log("product_research", f"📄 过滤非网页链接后取前 {len(top)} 条")
     return {"search_results": top}
 
 
 async def fetch_node(state: ProductResearchState) -> dict:
     """并发读取页面内容。"""
     urls = [r.url for r in state.search_results]
+    write_log("product_research", f"📄 开始并发抓取 {len(urls)} 个页面…")
 
     async def fetch_one(url: str) -> FetchedPage:
+        # Skip known binary/PDF URLs before making HTTP request
+        path_part = url.split('?')[0].lower()
+        if any(path_part.endswith(ext) for ext in SKIP_EXTENSIONS):
+            return FetchedPage(url=url, title=None, content="", fetched=False)
+        write_log("product_research", f"📄 正在请求 {url}…")
         try:
             async with AsyncClient(timeout=FETCH_TIMEOUT) as client:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
                 resp.raise_for_status()
                 content_type = resp.headers.get("content-type", "")
                 if "text/html" not in content_type and "application/xhtml" not in content_type:
+                    write_log("product_research", f"⚠️ {url} 非 HTML 内容，跳过")
                     return FetchedPage(url=url, title=None, content="", fetched=False)
                 raw = resp.text
                 text = extract_text_from_html(raw)
@@ -173,8 +194,16 @@ async def fetch_node(state: ProductResearchState) -> dict:
                     text = text[:MAX_PAGE_CHARS] + "\n...[内容截断]"
                 soup = BeautifulSoup(raw, "lxml")
                 title = soup.title.string.strip() if soup.title and soup.title.string else None
+                write_log("product_research", f"✓ 成功读取 {url}（{len(text)} 字符）")
                 return FetchedPage(url=url, title=title, content=text)
-        except (TimeoutException, HTTPError, Exception):
+        except TimeoutException:
+            write_log("product_research", f"⏱️ {url} 请求超时，跳过")
+            return FetchedPage(url=url, title=None, content="", fetched=False)
+        except HTTPError:
+            write_log("product_research", f"⚠️ {url} HTTP 错误，跳过")
+            return FetchedPage(url=url, title=None, content="", fetched=False)
+        except Exception:
+            write_log("product_research", f"⚠️ {url} 读取失败，跳过")
             return FetchedPage(url=url, title=None, content="", fetched=False)
 
     tasks = [fetch_one(url) for url in urls]
@@ -182,6 +211,9 @@ async def fetch_node(state: ProductResearchState) -> dict:
 
     global _last_fetched_urls
     _last_fetched_urls = [r.url for r in results if r.fetched]
+
+    fetched_count = sum(1 for p in results if p.fetched)
+    write_log("product_research", f"📄 抓取完成：成功 {fetched_count}/{len(results)} 个页面")
 
     return {"fetched_pages": list(results)}
 
@@ -195,8 +227,10 @@ async def extract_node(state: ProductResearchState) -> dict:
     all_urls = [p.url for p in valid_pages]
 
     if not valid_pages:
+        write_log("product_research", "⚠️ 没有有效页面内容可供分析")
         return {"output": ProductResearchResult()}
 
+    write_log("product_research", f"🤖 正在用 AI 分析 {len(valid_pages)} 个页面的内容，提取结构化信息…")
     prompt = _load_prompt(state.product_name, valid_pages)
     llm = _build_model().with_structured_output(ProductResearchResult)
 
@@ -205,7 +239,9 @@ async def extract_node(state: ProductResearchState) -> dict:
         HumanMessage(content=f"请提取产品「{state.product_name}」的结构化信息。"),
     ])
 
+    write_log("product_research", "🤖 AI 提取完成，正在整理字段溯源…")
     _fill_sourced_fields(result, all_urls)
+    write_log("product_research", f"✓ 提取到 {len(result.features)} 个功能、{len(result.identity.model_fields)} 个标识字段")
 
     return {"output": result}
 
@@ -234,17 +270,21 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
             continue
         if "官方" not in item.get("title", "") + item.get("body", "") and "官网" not in item.get("title", "") + item.get("body", ""):
             continue
+        write_log("product_research", f"🌐 正在验证官网链接 {url}…")
         try:
             async with AsyncClient(timeout=FETCH_TIMEOUT) as client:
                 resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
                 resp.raise_for_status()
                 text = extract_text_from_html(resp.text)
                 if product.lower() in (text or "").lower()[:800]:
-                    # 将官网 URL 存到 identity.product_name 的 sources
                     if url not in output.identity.product_name.sources:
                         output.identity.product_name.sources.append(url)
+                        write_log("product_research", f"✓ 确认官网：{url}")
                     break
+                else:
+                    write_log("product_research", f"⚠️ {url} 内容不匹配，跳过")
         except Exception:
+            write_log("product_research", f"⚠️ 访问 {url} 失败，跳过")
             continue
 
     return {"output": output}
@@ -274,7 +314,7 @@ _graph = _build_graph()
 
 
 async def research_product(product_name: str, exclude_urls: list[str] | None = None) -> ProductResearchResult:
-    """执行产品信息调研。"""
+    """执行产品信息调研（使用内部 LangGraph，保持原有 API 签名）。"""
     result = await _graph.ainvoke({"product_name": product_name, "exclude_urls": exclude_urls or []})
     output = result.get("output")
     if output is None:
@@ -283,7 +323,7 @@ async def research_product(product_name: str, exclude_urls: list[str] | None = N
 
 
 async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
-    """Workflow-compatible handler: input dict → output dict.
+    """Workflow-compatible handler: sequential steps with live operation logs.
 
     Expects state keys: product_name or brand_name.
     Uses brand_name as the product to research.
@@ -299,6 +339,7 @@ async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
             exclude = state.get("_exclude_urls", []) if attempt == 2 else []
             result = await research_product(brand_name, exclude_urls=exclude)
             _save_to_cache(brand_name, result)
+            write_log("product_research", "✓ 产品调研完成")
             return result.model_dump()
         except BadRequestError as e:
             if attempt == 1 and "data_inspection_failed" in str(e):

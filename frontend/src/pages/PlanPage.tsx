@@ -4,6 +4,7 @@ import type { BrandInput } from '../types/chat'
 import { PlanActionCards } from './PlanActionCards'
 import { PlanForm } from './PlanForm'
 import { PlanPreview } from './PlanPreview'
+import type { PlanChapter } from '../types/plan'
 import { PipelineTimeline } from './PipelineTimeline'
 
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
@@ -81,16 +82,16 @@ export function PlanPage() {
     start({ ...brandInput })
   }, [save, start])
 
-  const displayedChapters = chapters.length > 0 ? chapters : outputs.plan_generator?.chapters || []
-  const actionItems = outputs.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
+  const displayedChapters = chapters.length > 0 ? chapters : (outputs?.plan_generator?.chapters || [])
+  const actionItems = outputs?.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
     title: a.title,
     description: a.description,
     buttonLabel: '查看详情',
   }))
 
-  const [activeTab, setActiveTab] = useState(0)
   const [autoMode, setAutoMode] = useState(false)
   const userInteractedRef = useRef(false)
+  const [activeTab, setActiveTab] = useState(0)
 
   const TABS = [
     { idx: 0, label: '概览', agentId: '' },
@@ -167,7 +168,7 @@ export function PlanPage() {
   const auditPanel = null
 
   return (
-    <div className="app" style={{ display: 'flex', minHeight: 'var(--app-height)', backgroundColor: '#fafbfc' }}>
+    <div className="app" style={{ display: 'flex', height: '100%', backgroundColor: '#fafbfc' }}>
       <aside style={{
         width: sidebarCollapsed ? 48 : 360,
         minWidth: sidebarCollapsed ? 48 : 360,
@@ -359,7 +360,7 @@ export function PlanPage() {
               {autoMode ? '自动执行中' : '自动执行'}
             </button>
             <button
-              onClick={() => window.print()}
+              onClick={() => exportPdf(displayedChapters)}
               style={{
                 padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600,
                 cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -374,7 +375,7 @@ export function PlanPage() {
               导出 PDF
             </button>
             <button
-              onClick={exportWord}
+              onClick={() => exportPdf(displayedChapters)}
               style={{
                 padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600,
                 cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -502,17 +503,55 @@ export function PlanPage() {
   )
 }
 
-function exportWord() {
-  const html = '<html><meta charset="utf-8"><title>营销方案</title><body><p>导出功能待完善</p></body></html>'
-  const blob = new Blob(['﻿', html], { type: 'application/msword' })
-  const url = URL.createObjectURL(blob)
-  const a = document.createElement('a')
-  a.href = url
-  a.download = '营销方案.doc'
-  document.body.appendChild(a)
-  a.click()
-  document.body.removeChild(a)
-  URL.revokeObjectURL(url)
+function exportPdf(chapters: PlanChapter[]) {
+  if (!chapters.length) return
+  const html = `<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>营销方案</title>
+<style>
+  @page { margin: 2.5cm 2cm; }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: "PingFang SC", "Microsoft YaHei", "Noto Sans SC", sans-serif; color: #1a1a1a; line-height: 1.8; padding: 0; }
+  .cover { text-align: center; padding: 12rem 0 8rem; page-break-after: always; }
+  .cover h1 { font-size: 2.4em; font-weight: 800; letter-spacing: 2px; margin-bottom: 1rem; }
+  .cover p { font-size: 1.1em; color: #666; }
+  .chapter { page-break-before: always; padding-top: 2rem; }
+  .chapter:first-of-type { page-break-before: auto; }
+  .chapter h2 { font-size: 1.6em; font-weight: 700; color: #1e40af; padding-bottom: 0.5rem; border-bottom: 2px solid #e2e8f0; margin-bottom: 1.5rem; }
+  .chapter .subtitle { font-size: 0.9em; color: #94a3b8; margin-top: -1rem; margin-bottom: 1.5rem; }
+  .chapter-content { font-size: 0.95em; }
+  .chapter-content p { margin-bottom: 0.8em; }
+  .chapter-content h1, .chapter-content h2, .chapter-content h3, .chapter-content h4 { margin-top: 1.2em; margin-bottom: 0.5em; font-weight: 600; color: #0f172a; }
+  .chapter-content ul, .chapter-content ol { margin: 0.5em 0 0.8em 1.5em; }
+  .chapter-content li { margin-bottom: 0.3em; }
+  .chapter-content table { width: 100%; border-collapse: collapse; margin: 1em 0; }
+  .chapter-content th, .chapter-content td { border: 1px solid #d1d5db; padding: 0.5em 0.8em; text-align: left; }
+  .chapter-content th { background: #f8fafc; font-weight: 600; }
+  .chapter-content strong { font-weight: 600; }
+  @media print { .no-print { display: none; } }
+</style>
+</head>
+<body>
+  <div class="cover">
+    <h1>营销方案</h1>
+    <p>由 AllyGo AI 智能生成 · 数据驱动 · 可执行</p>
+  </div>
+  ${chapters.map((ch, i) => `
+  <div class="chapter">
+    <h2>${i + 1}. ${ch.title}</h2>
+    <div class="subtitle">${ch.subtitle}</div>
+    <div class="chapter-content">${ch.content}</div>
+  </div>`).join('\n  ')}
+</body>
+</html>`
+  const win = window.open('', '_blank')
+  if (!win) { alert('请允许弹出窗口'); return }
+  win.document.write(html)
+  win.document.close()
+  win.focus()
+  win.print()
 }
 
 const _injectedStyle = document.createElement('style')
