@@ -2,6 +2,7 @@
 
 验证关键修复:轮询期间每次循环都 yield progress,避免 SSE 长连接空闲超时。
 """
+from __future__ import annotations
 
 import asyncio
 import json
@@ -9,7 +10,10 @@ from typing import Any
 
 import pytest
 
-from app.agents.video_generation_agent import stream_video_generation
+from app.agents.video_generation_agent import (
+    _build_create_body,
+    stream_video_generation,
+)
 
 
 def _parse_sse_events(raw: str) -> list[dict[str, Any]]:
@@ -193,3 +197,50 @@ async def test_stream_handles_network_blip_without_crashing(monkeypatch):
     result_events = [e for e in events if e["event"] == "result"]
     assert len(result_events) == 1
     assert result_events[0]["data"]["video_url"] == "https://x/v.mp4"
+
+
+# ── _build_create_body 测试 ──────────────────────────────
+
+
+def test_build_body_t2v():
+    """无 image_url 时走 T2V 分支。"""
+    body = _build_create_body(prompt="一只柯基犬奔跑")
+    assert body["model"] == "happyhorse-1.1-t2v"
+    assert body["input"] == {"prompt": "一只柯基犬奔跑"}
+    assert body["parameters"]["resolution"] == "720P"
+    assert body["parameters"]["ratio"] == "16:9"
+    assert body["parameters"]["duration"] == 5
+
+
+def test_build_body_i2v_with_prompt():
+    """有 image_url 和 prompt 时走 I2V 分支。"""
+    body = _build_create_body(prompt="让图片动起来", image_url="https://example.com/img.png")
+    assert body["model"] == "happyhorse-1.1-i2v"
+    assert body["input"] == {
+        "media": [{"type": "first_frame", "url": "https://example.com/img.png"}],
+        "prompt": "让图片动起来",
+    }
+
+
+def test_build_body_i2v_without_prompt():
+    """有 image_url 但无 prompt 时，input 只包含 media。"""
+    body = _build_create_body(prompt="", image_url="https://example.com/img.png")
+    assert body["model"] == "happyhorse-1.1-i2v"
+    assert body["input"] == {
+        "media": [{"type": "first_frame", "url": "https://example.com/img.png"}],
+    }
+
+
+def test_build_body_custom_params():
+    """自定义参数传递。"""
+    body = _build_create_body(
+        prompt="test",
+        resolution="1080P",
+        ratio="9:16",
+        duration=10,
+        seed=42,
+    )
+    assert body["parameters"]["resolution"] == "1080P"
+    assert body["parameters"]["ratio"] == "9:16"
+    assert body["parameters"]["duration"] == 10
+    assert body["parameters"]["seed"] == 42

@@ -25,6 +25,7 @@ class Settings(BaseSettings):
     dashscope_model: str = "qwen-turbo"
 
     dashscope_video_model: str = "happyhorse-1.1-t2v"
+    dashscope_i2v_model: str = "happyhorse-1.1-i2v"
 
     agnes_api_key: str = ""
     agnes_base_url: str = "https://apihub.agnes-ai.com/v1"
