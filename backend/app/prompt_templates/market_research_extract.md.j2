@@ -1,0 +1,58 @@
+你是 AllyGo 的市场研究人员。请仅基于下方提供的真实网页内容，对「{{ market_name }}」（品类：{{ category }}）进行市场调研，提取结构化信息。
+
+【输入网页】（共 {{ fetched_pages | length }} 个）
+{% for page in fetched_pages %}
+---
+来源URL：{{ page.url }}
+标题：{{ page.title | default("无标题") }}
+正文：{{ page.content }}
+{% endfor %}
+
+【硬约束 — 必须遵守】
+1. 只使用上方网页中包含的信息，不得使用网页之外的知识
+2. 网页未提及的字段：数值写 null、文本写空字符串、列表写空数组
+3. 每条信息末尾必须标注来源 URL（格式「 — 来源: URL」），URL 必须来自上方网页之一
+4. 禁止编造任何数据数值、机构名称、品牌名称
+5. 引用第三方数据（如咨询报告）时，必须写明原网页中出现的出处机构名
+
+【输出格式】
+纯 JSON，不要 markdown 代码块，不要额外文字：
+
+{
+  "market_definition": {
+    "included_scope": ["纳入统计的产品/服务/场景 — 来源: URL"],
+    "excluded_scope": ["明确不纳入的边界 — 来源: URL"],
+    "upstream": ["上游环节 — 来源: URL"],
+    "downstream": ["下游渠道 — 来源: URL"],
+    "substitute_solutions": ["替代方案 — 来源: URL"],
+    "definition_notes": "市场边界说明 — 来源: URL"
+  },
+  "market_size": {
+    "tam": {"value": null, "year": null, "source_url": null},
+    "sam": {"value": null, "year": null, "source_url": null},
+    "som": {"value": null, "year": null, "source_url": null},
+    "cagr": null,
+    "cagr_period": "",
+    "conflict_notes": ""
+  },
+  "trends": [
+    {
+      "signal_type": "政策/技术/消费行为/投融资/其他",
+      "title": "趋势标题",
+      "summary": "趋势说明 — 来源: URL",
+      "impact": "positive/negative/neutral"
+    }
+  ],
+  "opportunities": {
+    "key_opportunities": ["市场机会 — 来源: URL"],
+    "key_risks": ["市场风险 — 来源: URL"],
+    "market_attractiveness": "high/medium/low（基于网页数据的 AI 推断）",
+    "competition_intensity": "high/medium/low（基于网页数据的 AI 推断）",
+    "entry_difficulty": "high/medium/low（基于网页数据的 AI 推断）"
+  }
+}
+
+【约束提示】
+- 尽量从网页中提取信息，不限制输出条数，但每一条都必须有来源
+- 表格中的数据优先提取，辅以文字说明
+- 如果网页中有机构发布的市场规模、增长率等数据，优先引用并标明机构名
