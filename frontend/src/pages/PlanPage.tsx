@@ -178,6 +178,18 @@ export function PlanPage() {
   // 双重守卫:status 仅在 WORKFLOW_COMPLETE 时为 completed,但部分边界场景下 LangGraph 可能
   // 提前发 on_chain_end,导致 status=completed 但 plan_generator 还没跑。所以加 outputs.plan_generator 存在性检查。
   const planGeneratorDone = Array.isArray(outputs?.plan_generator?.chapters) && outputs!.plan_generator!.chapters.length > 0
+  // 宣传视频独立卡片：只要有 completed 的视频就显示，不依赖 actionItems 的 status 守卫
+  const promoVideoCardItem = promoVideo && promoVideo.status === 'completed'
+    ? [{
+        title: '🎬 宣传视频',
+        description: '点击播放查看营销方案宣传视频',
+        buttonLabel: '查看详情',
+        type: 'video' as const,
+        videoUrl: promoVideo.video_url,
+        promoVideo: promoVideo,
+      }]
+    : []
+
   const actionItems = status !== 'completed' || !planGeneratorDone
     ? undefined
     : [
@@ -564,6 +576,9 @@ export function PlanPage() {
             {auditPanel}
             <PipelineTimeline nodes={nodes} failedNode={failedNode} nodeLogs={nodeLogs} pausedNode={pausedNode} autoMode={autoMode} isLoading={isLoading} isConnected={isConnected} onApprove={approve} onRerun={rerun} />
             {displayedChapters.length > 0 && <PlanPreview chapters={displayedChapters} />}
+            {promoVideoCardItem.length > 0 && (
+              <div id="promo-video-anchor"><PlanActionCards actions={promoVideoCardItem} /></div>
+            )}
             {actionItems && actionItems.length > 0 && (
               <div id="actions-anchor"><PlanActionCards actions={actionItems} /></div>
             )}
