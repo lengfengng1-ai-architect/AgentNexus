@@ -38,17 +38,19 @@
 - **THEN** 系统 SHALL 生成 `uuid4` 作为 `thread_id` 和 `run_id`
 - **AND** LangGraph SHALL 在每次节点完成后自动写入该 thread_id 对应的 checkpoint
 
-### Requirement: 流水线 SHALL 在三个强审核点前中断
+### Requirement: 流水线 SHALL 在确认节点前中断(interrupt_before)
 
-系统 SHALL 在编译流水线时声明 `interrupt_before=["strategy_generation","execution_planning","plan_generator"]`。当执行到审核点节点前，LangGraph SHALL 自动中断并落盘 checkpoint。系统 SHALL 在 SSE 流末尾 emit `workflow.paused` 事件，data 包含 `run_id`、`awaiting_node`、`snapshot` (当前 state values)、`reason`（`"review"` 或 `"failure"`）。
+系统 SHALL 在编译流水线时声明 `interrupt_before=["plan_data_query","fitness_analysis","strategy_generation","execution_planning","budget_kpi","action_recommendations","plan_generator"]`。从 `plan_data_query` 起每个节点执行前暂停,`workflow.paused` 的 `snapshot.node_id` SHALL 等于即将执行的节点(而非已完成节点),使用户的确认按钮出现在"谁需要确认"的节点上。
 
-#### Scenario: 跑到 strategy_generation 前自动暂停
-- **GIVEN** 一个新 run 已完成 `product_research`、`market_research`、`audience_insight`、`plan_data_query`、`fitness_analysis`
-- **WHEN** 流水线到达 `strategy_generation` 节点前
+当执行到审核点节点前，LangGraph SHALL 自动中断并落盘 checkpoint。系统 SHALL 在 SSE 流末尾 emit `workflow.paused` 事件，data 包含 `run_id`、`snapshot` (当前 state values)、`reason`（`"review"` 或 `"failure"`）。
+
+#### Scenario: 首次 pause 在 plan_data_query
+- **GIVEN** 一个新 run 已完成 3 个并行调研节点(`product_research` / `market_research` / `audience_insight`)
+- **WHEN** 流水线到达 `plan_data_query` 节点前
 - **THEN** LangGraph SHALL 中断执行并写入 checkpoint
-- **AND** SSE 流 SHALL emit `workflow.paused`，data 中 `awaiting_node` SHALL 为 `"strategy_generation"`
+- **AND** SSE 流 SHALL emit `workflow.paused`，data 中 `snapshot.node_id` SHALL 为 `"plan_data_query"`
 - **AND** data 中 `reason` SHALL 为 `"review"`
-- **AND** data 中 `snapshot` SHALL 包含 `strategy_generation` 即将读取的所有字段
+- **AND** data 中 `snapshot` SHALL 包含 `plan_data_query` 即将读取的所有字段
 
 #### Scenario: 节点抛异常也走 paused 语义
 - **GIVEN** `market_research` 节点执行时抛出异常
@@ -201,6 +203,55 @@
 - **THEN** 流水线 SHALL 在 `strategy_generation` 前 emit `workflow.paused`
 - **AND** 用户 approve 后 SHALL 继续到下一个审核点或完成
 
+### Requirement: market_research 节点 SHALL 通过联网搜索获取市场数据
+
+`market_research` 节点 SHALL 通过联网搜索（`duckduckgo_search`）获取真实网页，并发抓取后由 LLM 从网页内容提取结构化市场调研结果。调研 SHALL 覆盖四个字段组：市场定义（`market_definition`）、市场规模（`market_size`）、趋势（`trends`）、机会评估（`opportunities`）。节点 SHALL 不调研竞品（属 out_scope `competitor-analysis`）和目标用户（由 `audience_insight` 节点负责，避免重复）。
+
+每条提取的非空信息 SHALL 标注来源 URL（来自已抓取的网页），网页未提及的字段 SHALL 写 null 或空值，LLM SHALL 不编造数据数值、机构名、品牌名。节点最终输出 SHALL 映射为 `MarketResearchOutput`（`market_summary` / `trends` / `opportunities`），下游节点契约不变。
+
+#### Scenario: market_research 从真实网页提取并标注来源
+- **GIVEN** 流水线真实模式运行（`USE_MOCK_DATA` 未开启）
+- **WHEN** `market_research` 节点执行
+- **THEN** 节点 SHALL 调用 `duckduckgo_search` 按品类/品牌相关关键词搜索
+- **AND** SHALL 并发抓取搜索返回的网页
+- **AND** SHALL 用单次 LLM 调用从抓取到的网页内容提取市场调研结果
+- **AND** 提取结果中每条非空信息 SHALL 标注来源 URL
+
+#### Scenario: 网页未提及时不编造
+- **GIVEN** 抓取到的网页中没有某字段（如 `market_size.som`）的数据
+- **WHEN** LLM 提取该字段
+- **THEN** 该字段 SHALL 为 null 或空值
+- **AND** LLM SHALL 不编造数值或机构名
+
+#### Scenario: market_research 不调研竞品和目标用户
+- **WHEN** `market_research` 节点产出
+- **THEN** 输出 SHALL 不包含竞品分析字段（属 out_scope）
+- **AND** SHALL 不包含目标用户/用户画像字段（由 `audience_insight` 负责）
+- **AND** SHALL 仍包含 `market_summary`、`trends`、`opportunities` 三个字段
+
+#### Scenario: market_research 输出契约保持不变
+- **WHEN** `market_research` 节点执行完成
+- **THEN** state 中 `market_research` 字段 SHALL 包含 `market_summary`、`trends`、`opportunities`
+- **AND** 下游节点（`strategy_generation`、`plan_generator`）SHALL 无需改动即可消费
+
+#### Scenario: 搜索失败时返回空结果而非崩溃
+- **GIVEN** 联网搜索返回 0 条结果或抓取全部失败
+- **WHEN** `market_research` 节点执行
+- **THEN** 节点 SHALL 不抛异常
+- **AND** SHALL 返回空的 `MarketResearchOutput`（`market_summary` 提示未找到市场信息，`trends` / `opportunities` 为空列表）
+- **AND** SHALL 不 fallback 到 LLM 凭训练知识生成
+
+### Requirement: market_research 节点 SHALL 支持 mock 模式
+
+当 `USE_MOCK_DATA=true` 时，`market_research` 节点 SHALL 跳过联网搜索，从 `backend/mock_data/market_research/` 读取按品类维度的预设结构化市场调研结果。Mock 数据 SHALL 使用真实公开数据填写 `market_summary` / `trends` / `opportunities`，字段结构与真实模式一致，预留切换真实搜索的接口。
+
+#### Scenario: mock 模式跳过联网读取预设数据
+- **GIVEN** `USE_MOCK_DATA=true`
+- **WHEN** `market_research` 节点执行
+- **THEN** 节点 SHALL 不调用 `duckduckgo_search`
+- **AND** SHALL 从 `backend/mock_data/market_research/` 读取对应品类的预设数据
+- **AND** 输出 SHALL 包含 `market_summary`、`trends`、`opportunities`，结构与真实模式一致
+
 ### Requirement: action_recommendations 节点完成后 SHALL 异步触发宣传视频生成
 
 action_recommendations 节点 handler 返回后，系统 SHALL 自动读取当前 state（brand_input、strategy_generation）并拼接 prompt，以 `asyncio.create_task` 方式后台启动 HappyHorse 视频生成任务。此异步任务 SHALL 不阻塞流水线后续节点执行。
@@ -220,3 +271,27 @@ action_recommendations 节点 handler 返回后，系统 SHALL 自动读取当�
 - **THEN** 响应中的 `outputs` SHALL 包含 `promo_video` 字段
 - **AND** promo_video 字段 SHALL 包含 `status`（generating / completed / failed）
 - **AND** status 为 completed 时 SHALL 包含 `video_url`
+
+### Requirement: 并行 fan-in 节点 pause 前 SHALL 校验前置完成
+
+系统在发出 `workflow.paused` 之前,对于并行 fan-in 节点(`plan_data_query`),SHALL 校验所有并行前置节点(`product_research` / `market_research` / `audience_insight`)的 channel 输出均已存在。若任一前置未完成,ＤEFER 该 pause 事件。
+
+#### Scenario: 并行未完成不提前 pause
+- **WHEN** plan_data_query 被设為 next 但 3 个并行前置中尚有未完成输出
+- **THEN** 不发 workflow.paused,前端继续通过 node.complete 自然收敛
+
+### Requirement: Resume SHALL 不重跑已完成节点
+
+`Command(resume={})` 触发的 entry point 重入 SHALL 跳过 channel 已有输出的并行节点,避免已完成节点被再次执行。
+
+#### Scenario: 确认 plan_data_query 不重跑并行调研
+- **WHEN** 用户确认 plan_data_query,resume 触发 `_dispatch_init`
+- **THEN** 已完成的 product_research/market_research/audience_insight 不被重新 Send,plan_data_query 直接执行
+
+### Requirement: workflow.complete SHALL 校验 plan_generator 输出
+
+发出 `workflow.complete` 之前,系统 SHALL 校验 `output.plan_generator.chapters` 存在且非空。若缺失则不发 complete,防止 action 卡片在 plan_generator 未完成时提前显示。
+
+#### Scenario: plan_generator 未完成不误发 complete
+- **WHEN** LangGraph on_chain_end 触发但 plan_generator 输出缺失
+- **THEN** 不发 workflow.complete,前端 action 卡片守卫隐藏下一步行动建议

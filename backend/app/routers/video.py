@@ -1,6 +1,7 @@
 """Video generation SSE streaming endpoint.
 
-调用 HappyHorse 文生视频模型（阿里云百炼），SSE 流式返回进度和最终结果。
+调用 HappyHorse 文生视频 / 图生视频模型（阿里云百炼），SSE 流式返回进度和最终结果。
+请求体中包含 image_url 时走图生视频，不含则走文生视频。
 
 Corresponding in_scope ID: video-generation
 """
@@ -9,7 +10,7 @@ import logging
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from app.agents.video_generation_agent import stream_video_generation
 
@@ -20,10 +21,18 @@ router = APIRouter(tags=["video"])
 
 class VideoGenerateRequest(BaseModel):
     prompt: str = Field(..., description="文本提示词，用于描述期望生成的视频内容", max_length=2500)
+    image_url: str | None = Field(default=None, description="参考图片 URL，有则走图生视频 (HappyHorse I2V)")
     resolution: str = Field(default="720P", description="分辨率：720P / 1080P")
     ratio: str = Field(default="16:9", description="宽高比：16:9 / 9:16 / 1:1 / 4:3 / 3:4 / 4:5 / 5:4 / 9:21 / 21:9")
     duration: int = Field(default=5, ge=3, le=15, description="视频时长（秒），3-15")
     seed: int | None = Field(default=None, ge=0, le=2147483647, description="随机数种子（可选）")
+
+    @field_validator("image_url")
+    @classmethod
+    def _validate_image_url(cls, v: str | None) -> str | None:
+        if v is not None and not (v.startswith("http://") or v.startswith("https://")):
+            raise ValueError("image_url 必须是有效的 HTTP/HTTPS URL")
+        return v
 
 
 @router.post("/video/generate")
@@ -39,6 +48,7 @@ async def video_generate(body: VideoGenerateRequest):
     async def event_stream():
         async for frame in stream_video_generation(
             body.prompt,
+            image_url=body.image_url,
             resolution=body.resolution,
             ratio=body.ratio,
             duration=body.duration,

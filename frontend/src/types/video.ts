@@ -1,5 +1,6 @@
 export interface VideoParams {
   prompt: string
+  image_url?: string | null
   resolution?: string
   ratio?: string
   duration?: number
