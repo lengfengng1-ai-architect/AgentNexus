@@ -2,7 +2,7 @@
 
 ## Purpose
 
-提供视频生成能力，支持文生视频（Text-to-Video）和图生视频（Image-to-Video）两种模式。调用阿里云百炼 DashScope HappyHorse 系列模型，支持 SSE 流式返回任务进度和最终视频 URL，轮询期间持续输出 progress 事件防止连接空闲超时。
+提供视频生成能力，支持文生视频（Text-to-Video）和图生视频（Image-to-Video）两种模式。调用阿里云百炼 DashScope HappyHorse 系列模型，通过 SSE 流式推送任务进度和最终视频 URL。
 
 ## Requirements
 
@@ -11,17 +11,16 @@
 系统 SHALL 根据用户提供的文本提示词，调用 HappyHorse T2V 模型生成短视频。
 
 #### Scenario: 文生视频标准流程
-- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体中不含 `image_url`
+- **WHEN** 用户提交 `POST /video/generate`，请求体中不含 `image_url`
 - **THEN** 系统 SHALL 调用 HappyHorse T2V 模型创建任务
 - **AND** 通过 SSE 流式返回进度和结果
-- **AND** 端点依次返回 progress(task_created)→ progress(polling,多次)→ progress(completed)→ result(含 video_url)
 
 ### Requirement: 系统 SHALL 支持图生视频
 
 系统 SHALL 根据用户提供的图片 URL（和可选的文字描述），调用 HappyHorse I2V 模型生成动态短视频。
 
 #### Scenario: 图生视频标准流程
-- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体含有效 `image_url`
+- **WHEN** 用户提交 `POST /video/generate`，请求体含有效 `image_url`
 - **THEN** 系统 SHALL 调用 HappyHorse I2V 模型创建任务
 - **AND** 通过 SSE 流式返回进度和结果
 
@@ -68,13 +67,5 @@
 系统 SHALL 支持用户选择分辨率、宽高比、时长和随机种子。
 
 #### Scenario: 参数传递
-- **WHEN** 用户提交 `POST /api/v1/video/generate`
+- **WHEN** 用户提交 `POST /video/generate`
 - **THEN** 参数 resolution / ratio / duration / seed SHALL 透传到 HappyHorse API 的 parameters 中
-
-### Requirement: 视频模型可配置
-
-系统 SHALL 通过 `DASHSCOPE_VIDEO_MODEL` 配置项指定文生视频模型，默认 `happyhorse-1.1-t2v`，不在外部环境暴露具体模型名以外的敏感信息。
-
-#### Scenario: 切换视频模型
-- **WHEN** 配置文件修改 DASHSCOPE_VIDEO_MODEL 值
-- **THEN** 下次视频生成请求使用新模型名，无需改代码

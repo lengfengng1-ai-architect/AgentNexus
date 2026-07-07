@@ -1,5 +1,5 @@
 import { render, screen, fireEvent } from '@testing-library/react'
-import { PlanPreview } from '../pages/PlanPreview'
+import { PlanPreview, stripDuplicateTitleHeading } from '../pages/PlanPreview'
 import type { PlanChapter } from '../types/plan'
 
 const chapters: PlanChapter[] = [
@@ -73,5 +73,47 @@ describe('PlanPreview', () => {
     ]
     render(<PlanPreview chapters={mdChapters} />)
     expect(screen.getByText('重要')).toBeInTheDocument()
+  })
+})
+
+describe('stripDuplicateTitleHeading', () => {
+  test('strips exact matching H1', () => {
+    expect(stripDuplicateTitleHeading('# 市场洞察\n\n正文', '市场洞察')).toBe('正文')
+  })
+
+  test('strips H2 with title：subtitle form', () => {
+    expect(stripDuplicateTitleHeading('## 市场洞察：运动消费持续增长\n\n正文', '市场洞察')).toBe('正文')
+  })
+
+  test('strips heading wrapped in bold markers', () => {
+    expect(stripDuplicateTitleHeading('# **市场洞察**\n\n正文', '市场洞察')).toBe('正文')
+  })
+
+  test('strips ATX heading with closing hashes', () => {
+    expect(stripDuplicateTitleHeading('# 市场洞察 #\n\n正文', '市场洞察')).toBe('正文')
+  })
+
+  test('handles CRLF line endings', () => {
+    expect(stripDuplicateTitleHeading('# 市场洞察\r\n\r\n正文', '市场洞察')).toBe('正文')
+  })
+
+  test('keeps unrelated heading', () => {
+    const content = '## 其他标题\n\n正文'
+    expect(stripDuplicateTitleHeading(content, '市场洞察')).toBe(content)
+  })
+
+  test('keeps heading that starts with title but has no separator', () => {
+    const content = '## 市场洞察深度报告\n\n正文'
+    expect(stripDuplicateTitleHeading(content, '市场洞察')).toBe(content)
+  })
+
+  test('returns content unchanged when title is empty', () => {
+    const content = '# 任意标题\n\n正文'
+    expect(stripDuplicateTitleHeading(content, '')).toBe(content)
+  })
+
+  test('returns content unchanged when there is no leading heading', () => {
+    const content = '纯正文内容，没有任何标题'
+    expect(stripDuplicateTitleHeading(content, '市场洞察')).toBe(content)
   })
 })

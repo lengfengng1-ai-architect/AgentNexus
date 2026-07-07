@@ -52,6 +52,14 @@ capabilities:
         每个字段标注 method（quoted/extracted/inferred）。
         不编造用户数据，不确定的字段留空。
 
+    - id: "video-generation"
+      name: "视频生成"
+      description: "文生视频和图生视频，调用 HappyHorse 系列模型，SSE 流式推送进度和结果"
+      constraints: |
+        MVP 阶段通过单独的测试页访问（/video-test）。
+        图生视频的图片输入通过 URL 方式提供（不涉及上传）。
+        所有名称和数据必须来自 API/mock，LLM 不可编造。
+
     - id: "document-export"
       name: "方案文档导出"
       description: "Markdown → PDF/Word 导出"
