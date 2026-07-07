@@ -9,15 +9,13 @@ import asyncio
 import json
 from typing import Any
 
-from bs4 import BeautifulSoup
-from ddgs import DDGS
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
-from app.agents.llm_utils import write_log,  build_chat_model
+from app.agents.llm_utils import build_chat_model, duckduckgo_search, write_log
 from app.agents.registry import register
 from app.config.cache_paths import AUDIENCE_DIR, persona_path
 from app.schemas.audience_insight import AudienceRawData, UserPersona
@@ -85,12 +83,12 @@ async def search_node(state: State) -> dict:
     for kw in keywords:
         write_log("audience_insight", f"🔍 正在用关键词「{kw}」搜索…")
         try:
-            with DDGS() as ddgs:
-                for item in ddgs.text(kw, max_results=SEARCH_MAX):
-                    url = item.get("href", "")
-                    if url and url not in seen:
-                        seen.add(url)
-                        all_results.append(SearchResult(url=url, title=item.get("title", ""), snippet=item.get("body", "")))
+            raw = await duckduckgo_search(kw, max_results=SEARCH_MAX)
+            for item in raw:
+                url = item.get("href", "")
+                if url and url not in seen:
+                    seen.add(url)
+                    all_results.append(SearchResult(url=url, title=item.get("title", ""), snippet=item.get("body", "")))
         except Exception:
             write_log("audience_insight", f"⚠️ 关键词「{kw}」搜索失败，跳过")
             continue
@@ -303,8 +301,6 @@ async def run_audience_insight_full(state: dict[str, Any]) -> dict[str, Any]:
     pages = fetch_result["fetched_pages"]
 
     # Step 3: Extract audience data
-    extract_state = State(product_name=product_name, search_results=results, fetched_pages=pages)
-    extract_result = await extract_audience_node(extract_state)
     extract_state = State(product_name=product_name, search_results=results, fetched_pages=pages)
     extract_result = await extract_audience_node(extract_state)
     audience = extract_result["audience_data"]
