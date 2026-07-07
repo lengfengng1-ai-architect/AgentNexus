@@ -126,6 +126,7 @@ export function PlanPage() {
   }
 
   // 新 agent 执行时，若用户未手动操作过，自动跟随到对应 tab
+  // ponytail: 仅在 runningTabIndex 有合法值时触发，不会在 inactive 时覆盖用户手动选择
   useEffect(() => {
     if (!userInteractedRef.current && runningTabIndex >= 0 && runningTabIndex !== activeTab) {
       setActiveTab(runningTabIndex)
