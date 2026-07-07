@@ -8,6 +8,7 @@ superpowers in_scope ID: product-research
 """
 
 import asyncio
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -18,7 +19,7 @@ from jinja2 import Environment, FileSystemLoader
 
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
-from langgraph.types import StreamWriter
+from openai import BadRequestError
 from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model, write_log
@@ -31,6 +32,7 @@ from urllib.parse import urlparse
 
 # ── mock_data 持久化 ──
 
+logger = logging.getLogger(__name__)
 MOCK_DATA_DIR = Path("mock_data") / "product_info"
 
 
@@ -59,6 +61,9 @@ PRIORITY_DOMAINS = {
     "zol.com.cn", "smzdm.com", "ithome.com", "pcpop.com",
 }
 
+# 记录最近一次抓取的 URL，供 retry 时排除
+_last_fetched_urls: list[str] = []
+
 
 class SearchResult(BaseModel):
     url: str
@@ -78,6 +83,7 @@ class ProductResearchState(BaseModel):
     search_results: list[SearchResult] = Field(default_factory=list)
     fetched_pages: list[FetchedPage] = Field(default_factory=list)
     output: ProductResearchResult | None = None
+    exclude_urls: list[str] = Field(default_factory=list)
 
 
 # ── 辅助函数 ────────────────────────────────────────────────
@@ -126,8 +132,8 @@ async def search_node(state: ProductResearchState) -> dict:
     """搜索产品信息。"""
     product = state.product_name
     all_results: list[SearchResult] = []
-    keywords = [product, f"{product} 评测", f"{product} 新闻"]
-    seen_urls: set[str] = set()
+    keywords = [product, f"{product} 产品规格", product]
+    seen_urls: set[str] = set(state.exclude_urls)
 
     for i, kw in enumerate(keywords):
         write_log("product_research", f"🔍 正在用关键词「{kw}」搜索…")
@@ -202,8 +208,13 @@ async def fetch_node(state: ProductResearchState) -> dict:
 
     tasks = [fetch_one(url) for url in urls]
     results = await asyncio.gather(*tasks)
+
+    global _last_fetched_urls
+    _last_fetched_urls = [r.url for r in results if r.fetched]
+
     fetched_count = sum(1 for p in results if p.fetched)
     write_log("product_research", f"📄 抓取完成：成功 {fetched_count}/{len(results)} 个页面")
+
     return {"fetched_pages": list(results)}
 
 
@@ -302,12 +313,9 @@ def _build_graph():
 _graph = _build_graph()
 
 
-async def research_product(product_name: str) -> ProductResearchResult:
-    """执行产品信息调研（使用内部 LangGraph，保持原有 API 签名）。
-
-    Used by product_info_service.py (legacy callers).
-    """
-    result = await _graph.ainvoke({"product_name": product_name})
+async def research_product(product_name: str, exclude_urls: list[str] | None = None) -> ProductResearchResult:
+    """执行产品信息调研（使用内部 LangGraph，保持原有 API 签名）。"""
+    result = await _graph.ainvoke({"product_name": product_name, "exclude_urls": exclude_urls or []})
     output = result.get("output")
     if output is None:
         raise ValueError("Agent did not return structured output")
@@ -319,35 +327,29 @@ async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
 
     Expects state keys: product_name or brand_name.
     Uses brand_name as the product to research.
+
+    异常重试：OpenAI 内容审核拒绝时自动重试，跳过首次抓取的来源 URL。
     """
     brand_name = state.get("brand_name") or state.get("product_name")
     if not brand_name:
         raise ValueError("Missing required input: brand_name or product_name")
 
-    # Step 1: Search
-    search_state = ProductResearchState(product_name=brand_name)
-    search_result = await search_node(search_state)
-    results = search_result["search_results"]
+    for attempt in (1, 2):
+        try:
+            exclude = state.get("_exclude_urls", []) if attempt == 2 else []
+            result = await research_product(brand_name, exclude_urls=exclude)
+            _save_to_cache(brand_name, result)
+            write_log("product_research", "✓ 产品调研完成")
+            return result.model_dump()
+        except BadRequestError as e:
+            if attempt == 1 and "data_inspection_failed" in str(e):
+                logger.warning("product_research blocked (attempt 1/2), retrying with different sources…")
+                # Collect URLs used in this failed attempt and pass to next try
+                state["_exclude_urls"] = [p.url for p in _last_fetched_urls] if _last_fetched_urls else []
+            else:
+                raise
 
-    # Step 2: Fetch pages
-    fetch_state = ProductResearchState(product_name=brand_name, search_results=results)
-    fetch_result = await fetch_node(fetch_state)
-    pages = fetch_result["fetched_pages"]
-
-    # Step 3: LLM extract
-    extract_state = ProductResearchState(product_name=brand_name, search_results=results, fetched_pages=pages)
-    extract_result = await extract_node(extract_state)
-    output = extract_result["output"]
-
-    # Step 4: Enrich website
-    enrich_state = ProductResearchState(product_name=brand_name, search_results=results, fetched_pages=pages, output=output)
-    enrich_result = await enrich_website_node(enrich_state)
-    output = enrich_result.get("output") or output
-
-    # Done
-    write_log("product_research", "✓ 产品调研完成")
-    _save_to_cache(brand_name, output)
-    return output.model_dump()
+    return {}  # Should not reach here
 
 
 register("product_research", run_product_research)
