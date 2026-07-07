@@ -10,6 +10,24 @@ import { PipelineTimeline } from './PipelineTimeline'
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
 const RUN_ID_KEY = 'allygo_plan_run_id'
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+
+// 从方案章节中拼出海报生成提示词：取各章标题 + 内容摘要
+function buildPosterPrompt(chapters: PlanChapter[]): string {
+  if (chapters.length === 0) return ''
+  const summary = chapters
+    .slice(0, 4)
+    .map((c) => `${c.title}：${c.content.replace(/[#*`\n]/g, ' ').slice(0, 120)}`)
+    .join('；')
+  return `基于以下营销方案生成一张主视觉海报，要求画面大气、品牌感强、色彩鲜明，突出运动场景与年轻活力：${summary}`
+}
+
+const POSTER_SIZE_OPTIONS = [
+  { value: '2688*1536', label: '16:9 横版' },
+  { value: '1536*2688', label: '9:16 竖版' },
+  { value: '2048*2048', label: '1:1 方图' },
+  { value: '2368*1728', label: '4:3 通用' },
+]
 
 function usePlanSession() {
   const [seed] = useState<BrandInput | undefined>(() => {
@@ -83,13 +101,95 @@ export function PlanPage() {
   }, [save, start])
 
   const displayedChapters = chapters.length > 0 ? chapters : (outputs?.plan_generator?.chapters || [])
-  // 下一步建议只在完整方案生成后展示（completed 状态）
-  const actionItems = status === 'completed'
+
+  // 海报生成状态
+  const [posterUrl, setPosterUrl] = useState<string | null>(null)
+  const [isGeneratingPoster, setIsGeneratingPoster] = useState(false)
+  const [posterError, setPosterError] = useState<string | null>(null)
+  const [posterSize, setPosterSize] = useState('2688*1536')
+  const [lightboxOpen, setLightboxOpen] = useState(false)
+  // 自动生成只触发一次,避免重复请求(即使 status 多次重渲染)
+  const autoTriggeredRef = useRef(false)
+
+  const handleGeneratePoster = useCallback(async () => {
+    if (isGeneratingPoster) return
+    const prompt = buildPosterPrompt(displayedChapters)
+    if (!prompt) return
+    setIsGeneratingPoster(true)
+    setPosterError(null)
+    setPosterUrl(null)
+    try {
+      const resp = await fetch(`${API_BASE_URL}/image/generate`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, size: posterSize }),
+      })
+      const body = await resp.json()
+      if (!body.success) {
+        throw new Error(body.error?.detail || '海报生成失败')
+      }
+      setPosterUrl(body.data.image_url)
+    } catch (err) {
+      setPosterError(err instanceof Error ? err.message : '请求失败')
+    } finally {
+      setIsGeneratingPoster(false)
+    }
+  }, [displayedChapters, isGeneratingPoster, posterSize])
+
+  // 方案完成后自动生成海报(只触发一次)
+  useEffect(() => {
+    if (
+      status === 'completed'
+      && displayedChapters.length > 0
+      && !autoTriggeredRef.current
+      && !posterUrl
+      && !isGeneratingPoster
+    ) {
+      autoTriggeredRef.current = true
+      handleGeneratePoster()
+    }
+  }, [status, displayedChapters.length, posterUrl, isGeneratingPoster, handleGeneratePoster])
+
+  // 切换尺寸时若有图片,自动重新生成;无图片时只更新下拉值,等自动生成触发
+  const handleSizeChange = useCallback((size: string) => {
+    setPosterSize(size)
+    if (posterUrl) {
+      // 已有图片 → 切尺寸立即重生成
+      setPosterUrl(null)
+      // 等下一帧 state 更新后再触发(handleGeneratePoster 依赖 posterSize)
+      setTimeout(() => { handleGeneratePoster() }, 0)
+    }
+  }, [posterUrl, handleGeneratePoster])
+
+  const posterPromptText = buildPosterPrompt(displayedChapters) || '基于当前营销方案自动生成主视觉海报'
+
+  // 下一步建议只在完整方案生成后展示(completed 状态)
+  const baseActions = status === 'completed'
     ? outputs?.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
       title: a.title,
       description: a.description,
       buttonLabel: '查看详情',
     }))
+    : undefined
+
+  // 在第一张卡片位置插入"根据方案生成海报"
+  const actionItems = baseActions
+    ? [
+      {
+        title: '根据方案生成海报',
+        description: posterPromptText,
+        buttonLabel: isGeneratingPoster ? '生成中…' : (posterUrl ? '重新生成' : '生成海报'),
+        onClick: handleGeneratePoster,
+        imageUrl: posterError ? null : posterUrl,
+        isGenerating: isGeneratingPoster,
+        hasImageLayout: true,
+        onImageClick: posterUrl ? () => setLightboxOpen(true) : undefined,
+        size: posterSize,
+        sizeOptions: POSTER_SIZE_OPTIONS,
+        onSizeChange: handleSizeChange,
+      },
+      ...baseActions,
+    ]
     : undefined
 
   const [autoMode, setAutoMode] = useState(false)
@@ -501,6 +601,39 @@ export function PlanPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {lightboxOpen && posterUrl && (
+        <div
+          onClick={() => setLightboxOpen(false)}
+          style={{
+            position: 'fixed', inset: 0, background: 'rgba(15, 23, 42, 0.85)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 400, padding: 32, backdropFilter: 'blur(4px)',
+          }}
+        >
+          <img
+            src={posterUrl}
+            alt="海报大图"
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              maxWidth: '100%', maxHeight: '100%', borderRadius: 8,
+              boxShadow: '0 20px 60px rgba(0,0,0,0.4)', objectFit: 'contain',
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => setLightboxOpen(false)}
+            style={{
+              position: 'absolute', top: 20, right: 24, width: 36, height: 36,
+              borderRadius: '50%', border: 'none', background: 'rgba(255,255,255,0.15)',
+              color: '#fff', cursor: 'pointer', fontSize: 18,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+            }}
+          >
+            ✕
+          </button>
         </div>
       )}
     </div>

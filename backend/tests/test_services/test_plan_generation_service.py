@@ -108,7 +108,7 @@ _BRAND_INPUT = {
 
 @pytest.mark.asyncio
 async def test_start_run_pauses_at_first_interrupt():
-    """Start run should execute nodes until strategy_generation then pause."""
+    """Start run should execute parallel research then pause before plan_data_query."""
     raw = await _collect(service.start_run(_BRAND_INPUT, run_id="r-pause"))
     frames = _parse_sse_frames(raw)
 
@@ -117,19 +117,19 @@ async def test_start_run_pauses_at_first_interrupt():
     assert "node.start" in events
     assert "workflow.paused" in events
     paused_frames = [f for f in frames if f["event"] == "workflow.paused"]
-    assert paused_frames[-1]["data"]["snapshot"]["node_id"] == "strategy_generation"
-    # The stream ends after executing upstream nodes; the interrupt is explicit.
+    assert paused_frames[-1]["data"]["snapshot"]["node_id"] == "plan_data_query"
+    # interrupt_before: stream stops before the confirm-required node runs.
 
     status = await service.get_status("r-pause")
     assert status["status"] == "paused"
-    assert status["current_node"] == "strategy_generation"
-    assert status["paused_snapshot"]["node_id"] == "strategy_generation"
-    assert status["paused_snapshot"]["node_input"] == {"brand_input": _BRAND_INPUT}
+    assert status["current_node"] == "plan_data_query"
+    assert status["paused_snapshot"]["node_id"] == "plan_data_query"
+    assert status["paused_snapshot"]["node_input"] == {"city": "上海", "product_name": "Nike"}
 
 
 @pytest.mark.asyncio
 async def test_approve_run_resumes_from_interrupt():
-    """Approve should resume and execute strategy_generation, then pause again."""
+    """Approve should resume and execute plan_data_query, then pause before fitness_analysis."""
     await _collect(service.start_run(_BRAND_INPUT, run_id="r-approve"))
 
     raw = await _collect(service.approve_run("r-approve"))
@@ -138,11 +138,11 @@ async def test_approve_run_resumes_from_interrupt():
     node_complete_ids = [
         f["data"]["node_id"] for f in frames if f["event"] == "node.complete"
     ]
-    assert "strategy_generation" in node_complete_ids
+    assert "plan_data_query" in node_complete_ids
 
     status = await service.get_status("r-approve")
     assert status["status"] == "paused"
-    assert status["current_node"] == "execution_planning"
+    assert status["current_node"] == "fitness_analysis"
 
 
 @pytest.mark.asyncio
@@ -157,11 +157,11 @@ async def test_reject_run_reinjects_reason():
         f["data"]["node_id"] for f in frames if f["event"] == "node.complete"
     ]
     # After reject, LangGraph re-executes the interrupted node and continues.
-    assert "strategy_generation" in node_complete_ids
+    assert "plan_data_query" in node_complete_ids
 
     status = await service.get_status("r-reject")
     assert status["status"] == "paused"
-    assert status["current_node"] == "execution_planning"
+    assert status["current_node"] == "fitness_analysis"
 
 
 @pytest.mark.asyncio
@@ -198,11 +198,11 @@ async def test_approve_with_edited_input_updates_state():
 
     The edited_input is merged into channel_values, so the interrupted node
     reads the edited value as its input. We verify by inspecting the checkpoint
-    tuple immediately before resume: strategy_generation channel equals the
+    tuple immediately before resume: plan_data_query channel equals the
     edited value.
     """
     await _collect(service.start_run(_BRAND_INPUT, run_id="r-edit"))
-    edited = {"strategy_generation": {"edited": True}}
+    edited = {"plan_data_query": {"edited": True}}
 
     # Call the inner approve logic manually to inspect checkpoint after edit.
     graph = await service._get_graph()
@@ -221,7 +221,7 @@ async def test_approve_with_edited_input_updates_state():
     )
 
     tuple_after_edit = await service._checkpoint_tuple("r-edit")
-    assert tuple_after_edit.checkpoint["channel_values"].get("strategy_generation") == {"edited": True}
+    assert tuple_after_edit.checkpoint["channel_values"].get("plan_data_query") == {"edited": True}
 
     await _collect(service.approve_run("r-edit"))
     # After resume, the node has executed and may have overwritten the channel.

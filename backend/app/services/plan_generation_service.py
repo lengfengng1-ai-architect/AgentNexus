@@ -32,7 +32,10 @@ from app.schemas.common import ErrorCode
 logger = logging.getLogger(__name__)
 
 _CHECKPOINT_DB_PATH = "data/checkpoints.db"
-_CHECKPOINT_INTERRUPT_NODES = [
+# 从数据查询起,每个节点执行前暂停,等待用户「确认继续」。
+# interrupt_before 使 snapshot.node_id = 即将执行的节点,该节点显示「等待确认」+ 按钮。
+_INTERRUPT_BEFORE = [
+    "plan_data_query",
     "fitness_analysis",
     "strategy_generation",
     "execution_planning",
@@ -41,7 +44,6 @@ _CHECKPOINT_INTERRUPT_NODES = [
     "plan_generator",
 ]
 _PARALLEL_NODES = ["product_research", "market_research", "audience_insight"]
-_INTERRUPT_AFTER = ["plan_data_query", "fitness_analysis"] + _CHECKPOINT_INTERRUPT_NODES
 
 
 class PlanRunRecord(BaseModel):
@@ -232,7 +234,7 @@ async def _get_graph() -> Any:
         saver = await _get_saver()
         _graph = _build_graph().compile(
             checkpointer=saver,
-            interrupt_after=_INTERRUPT_AFTER,
+            interrupt_before=_INTERRUPT_BEFORE,
         )
     return _graph
 
@@ -382,8 +384,8 @@ async def _stream_events(
             )
 
     # After the event stream finishes, check whether the graph paused at an
-    # interrupt checkpoint. With interrupt_after, the stream stops after each
-    # node completes. Emit workflow.paused whenever next is non-empty.
+    # interrupt checkpoint. With interrupt_before, the stream stops before each
+    # confirm-required node runs. Emit workflow.paused whenever next is non-empty.
     state_obj = await graph.aget_state(_thread_config(run_id))
     next_nodes = list(getattr(state_obj, "next", ()) or [])
     if next_nodes:

@@ -1,34 +1,31 @@
 {
   "identity": {
     "product_name": {
-      "value": "Girlfriend Collective",
+      "value": "Vuori",
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
       "method": "quoted",
-      "quote": "这个新运动服品牌Girlfriend Collective的广告"
+      "quote": "高端运动服饰品牌 Vuori 迎来成立十周年"
     },
     "brand": {
-      "value": "Girlfriend Collective",
+      "value": "Vuori",
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
       "method": "extracted",
       "quote": null
     },
     "manufacturer": {
-      "value": null,
+      "value": "Vuori (由 Joe Kudla 创立)",
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
       "method": "extracted",
       "quote": null
@@ -36,21 +33,19 @@
     "industry": {
       "value": "运动服饰",
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
       "method": "extracted",
       "quote": null
     },
     "category": {
-      "value": "运动服",
+      "value": "运动服饰品牌",
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
       "method": "extracted",
       "quote": null
@@ -58,34 +53,31 @@
   },
   "official_description": {
     "description": {
-      "value": "Grilfriend Collective 想做的是时尚的运动服，使用100%可回收瓶子作为原料，在越南生产，并将环保理念融入产品。",
+      "value": "将运动性能与日常穿搭无缝融合的高端运动服饰品牌，以加州海岸生活为灵感，将健身、瑜伽、冲浪和日常生活融为一体，致力于打造经久耐穿的产品、建立美好的关系并追求非凡的人生。",
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
-      "method": "extracted",
-      "quote": "Grilfriend Collective 想做的是时尚的运动服"
+      "method": "quoted",
+      "quote": "将运动性能与日常穿搭无缝融合。"
     },
     "tagline": {
-      "value": null,
+      "value": "为运动而生，且兼具生活时尚型格",
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
-      "method": "extracted",
-      "quote": null
+      "method": "quoted",
+      "quote": "为运动而生，且兼具生活时尚型格"
     },
     "statement": {
       "value": null,
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
       "method": "extracted",
       "quote": null
@@ -93,92 +85,84 @@
   },
   "features": [
     {
-      "name": "免费赠送紧身裤",
-      "category": "促销策略",
-      "description": "通过Facebook等社交媒体账号注册即可获得一条免费紧身裤，邮费也无需支付。",
+      "name": "Kore Short 经典运动短裤",
+      "category": "经典单品",
+      "description": "轻量化材质、透气内衬和极简设计，提供5英寸、7.5英寸和9英寸三种内缝长度选择，带衬里与无衬里两种款式可选，适用于跑步、训练等多种场景。",
       "evidence": [
-        "https://www.jiemian.com/article/637495.html"
+        "https://www.brandstar.com.cn/news/7387"
       ]
     },
     {
-      "name": "环保原料",
-      "category": "产品材质",
-      "description": "使用100%可回收瓶子作为原料，在越南生产产品。",
+      "name": "Kore 系列其他产品",
+      "category": "Kore系列",
+      "description": "包括 Kore Jogger 慢跑裤、Kore Pant 长裤以及 Elevate Kore 夹克，采用速干与吸湿排汗技术，轻量四面弹力面料。",
       "evidence": [
-        "https://www.jiemian.com/article/637495.html"
+        "https://www.brandstar.com.cn/news/7387"
       ]
     },
     {
-      "name": "设计师团队",
-      "category": "产品研发",
-      "description": "挖来了Lululemon和Acne的设计团队主持产品研发。",
+      "name": "多场景适用性",
+      "category": "通用特点",
+      "description": "产品设计兼顾运动性能和日常穿搭，适合健身、瑜伽、冲浪及日常生活等场景。",
       "evidence": [
-        "https://www.jiemian.com/article/637495.html"
-      ]
-    },
-    {
-      "name": "定价较低",
-      "category": "市场策略",
-      "description": "紧身裤定价58美元到68美元，市面上相似款为100美元左右。",
-      "evidence": [
-        "https://www.jiemian.com/article/637495.html"
+        "https://www.brandstar.com.cn/news/7387"
       ]
     }
   ],
   "specifications": {
     "value": {
-      "产品类型": "紧身裤（促销品）",
-      "原料": "100%可回收瓶子",
-      "产地": "越南",
-      "定价": "58美元到68美元（正式发布后）"
+      "Kore Short": {
+        "面料": "轻量化材质，透气内衬",
+        "内缝长度": "5英寸、7.5英寸、9英寸",
+        "内衬可选": "带衬里与无衬里",
+        "核心技术": "速干、吸湿排汗"
+      },
+      "Kore Jogger/Pant": {
+        "面料": "轻量四面弹力面料",
+        "核心技术": "速干、吸湿排汗"
+      },
+      "Elevate Kore 夹克": {
+        "面料": "轻量四面弹力面料",
+        "核心技术": "速干、吸湿排汗"
+      }
     },
     "sources": [
+      "https://www.brandstar.com.cn/news/7387",
       "https://www.jiemian.com/article/637495.html",
-      "https://www.bigants.net/brand-story",
-      "https://www.cnpp.cn/china/2026/list_6490.html",
-      "https://m.suning.com/dgzt/279vo.html"
+      "https://www.bigants.net/brand-story"
     ],
     "method": "extracted"
   },
   "availability": {
     "status": {
-      "value": "预售（2016年9月正式发布）",
+      "value": "在售",
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
       "method": "extracted",
       "quote": null
     },
-    "pricing": [
-      {
-        "label": "紧身裤",
-        "price": "$58 - $68",
-        "currency": "USD",
-        "source": "https://www.jiemian.com/article/637495.html"
-      }
-    ],
+    "pricing": [],
     "available_regions": {
       "value": [
-        "美国（总部西雅图）"
+        "全球超过18个国家",
+        "中国（天猫、京东、线下门店）"
       ],
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
       "method": "extracted"
     },
     "access_model": {
-      "value": "线上直销",
+      "value": "线下零售（门店）、线上直销（官网、天猫、京东）",
       "sources": [
+        "https://www.brandstar.com.cn/news/7387",
         "https://www.jiemian.com/article/637495.html",
-        "https://www.bigants.net/brand-story",
-        "https://www.cnpp.cn/china/2026/list_6490.html",
-        "https://m.suning.com/dgzt/279vo.html"
+        "https://www.bigants.net/brand-story"
       ],
       "method": "extracted",
       "quote": null
