@@ -1,78 +1,204 @@
 {
   "identity": {
     "product_name": {
-      "value": null,
-      "sources": [],
+      "value": "Nike, Inc.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "brand": {
-      "value": null,
-      "sources": [],
+      "value": "Nike",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "manufacturer": {
-      "value": null,
-      "sources": [],
+      "value": "Nike, Inc.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "industry": {
-      "value": null,
-      "sources": [],
+      "value": "Apparel; Accessories; Sports equipment",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "category": {
-      "value": null,
-      "sources": [],
+      "value": "Athletic footwear and apparel",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     }
   },
   "official_description": {
     "description": {
-      "value": null,
-      "sources": [],
-      "method": "extracted",
-      "quote": null
+      "value": "Nike, Inc. is an American athletic footwear and apparel corporation headquartered near Beaverton, Oregon. It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment.",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
+      "method": "quoted",
+      "quote": "Nike, Inc. is an American athletic footwear and apparel corporation headquartered near Beaverton, Oregon. It is the world's largest supplier of athletic shoes and apparel and a major manufacturer of sports equipment, with revenue in excess of US$46 billion in its fiscal year 2022."
     },
     "tagline": {
-      "value": null,
-      "sources": [],
-      "method": "extracted",
-      "quote": null
+      "value": "Just Do It",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
+      "method": "quoted",
+      "quote": "Just Do It"
     },
     "statement": {
       "value": null,
-      "sources": [],
-      "method": "extracted",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
+      "method": "null",
       "quote": null
     }
   },
-  "features": [],
+  "features": [
+    {
+      "name": "Swoosh logo",
+      "category": "品牌标识",
+      "description": "Nike's iconic logo, designed by Carolyn Davidson, first used on June 18, 1971.",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc."
+      ]
+    },
+    {
+      "name": "Air Max cushioning technology",
+      "category": "鞋类技术",
+      "description": "Air Max technology used in footwear, e.g., Nike Air Max.",
+      "evidence": [
+        "https://www.nike.com/CN/"
+      ]
+    },
+    {
+      "name": "Waffle sole design",
+      "category": "鞋类技术",
+      "description": "Waffle tread sole inspired by a waffle iron, pioneered in 1972 'Moon Shoe' and 1974 'Waffle Trainer'.",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc."
+      ]
+    },
+    {
+      "name": "Nike+ platform",
+      "category": "数字服务",
+      "description": "Nike+ is a digital platform for tracking athletic activity.",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc."
+      ]
+    },
+    {
+      "name": "Product lines: Air Jordan, Converse, Nike Pro, Nike CR7",
+      "category": "产品矩阵",
+      "description": "Nike markets products under its own brand, as well as Nike Golf, Nike Pro, Nike+, Nike Blazers, Air Force 1, Nike Dunk, Air Max, Foamposite, Nike Skateboarding and Nike CR7. Also sells Air Jordan and Converse.",
+      "evidence": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc."
+      ]
+    },
+    {
+      "name": "Nike Court series",
+      "category": "服装/配饰",
+      "description": "NikeCourt '全情热爱系列' combines competitive edge with street style; '攻势全开系列' inspired by football.",
+      "evidence": [
+        "https://www.nike.com/CN/"
+      ]
+    }
+  ],
   "specifications": {
-    "value": {},
-    "sources": [],
+    "value": {
+      "founded": "January 25, 1964 (as Blue Ribbon Sports); May 30, 1971 (as Nike, Inc.)",
+      "headquarters": "Nike World Headquarters, Washington County, Oregon, US",
+      "key_people": "Elliott Hill (president & CEO), Mark Parker (executive chairman)",
+      "revenue": "US$46.3 billion (2025)",
+      "operating_income": "US$3.70 billion (2025)",
+      "net_income": "US$3.22 billion (2025)",
+      "total_assets": "US$36.6 billion (2025)",
+      "total_equity": "US$13.2 billion (2025)",
+      "employees": "77,800 (2025); 83,700 (as of 2024)",
+      "subsidiaries": "Converse",
+      "website": "nike.com",
+      "stock_symbol": "NKE (NYSE, Class B)",
+      "industry": "Apparel; Accessories; Sports equipment",
+      "products": "Athletic shoes, athletic apparel, sporting goods, accessories"
+    },
+    "sources": [
+      "https://en.wikipedia.org/wiki/Nike,_Inc.",
+      "https://en.wikipedia.org/wiki/Nike",
+      "https://www.nike.com/CN/",
+      "https://www.nike.com.cn/"
+    ],
     "method": "extracted"
   },
   "availability": {
     "status": {
-      "value": null,
-      "sources": [],
+      "value": "in_stock",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     },
     "pricing": [],
     "available_regions": {
-      "value": [],
-      "sources": [],
+      "value": [
+        "Worldwide"
+      ],
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted"
     },
     "access_model": {
-      "value": null,
-      "sources": [],
+      "value": "Direct to consumer (Niketown retail stores, nike.com), wholesale distribution, e-commerce",
+      "sources": [
+        "https://en.wikipedia.org/wiki/Nike,_Inc.",
+        "https://en.wikipedia.org/wiki/Nike",
+        "https://www.nike.com/CN/",
+        "https://www.nike.com.cn/"
+      ],
       "method": "extracted",
       "quote": null
     }
