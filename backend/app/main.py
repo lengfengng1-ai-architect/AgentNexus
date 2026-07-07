@@ -1,4 +1,6 @@
 import logging
+from logging.handlers import RotatingFileHandler
+from pathlib import Path
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,10 +15,28 @@ logger = logging.getLogger(__name__)
 
 def _configure_logging() -> None:
     level = getattr(logging, settings.log_level.upper(), logging.INFO)
-    logging.basicConfig(
-        level=level,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    fmt = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+
+    # 控制台输出
+    root = logging.getLogger()
+    root.setLevel(level)
+    if not root.handlers:
+        stream_handler = logging.StreamHandler()
+        stream_handler.setFormatter(fmt)
+        root.addHandler(stream_handler)
+
+    # 文件落盘：logs/app.log，单文件 5MB，保留 5 份轮转
+    log_dir = Path(settings.log_file).parent
+    log_dir.mkdir(parents=True, exist_ok=True)
+    file_handler = RotatingFileHandler(
+        settings.log_file, maxBytes=5 * 1024 * 1024, backupCount=5, encoding="utf-8",
     )
+    file_handler.setFormatter(fmt)
+    root.addHandler(file_handler)
+
+    # 压制第三方库的 DEBUG 噪音，让 app 自身日志可读
+    for noisy in ("aiosqlite", "httpx", "httpcore", "openai", "urllib3"):
+        logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
 def create_app() -> FastAPI:

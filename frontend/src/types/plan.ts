@@ -25,10 +25,25 @@ export interface PlanChapter {
   content: string
 }
 
+export interface PromoVideoStatus {
+  status: 'generating' | 'completed' | 'failed'
+  video_url?: string
+  error?: string
+  task_id?: string
+  usage?: {
+    resolution?: number
+    ratio?: string
+    duration?: number
+  }
+}
+
 export interface PlanActionItem {
   title: string
   description: string
   buttonLabel: string
+  type?: 'normal' | 'video'
+  videoUrl?: string
+  promoVideo?: PromoVideoStatus
 }
 
 export interface PlanOutputs {
@@ -42,6 +57,7 @@ export interface PlanOutputs {
   budget_kpi?: Record<string, unknown>
   action_recommendations?: { actions: Pick<PlanActionItem, 'title' | 'description'>[] }
   plan_generator?: { chapters: PlanChapter[] }
+  promo_video?: PromoVideoStatus
 }
 
 export interface PlanSession {

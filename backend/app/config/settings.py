@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     host: str = "0.0.0.0"
     port: int = 8000
     log_level: str = "INFO"
+    log_file: str = "logs/app.log"
 
     llm_provider: str = "dashscope"  # dashscope | agnes | myself
 
