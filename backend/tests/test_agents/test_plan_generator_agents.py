@@ -3,14 +3,17 @@
 Corresponding OpenSpec: openspec/changes/add-plan-generation-workbench/specs/plan-generation-pipeline/spec.md
 """
 
+import json
+from unittest.mock import AsyncMock, patch
+
 import pytest
 
 from app.agents.action_recommendations_agent import run_action_recommendations
-from app.config.settings import settings
 from app.agents.budget_kpi_agent import run_budget_kpi
 from app.agents.execution_planning_agent import run_execution_planning
-from app.agents.plan_generator_agent import run_plan_generator
+from app.agents.plan_generator_agent import _parse_chapters, run_plan_generator
 from app.agents.strategy_generation_agent import run_strategy_generation
+from app.config.settings import settings
 from app.schemas.plan_generation import (
     ActionRecommendationsOutput,
     BudgetKpiOutput,
@@ -84,20 +87,56 @@ async def test_run_action_recommendations__mock():
     assert len(output.actions) > 0
 
 
+def _fake_chapters_text() -> str:
+    """Build a mock LLM output with @@CH:N@@ separators for all 9 chapters."""
+    lines = []
+    for i in range(1, 10):
+        lines.append(f"@@CH:{i}@@")
+        lines.append(f"这是第{i}章的markdown内容。包含一些描述。")
+    return "\n".join(lines)
+
+
+class _AsyncStrIter:
+    """Minimal async iterator that yields a single string chunk."""
+    def __init__(self, text: str):
+        self._text = text
+        self._exhausted = False
+
+    def __aiter__(self): return self
+
+    async def __anext__(self):
+        if self._exhausted:
+            raise StopAsyncIteration
+        self._exhausted = True
+        return self._text
+
+
 @pytest.mark.asyncio
 async def test_run_plan_generator__mock():
-    result = await run_plan_generator({
-        "brand_input": {"brand_name": "Nike", "category": "运动服装", "city": "上海", "budget": 200, "period": 3},
-        "market_research": {"market_summary": "", "trends": [], "opportunities": []},
-        "audience_insight": {"city": "上海", "sport_index": 92, "top_sports": [], "persona_summary": "", "traits": [], "peak_hours": ""},
-        "plan_data_query": {"city": "上海", "population": "", "sport_index": 0, "consumption": "", "weekend_active": "", "leagues": {"count": 0, "top_leagues": [], "avg_members": 0}, "events": {"monthly": 0, "avg_participants": 0, "categories": []}, "influencers": {"count": 0, "tiers": {"supreme": 0, "star": 0, "elite": 0, "influencer": 0}, "avg_quote": ""}, "stores": {"count": 0, "categories": []}, "venues": {"count": 0, "types": [], "capacity": ""}},
-        "fitness_analysis": {"category": "", "city": "", "sport_fitness_scores": [], "primary_sport": "", "secondary_sport": ""},
-        "strategy_generation": {"positioning": "", "marketing_goal": "", "strategy_framework": "", "key_messages": []},
-        "execution_planning": {"leagues_plan": "", "events_plan": "", "influencer_plan": "", "content_plan": "", "store_plan": ""},
-        "budget_kpi": {"total_budget": 0, "period_months": 0, "allocations": [], "kpis": {}, "timeline": []},
-        "action_recommendations": {"actions": []},
-    })
+    """Verify handler returns 9 correctly-structured chapters with mocked LLM."""
+    with patch("app.agents.plan_generator_agent.stream_chat") as mock_stream:
+        mock_stream.return_value = _AsyncStrIter(_fake_chapters_text())
 
-    output = PlanGeneratorOutput.model_validate(result)
-    assert len(output.chapters) == 9
+        result = await run_plan_generator({
+            "brand_input": {"brand_name": "Nike", "category": "运动服装", "city": "上海", "budget": 200, "period": 3},
+            "market_research": {"market_summary": "", "trends": [], "opportunities": []},
+            "audience_insight": {"city": "上海", "sport_index": 92, "top_sports": [], "persona_summary": "", "traits": [], "peak_hours": ""},
+            "plan_data_query": {"city": "上海", "population": "", "sport_index": 0, "consumption": "", "weekend_active": "", "leagues": {"count": 0, "top_leagues": [], "avg_members": 0}, "events": {"monthly": 0, "avg_participants": 0, "categories": []}, "influencers": {"count": 0, "tiers": {"supreme": 0, "star": 0, "elite": 0, "influencer": 0}, "avg_quote": ""}, "stores": {"count": 0, "categories": []}, "venues": {"count": 0, "types": [], "capacity": ""}},
+            "fitness_analysis": {"category": "", "city": "", "sport_fitness_scores": [], "primary_sport": "", "secondary_sport": ""},
+            "strategy_generation": {"positioning": "", "marketing_goal": "", "strategy_framework": "", "key_messages": []},
+            "execution_planning": {"leagues_plan": "", "events_plan": "", "influencer_plan": "", "content_plan": "", "store_plan": ""},
+            "budget_kpi": {"total_budget": 0, "period_months": 0, "allocations": [], "kpis": {}, "timeline": []},
+            "action_recommendations": {"actions": []},
+        })
+
+        output = PlanGeneratorOutput.model_validate(result)
+        assert len(output.chapters) == 9
+        # Verify chapter 1 has correct metadata
+        assert output.chapters[0].title == "市场与用户洞察"
+        assert output.chapters[0].subtitle == "从市场趋势到目标人群的完整画像"
+        assert output.chapters[0].content
+        assert "第一章" in output.chapters[0].content or output.chapters[0].content.startswith("这是第1章")
+        # Verify chapter 9 has correct metadata
+        assert output.chapters[8].title == "行动建议"
+        assert output.chapters[8].content
 

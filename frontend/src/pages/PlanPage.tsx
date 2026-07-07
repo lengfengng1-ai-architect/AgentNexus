@@ -218,10 +218,13 @@ export function PlanPage() {
   const [autoMode, setAutoMode] = useState(false)
   const userInteractedRef = useRef(false)
   const [activeTab, setActiveTab] = useState(0)
-  // 宣传视频轮询：流水线完成后如果视频还在生成中，定时轮询
+  // 宣传视频轮询：流水线完成后如果视频不存在或还在生成中，定时轮询
   useEffect(() => {
+    if (status !== 'completed') return
+
     const pv = outputs?.promo_video
-    if (status !== 'completed' || !pv || pv.status !== 'generating') return
+    // 视频已完成或已失败 → 停止轮询
+    if (pv && (pv.status === 'completed' || pv.status === 'failed')) return
 
     const interval = setInterval(() => {
       refreshStatus()

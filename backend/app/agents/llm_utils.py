@@ -4,7 +4,7 @@ Corresponding in_scope ID: workflow-orchestration
 """
 
 import json
-from typing import Any
+from typing import Any, AsyncGenerator
 
 from bs4 import BeautifulSoup
 from httpx import AsyncClient
@@ -14,6 +14,8 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.config.settings import settings
 
 _log_buffer: list[dict[str, str]] = []
+# Cache for model instances keyed by provider name.
+_model_cache: dict[str, Any] = {}
 
 
 def write_log(node_id: str, message: str) -> None:
@@ -84,28 +86,68 @@ async def duckduckgo_search(keyword: str, max_results: int = 10) -> list[dict[st
     return results
 
 
+_MAX_TOKENS = 16384
+
+
 def build_chat_model():
-    """Initialize the configured chat model."""
-    if settings.llm_provider == "agnes":
-        return init_chat_model(
+    """Initialize the configured chat model (cached by provider).
+
+    Model instance is cached per provider.  Call clear_model_cache() to
+    force re-initialization (useful in tests that change provider settings).
+    """
+    provider = settings.llm_provider
+    if provider in _model_cache:
+        return _model_cache[provider]
+
+    if provider == "agnes":
+        model = init_chat_model(
             model=settings.agnes_model,
             model_provider="openai",
             api_key=settings.agnes_api_key,
             base_url=settings.agnes_base_url,
+            max_tokens=_MAX_TOKENS,
         )
-    if settings.llm_provider == "myself":
-        return init_chat_model(
+    elif provider == "myself":
+        model = init_chat_model(
             model=settings.myself_model,
             model_provider="openai",
             api_key=settings.myself_api_key,
             base_url=settings.myself_base_url,
+            max_tokens=_MAX_TOKENS,
         )
-    return init_chat_model(
-        model=settings.dashscope_model,
-        model_provider="openai",
-        api_key=settings.dashscope_api_key,
-        base_url=settings.dashscope_base_url,
-    )
+    else:
+        model = init_chat_model(
+            model=settings.dashscope_model,
+            model_provider="openai",
+            api_key=settings.dashscope_api_key,
+            base_url=settings.dashscope_base_url,
+            max_tokens=_MAX_TOKENS,
+        )
+    _model_cache[provider] = model
+    return model
+
+
+def clear_model_cache() -> None:
+    """Clear cached model instances (for testing when provider changes)."""
+    _model_cache.clear()
+
+
+async def stream_chat(
+    system_prompt: str,
+    user_msg: str,
+) -> AsyncGenerator[str, None]:
+    """Stream LLM response token by token, yielding text content.
+
+    Uses cached model instance (see build_chat_model).
+    Empty chunks (e.g. during model thinking) are skipped.
+    """
+    model = build_chat_model()
+    async for chunk in model.astream([
+        SystemMessage(content=system_prompt),
+        HumanMessage(content=user_msg),
+    ]):
+        if isinstance(chunk.content, str) and chunk.content:
+            yield chunk.content
 
 
 async def invoke_json(system_prompt: str, user_msg: str) -> dict[str, Any]:
