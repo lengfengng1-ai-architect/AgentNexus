@@ -31,15 +31,15 @@ export function VideoTestPage() {
     const params = new URLSearchParams(window.location.search)
     const qPrompt = params.get('prompt')
     const qImageUrl = params.get('image_url')
-    if (qPrompt) {
+    if (qPrompt || qImageUrl) {
       autoTriggered.current = true
-      setPrompt(qPrompt)
+      if (qPrompt) setPrompt(qPrompt)
       if (qImageUrl) setImageUrl(qImageUrl)
       setTimeout(() => {
         ;(async () => {
           setIsLoading(true)
           const p: VideoParams = {
-            prompt: qPrompt,
+            prompt: qPrompt || null,
             image_url: qImageUrl || null,
             resolution, ratio, duration,
             seed: null,
@@ -66,7 +66,8 @@ export function VideoTestPage() {
 
   async function handleGenerate() {
     const trimmedPrompt = prompt.trim()
-    if (!trimmedPrompt) return
+    const hasImage = imageUrl.trim().length > 0
+    if (!trimmedPrompt && !hasImage) return
     if (isLoading) return
 
     setIsLoading(true)
@@ -76,7 +77,7 @@ export function VideoTestPage() {
     setError(null)
 
     const params: VideoParams = {
-      prompt: trimmedPrompt,
+      prompt: trimmedPrompt || null,
       image_url: imageUrl.trim() || null,
       resolution,
       ratio,
@@ -208,7 +209,7 @@ export function VideoTestPage() {
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={isLoading || !prompt.trim()}
+          disabled={isLoading || (!prompt.trim() && !imageUrl.trim())}
           className="rounded-xl bg-start px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-start/90 disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40"
         >
           {isLoading ? '生成中…' : '生成视频'}

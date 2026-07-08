@@ -1,0 +1,140 @@
+# OpenSpec: 视频生成
+# in_scope id: video-generation
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "视频生成"
+  description: "文生视频和图生视频，调用 HappyHorse 系列模型，SSE 流式返回进度和结果。"
+  version: "v0.1"
+  x-in-scope-ref: "video-generation"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /video/generate:
+    post:
+      operationId: "video_generate"
+      summary: "文生视频或图生视频，SSE 流式返回"
+      description: |
+        接收提示词和可选图片 URL，通过 HappyHorse 模型生成视频。
+        prompt 和 image_url 至少提供一个（无 prompt 纯图生视频、无图片文生视频、图+文均可）。
+
+        SSE events:
+          - progress: 任务状态更新（task_created / polling / completed）
+          - result: 生成完成，包含 video_url
+          - error: 错误信息
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/VideoGenerateRequest"
+      responses:
+        "200":
+          description: "SSE 流式响应"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "SSE 事件流"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    VideoGenerateRequest:
+      type: object
+      description: "视频生成请求，prompt 和 image_url 至少提供一个"
+      properties:
+        prompt:
+          type: string
+          description: "文本提示词，用于描述期望生成的视频内容。无图片时必填。"
+          maxLength: 2500
+        image_url:
+          type: string
+          format: uri
+          description: "参考图片 URL。有则走图生视频（HappyHorse I2V），无则走文生视频（HappyHorse T2V）。"
+        resolution:
+          type: string
+          description: "分辨率"
+          default: "720P"
+          enum:
+            - 720P   # 720P
+            - 1080P  # 1080P
+        ratio:
+          type: string
+          description: "宽高比"
+          default: "16:9"
+          enum:
+            - 16:9
+            - 9:16
+            - 1:1
+            - 4:3
+            - 3:4
+            - 4:5
+            - 5:4
+            - 9:21
+            - 21:9
+        duration:
+          type: integer
+          description: "视频时长（秒）"
+          default: 5
+          minimum: 3
+          maximum: 15
+        seed:
+          type: integer
+          description: "随机数种子（可选），相同 seed 可复现结果"
+          minimum: 0
+          maximum: 2147483647
+
+    # ── 共享错误模型 ──
+    APIError:
+      type: object
+      description: "统一错误响应"
+      properties:
+        detail:
+          type: string
+          description: "人类可读的错误描述"
+        code:
+          type: string
+          description: "错误码"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: "出错字段名"
+              message:
+                type: string
+                description: "字段级错误说明"
+      required:
+        - detail
+        - code
+
+  responses:
+    BadRequest:
+      description: "请求参数错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    ValidationError:
+      description: "字段校验失败"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    InternalError:
+      description: "服务器内部错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"

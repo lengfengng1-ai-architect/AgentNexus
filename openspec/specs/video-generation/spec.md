@@ -33,7 +33,7 @@
 
 ### Requirement: 系统 SHALL 支持文生视频
 
-系统 SHALL 根据用户提供的文本提示词，调用 HappyHorse T2V 模型生成短视频。
+系统 SHALL 根据用户提供的文本提示词，调用 HappyHorse T2V 模型生成短视频。当提供了 image_url 时，prompt 为可选。
 
 #### Scenario: 文生视频标准流程
 - **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体中不含 `image_url`
@@ -49,6 +49,25 @@
 - **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体含有效 `image_url`
 - **THEN** 系统 SHALL 调用 HappyHorse I2V 模型创建任务
 - **AND** 通过 SSE 流式返回进度和结果
+
+#### Scenario: 纯图生视频（无 prompt）
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体中不含 `prompt` 但含有效 `image_url`
+- **THEN** 系统 SHALL 调用 HappyHorse I2V 模型创建任务（仅使用图片帧）
+- **AND** 通过 SSE 流式返回进度和结果
+
+#### Scenario: 图+文生成视频
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体含有效 `image_url` 和 `prompt`
+- **THEN** 系统 SHALL 调用 HappyHorse I2V 模型，图片帧 + prompt 生成视频
+- **AND** 通过 SSE 流式返回进度和结果
+
+### Requirement: 系统 SHALL 校验 prompt 和 image_url 至少提供一个
+
+POST /api/v1/video/generate 的请求体中，prompt 为可选字段，但必须与 image_url 至少提供一个。
+
+#### Scenario: prompt 和 image_url 均缺失
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体中既无 `prompt` 也无 `image_url`
+- **THEN** 系统 SHALL 返回 422 Validation Error
+- **AND** 错误信息提示 "prompt 和 image_url 至少提供一个"
 
 ### Requirement: 系统 SHALL 通过 SSE 持续推送生成进度
 
