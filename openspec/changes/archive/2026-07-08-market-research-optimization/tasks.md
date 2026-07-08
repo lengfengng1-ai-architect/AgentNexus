@@ -9,4 +9,4 @@
 
 - [x] 2.1 运行 `pytest tests/test_agents/test_market_research.py` 全量测试通过
 - [x] 2.2 运行 `pytest tests/test_agents/test_product_research_extra.py` 确认未受影响
-- [ ] 2.3 人工实测：启动 SearxNG → 跑李宁 → 确认 market_research 耗时下降
+- [x] 2.3 人工实测：启动 SearxNG → 跑李宁 → 确认 market_research 耗时下降

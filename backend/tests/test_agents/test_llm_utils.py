@@ -172,3 +172,61 @@ async def test_invoke_json_parses_fenced_json():
         mock_build.return_value.ainvoke = _AsyncMock(mock_msg)
         result = await invoke_json("system", "user")
     assert result == {"key": "value"}
+
+
+# ── searxng_search: 返回结构与 duckduckgo_search 一致 ────────────────
+
+
+def _mock_searxng_client(fake_json: dict):
+    """构造一个假的 httpx.AsyncClient，async with 后 .get() 返回 fake_json。"""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = fake_json
+    mock_resp.raise_for_status.return_value = None
+
+    mock_client = AsyncMock()
+    mock_client.__aenter__.return_value = mock_client
+    mock_client.get.return_value = mock_resp
+    return mock_client
+
+
+@pytest.mark.asyncio
+async def test_searxng_search_returns_href_title_body():
+    """searxng_search SHALL 返回 [{href, title, body}]，且跳过无 url 的项。"""
+    from app.agents.llm_utils import searxng_search
+
+    fake_json = {
+        "results": [
+            {"url": "https://a.com/1", "title": "A", "content": "snip A"},
+            {"url": "", "title": "no-url", "content": "skipped"},
+            {"url": "https://b.com/2", "title": "B", "content": "snip B"},
+        ]
+    }
+    with patch("app.agents.llm_utils.AsyncClient",
+               return_value=_mock_searxng_client(fake_json)):
+        result = await searxng_search("测试", max_results=10)
+
+    assert result == [
+        {"href": "https://a.com/1", "title": "A", "body": "snip A"},
+        {"href": "https://b.com/2", "title": "B", "body": "snip B"},
+    ]
+    # 与 duckduckgo_search 同构：每个 dict 只有 href/title/body 三个字符串键
+    for item in result:
+        assert set(item.keys()) == {"href", "title", "body"}
+
+
+@pytest.mark.asyncio
+async def test_searxng_search_respects_max_results():
+    """max_results SHALL 截断结果数。"""
+    from app.agents.llm_utils import searxng_search
+
+    fake_json = {
+        "results": [
+            {"url": f"https://x.com/{i}", "title": str(i), "content": ""} for i in range(5)
+        ]
+    }
+    with patch("app.agents.llm_utils.AsyncClient",
+               return_value=_mock_searxng_client(fake_json)):
+        result = await searxng_search("测试", max_results=2)
+
+    assert len(result) == 2
+    assert result[0]["href"] == "https://x.com/0"
