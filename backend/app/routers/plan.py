@@ -9,6 +9,7 @@ import uuid
 
 from fastapi import APIRouter, Path, Request
 from fastapi.responses import JSONResponse, StreamingResponse
+from pydantic import BaseModel, Field
 
 from app.schemas.common import APIError, APIResponse, ErrorCode
 from app.schemas.plan_run import ApproveRequest, PlanRunRequest, RejectRequest
@@ -17,6 +18,7 @@ from app.services.plan_generation_service import (
     delete_run,
     get_status,
     list_runs,
+    regenerate_poster,
     reject_run,
     rerun_run,
     run_exists,
@@ -151,6 +153,28 @@ async def plan_run_status(run_id: str = Path(..., description="运行实例 ID")
             ErrorCode.INTERNAL_ERROR,
         )
     return APIResponse(success=True, data=status)
+
+
+class PosterRegenerateRequest(BaseModel):
+    size: str = Field(default="2688*1536", description="分辨率，如 2688*1536、1536*2688、2048*2048")
+
+
+@router.post("/plan/runs/{run_id}/poster")
+async def plan_run_regenerate_poster(
+    run_id: str = Path(..., description="运行实例 ID"),
+    body: PosterRegenerateRequest = PosterRegenerateRequest(),  # type: ignore[call-arg]
+):
+    """重新生成海报图片（手动重试 / 切换尺寸），后台异步执行。"""
+    if not_found := await _require_run(run_id):
+        return not_found
+    try:
+        poster = await regenerate_poster(run_id, size=body.size)
+    except ValueError as exc:
+        return _error_response(400, str(exc), ErrorCode.BAD_REQUEST)
+    except Exception as exc:
+        logger.exception("failed to regenerate poster for run %s", run_id)
+        return _error_response(500, f"Failed to regenerate poster: {exc}", ErrorCode.INTERNAL_ERROR)
+    return APIResponse(success=True, data=poster)
 
 
 @router.get("/plan/runs")

@@ -37,6 +37,15 @@ export interface PromoVideoStatus {
   }
 }
 
+export interface PosterStatus {
+  status: 'generating' | 'completed' | 'failed'
+  image_url?: string
+  error?: string
+  size?: string
+  width?: number
+  height?: number
+}
+
 export interface PlanActionItem {
   title: string
   description: string
@@ -58,6 +67,7 @@ export interface PlanOutputs {
   action_recommendations?: { actions: Pick<PlanActionItem, 'title' | 'description'>[] }
   plan_generator?: { chapters: PlanChapter[] }
   promo_video?: PromoVideoStatus
+  poster?: PosterStatus
 }
 
 export interface PlanSession {
