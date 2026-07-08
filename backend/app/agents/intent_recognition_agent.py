@@ -98,6 +98,9 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
     generate_plan despite missing fields. Enforce the rule:
     - all 5 fields present -> generate_plan
     - any field missing and intent is not update_context -> clarify
+
+    Independent intents (generate_video, text_to_video, text_to_image) are
+    excluded from brand-field completeness checks.
     """
     required = ("brand_name", "category", "city", "budget", "period")
     missing = [
@@ -105,17 +108,32 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
         if getattr(output.brand_input, field) is None
     ]
 
+    INDEPENDENT = ("clarify", "update_context", "generate_video", "text_to_video", "text_to_image")
+
     if not missing and output.intent != "generate_plan":
         output.intent = "generate_plan"
         output.confidence = max(output.confidence, 0.95)
         if not output.reply:
             output.reply = "信息已确认完整，开始生成营销方案。"
-    elif missing and output.intent not in ("clarify", "update_context"):
+    elif missing and output.intent not in INDEPENDENT:
         output.intent = "clarify"
         if not output.reply:
             output.reply = f"为了生成营销方案，我还需要了解：{', '.join(missing)}"
 
-    output.missing_fields = missing
+    # generate_video: image_url 检查
+    if output.intent == "generate_video" and not output.image_url:
+        if "image_url" not in output.missing_fields:
+            output.missing_fields = list(output.missing_fields) + ["image_url"]
+        if not output.reply:
+            output.reply = "好的，请提供需要生成视频的图片。"
+    elif output.intent == "generate_video" and output.image_url:
+        if "image_url" in output.missing_fields:
+            output.missing_fields = [f for f in output.missing_fields if f != "image_url"]
+
+    # Only set brand-related missing_fields for plan-related intents
+    if output.intent in ("generate_plan", "clarify"):
+        output.missing_fields = missing
+    # For other intents, preserve their own missing_fields (e.g. image_url)
     return output
 
 

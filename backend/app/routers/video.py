@@ -10,7 +10,7 @@ import logging
 
 from fastapi import APIRouter
 from fastapi.responses import StreamingResponse
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from app.agents.video_generation_agent import stream_video_generation
 
@@ -20,19 +20,28 @@ router = APIRouter(tags=["video"])
 
 
 class VideoGenerateRequest(BaseModel):
-    prompt: str = Field(..., description="文本提示词，用于描述期望生成的视频内容", max_length=2500)
-    image_url: str | None = Field(default=None, description="参考图片 URL，有则走图生视频 (HappyHorse I2V)")
+    prompt: str | None = Field(default=None, description="文本提示词，用于描述期望生成的视频内容。与 image_urls 至少提供一个。", max_length=10000)
+    image_urls: list[str] = Field(default=[], description="参考图片 URL 列表（最多 9 张）。有则走图生视频 (HappyHorse I2V)，无则走文生视频 (HappyHorse T2V)")
     resolution: str = Field(default="720P", description="分辨率：720P / 1080P")
     ratio: str = Field(default="16:9", description="宽高比：16:9 / 9:16 / 1:1 / 4:3 / 3:4 / 4:5 / 5:4 / 9:21 / 21:9")
     duration: int = Field(default=5, ge=3, le=15, description="视频时长（秒），3-15")
     seed: int | None = Field(default=None, ge=0, le=2147483647, description="随机数种子（可选）")
 
-    @field_validator("image_url")
+    @field_validator("image_urls")
     @classmethod
-    def _validate_image_url(cls, v: str | None) -> str | None:
-        if v is not None and not (v.startswith("http://") or v.startswith("https://")):
-            raise ValueError("image_url 必须是有效的 HTTP/HTTPS URL")
+    def _validate_image_urls(cls, v: list[str]) -> list[str]:
+        if len(v) > 9:
+            raise ValueError("图片最多 9 张")
+        for url in v:
+            if not (url.startswith("http://") or url.startswith("https://")):
+                raise ValueError(f"图片 URL 必须是有效的 HTTP/HTTPS URL: {url}")
         return v
+
+    @model_validator(mode="after")
+    def _validate_prompt_or_image(self) -> "VideoGenerateRequest":
+        if not self.prompt and not self.image_urls:
+            raise ValueError("prompt 和 image_urls 至少提供一个")
+        return self
 
 
 @router.post("/video/generate")
@@ -48,7 +57,7 @@ async def video_generate(body: VideoGenerateRequest):
     async def event_stream():
         async for frame in stream_video_generation(
             body.prompt,
-            image_url=body.image_url,
+            image_urls=body.image_urls,
             resolution=body.resolution,
             ratio=body.ratio,
             duration=body.duration,

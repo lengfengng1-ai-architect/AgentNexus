@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react'
 import { streamVideoGeneration } from '../api/video'
 import type { VideoParams, VideoResult } from '../types/video'
 
@@ -11,9 +11,43 @@ interface ProgressEvent {
   progress_pct?: number
 }
 
+function ImageThumbnail({ url }: { url: string }) {
+  const [loaded, setLoaded] = useState(false)
+  const [failed, setFailed] = useState(false)
+
+  return (
+    <div className="relative aspect-video overflow-hidden rounded-xl bg-mist">
+      {!loaded && !failed && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <span className="text-xs text-track/40">加载中…</span>
+        </div>
+      )}
+      {failed && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center">
+          <span className="text-xs text-track/50">加载失败</span>
+        </div>
+      )}
+      <img
+        src={url}
+        alt=""
+        onLoad={() => setLoaded(true)}
+        onError={() => setFailed(true)}
+        className={`h-full w-full object-cover transition-opacity duration-300 ${loaded && !failed ? 'opacity-100' : 'opacity-0'}`}
+        style={{ pointerEvents: loaded && !failed ? 'auto' : 'none' }}
+      />
+    </div>
+  )
+}
+
 export function VideoTestPage() {
   const [prompt, setPrompt] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
+  const [urlRows, setUrlRows] = useState<string[]>([''])
+  const imageUrls = useMemo(() =>
+    urlRows
+      .map(s => s.trim())
+      .filter(s => s.startsWith('http://') || s.startsWith('https://')),
+    [urlRows]
+  )
   const [resolution, setResolution] = useState('720P')
   const [ratio, setRatio] = useState('16:9')
   const [duration, setDuration] = useState(5)
@@ -23,10 +57,91 @@ export function VideoTestPage() {
   const [currentStatus, setCurrentStatus] = useState<ProgressEvent | null>(null)
   const [result, setResult] = useState<VideoResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const autoTriggered = useRef(false)
+
+  const handleUrlRowChange = useCallback((index: number, value: string) => {
+    setUrlRows(prev => {
+      const next = [...prev]
+      next[index] = value
+      if (index === next.length - 1 && value.trim()) {
+        next.push('')
+      }
+      return next
+    })
+  }, [])
+
+  const removeUrlRow = useCallback((index: number) => {
+    setUrlRows(prev => {
+      const next = prev.filter((_, i) => i !== index)
+      return next.length === 0 ? [''] : next
+    })
+  }, [])
+
+  const handleUrlRowPaste = useCallback((index: number, e: React.ClipboardEvent) => {
+    const pasted = e.clipboardData.getData('text')
+    if (!pasted.includes('\n') && !pasted.includes(',')) return
+    const urls = pasted
+      .split(/[\n,]+/)
+      .map(s => s.trim())
+      .filter(s => s.startsWith('http://') || s.startsWith('https://'))
+    if (urls.length <= 1) return
+    e.preventDefault()
+    setUrlRows(prev => {
+      const next = [...prev]
+      next[index] = urls[0]
+      next.splice(index + 1, 0, ...urls.slice(1), '')
+      return next
+    })
+  }, [])
+
+  // Auto-trigger from query params
+  useEffect(() => {
+    if (autoTriggered.current) return
+    const params = new URLSearchParams(window.location.search)
+    const qPrompt = params.get('prompt')
+    const qImageUrlsRaw = params.get('image_urls')
+    const qImageUrls = qImageUrlsRaw
+      ? qImageUrlsRaw.split(',').map(s => s.trim()).filter(s => s.startsWith('http'))
+      : []
+    if (qPrompt || qImageUrls.length > 0) {
+      autoTriggered.current = true
+      if (qPrompt) setPrompt(qPrompt)
+      if (qImageUrls.length > 0) {
+        setUrlRows([...qImageUrls, ''])
+      }
+      setTimeout(() => {
+        ;(async () => {
+          setIsLoading(true)
+          const p: VideoParams = {
+            prompt: qPrompt || null,
+            image_urls: qImageUrls.length > 0 ? qImageUrls : undefined,
+            resolution, ratio, duration,
+            seed: null,
+          }
+          try {
+            for await (const event of streamVideoGeneration(p)) {
+              if (event.progress) {
+                setProgress(prev => [...prev, event.progress!])
+                setCurrentStatus(event.progress)
+              }
+              if (event.result) setResult(event.result)
+              if (event.error) setError(event.error.detail)
+            }
+          } catch (err) {
+            setError(err instanceof Error ? err.message : '生成失败')
+          } finally {
+            setIsLoading(false)
+          }
+        })()
+      }, 0)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleGenerate() {
-    const trimmedImg = imageUrl.trim()
-    if (!trimmedImg) return
+    const trimmedPrompt = prompt.trim()
+    const urls = imageUrls
+    if (!trimmedPrompt && urls.length === 0) return
     if (isLoading) return
 
     setIsLoading(true)
@@ -36,8 +151,8 @@ export function VideoTestPage() {
     setError(null)
 
     const params: VideoParams = {
-      prompt: prompt.trim(),
-      image_url: imageUrl.trim() || null,
+      prompt: trimmedPrompt || null,
+      image_urls: urls.length > 0 ? urls : undefined,
       resolution,
       ratio,
       duration,
@@ -75,21 +190,63 @@ export function VideoTestPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 overflow-y-auto px-4 py-6">
-      {/* 图片 URL（必填 — 图生视频） */}
+      {/* 图片 URL（可选，图生视频用，最多 9 张） */}
       <div>
-        <label htmlFor="video-image-url" className="mb-2 block text-sm font-medium text-track">
-          图片 URL
+        <label className="mb-2 block text-sm font-medium text-track">
+          图片 URL <span className="text-xs text-track/40">（选填，每行一个 URL，最多 9 张）</span>
         </label>
-        <input
-          id="video-image-url"
-          type="text"
-          value={imageUrl}
-          onChange={e => setImageUrl(e.target.value)}
-          disabled={isLoading}
-          placeholder="https://… 输入图片 URL 将图片变为动态视频"
-          className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:bg-mist"
-        />
+        <div className="space-y-2">
+          {urlRows.map((row, i) => (
+            <div key={i} className="flex gap-2">
+              <input
+                type="url"
+                value={row}
+                onChange={e => handleUrlRowChange(i, e.target.value)}
+                onPaste={i === urlRows.length - 1 ? e => handleUrlRowPaste(i, e) : undefined}
+                disabled={isLoading}
+                placeholder={i === urlRows.length - 1 ? `输入或粘贴图片 URL，自动拆分` : `图片 URL ${i + 1}`}
+                className="flex-1 min-w-0 rounded-xl border border-line bg-white px-4 py-2.5 text-sm outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:bg-mist"
+              />
+              {i < urlRows.length - 1 && (
+                <button
+                  type="button"
+                  onClick={() => removeUrlRow(i)}
+                  disabled={isLoading}
+                  className="flex h-[42px] w-[42px] shrink-0 items-center justify-center rounded-xl border border-line text-lg text-track/50 transition-colors hover:border-red-300 hover:text-red-500 disabled:hidden"
+                >
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+        </div>
+        {imageUrls.length > 0 && (
+          <p className="mt-1 text-xs text-track/40">已识别 {imageUrls.length} 张图片（最多 9 张）</p>
+        )}
       </div>
+
+      {/* 缩略图预览 */}
+      {urlRows.some(r => /^https?:\/\//.test(r.trim())) && (
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">
+          {urlRows.map((row, i) => {
+            const url = row.trim()
+            if (!/^https?:\/\//.test(url)) return null
+            return (
+              <div key={i} className="relative">
+                <ImageThumbnail url={url} />
+                <button
+                  type="button"
+                  onClick={() => removeUrlRow(i)}
+                  disabled={isLoading}
+                  className="absolute -right-2 -top-2 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-xs text-white hover:bg-red-600 disabled:hidden"
+                >
+                  ×
+                </button>
+              </div>
+            )
+          })}
+        </div>
+      )}
 
       {/* 提示词（可选） */}
       <div>
@@ -168,7 +325,7 @@ export function VideoTestPage() {
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={isLoading || !imageUrl.trim()}
+          disabled={isLoading || (imageUrls.length === 0 && prompt.trim().length === 0)}
           className="rounded-xl bg-start px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-start/90 disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40"
         >
           {isLoading ? '生成中…' : '生成视频'}

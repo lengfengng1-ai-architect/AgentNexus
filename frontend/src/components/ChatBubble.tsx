@@ -43,11 +43,31 @@ interface ChatBubbleProps {
   message: ChatMessage
   onRetry?: (messageId: string) => void
   onGeneratePlan?: () => void
+  onNavigateVideo?: (prompt: string, imageUrls?: string[]) => void
+  onNavigateImage?: (prompt: string) => void
 }
 
-export function ChatBubble({ message, onRetry, onGeneratePlan }: ChatBubbleProps) {
+export function ChatBubble({ message, onRetry, onGeneratePlan, onNavigateVideo, onNavigateImage }: ChatBubbleProps) {
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
+
+  const hasValidPrompt =
+    (message.intent === 'text_to_image' && message.generationPrompt && message.generationPrompt.length > 3) ||
+    (message.intent === 'text_to_video' && message.generationPrompt && message.generationPrompt.length > 3) ||
+    (message.intent === 'generate_video' && message.imageUrls && message.imageUrls.length > 0)
+
+  const handleNavigate = () => {
+    if (!hasValidPrompt) return
+    if (message.intent === 'generate_video' && onNavigateVideo) {
+      onNavigateVideo(message.videoPrompt || '', message.imageUrls)
+    } else if (message.intent === 'text_to_video' && onNavigateVideo) {
+      onNavigateVideo(message.generationPrompt!, message.imageUrls)
+    } else if (message.intent === 'text_to_image' && onNavigateImage) {
+      onNavigateImage(message.generationPrompt!)
+    }
+  }
+
+  const genLabel = message.intent === 'text_to_image' ? '生成图片' : '生成视频'
 
   return (
     <div className={['flex w-full', isUser ? 'justify-end' : 'justify-start'].join(' ')}>
@@ -71,6 +91,15 @@ export function ChatBubble({ message, onRetry, onGeneratePlan }: ChatBubbleProps
             message.content
           )}
         </div>
+        {!isUser && hasValidPrompt && !isStreaming && (
+          <button
+            type="button"
+            onClick={handleNavigate}
+            className="mt-3 rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
+          >
+            {genLabel}
+          </button>
+        )}
         {!isUser && message.canGeneratePlan && onGeneratePlan && (
           <button
             type="button"

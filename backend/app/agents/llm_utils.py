@@ -86,6 +86,40 @@ async def duckduckgo_search(keyword: str, max_results: int = 10) -> list[dict[st
     return results
 
 
+async def searxng_search(keyword: str, max_results: int = 10) -> list[dict[str, str]]:
+    """Search via self-hosted SearxNG JSON API.
+
+    Returns a list of {href, title, body} dicts, same shape as duckduckgo_search
+    for seamless swap.
+    """
+    from urllib.parse import urlencode
+
+    params = {
+        "q": keyword,
+        "format": "json",
+        "engines": "bing,baidu",
+        "language": "zh-CN",
+    }
+    url = f"{settings.searxng_url.rstrip('/')}/search?{urlencode(params)}"
+
+    async with AsyncClient(timeout=_HTTP_TIMEOUT) as client:
+        resp = await client.get(url, headers={"User-Agent": _USER_AGENT})
+        resp.raise_for_status()
+        data = resp.json()
+
+    results: list[dict[str, str]] = []
+    for item in data.get("results", []):
+        href = item.get("url", "")
+        title = item.get("title", "")
+        body = item.get("content", "")
+        if href:
+            results.append({"href": href, "title": title, "body": body})
+        if len(results) >= max_results:
+            break
+
+    return results
+
+
 _MAX_TOKENS = 16384
 
 

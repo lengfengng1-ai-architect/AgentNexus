@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
@@ -15,6 +15,39 @@ export function ImageTestPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [imageUrl, setImageUrl] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const autoTriggered = useRef(false)
+
+  // Auto-trigger from query params
+  useEffect(() => {
+    if (autoTriggered.current) return
+    const params = new URLSearchParams(window.location.search)
+    const qPrompt = params.get('prompt')
+    if (qPrompt) {
+      autoTriggered.current = true
+      setPrompt(qPrompt)
+      // Wait for state update, then trigger
+      setTimeout(() => {
+        ;(async () => {
+          setIsLoading(true)
+          try {
+            const resp = await fetch(`${API_BASE}/image/generate`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ prompt: qPrompt, size }),
+            })
+            const body = await resp.json()
+            if (!body.success) throw new Error(body.error?.detail || '生成失败')
+            setImageUrl(body.data.image_url)
+          } catch (err) {
+            setError(err instanceof Error ? err.message : '请求失败')
+          } finally {
+            setIsLoading(false)
+          }
+        })()
+      }, 0)
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleGenerate() {
     const text = prompt.trim()

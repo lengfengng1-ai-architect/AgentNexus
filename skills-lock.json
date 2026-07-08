@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "web-research": {
+      "source": "langchain-ai/deepagents",
+      "sourceType": "github",
+      "skillPath": "libs/cli/examples/skills/web-research/SKILL.md",
+      "computedHash": "c91e55da8a6e313c9ec9962ec2699ccef5caee1ea15c9d7a71db6274ab7c90b6"
+    }
+  }
+}

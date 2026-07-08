@@ -21,7 +21,7 @@ from langgraph.graph import END, StateGraph
 from openai import BadRequestError
 from pydantic import BaseModel, Field
 
-from app.agents.llm_utils import build_chat_model, duckduckgo_search, write_log
+from app.agents.llm_utils import build_chat_model, searxng_search, write_log
 from app.agents.registry import register
 from app.schemas.product_info import (
     ProductResearchResult,
@@ -42,10 +42,13 @@ def _save_to_cache(product_name: str, info: ProductResearchResult) -> None:
 
 # ── 搜索和抓取常量 ──────────────────────────────────────────
 SEARCH_MAX_RESULTS = 10
-FETCH_TOP_N = 5
-FETCH_TIMEOUT = 15
-MAX_PAGE_CHARS = 8000
+FETCH_TOP_N = 25
+FETCH_TIMEOUT = 10
+MAX_PAGE_CHARS = 4000
 SKIP_EXTENSIONS = {'.pdf', '.doc', '.docx', '.zip', '.jpg', '.png', '.gif', '.ppt', '.pptx', '.xls', '.xlsx'}
+FETCH_CONCURRENCY = 8
+# 已知 403 屏蔽爬虫的域名，在搜索去重阶段跳过
+BLOCKED_DOMAINS = {"zhuanlan.zhihu.com", "baike.baidu.com", "wenku.baidu.com"}
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -138,7 +141,7 @@ async def search_node(state: ProductResearchState) -> dict:
 
     async def search_one(kw: str, idx: int) -> tuple[int, list[dict[str, str]]]:
         try:
-            raw = await duckduckgo_search(kw, max_results=SEARCH_MAX_RESULTS)
+            raw = await searxng_search(kw, max_results=SEARCH_MAX_RESULTS)
             return idx, raw or []
         except Exception:
             write_log("product_research", f"⚠️ 关键词「{kw}」搜索失败，跳过")
@@ -164,11 +167,12 @@ async def search_node(state: ProductResearchState) -> dict:
     write_log("product_research", f"📄 搜索完成，累计发现 {len(seen_urls)} 条结果")
 
     all_results.sort(key=lambda r: (_domain_priority(r.url), r.title), reverse=True)
-    # Filter out binary file URLs and datasheet/download links
+    # Filter out binary file URLs, datasheet/download links, and blocked domains
     filtered = [
         r for r in all_results
         if not any(r.url.split('?')[0].lower().endswith(ext) for ext in SKIP_EXTENSIONS)
         and not any(kw in (r.title + r.snippet).lower() for kw in ['datasheet', '规格书', '数据手册', 'download', 'pdf'])
+        and urlparse(r.url).hostname not in BLOCKED_DOMAINS
     ]
     top = filtered[:FETCH_TOP_N]
     write_log("product_research", f"📄 过滤非网页链接后取前 {len(top)} 条")
@@ -216,7 +220,13 @@ async def fetch_node(state: ProductResearchState) -> dict:
             return FetchedPage(url=url, title=None, content="", fetched=False)
 
     tasks = [fetch_one(url) for url in urls]
-    results = await asyncio.gather(*tasks)
+    sem = asyncio.Semaphore(FETCH_CONCURRENCY)
+
+    async def wrapped(url: str) -> FetchedPage:
+        async with sem:
+            return await fetch_one(url)
+
+    results = await asyncio.gather(*[wrapped(url) for url in urls])
 
     global _last_fetched_urls
     _last_fetched_urls = [r.url for r in results if r.fetched]
@@ -268,7 +278,7 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
         return {}
 
     try:
-        raw = await duckduckgo_search(f"{product} 官方网站", max_results=5)
+        raw = await searxng_search(f"{product} 官方网站", max_results=5)
     except Exception:
         return {}
 

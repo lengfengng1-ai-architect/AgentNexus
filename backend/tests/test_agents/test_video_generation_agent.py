@@ -245,23 +245,36 @@ def test_build_body_t2v():
     assert body["parameters"]["duration"] == 5
 
 
-def test_build_body_i2v_with_prompt():
-    """有 image_url 和 prompt 时走 I2V 分支。"""
-    body = _build_create_body(prompt="让图片动起来", image_url="https://example.com/img.png")
-    assert body["model"] == "happyhorse-1.1-i2v"
+def test_build_body_r2v_with_prompt():
+    """有 image_urls 和 prompt 时走 R2V 分支。"""
+    body = _build_create_body(prompt="让图片动起来", image_urls=["https://example.com/img.png"])
+    assert body["model"] == "happyhorse-1.1-r2v"
     assert body["input"] == {
-        "media": [{"type": "first_frame", "url": "https://example.com/img.png"}],
+        "media": [{"type": "reference_image", "url": "https://example.com/img.png"}],
         "prompt": "让图片动起来",
     }
 
 
-def test_build_body_i2v_without_prompt():
-    """有 image_url 但无 prompt 时，input 只包含 media。"""
-    body = _build_create_body(prompt="", image_url="https://example.com/img.png")
-    assert body["model"] == "happyhorse-1.1-i2v"
+def test_build_body_r2v_without_prompt():
+    """有 image_urls 但无 prompt 时，input 只包含 media。"""
+    body = _build_create_body(prompt="", image_urls=["https://example.com/img.png"])
+    assert body["model"] == "happyhorse-1.1-r2v"
     assert body["input"] == {
-        "media": [{"type": "first_frame", "url": "https://example.com/img.png"}],
+        "media": [{"type": "reference_image", "url": "https://example.com/img.png"}],
     }
+
+
+def test_build_body_r2v_multi_image():
+    """多图场景：image_urls 多个 URL 时 media 包含对应数量的 reference_image。"""
+    urls = ["https://example.com/img1.png", "https://example.com/img2.png", "https://example.com/img3.png"]
+    body = _build_create_body(prompt="动画", image_urls=urls)
+    assert body["model"] == "happyhorse-1.1-r2v"
+    assert body["input"]["media"] == [
+        {"type": "reference_image", "url": "https://example.com/img1.png"},
+        {"type": "reference_image", "url": "https://example.com/img2.png"},
+        {"type": "reference_image", "url": "https://example.com/img3.png"},
+    ]
+    assert body["input"]["prompt"] == "动画"
 
 
 def test_build_body_custom_params():
