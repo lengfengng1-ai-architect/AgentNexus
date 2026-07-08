@@ -43,31 +43,40 @@
 
 ### Requirement: 系统 SHALL 支持图生视频
 
-系统 SHALL 根据用户提供的图片 URL（和可选的文字描述），调用 HappyHorse I2V 模型生成动态短视频。
+系统 SHALL 根据用户提供的图片 URL（和可选的文字描述），调用 HappyHorse R2V 模型生成动态短视频，支持 1-9 张参考图片。
 
 #### Scenario: 图生视频标准流程
-- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体含有效 `image_url`
-- **THEN** 系统 SHALL 调用 HappyHorse I2V 模型创建任务
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体含有效 `image_urls`
+- **THEN** 系统 SHALL 调用 HappyHorse R2V 模型创建任务，`media[].type` 为 `reference_image`
 - **AND** 通过 SSE 流式返回进度和结果
 
 #### Scenario: 纯图生视频（无 prompt）
-- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体中不含 `prompt` 但含有效 `image_url`
-- **THEN** 系统 SHALL 调用 HappyHorse I2V 模型创建任务（仅使用图片帧）
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体中不含 `prompt` 但含有效 `image_urls`
+- **THEN** 系统 SHALL 调用 HappyHorse R2V 模型创建任务（仅使用参考图片）
 - **AND** 通过 SSE 流式返回进度和结果
 
 #### Scenario: 图+文生成视频
-- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体含有效 `image_url` 和 `prompt`
-- **THEN** 系统 SHALL 调用 HappyHorse I2V 模型，图片帧 + prompt 生成视频
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体含有效 `image_urls` 和 `prompt`
+- **THEN** 系统 SHALL 调用 HappyHorse R2V 模型，参考图片 + prompt 生成视频
 - **AND** 通过 SSE 流式返回进度和结果
 
-### Requirement: 系统 SHALL 校验 prompt 和 image_url 至少提供一个
+### Requirement: 系统 SHALL 校验 prompt 和 image_urls 至少提供一个
 
-POST /api/v1/video/generate 的请求体中，prompt 为可选字段，但必须与 image_url 至少提供一个。
+POST /api/v1/video/generate 的请求体中，prompt 为可选字段，但必须与 image_urls 至少提供一个。
 
-#### Scenario: prompt 和 image_url 均缺失
-- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体中既无 `prompt` 也无 `image_url`
+#### Scenario: prompt 和 image_urls 均缺失
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体中既无 `prompt` 也无 `image_urls`
 - **THEN** 系统 SHALL 返回 422 Validation Error
-- **AND** 错误信息提示 "prompt 和 image_url 至少提供一个"
+- **AND** 错误信息提示 "prompt 和 image_urls 至少提供一个"
+
+#### Scenario: 多图生视频标准流程
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体含 `image_urls: ["url1", "url2", "url3"]`
+- **THEN** 系统 SHALL 调用 HappyHorse R2V 模型创建任务
+- **AND** 请求体中 `input.media` SHALL 包含对应数量的 reference_image 条目
+
+#### Scenario: 超过 9 张图片
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，请求体含 `image_urls` 超过 9 个元素
+- **THEN** 系统 SHALL 返回 422 Validation Error，提示最多支持 9 张图片
 
 ### Requirement: 系统 SHALL 通过 SSE 持续推送生成进度
 
@@ -142,3 +151,25 @@ POST /api/v1/video/generate 的请求体中，prompt 为可选字段，但必须
 #### Scenario: 切换视频模型
 - **WHEN** 配置文件修改 DASHSCOPE_VIDEO_MODEL 值
 - **THEN** 下次视频生成请求使用新模型名，无需改代码
+
+### Requirement: prompt 字段 SHALL 有长度限制
+
+`POST /api/v1/video/generate` 的 `prompt` 字段 SHALL 设置最大长度限制，超出时返回 422 校验错误。
+
+#### Scenario: prompt 超限返回 422
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，`prompt` 字符数超过 10000
+- **THEN** 系统 SHALL 返回 422 Validation Error
+- **AND** 错误信息提示 prompt 超长
+
+#### Scenario: prompt 长度在限制内正常处理
+- **WHEN** 用户提交 `POST /api/v1/video/generate`，`prompt` 字符数 ≤ 10000
+- **THEN** 系统 SHALL 正常生成视频
+- **AND** 响应不受影响
+
+### Requirement: R2V 图生视频模型可配置
+
+系统 SHALL 通过 `DASHSCOPE_R2V_MODEL` 配置项指定图生视频模型，默认 `happyhorse-1.1-r2v`，不在外部环境暴露具体模型名以外的敏感信息。
+
+#### Scenario: 切换 R2V 模型
+- **WHEN** 配置文件修改 DASHSCOPE_R2V_MODEL 值
+- **THEN** 下次图生视频生成请求使用新模型名，无需改代码

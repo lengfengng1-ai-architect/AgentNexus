@@ -68,21 +68,21 @@ def _headers() -> dict[str, str]:
 def _build_create_body(
     *,
     prompt: str | None = None,
-    image_url: str | None = None,
+    image_urls: list[str] | None = None,
     resolution: str = DEFAULT_RESOLUTION,
     ratio: str = DEFAULT_RATIO,
     duration: int = DEFAULT_DURATION,
     seed: int | None = None,
 ) -> dict[str, Any]:
-    """根据 image_url 决定 T2V / I2V 的请求体结构。
+    """根据 image_urls 决定 T2V / R2V 的请求体结构。
 
-    - 有 image_url → HappyHorse I2V（model + input.media + input.prompt?）
-    - 无 image_url → HappyHorse T2V（model + input.prompt，prompt 必填）
+    - 有 image_urls → HappyHorse R2V（model + input.media + input.prompt?）
+    - 无 image_urls → HappyHorse T2V（model + input.prompt，prompt 必填）
     """
-    if image_url:
-        model = settings.dashscope_i2v_model
+    if image_urls and len(image_urls) > 0:
+        model = settings.dashscope_r2v_model
         inp: dict[str, Any] = {
-            "media": [{"type": "first_frame", "url": image_url}],
+            "media": [{"type": "reference_image", "url": url} for url in image_urls],
         }
         if prompt:
             inp["prompt"] = prompt
@@ -109,7 +109,7 @@ def _build_create_body(
 async def create_video_task(
     prompt: str | None = None,
     *,
-    image_url: str | None = None,
+    image_urls: list[str] | None = None,
     resolution: str = DEFAULT_RESOLUTION,
     ratio: str = DEFAULT_RATIO,
     duration: int = DEFAULT_DURATION,
@@ -124,7 +124,7 @@ async def create_video_task(
 
     body = _build_create_body(
         prompt=prompt,
-        image_url=image_url,
+        image_urls=image_urls,
         resolution=resolution,
         ratio=ratio,
         duration=duration,
@@ -208,7 +208,7 @@ async def poll_video_task(task_id: str) -> dict[str, Any]:
 async def stream_video_generation(
     prompt: str | None = None,
     *,
-    image_url: str | None = None,
+    image_urls: list[str] | None = None,
     resolution: str = DEFAULT_RESOLUTION,
     ratio: str = DEFAULT_RATIO,
     duration: int = DEFAULT_DURATION,
@@ -226,7 +226,7 @@ async def stream_video_generation(
         # 创建任务
         create_result = await create_video_task(
             prompt,
-            image_url=image_url,
+            image_urls=image_urls,
             resolution=resolution,
             ratio=ratio,
             duration=duration,

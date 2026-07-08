@@ -51,10 +51,12 @@ export function ChatContainer() {
     setShowConfirm('plan')
   }, [])
 
-  const handleNavigateVideo = useCallback((prompt: string, imageUrl?: string | null) => {
+  const handleNavigateVideo = useCallback((prompt: string, imageUrls?: string[]) => {
     const params = new URLSearchParams()
     params.set('prompt', prompt)
-    if (imageUrl) params.set('image_url', imageUrl)
+    if (imageUrls && imageUrls.length > 0) {
+      params.set('image_urls', imageUrls.join(','))
+    }
     window.location.href = `/video-test?${params.toString()}`
   }, [])
 

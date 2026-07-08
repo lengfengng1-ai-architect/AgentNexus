@@ -32,7 +32,7 @@ export interface ChatMessage {
   gate?: string | null
   confirmed?: boolean
   /** 图标生成导航 */
-  imageUrl?: string | null
+  imageUrls?: string[]
   videoPrompt?: string | null
   generationPrompt?: string | null
 }

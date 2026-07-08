@@ -55,11 +55,16 @@ components:
         prompt:
           type: string
           description: "文本提示词，用于描述期望生成的视频内容。无图片时必填。"
-          maxLength: 2500
-        image_url:
-          type: string
-          format: uri
-          description: "参考图片 URL。有则走图生视频（HappyHorse I2V），无则走文生视频（HappyHorse T2V）。"
+          maxLength: 10000
+        image_urls:
+          type: array
+          description: "参考图片 URL 列表（最多 9 张）。有则走图生视频 (HappyHorse R2V)，无则走文生视频 (HappyHorse T2V)。"
+          items:
+            type: string
+            format: uri
+            description: "图片 URL"
+          maxItems: 9
+          default: []
         resolution:
           type: string
           description: "分辨率"

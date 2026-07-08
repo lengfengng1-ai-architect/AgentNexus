@@ -43,7 +43,7 @@ interface ChatBubbleProps {
   message: ChatMessage
   onRetry?: (messageId: string) => void
   onGeneratePlan?: () => void
-  onNavigateVideo?: (prompt: string, imageUrl?: string | null) => void
+  onNavigateVideo?: (prompt: string, imageUrls?: string[]) => void
   onNavigateImage?: (prompt: string) => void
 }
 
@@ -54,14 +54,14 @@ export function ChatBubble({ message, onRetry, onGeneratePlan, onNavigateVideo, 
   const hasValidPrompt =
     (message.intent === 'text_to_image' && message.generationPrompt && message.generationPrompt.length > 3) ||
     (message.intent === 'text_to_video' && message.generationPrompt && message.generationPrompt.length > 3) ||
-    (message.intent === 'generate_video' && message.imageUrl)
+    (message.intent === 'generate_video' && message.imageUrls && message.imageUrls.length > 0)
 
   const handleNavigate = () => {
     if (!hasValidPrompt) return
     if (message.intent === 'generate_video' && onNavigateVideo) {
-      onNavigateVideo(message.videoPrompt || '', message.imageUrl)
+      onNavigateVideo(message.videoPrompt || '', message.imageUrls)
     } else if (message.intent === 'text_to_video' && onNavigateVideo) {
-      onNavigateVideo(message.generationPrompt!, message.imageUrl)
+      onNavigateVideo(message.generationPrompt!, message.imageUrls)
     } else if (message.intent === 'text_to_image' && onNavigateImage) {
       onNavigateImage(message.generationPrompt!)
     }
