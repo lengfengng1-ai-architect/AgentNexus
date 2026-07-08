@@ -220,12 +220,15 @@ export function PlanPage() {
   const [autoMode, setAutoMode] = useState(false)
   const userInteractedRef = useRef(false)
   const [activeTab, setActiveTab] = useState(0)
-  // 视频轮询:generating 或 undefined 时拉,有结果自动停
+  // 视频轮询:仅在未连接 SSE 时拉。
+  // SSE 连接中由事件驱动节点状态,轮询会触发 RESTORE_STATUS 重建所有节点,
+  // 覆盖 SSE 刚推过来的 running 状态(节点状态闪烁/误弹确认继续)。
   useEffect(() => {
+    if (isConnected) return
     if (pv?.status === 'completed' || pv?.status === 'failed') return
     const interval = setInterval(refreshStatus, 5000)
     return () => clearInterval(interval)
-  }, [pv?.status, refreshStatus])
+  }, [pv?.status, isConnected, refreshStatus])
 
   const TABS = [
     { idx: 0, label: '概览', agentId: '' },

@@ -672,8 +672,14 @@ def _status_for_state(
     cn = _next_node(state)
     if cn:
         current_node = cn
-        paused_snapshot = _paused_snapshot(state, cn)
-        status = "paused"
+        # 仅当下一节点是 interrupt 检查点时才视为 paused；
+        # 并行节点(product_research/market_research/audience_insight)未完成说明图仍在执行中,
+        # 误判 paused 会导致前端轮询覆盖 SSE 的 running 状态并误弹「确认继续」。
+        if cn in _INTERRUPT_BEFORE:
+            paused_snapshot = _paused_snapshot(state, cn)
+            status = "paused"
+        else:
+            status = "running"
     else:
         status = "completed"
 
