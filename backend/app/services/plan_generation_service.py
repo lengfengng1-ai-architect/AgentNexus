@@ -29,6 +29,7 @@ import aiosqlite
 from app.agents.llm_utils import drain_logs, write_log
 from app.agents.registry import get_handler
 from app.agents.video_generation_agent import create_video_task, poll_video_task
+from app.agents.image_generation_agent import run_image_generation
 from app.schemas.common import ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -64,6 +65,9 @@ _plan_db_initialized = False
 # ── 宣传视频缓存 ──────────────────────────────────────────
 # key: run_id, value: {status, video_url?, error?, task_id?}
 _promo_video_cache: dict[str, dict[str, Any]] = {}
+# ── 海报图片缓存 ──────────────────────────────────────────
+# key: run_id, value: {status, image_url?, error?, size?}
+_poster_cache: dict[str, dict[str, Any]] = {}
 _current_run_id: str | None = None  # 跟踪当前正在执行的 run_id
 
 
@@ -176,11 +180,12 @@ async def _ensure_plan_db_conn() -> aiosqlite.Connection:
                 current_node TEXT
             )
         """)
-        # Add promo_video column if it doesn't exist (migration-friendly)
-        try:
-            await _conn.execute("SELECT promo_video FROM plan_records LIMIT 0")
-        except Exception:
-            await _conn.execute("ALTER TABLE plan_records ADD COLUMN promo_video TEXT")
+        # Add promo_video / poster columns if missing (migration-friendly)
+        for col in ("promo_video", "poster"):
+            try:
+                await _conn.execute(f"SELECT {col} FROM plan_records LIMIT 0")
+            except Exception:
+                await _conn.execute(f"ALTER TABLE plan_records ADD COLUMN {col} TEXT")
         await _conn.commit()
         _plan_db_initialized = True
     if _conn is None:
@@ -216,6 +221,90 @@ async def _load_promo_video(run_id: str) -> dict[str, Any] | None:
             return json.loads(row[0])
     except Exception as exc:
         logger.warning("failed to load promo_video run=%s: %s", run_id, exc)
+    return None
+
+
+# ── 海报图片生成 ──────────────────────────────────────────
+DEFAULT_POSTER_SIZE = "2688*1536"  # 16:9 横版主视觉
+
+
+def _build_poster_content(chapters: list[dict[str, Any]]) -> str:
+    """从方案章节拼出海报生成的 plan_content（与前端 buildPosterPrompt 对齐）。
+
+    取前 4 章标题 + 内容摘要，拼成主视觉海报生成指令。
+    """
+    if not chapters:
+        return ""
+    summary = []
+    for c in chapters[:4]:
+        title = c.get("title", "")
+        content = str(c.get("content", "")).replace("\n", " ").replace("#*`", " ")
+        summary.append(f"{title}：{content[:120]}")
+    return (
+        "基于以下营销方案生成一张主视觉海报，要求画面大气、品牌感强、"
+        "色彩鲜明，突出运动场景与年轻活力：" + "；".join(summary)
+    )
+
+
+async def _run_poster(run_id: str, plan_content: str, size: str = DEFAULT_POSTER_SIZE) -> None:
+    """后台异步执行海报生成，结果写入缓存和 DB。"""
+    try:
+        cache_entry = {"status": "generating", "size": size}
+        _poster_cache[run_id] = cache_entry
+        await _save_poster(run_id, cache_entry)
+        logger.info("[poster] task created run=%s size=%s", run_id, size)
+
+        result = await run_image_generation({
+            "plan_content": plan_content,
+            "image_type": "main_visual",
+            "size": size,
+            "negative_prompt": "",
+        })
+        image_url = result.get("image_url")
+        cache_entry = {
+            "status": "completed",
+            "image_url": image_url,
+            "size": size,
+            "width": result.get("width", 0),
+            "height": result.get("height", 0),
+        }
+        _poster_cache[run_id] = cache_entry
+        logger.info("[poster] SUCCEEDED run=%s image_url=%s", run_id, image_url)
+        await _save_poster(run_id, cache_entry)
+    except Exception as exc:
+        logger.exception("[poster] background task failed run=%s", run_id)
+        cache_entry = {"status": "failed", "error": str(exc), "size": size}
+        _poster_cache[run_id] = cache_entry
+        await _save_poster(run_id, cache_entry)
+
+
+async def _save_poster(run_id: str, data: dict[str, Any]) -> None:
+    """Persist poster status to plan_records table."""
+    try:
+        conn = await _ensure_plan_db_conn()
+        now = datetime.now(timezone.utc).isoformat()
+        await conn.execute(
+            "UPDATE plan_records SET poster = ?, updated_at = ? WHERE run_id = ?",
+            (json.dumps(data, ensure_ascii=False, default=str), now, run_id),
+        )
+        await conn.commit()
+    except Exception as exc:
+        logger.warning("failed to save poster run=%s: %s", run_id, exc)
+
+
+async def _load_poster(run_id: str) -> dict[str, Any] | None:
+    """Load persisted poster data from plan_records table."""
+    try:
+        conn = await _ensure_plan_db_conn()
+        cur = await conn.execute(
+            "SELECT poster FROM plan_records WHERE run_id = ?",
+            (run_id,),
+        )
+        row = await cur.fetchone()
+        if row and row[0]:
+            return json.loads(row[0])
+    except Exception as exc:
+        logger.warning("failed to load poster run=%s: %s", run_id, exc)
     return None
 
 
@@ -339,6 +428,21 @@ def _build_node(node_id: str) -> Any:
                 logger.info("[promo_video] triggered async task for run=%s", rid)
             except Exception:
                 logger.exception("[promo_video] trigger failed, skipping video generation")
+
+        # After plan_generator completes, async trigger poster image generation.
+        # chapters 在本节点输出 result 中，取出拼成 plan_content 后后台生成。
+        if node_id == "plan_generator":
+            try:
+                rid = _current_run_id or ""
+                chapters = (result.get("plan_generator") or {}).get("chapters") or []
+                plan_content = _build_poster_content(chapters)
+                if plan_content:
+                    _poster_cache[rid] = {"status": "generating", "run_id": rid}
+                    await _save_poster(rid, _poster_cache[rid])
+                    asyncio.create_task(_run_poster(rid, plan_content))
+                    logger.info("[poster] triggered async task for run=%s", rid)
+            except Exception:
+                logger.exception("[poster] trigger failed, skipping poster generation")
 
         return result
 
@@ -509,9 +613,11 @@ def _translate_event(
             return None
         _counter[0] += 1
         logger.info("[sse] workflow.complete run=%s", run_id)
-        # 合并宣传视频状态，让前端能在 workflow.complete 时就收到 promo_video
+        # 合并宣传视频/海报状态，让前端能在 workflow.complete 时就收到
         if run_id in _promo_video_cache:
             output["promo_video"] = _promo_video_cache[run_id]
+        if run_id in _poster_cache:
+            output["poster"] = _poster_cache[run_id]
         return _sse_frame(
             event_id=_counter[0],
             event="workflow.complete",
@@ -924,9 +1030,13 @@ async def delete_run(run_id: str) -> None:
     saver = await _get_saver()
     await saver.adelete_thread(run_id)
     _promo_video_cache.pop(run_id, None)
+    _poster_cache.pop(run_id, None)
     try:
         conn = await _ensure_plan_db_conn()
-        await conn.execute("UPDATE plan_records SET promo_video = NULL WHERE run_id = ?", (run_id,))
+        await conn.execute(
+            "UPDATE plan_records SET promo_video = NULL, poster = NULL WHERE run_id = ?",
+            (run_id,),
+        )
         await conn.commit()
     except Exception:
         pass
@@ -936,6 +1046,7 @@ async def get_status(run_id: str) -> dict[str, Any]:
     """Return current run status including paused snapshot if applicable."""
     state = await _checkpoint_state(run_id)
     st = _status_for_state(state, run_id)
+    outputs = st.setdefault("outputs", {})
     # 合并宣传视频状态到 outputs：优先内存缓存，兜底 DB
     promo_video = _promo_video_cache.get(run_id)
     if promo_video is None:
@@ -943,10 +1054,20 @@ async def get_status(run_id: str) -> dict[str, Any]:
         if promo_video is not None:
             _promo_video_cache[run_id] = promo_video
     if promo_video is not None:
-        st.setdefault("outputs", {})["promo_video"] = promo_video
+        outputs["promo_video"] = promo_video
+    # 合并海报状态到 outputs：优先内存缓存，兜底 DB
+    poster = _poster_cache.get(run_id)
+    if poster is None:
+        poster = await _load_poster(run_id)
+        if poster is not None:
+            _poster_cache[run_id] = poster
+    if poster is not None:
+        outputs["poster"] = poster
     logger.info(
-        "[promo_video] get_status run=%s promo_video=%s",
-        run_id, json.dumps(promo_video, default=str, ensure_ascii=False),
+        "[status] run=%s promo_video=%s poster=%s",
+        run_id,
+        json.dumps(promo_video, default=str, ensure_ascii=False),
+        json.dumps(poster, default=str, ensure_ascii=False),
     )
     # 更新批次记录的状态和更新时间
     await _update_plan_record(run_id, st["status"], st.get("current_node"))
@@ -1019,3 +1140,26 @@ async def list_runs(limit: int = 20) -> list[dict[str, Any]]:
 async def run_exists(run_id: str) -> bool:
     """Return True if a checkpoint tuple exists for the run_id."""
     return await _checkpoint_tuple(run_id) is not None
+
+
+async def regenerate_poster(run_id: str, *, size: str = DEFAULT_POSTER_SIZE) -> dict[str, Any]:
+    """重新生成海报（换尺寸/手动重试），后台触发并立即返回 generating 状态。
+
+    从 checkpoint 取 plan_generator.chapters 构造 plan_content。
+    Returns: 当前 poster 状态 dict。
+    Raises ValueError: run 不存在或 chapters 为空。
+    """
+    state = await _checkpoint_state(run_id)
+    if state is None:
+        raise ValueError(f"Run {run_id} not found")
+    chapters = (state.get("plan_generator") or {}).get("chapters") or []
+    plan_content = _build_poster_content(chapters)
+    if not plan_content:
+        raise ValueError("方案章节为空，无法生成海报")
+
+    cache_entry = {"status": "generating", "size": size}
+    _poster_cache[run_id] = cache_entry
+    await _save_poster(run_id, cache_entry)
+    asyncio.create_task(_run_poster(run_id, plan_content, size))
+    logger.info("[poster] regenerate triggered run=%s size=%s", run_id, size)
+    return cache_entry
