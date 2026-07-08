@@ -1,0 +1,13 @@
+- [x] proposal.md — 变更提案（已完成）
+- [x] design.md — 技术设计（已完成）
+- [x] specs/plan-generation-pipeline/spec.md — delta spec（已完成）
+- [ ] **后端: 节点状态写表 + 前端轮询（代码已在 4ef1ca5 提交）**
+  - [x] `plan_generation_service.py`: 新增 `plan_node_status` 表、`_save_node_status`/`_load_node_statuses` 辅助函数
+  - [x] `_build_node` 中 handler 执行前写 `running`，成功写 `complete`，异常写 `failed`
+  - [x] `get_status` 返回 `outputs.node_statuses` 供轮询
+  - [x] `usePlanRun.ts`: 新增 `SYNC_NODE_STATUSES` action + reducer case
+  - [x] `refreshStatus` 每次轮询 dispatch SYNC_NODE_STATUSES
+  - [x] `RESTORE_STATUS` 读 outputs.node_statuses 做精准恢复
+  - [x] `PlanOutputs` 增加 node_statuses 类型
+- [ ] **归档**
+  - [ ] `/opsx:archive` — 归档变更，同步 delta spec 到主 spec
