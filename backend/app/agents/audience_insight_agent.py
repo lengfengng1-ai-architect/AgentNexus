@@ -7,6 +7,7 @@ superpowers in_scope ID: audience-insight
 
 import asyncio
 import json
+import logging
 from typing import Any
 
 from httpx import AsyncClient, HTTPError, TimeoutException
@@ -20,6 +21,8 @@ from app.agents.registry import register
 from app.config.cache_paths import AUDIENCE_DIR, persona_path
 from app.schemas.audience_insight import AudienceRawData, UserPersona
 from app.utils import extract_text_from_html
+
+logger = logging.getLogger(__name__)
 
 # ── 常量 ──
 SEARCH_MAX = 8
@@ -121,7 +124,16 @@ async def fetch_node(state: State) -> dict:
                 title = soup.title.string.strip() if soup.title and soup.title.string else None
                 write_log("audience_insight", f"✓ 成功读取 {url}（{len(text)} 字符）")
                 return FetchedPage(url=url, title=title, content=text)
-        except (TimeoutException, HTTPError, Exception):
+        except TimeoutException as exc:
+            logger.warning("audience_insight timeout: %s (%s)", url, exc)
+            write_log("audience_insight", f"⏱️ {url} 请求超时，跳过")
+            return FetchedPage(url=url, title=None, content="", fetched=False)
+        except HTTPError as exc:
+            logger.warning("audience_insight HTTP error: %s (%s)", url, exc)
+            write_log("audience_insight", f"⚠️ {url} HTTP 错误，跳过")
+            return FetchedPage(url=url, title=None, content="", fetched=False)
+        except Exception as exc:
+            logger.exception("audience_insight fetch failed: %s", url)
             write_log("audience_insight", f"⚠️ {url} 读取失败，跳过")
             return FetchedPage(url=url, title=None, content="", fetched=False)
 

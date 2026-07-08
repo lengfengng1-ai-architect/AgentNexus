@@ -202,13 +202,16 @@ async def fetch_node(state: ProductResearchState) -> dict:
                 title = soup.title.string.strip() if soup.title and soup.title.string else None
                 write_log("product_research", f"✓ 成功读取 {url}（{len(text)} 字符）")
                 return FetchedPage(url=url, title=title, content=text)
-        except TimeoutException:
+        except TimeoutException as exc:
+            logger.warning("product_research timeout: %s (%s)", url, exc)
             write_log("product_research", f"⏱️ {url} 请求超时，跳过")
             return FetchedPage(url=url, title=None, content="", fetched=False)
-        except HTTPError:
+        except HTTPError as exc:
+            logger.warning("product_research HTTP error: %s (%s)", url, exc)
             write_log("product_research", f"⚠️ {url} HTTP 错误，跳过")
             return FetchedPage(url=url, title=None, content="", fetched=False)
         except Exception:
+            logger.exception("product_research fetch failed: %s", url)
             write_log("product_research", f"⚠️ {url} 读取失败，跳过")
             return FetchedPage(url=url, title=None, content="", fetched=False)
 
