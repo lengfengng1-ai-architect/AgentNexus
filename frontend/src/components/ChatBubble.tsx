@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ChatMessage } from '../types/chat'
+import { InlineVideoCard } from './InlineVideoCard'
+import { InlineImageCard } from './InlineImageCard'
 
 function TypingIndicator() {
   return (
@@ -43,31 +45,16 @@ interface ChatBubbleProps {
   message: ChatMessage
   onRetry?: (messageId: string) => void
   onGeneratePlan?: () => void
-  onNavigateVideo?: (prompt: string, imageUrls?: string[]) => void
-  onNavigateImage?: (prompt: string) => void
+  onVideoResult?: (messageId: string, result: NonNullable<ChatMessage['videoResult']>) => void
+  onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function ChatBubble({ message, onRetry, onGeneratePlan, onNavigateVideo, onNavigateImage }: ChatBubbleProps) {
+export function ChatBubble({ message, onRetry, onGeneratePlan, onVideoResult, onImageResult }: ChatBubbleProps) {
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
-
-  const hasValidPrompt =
-    (message.intent === 'text_to_image' && message.generationPrompt && message.generationPrompt.length > 3) ||
-    (message.intent === 'text_to_video' && message.generationPrompt && message.generationPrompt.length > 3) ||
-    (message.intent === 'generate_video' && message.imageUrls && message.imageUrls.length > 0)
-
-  const handleNavigate = () => {
-    if (!hasValidPrompt) return
-    if (message.intent === 'generate_video' && onNavigateVideo) {
-      onNavigateVideo(message.videoPrompt || '', message.imageUrls)
-    } else if (message.intent === 'text_to_video' && onNavigateVideo) {
-      onNavigateVideo(message.generationPrompt!, message.imageUrls)
-    } else if (message.intent === 'text_to_image' && onNavigateImage) {
-      onNavigateImage(message.generationPrompt!)
-    }
-  }
-
-  const genLabel = message.intent === 'text_to_image' ? '生成图片' : '生成视频'
+  const isVideoIntent = message.intent === 'generate_video' || message.intent === 'text_to_video'
+  const videoPrompt = message.intent === 'generate_video' ? message.videoPrompt : message.generationPrompt
+  const isImageIntent = message.intent === 'text_to_image'
 
   return (
     <div className={['flex w-full', isUser ? 'justify-end' : 'justify-start'].join(' ')}>
@@ -91,14 +78,24 @@ export function ChatBubble({ message, onRetry, onGeneratePlan, onNavigateVideo, 
             message.content
           )}
         </div>
-        {!isUser && hasValidPrompt && !isStreaming && (
-          <button
-            type="button"
-            onClick={handleNavigate}
-            className="mt-3 rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
-          >
-            {genLabel}
-          </button>
+        {/* InlineVideoCard for video intents */}
+        {!isUser && isVideoIntent && !isStreaming && (
+          <InlineVideoCard
+            prompt={videoPrompt}
+            imageUrls={message.imageUrls ?? []}
+            messageId={message.id}
+            existingResult={message.videoResult}
+            onVideoResult={onVideoResult}
+          />
+        )}
+        {/* InlineImageCard for image intents */}
+        {!isUser && isImageIntent && message.generationPrompt && message.generationPrompt.length > 3 && !isStreaming && (
+          <InlineImageCard
+            prompt={message.generationPrompt}
+            messageId={message.id}
+            existingResult={message.imageResult}
+            onImageResult={onImageResult}
+          />
         )}
         {!isUser && message.canGeneratePlan && onGeneratePlan && (
           <button

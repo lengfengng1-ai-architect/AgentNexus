@@ -28,7 +28,7 @@ class ImageGenerateData(BaseModel):
 
 @router.post("/image/generate")
 async def image_generate(body: ImageGenerateRequest) -> APIResponse:
-    """直通 Qwen-Image API 生成图片（测试用）。"""
+    """直通 Qwen-Image API 生成图片。"""
     try:
         result = await run_image_generation({
             "plan_content": body.prompt,
@@ -36,8 +36,16 @@ async def image_generate(body: ImageGenerateRequest) -> APIResponse:
             "size": body.size,
             "negative_prompt": "",
         })
+
+        image_url = result.get("image_url", "")
+        if not image_url:
+            return APIResponse(
+                success=False,
+                error=APIError(detail="图片生成返回了空 URL", code=ErrorCode.BAD_REQUEST, errors=None),
+            )
+
         return APIResponse(data=ImageGenerateData(
-            image_url=result["image_url"],
+            image_url=image_url,
             width=result.get("width", 0),
             height=result.get("height", 0),
         ).model_dump())

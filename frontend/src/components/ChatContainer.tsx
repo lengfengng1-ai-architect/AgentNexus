@@ -20,6 +20,8 @@ export function ChatContainer() {
     retryMessage,
     prefillInput,
     setInputValue,
+    updateVideoResult,
+    updateImageResult,
   } = useChat()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -39,9 +41,9 @@ export function ChatContainer() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  const handleSend = useCallback(() => {
-    if (inputValue.trim()) {
-      sendMessage(inputValue.trim())
+  const handleSend = useCallback((imageUrls?: string[]) => {
+    if (inputValue.trim() || (imageUrls && imageUrls.length > 0)) {
+      sendMessage(inputValue.trim(), imageUrls)
     }
   }, [inputValue, sendMessage])
 
@@ -49,19 +51,6 @@ export function ChatContainer() {
     if (!brandInput) return
     setPendingBrandInput(brandInput)
     setShowConfirm('plan')
-  }, [])
-
-  const handleNavigateVideo = useCallback((prompt: string, imageUrls?: string[]) => {
-    const params = new URLSearchParams()
-    params.set('prompt', prompt)
-    if (imageUrls && imageUrls.length > 0) {
-      params.set('image_urls', imageUrls.join(','))
-    }
-    window.location.href = `/video-test?${params.toString()}`
-  }, [])
-
-  const handleNavigateImage = useCallback((prompt: string) => {
-    window.location.href = `/image-test?prompt=${encodeURIComponent(prompt)}`
   }, [])
 
   const handleConfirmGenerate = useCallback(() => {
@@ -97,8 +86,8 @@ export function ChatContainer() {
                   message={message}
                   onRetry={message.retryable ? retryMessage : undefined}
                   onGeneratePlan={latestBrandInput ? () => handleGeneratePlan(latestBrandInput) : undefined}
-                  onNavigateVideo={handleNavigateVideo}
-                  onNavigateImage={handleNavigateImage}
+                  onVideoResult={updateVideoResult}
+                  onImageResult={updateImageResult}
                 />
               ),
             )}

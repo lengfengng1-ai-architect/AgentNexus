@@ -14,6 +14,19 @@ interface ChatState {
   error: string | null
 }
 
+interface ImageResultData {
+  image_url: string
+  prompt_used?: string
+  width?: number
+  height?: number
+}
+
+interface VideoResultData {
+  task_id: string
+  video_url: string
+  usage?: { resolution?: number; ratio?: string; output_video_duration?: number }
+}
+
 type ChatAction =
   | { type: 'SET_INPUT'; value: string }
   | { type: 'SEND_MESSAGE'; content: string }
@@ -24,6 +37,8 @@ type ChatAction =
   | { type: 'CLEAR_ERROR' }
   | { type: 'RETRY_MESSAGE'; messageId: string }
   | { type: 'LOAD_HISTORY'; messages: ChatMessage[] }
+  | { type: 'VIDEO_RESULT'; messageId: string; videoResult: VideoResultData }
+  | { type: 'IMAGE_RESULT'; messageId: string; imageResult: ImageResultData }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
   return {
@@ -131,6 +146,20 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'LOAD_HISTORY':
       return { ...state, messages: action.messages }
 
+    case 'VIDEO_RESULT': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId ? { ...m, videoResult: action.videoResult } : m,
+      )
+      return { ...state, messages: next }
+    }
+
+    case 'IMAGE_RESULT': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId ? { ...m, imageResult: action.imageResult } : m,
+      )
+      return { ...state, messages: next }
+    }
+
     default:
       return state
   }
@@ -158,8 +187,8 @@ export function useChat() {
 
   const setInputValue = useCallback((value: string) => { dispatch({ type: 'SET_INPUT', value }) }, [])
 
-  const sendMessage = useCallback(async (content: string) => {
-    if (isProcessingRef.current || !content.trim()) return
+  const sendMessage = useCallback(async (content: string, imageUrls?: string[]) => {
+    if (isProcessingRef.current || (!content.trim() && (!imageUrls || imageUrls.length === 0))) return
     isProcessingRef.current = true
     dispatch({ type: 'CLEAR_ERROR' })
     dispatch({ type: 'SEND_MESSAGE', content: content.trim() })
@@ -173,6 +202,7 @@ export function useChat() {
       .slice(-10) // keep last 10 exchanges
     const context: Record<string, unknown> = { conversation_history: conversationHistory }
     if (lastBrand) context.brand_input = lastBrand
+    if (imageUrls && imageUrls.length > 0) context.image_urls = imageUrls
 
     try {
       let intentReceived = false
@@ -251,6 +281,14 @@ export function useChat() {
 
   const prefillInput = useCallback((text: string) => { dispatch({ type: 'SET_INPUT', value: text }) }, [])
 
+  const updateVideoResult = useCallback((messageId: string, videoResult: VideoResultData) => {
+    dispatch({ type: 'VIDEO_RESULT', messageId, videoResult })
+  }, [])
+
+  const updateImageResult = useCallback((messageId: string, imageResult: ImageResultData) => {
+    dispatch({ type: 'IMAGE_RESULT', messageId, imageResult })
+  }, [])
+
   const latestBrandInput = getLatestBrandInput(state.messages)
   return {
     messages: state.messages,
@@ -262,6 +300,8 @@ export function useChat() {
     retryMessage,
     prefillInput,
     setInputValue,
+    updateVideoResult,
+    updateImageResult,
   }
 }
 
