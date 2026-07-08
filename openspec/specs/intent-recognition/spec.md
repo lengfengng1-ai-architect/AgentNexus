@@ -46,6 +46,53 @@ TBD - created by archiving change add-intent-recognition-agent. Update Purpose a
 - **THEN** 输出 `intent` SHALL 为 `generate_plan`
 - **AND** `reply` SHALL 包含确认文案
 
+#### Scenario: 用户想用图片生成视频
+- **GIVEN** 用户上传图片附件 + 输入"把这张图做成视频"
+- **AND** 上下文中包含 `image_url`
+- **WHEN** 调用 `intent_recognition` 节点
+- **THEN** 输出 `intent` SHALL 为 `generate_video`
+- **AND** `image_url` SHALL 从附件元数据提取
+- **AND** `video_prompt` SHALL 从用户输入提取
+- **AND** `confidence` SHALL ≥ 0.8
+
+#### Scenario: 用户想生成视频但未提供图片
+- **GIVEN** 用户输入"帮我生成视频"
+- **AND** 未提供图片附件（上下文中无 `image_url`）
+- **WHEN** 调用 `intent_recognition` 节点
+- **THEN** 输出 `intent` SHALL 为 `generate_video`
+- **AND** `missing_fields` SHALL 包含 `image_url`
+- **AND** `reply` SHALL 询问"请提供需要生成视频的图片"
+
+#### Scenario: 用户想用文字描述生成视频
+- **GIVEN** 用户输入"帮我用文字生成一段夕阳海滩的视频"
+- **AND** 上下文中不含 `image_url`
+- **WHEN** 调用 `intent_recognition` 节点
+- **THEN** 输出 `intent` SHALL 为 `text_to_video`
+- **AND** `generation_prompt` SHALL 从用户输入提取
+- **AND** `confidence` SHALL ≥ 0.8
+
+#### Scenario: 用户说"生成一段视频"但未提供具体描述
+- **GIVEN** 用户输入"生成一段视频"
+- **AND** 输入中不包含具体的场景/主题/风格描述
+- **AND** 上下文中不含 `image_url`
+- **WHEN** 调用 `intent_recognition` 节点
+- **THEN** 输出 `intent` SHALL 为 `chat`
+- **AND** `reply` SHALL 询问用户希望生成什么样的视频
+
+#### Scenario: 用户想用文字描述生成图片
+- **GIVEN** 用户输入"帮我画一张赛博朋克风格的海报"
+- **WHEN** 调用 `intent_recognition` 节点
+- **THEN** 输出 `intent` SHALL 为 `text_to_image`
+- **AND** `generation_prompt` SHALL 从用户输入提取
+- **AND** `confidence` SHALL ≥ 0.8
+
+#### Scenario: 用户说"我要生成图片"但未提供具体描述
+- **GIVEN** 用户输入"我要生成图片"
+- **AND** 输入中不包含具体的场景/主题/风格描述
+- **WHEN** 调用 `intent_recognition` 节点
+- **THEN** 输出 `intent` SHALL 为 `chat`
+- **AND** `reply` SHALL 询问用户希望生成什么样的图片
+
 #### Scenario: 用户修改已有上下文
 - **GIVEN** 当前上下文中 `brand_input.city` 为 "上海"
 - **AND** 用户输入 "改成北京"
@@ -61,7 +108,7 @@ TBD - created by archiving change add-intent-recognition-agent. Update Purpose a
 #### Scenario: 输出结构校验
 - **WHEN** `intent_recognition` 节点返回结果
 - **THEN** 结果 SHALL 能通过 `IntentRecognitionOutput` 校验
-- **AND** `intent` SHALL 为 `generate_plan`、`query_data`、`chat`、`clarify`、`update_context` 之一
+- **AND** `intent` SHALL 为 `generate_plan`、`query_data`、`chat`、`clarify`、`update_context`、`generate_video`、`text_to_video`、`text_to_image` 之一
 - **AND** `confidence` SHALL 在 0.0 到 1.0 之间
 
 ### Requirement: 意图识别 Prompt 模板使用 Jinja2 且不可运行时自修改

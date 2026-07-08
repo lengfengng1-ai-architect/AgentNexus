@@ -17,7 +17,7 @@ class IntentRecognitionOutput(BaseModel):
     intent: str = Field(
         ...,
         description="用户意图",
-        pattern="^(generate_plan|query_data|chat|clarify|update_context)$",
+        pattern="^(generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image)$",
     )
     confidence: float = Field(..., ge=0.0, le=1.0, description="意图置信度")
     reply: str = Field(..., description="给用户的直接回复文案")
@@ -25,7 +25,7 @@ class IntentRecognitionOutput(BaseModel):
         default_factory=BrandInput, description="提取或更新后的品牌需求字段"  # type: ignore[arg-type]
     )
     missing_fields: list[str] = Field(
-        default_factory=list, description="缺失字段列表，用于 clarify 意图"
+        default_factory=list, description="缺失字段列表，用于 clarify / generate_video 反问"
     )
     updated_fields: dict[str, Any] = Field(
         default_factory=dict, description="update_context 时更新的字段"
@@ -38,6 +38,18 @@ class IntentRecognitionOutput(BaseModel):
     )
     gate: str | None = Field(
         default=None, description="需要确认的门类型，如 'generate_plan'"
+    )
+    image_url: str | None = Field(
+        default=None,
+        description="图生视频的图片 URL，从附件元数据传递",
+    )
+    video_prompt: str | None = Field(
+        default=None,
+        description="视频内容的文字描述（可选），从用户输入提取",
+    )
+    generation_prompt: str | None = Field(
+        default=None,
+        description="用户输入的生成描述，对 text_to_video / text_to_image 从用户消息中提取",
     )
 
 
