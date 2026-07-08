@@ -23,8 +23,19 @@ logger = logging.getLogger(__name__)
 DEFAULT_RESOLUTION = "720P"
 DEFAULT_RATIO = "16:9"
 DEFAULT_DURATION = 5
-POLL_INTERVAL = 5  # 轮询间隔（秒）
-MAX_POLL_SECONDS = 600  # 最多等 10 分钟
+POLL_INTERVAL_FAST = 5  # 前 30s 轮询间隔（秒）
+POLL_INTERVAL_SLOW = 10  # 30s 后轮询间隔（秒）
+FAST_PHASE_DURATION = 30  # 快轮询阶段持续秒数
+MAX_POLL_SECONDS = 600  # 最多等 10 分钟（用于 poll_video_task 超时）
+
+
+def _estimate_max_poll_seconds(duration: int = DEFAULT_DURATION) -> int:
+    """根据视频时长估算最大等待秒数，用于 progress_pct 分母。
+
+    公式: clamp(120 + duration × 40, 180, 600)
+    - 1.5s → 180, 3s → 240, 5s → 320, 10s → 520, 15s → 600
+    """
+    return max(180, min(600, 120 + duration * 40))
 
 
 def _build_base_url() -> str:
@@ -186,8 +197,8 @@ async def poll_video_task(task_id: str) -> dict[str, Any]:
             # 非终态 → 等一段时间再轮询
             import asyncio
 
-            await asyncio.sleep(POLL_INTERVAL)
-            elapsed += POLL_INTERVAL
+            await asyncio.sleep(POLL_INTERVAL_FAST)
+            elapsed += POLL_INTERVAL_FAST
 
     raise TimeoutError(f"视频任务 {task_id} 超过 {MAX_POLL_SECONDS}s 仍未完成，请稍后手动查询")
 
@@ -224,6 +235,7 @@ async def stream_video_generation(
             "task_id": create_result["task_id"],
             "status": create_result["task_status"],
             "message": "视频生成任务已创建，正在排队…",
+            "progress_pct": 0,
         })
 
         # 流式轮询：每次循环 yield progress,避免 SSE 连接空闲超时
@@ -233,7 +245,11 @@ async def stream_video_generation(
         elapsed = 0
         poll_count = 0
         last_status = "PENDING"
+        max_poll_seconds = _estimate_max_poll_seconds(duration)  # progress_pct 动态分母
         while elapsed < MAX_POLL_SECONDS:
+            # 动态轮询间隔
+            poll_interval = POLL_INTERVAL_FAST if elapsed < FAST_PHASE_DURATION else POLL_INTERVAL_SLOW
+
             try:
                 async with httpx.AsyncClient(timeout=15) as client:
                     resp = await client.get(url, headers=_headers())
@@ -245,9 +261,10 @@ async def stream_video_generation(
                     "status": last_status,
                     "message": f"轮询网络抖动,稍后重试 (已等 {elapsed}s)…",
                     "elapsed": elapsed,
+                    "progress_pct": min(90, int(elapsed / max_poll_seconds * 90)),
                 })
-                await asyncio.sleep(POLL_INTERVAL)
-                elapsed += POLL_INTERVAL
+                await asyncio.sleep(poll_interval)
+                elapsed += poll_interval
                 continue
 
             if resp.status_code != 200:
@@ -273,15 +290,17 @@ async def stream_video_generation(
                 break
 
             # 仍 RUNNING/PENDING → 推 progress
+            progress_pct = min(90, int(elapsed / max_poll_seconds * 90))
             yield _sse("progress", {
                 "stage": "polling",
                 "task_id": task_id,
                 "status": status,
                 "message": f"正在生成视频…(第 {poll_count} 次轮询,已等 {elapsed}s)",
                 "elapsed": elapsed,
+                "progress_pct": progress_pct,
             })
-            await asyncio.sleep(POLL_INTERVAL)
-            elapsed += POLL_INTERVAL
+            await asyncio.sleep(poll_interval)
+            elapsed += poll_interval
         else:
             # while 条件为 False 自然结束(超时)
             yield _sse("error", {
@@ -299,6 +318,7 @@ async def stream_video_generation(
                 "task_id": task_id,
                 "message": "视频生成完成！",
                 "elapsed": elapsed,
+                "progress_pct": 100,
             })
             yield _sse("result", {
                 "task_id": task_id,

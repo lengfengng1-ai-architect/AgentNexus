@@ -16,7 +16,7 @@ const NAV: { key: Page; label: string; children?: { key: string; label: string }
     children: [
       { key: 'intent', label: '意图识别' },
       { key: 'image', label: '图片测试' },
-      { key: 'video', label: '文生视频' },
+      { key: 'video', label: '图生视频' },
     ],
   },
 ]

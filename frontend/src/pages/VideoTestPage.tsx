@@ -7,6 +7,8 @@ interface ProgressEvent {
   task_id?: string
   status: string
   message: string
+  elapsed?: number
+  progress_pct?: number
 }
 
 export function VideoTestPage() {
@@ -18,20 +20,23 @@ export function VideoTestPage() {
   const [seed, setSeed] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [progress, setProgress] = useState<ProgressEvent[]>([])
+  const [currentStatus, setCurrentStatus] = useState<ProgressEvent | null>(null)
   const [result, setResult] = useState<VideoResult | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   async function handleGenerate() {
-    const trimmed = prompt.trim()
-    if (!trimmed || isLoading) return
+    const trimmedImg = imageUrl.trim()
+    if (!trimmedImg) return
+    if (isLoading) return
 
     setIsLoading(true)
     setProgress([])
+    setCurrentStatus(null)
     setResult(null)
     setError(null)
 
     const params: VideoParams = {
-      prompt: trimmed,
+      prompt: prompt.trim(),
       image_url: imageUrl.trim() || null,
       resolution,
       ratio,
@@ -43,6 +48,7 @@ export function VideoTestPage() {
       for await (const event of streamVideoGeneration(params)) {
         if (event.progress) {
           setProgress(prev => [...prev, event.progress!])
+          setCurrentStatus(event.progress)
         }
         if (event.result) {
           setResult(event.result)
@@ -69,27 +75,10 @@ export function VideoTestPage() {
 
   return (
     <div className="mx-auto flex max-w-3xl flex-col gap-6 overflow-y-auto px-4 py-6">
-      {/* 提示词 */}
-      <div>
-        <label htmlFor="video-prompt" className="mb-2 block text-sm font-medium text-track">
-          视频提示词
-        </label>
-        <textarea
-          id="video-prompt"
-          rows={4}
-          value={prompt}
-          onChange={e => setPrompt(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={isLoading}
-          placeholder="描述你想生成的视频内容，例如：一只毛茸茸的柯基犬在沙滩上奔跑，夕阳西下，海浪拍打岸边"
-          className="w-full resize-none rounded-2xl border border-line bg-white p-4 text-sm outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:bg-mist"
-        />
-      </div>
-
-      {/* 图片 URL（可选） */}
+      {/* 图片 URL（必填 — 图生视频） */}
       <div>
         <label htmlFor="video-image-url" className="mb-2 block text-sm font-medium text-track">
-          图片 URL <span className="text-xs text-track/40">（可选，有则走图生视频）</span>
+          图片 URL
         </label>
         <input
           id="video-image-url"
@@ -99,6 +88,23 @@ export function VideoTestPage() {
           disabled={isLoading}
           placeholder="https://… 输入图片 URL 将图片变为动态视频"
           className="w-full rounded-2xl border border-line bg-white px-4 py-3 text-sm outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:bg-mist"
+        />
+      </div>
+
+      {/* 提示词（可选） */}
+      <div>
+        <label htmlFor="video-prompt" className="mb-2 block text-sm font-medium text-track">
+          视频提示词 <span className="text-xs text-track/40">（可选）</span>
+        </label>
+        <textarea
+          id="video-prompt"
+          rows={4}
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          onKeyDown={handleKeyDown}
+          disabled={isLoading}
+          placeholder="可选：补充描述视频的期望内容，例如：一只毛茸茸的柯基犬在沙滩上奔跑，夕阳西下，海浪拍打岸边"
+          className="w-full resize-none rounded-2xl border border-line bg-white p-4 text-sm outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:bg-mist"
         />
       </div>
 
@@ -162,40 +168,66 @@ export function VideoTestPage() {
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={isLoading || !prompt.trim()}
+          disabled={isLoading || !imageUrl.trim()}
           className="rounded-xl bg-start px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-start/90 disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40"
         >
           {isLoading ? '生成中…' : '生成视频'}
         </button>
       </div>
 
-      {/* 进度条 */}
-      {progress.length > 0 && (
-        <div className="space-y-2 rounded-2xl border border-line bg-white p-4">
-          <h3 className="text-sm font-semibold text-track">生成进度</h3>
-          <div className="space-y-1.5">
-            {progress.map((p, i) => (
-              <div key={i} className="flex items-center gap-2 text-sm">
-                <span className={`inline-block h-2 w-2 rounded-full ${
-                  p.status === 'SUCCEEDED'
-                    ? 'bg-green-500'
-                    : p.status === 'FAILED'
-                      ? 'bg-red-500'
-                      : 'bg-amber-400 animate-pulse'
-                }`} />
-                <span className="text-track/70">{p.message}</span>
-                {p.task_id && (
-                  <span className="ml-auto font-mono text-[10px] text-track/40">
-                    {p.task_id.slice(0, 8)}…
-                  </span>
-                )}
-              </div>
-            ))}
+      {/* 状态面板 */}
+      {currentStatus && isLoading && (
+        <div className="space-y-3 rounded-2xl border border-line bg-white p-4">
+          {/* 单行状态 */}
+          <div className="flex items-center gap-2 text-sm">
+            <span className="inline-block h-2.5 w-2.5 animate-pulse rounded-full bg-amber-400" />
+            <span className="font-medium text-track">{currentStatus.message}</span>
+            {currentStatus.elapsed != null && (
+              <span className="ml-auto whitespace-nowrap font-mono text-xs text-track/50">
+                已等 {currentStatus.elapsed}s
+              </span>
+            )}
           </div>
-          {isLoading && (
-            <div className="mt-2 h-1.5 w-full overflow-hidden rounded-full bg-mist">
-              <div className="h-full w-1/2 animate-pulse rounded-full bg-start/50" />
+
+          {/* 进度条 */}
+          <div className="space-y-1">
+            <div className="h-2 w-full overflow-hidden rounded-full bg-mist">
+              <div
+                className="h-full rounded-full bg-start transition-all duration-500 ease-out"
+                style={{ width: `${currentStatus.progress_pct ?? 0}%` }}
+              />
             </div>
+            <p className="text-right text-xs text-track/40">
+              约 {currentStatus.progress_pct ?? 0}%
+            </p>
+          </div>
+
+          {/* 折叠详细日志 */}
+          {progress.length > 1 && (
+            <details className="group">
+              <summary className="cursor-pointer text-xs font-medium text-track/50 transition-colors hover:text-track/70">
+                详细日志 ({progress.length - 1} 次轮询)
+              </summary>
+              <div className="mt-2 max-h-[200px] space-y-1 overflow-y-auto rounded-xl bg-mist p-3">
+                {progress.map((p, i) => (
+                  <div key={i} className="flex items-center gap-2 text-xs text-track/60">
+                    <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${
+                      p.status === 'SUCCEEDED'
+                        ? 'bg-green-500'
+                        : p.status === 'FAILED'
+                          ? 'bg-red-500'
+                          : 'bg-amber-400'
+                    }`} />
+                    <span className="flex-1 truncate">{p.message}</span>
+                    {p.progress_pct != null && (
+                      <span className="shrink-0 font-mono text-[10px] text-track/40">
+                        {p.progress_pct}%
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </details>
           )}
         </div>
       )}
