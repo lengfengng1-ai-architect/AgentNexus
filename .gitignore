@@ -30,6 +30,7 @@ backend/data/plan_records.db*
 
 # Backend runtime logs
 backend/logs/
+logs/
 
 # E2E test screenshots (Playwright visual regression)
 frontend/e2e/__screenshots__/
