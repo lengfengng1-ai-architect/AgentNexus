@@ -7,7 +7,7 @@ import {
   rerunPlanRun,
   startPlanRun,
 } from '../api/plan'
-import type { PlanChapter, PlanLogEvent, PlanNode, PlanOutputs } from '../types/plan'
+import type { PlanChapter, PlanLogEvent, PlanNode, PlanNodeStatus, PlanOutputs } from '../types/plan'
 
 const PIPELINE_NODES: { id: string; label: string }[] = [
   { id: 'product_research', label: '产品调研' },
@@ -59,6 +59,7 @@ type PlanRunAction =
   | { type: 'CHAPTER_COMPLETE'; chapter: PlanChapter }
   | { type: 'SET_LOADING'; loading: boolean }
   | { type: 'RESTORE_STATUS'; status: PlanRunStatus; outputs: PlanOutputs; failedNode: string | null; error: string | null; completedNodes: string[]; pausedNode: string | null; pausedSnapshot: PlanRunState['pausedSnapshot'] }
+  | { type: 'SYNC_NODE_STATUSES'; nodeStatuses: { node_id: string; status: string; started_at?: string; completed_at?: string }[] }
 
 function buildInitialNodes(): PlanNode[] {
   return PIPELINE_NODES.map((node) => ({
@@ -181,6 +182,15 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
         const idx = nextNodes.findIndex(n => n.id === action.pausedNode)
         if (idx >= 0) nextNodes[idx] = { ...nextNodes[idx], status: 'waiting' }
       }
+      // 如果 outputs 中有 node_statuses,用它覆盖节点状态(更精准)
+      const ns = (action.outputs?.node_statuses || []) as { node_id: string; status: string }[]
+      for (const n of ns) {
+        const idx = nextNodes.findIndex(x => x.id === n.node_id)
+        if (idx >= 0) {
+          const map: Record<string, PlanNodeStatus> = { running: 'running', complete: 'complete', failed: 'failed', pending: 'pending' }
+          nextNodes[idx] = { ...nextNodes[idx], status: map[n.status] || 'pending' }
+        }
+      }
       return {
         ...state,
         status: action.status,
@@ -193,6 +203,20 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
         pausedSnapshot: action.pausedSnapshot,
         isConnected: false,
         isLoading: false,
+      }
+    }
+    case 'SYNC_NODE_STATUSES': {
+      const ns = action.nodeStatuses
+      return {
+        ...state,
+        nodes: state.nodes.map(n => {
+          const found = ns.find(x => x.node_id === n.id)
+          if (!found) return n
+          const map: Record<string, PlanNodeStatus> = { running: 'running', complete: 'complete', failed: 'failed', pending: 'pending' }
+          const newStatus = map[found.status]
+          if (!newStatus || newStatus === n.status) return n
+          return { ...n, status: newStatus, startedAt: found.started_at ? Date.now() : n.startedAt, completedAt: found.completed_at ? Date.now() : n.completedAt }
+        }),
       }
     }
     default:
@@ -507,6 +531,7 @@ export function usePlanRun() {
     if (!state.runId) return
     try {
       const result = await getPlanRunStatus(state.runId)
+      const ns = (result.outputs?.node_statuses || []) as { node_id: string; status: string }[]
       if (result.status === 'completed') {
         dispatch({ type: 'WORKFLOW_COMPLETE', outputs: result.outputs as PlanOutputs })
       } else if (result.status === 'failed') {
@@ -527,16 +552,12 @@ export function usePlanRun() {
           pausedSnapshot: result.paused_snapshot,
         })
       } else if (result.status === 'running') {
-        dispatch({
-          type: 'RESTORE_STATUS',
-          status: 'running',
-          outputs: result.outputs as PlanOutputs,
-          failedNode: null,
-          error: null,
-          completedNodes: result.completed_nodes ?? [],
-          pausedNode: null,
-          pausedSnapshot: null,
-        })
+        // running:仅同步节点状态,不做全量 RESTORE_STATUS(避免 clobber)
+        if (ns.length > 0) dispatch({ type: 'SYNC_NODE_STATUSES', nodeStatuses: ns })
+      }
+      // paused / completed 时 RESTORE_STATUS 内部已读 node_statuses
+      if (ns.length > 0 && (result.status === 'paused' || result.status === 'completed')) {
+        dispatch({ type: 'SYNC_NODE_STATUSES', nodeStatuses: ns })
       }
     } catch (error) {
       const message = error instanceof Error ? error.message : '查询状态失败'
