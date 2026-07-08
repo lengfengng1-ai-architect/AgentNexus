@@ -68,6 +68,8 @@ export interface PlanOutputs {
   plan_generator?: { chapters: PlanChapter[] }
   promo_video?: PromoVideoStatus
   poster?: PosterStatus
+  /** 后端 plan_node_status 表,供前端轮询驱动节点显示 */
+  node_statuses?: { node_id: string; status: string; started_at?: string; completed_at?: string }[]
 }
 
 export interface PlanSession {

@@ -186,6 +186,17 @@ async def _ensure_plan_db_conn() -> aiosqlite.Connection:
                 await _conn.execute(f"SELECT {col} FROM plan_records LIMIT 0")
             except Exception:
                 await _conn.execute(f"ALTER TABLE plan_records ADD COLUMN {col} TEXT")
+        # plan_node_status: 节点状态表,供前端轮询(不再依赖 SSE node.start/node.complete)
+        await _conn.execute("""
+            CREATE TABLE IF NOT EXISTS plan_node_status (
+                run_id TEXT NOT NULL,
+                node_id TEXT NOT NULL,
+                status TEXT NOT NULL DEFAULT 'pending',
+                started_at TEXT,
+                completed_at TEXT,
+                PRIMARY KEY (run_id, node_id)
+            )
+        """)
         await _conn.commit()
         _plan_db_initialized = True
     if _conn is None:
@@ -308,6 +319,53 @@ async def _load_poster(run_id: str) -> dict[str, Any] | None:
     return None
 
 
+# ── 节点状态表(前端轮询) ────────────────────────────────
+
+async def _save_node_status(run_id: str, node_id: str, status: str) -> None:
+    """写入/更新节点状态到 plan_node_status 表,供前端轮询读取。"""
+    try:
+        conn = await _ensure_plan_db_conn()
+        now = datetime.now(timezone.utc).isoformat()
+        if status == "running":
+            await conn.execute(
+                "INSERT OR REPLACE INTO plan_node_status (run_id, node_id, status, started_at, completed_at) "
+                "VALUES (?, ?, ?, ?, NULL)",
+                (run_id, node_id, status, now),
+            )
+        elif status in ("complete", "failed"):
+            await conn.execute(
+                "UPDATE plan_node_status SET status = ?, completed_at = ? WHERE run_id = ? AND node_id = ?",
+                (status, now, run_id, node_id),
+            )
+        else:
+            await conn.execute(
+                "UPDATE plan_node_status SET status = ? WHERE run_id = ? AND node_id = ?",
+                (status, run_id, node_id),
+            )
+        await conn.commit()
+    except Exception as exc:
+        logger.warning("failed to save node status run=%s node=%s: %s", run_id, node_id, exc)
+
+
+async def _load_node_statuses(run_id: str) -> list[dict[str, Any]]:
+    """读取 plan_node_status 表全部节点状态。"""
+    try:
+        conn = await _ensure_plan_db_conn()
+        cur = await conn.execute(
+            "SELECT node_id, status, started_at, completed_at FROM plan_node_status "
+            "WHERE run_id = ? ORDER BY rowid",
+            (run_id,),
+        )
+        rows = await cur.fetchall()
+        return [
+            {"node_id": r[0], "status": r[1], "started_at": r[2], "completed_at": r[3]}
+            for r in rows
+        ]
+    except Exception as exc:
+        logger.warning("failed to load node statuses run=%s: %s", run_id, exc)
+    return []
+
+
 class PlanState(TypedDict):
     brand_input: dict[str, Any]
     product_research: dict[str, Any]
@@ -408,10 +466,14 @@ def _build_node(node_id: str) -> Any:
 
     async def node_fn(state: PlanState) -> dict[str, Any]:
         inputs = _node_inputs(node_id, state)
+        rid = _current_run_id or ""
+        await _save_node_status(rid, node_id, "running")
         try:
             result = {node_id: await handler(inputs)}
+            await _save_node_status(rid, node_id, "complete")
         except Exception:
             logger.exception("node %s failed, skipping with empty output", node_id)
+            await _save_node_status(rid, node_id, "failed")
             return {node_id: {}}
 
         # After action_recommendations completes, async trigger promo video.
@@ -1079,6 +1141,10 @@ async def get_status(run_id: str) -> dict[str, Any]:
             _poster_cache[run_id] = poster
     if poster is not None:
         outputs["poster"] = poster
+    # 合并节点状态列表,供前端轮询驱动节点显示
+    node_statuses = await _load_node_statuses(run_id)
+    if node_statuses:
+        outputs["node_statuses"] = node_statuses
     logger.info(
         "[status] run=%s promo_video=%s poster=%s",
         run_id,
