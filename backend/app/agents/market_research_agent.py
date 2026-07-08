@@ -16,22 +16,27 @@ from bs4 import BeautifulSoup
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
+from urllib.parse import urlparse
 
-from app.agents.llm_utils import build_chat_model, duckduckgo_search, write_log
+from app.agents.llm_utils import build_chat_model, searxng_search, write_log
 from app.agents.registry import register
 from app.schemas.plan_generation import MarketResearchOutput, MarketTrend
 
 logger = logging.getLogger(__name__)
 
 # ── Constants ──
-FETCH_TIMEOUT = 15
-MAX_PAGE_CHARS = 8000
+FETCH_TIMEOUT = 10
+FETCH_TOP = 25
+MAX_PAGE_CHARS = 4000
+FETCH_CONCURRENCY = 8
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/120.0.0.0 Safari/537.36"
 )
 SKIP_EXTENSIONS = {'.pdf', '.doc', '.docx', '.zip', '.jpg', '.png', '.gif', '.ppt', '.pptx', '.xls', '.xlsx'}
+# 已知 403 屏蔽爬虫的域名，在搜索去重阶段跳过
+BLOCKED_DOMAINS = {"zhuanlan.zhihu.com", "baike.baidu.com", "wenku.baidu.com"}
 SEARCH_QUERIES = [
     "{category} 产业链 上游 下游",         # market_definition
     "{category} 市场规模 增长率",           # market_size
@@ -101,7 +106,7 @@ async def _search(category: str) -> list[dict[str, str]]:
 
     async def search_one(kw: str) -> list[dict[str, str]]:
         try:
-            return await duckduckgo_search(kw, max_results=8)
+            return await searxng_search(kw, max_results=8)
         except Exception:
             write_log("market_research", f"⚠️ 关键词「{kw}」搜索失败，跳过")
             return []
@@ -114,9 +119,13 @@ async def _search(category: str) -> list[dict[str, str]]:
             url = item.get("href", "")
             if url and url not in seen:
                 seen.add(url)
-                # Filter out binary/datasheet URLs
+                # Skip binary/datasheet URLs
                 path_part = url.split("?")[0].lower()
                 if any(path_part.endswith(ext) for ext in SKIP_EXTENSIONS):
+                    continue
+                # Skip known 403 domains
+                hostname = urlparse(url).hostname or ""
+                if hostname in BLOCKED_DOMAINS:
                     continue
                 deduped.append(item)
 
@@ -129,7 +138,7 @@ async def _search(category: str) -> list[dict[str, str]]:
 
 async def _fetch(pages: list[dict[str, str]]) -> list[dict[str, Any]]:
     """Concurrently fetch page content from search results."""
-    urls = [p["href"] for p in pages]
+    urls = [p["href"] for p in pages[:FETCH_TOP]]
     write_log("market_research", f"📄 开始并发抓取 {len(urls)} 个页面…")
 
     async def fetch_one(url: str) -> dict[str, Any]:
@@ -166,7 +175,13 @@ async def _fetch(pages: list[dict[str, str]]) -> list[dict[str, Any]]:
             return {"url": url, "title": None, "content": "", "fetched": False}
 
     tasks = [fetch_one(url) for url in urls]
-    results = await asyncio.gather(*tasks)
+    sem = asyncio.Semaphore(FETCH_CONCURRENCY)
+
+    async def wrapped(url: str) -> dict[str, Any]:
+        async with sem:
+            return await fetch_one(url)
+
+    results = await asyncio.gather(*[wrapped(url) for url in urls])
     fetched_count = sum(1 for r in results if r["fetched"])
     write_log("market_research", f"📄 抓取完成：成功 {fetched_count}/{len(results)} 个页面")
     return results

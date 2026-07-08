@@ -1,0 +1,23 @@
+# SearxNG 配置：继承默认设置后覆盖关键项
+# 关键：开启 JSON 输出（默认关闭）、关闭 limiter（程序化访问不限流）、中文默认
+use_default_settings: true
+
+server:
+  secret_key: "change-me-to-a-random-string-for-prod"  # 生产环境务必改成随机串
+  limiter: false       # 关闭 bot 检测，允许程序化 JSON 调用
+  image_proxy: false
+  port: 8080
+
+search:
+  safe_search: 0
+  autocomplete: ""
+  default_lang: "zh-CN"
+  formats:
+    - html
+    - json
+
+outgoing:
+  request_timeout: 10.0
+  max_request_timeout: 15.0
+
+# 不依赖 redis/valkey（低并发单机够用）
