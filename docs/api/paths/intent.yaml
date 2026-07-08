@@ -5,7 +5,7 @@ openapi: "3.1.0"
 info:
   title: "意图识别"
   description: "识别用户输入意图并返回结构化结果，支持多轮对话上下文累积。"
-  version: "v0.2"
+  version: "v0.3"
   x-in-scope-ref: "workflow-orchestration"
 
 servers:
@@ -21,8 +21,13 @@ paths:
         接收用户消息和可选上下文，通过 intent_recognition agent 判断意图。
         SSE 流式输出：
         1. `event: reasoning` — 模型思考过程片段
-        2. `event: intent` — 完整的意图识别 JSON（intent/reply/brand_input/missing_fields）
+        2. `event: intent` — 完整的意图识别 JSON（intent/reply/brand_input/missing_fields/image_url/video_prompt/generation_prompt）
         3. `event: done` — 流结束
+
+        intent 支持：generate_plan、query_data、chat、clarify、update_context、generate_video、text_to_video、text_to_image。
+        generate_video 用于图生视频场景，从附件元数据获取 image_url。
+        text_to_video 用于文生视频场景，generation_prompt 从用户输入提取描述。
+        text_to_image 用于文生图场景，generation_prompt 从用户输入提取描述。
       requestBody:
         required: true
         content:

@@ -1,4 +1,4 @@
-import { useState, type KeyboardEvent } from 'react'
+import { useEffect, useRef, useState, type KeyboardEvent } from 'react'
 import { streamVideoGeneration } from '../api/video'
 import type { VideoParams, VideoResult } from '../types/video'
 
@@ -23,10 +23,50 @@ export function VideoTestPage() {
   const [currentStatus, setCurrentStatus] = useState<ProgressEvent | null>(null)
   const [result, setResult] = useState<VideoResult | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const autoTriggered = useRef(false)
+
+  // Auto-trigger from query params
+  useEffect(() => {
+    if (autoTriggered.current) return
+    const params = new URLSearchParams(window.location.search)
+    const qPrompt = params.get('prompt')
+    const qImageUrl = params.get('image_url')
+    if (qPrompt) {
+      autoTriggered.current = true
+      setPrompt(qPrompt)
+      if (qImageUrl) setImageUrl(qImageUrl)
+      setTimeout(() => {
+        ;(async () => {
+          setIsLoading(true)
+          const p: VideoParams = {
+            prompt: qPrompt,
+            image_url: qImageUrl || null,
+            resolution, ratio, duration,
+            seed: null,
+          }
+          try {
+            for await (const event of streamVideoGeneration(p)) {
+              if (event.progress) {
+                setProgress(prev => [...prev, event.progress!])
+                setCurrentStatus(event.progress)
+              }
+              if (event.result) setResult(event.result)
+              if (event.error) setError(event.error.detail)
+            }
+          } catch (err) {
+            setError(err instanceof Error ? err.message : '生成失败')
+          } finally {
+            setIsLoading(false)
+          }
+        })()
+      }, 0)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   async function handleGenerate() {
-    const trimmedImg = imageUrl.trim()
-    if (!trimmedImg) return
+    const trimmedPrompt = prompt.trim()
+    if (!trimmedPrompt) return
     if (isLoading) return
 
     setIsLoading(true)
@@ -36,7 +76,7 @@ export function VideoTestPage() {
     setError(null)
 
     const params: VideoParams = {
-      prompt: prompt.trim(),
+      prompt: trimmedPrompt,
       image_url: imageUrl.trim() || null,
       resolution,
       ratio,
@@ -78,7 +118,7 @@ export function VideoTestPage() {
       {/* 图片 URL（必填 — 图生视频） */}
       <div>
         <label htmlFor="video-image-url" className="mb-2 block text-sm font-medium text-track">
-          图片 URL
+          图片 URL <span className="text-xs text-track/40">（选填，图生视频用）</span>
         </label>
         <input
           id="video-image-url"
@@ -168,7 +208,7 @@ export function VideoTestPage() {
         <button
           type="button"
           onClick={handleGenerate}
-          disabled={isLoading || !imageUrl.trim()}
+          disabled={isLoading || !prompt.trim()}
           className="rounded-xl bg-start px-5 py-2.5 text-sm font-medium text-white transition-colors hover:bg-start/90 disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40"
         >
           {isLoading ? '生成中…' : '生成视频'}

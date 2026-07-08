@@ -19,7 +19,7 @@ type ChatAction =
   | { type: 'SEND_MESSAGE'; content: string }
   | { type: 'STREAM_START' }
   | { type: 'STREAM_REASONING'; text: string }
-  | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null }
+  | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null; imageUrl?: string | null; videoPrompt?: string | null; generationPrompt?: string | null; messageId?: string }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RETRY_MESSAGE'; messageId: string }
@@ -92,8 +92,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'INTENT_RECEIVED': {
       const msgs = state.messages.filter(m => !m.id.startsWith('stream-'))
       const canGeneratePlan = action.intent === 'generate_plan' && action.missingFields.length === 0
+      const msgId = action.messageId || `ai-${Date.now()}`
       const aiMessage: ChatMessage = {
-        id: `ai-${Date.now()}`,
+        id: msgId,
         role: 'ai',
         content: action.reply,
         isLoading: false,
@@ -102,6 +103,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         canGeneratePlan,
         missingFields: action.missingFields.length > 0 ? action.missingFields : undefined,
         gate: action.gate,
+        imageUrl: action.imageUrl,
+        videoPrompt: action.videoPrompt,
+        generationPrompt: action.generationPrompt,
       }
       return { ...state, isLoading: false, messages: [...msgs, aiMessage] }
     }
@@ -189,6 +193,9 @@ export function useChat() {
             brandInput: chunk.intent.brand_input,
             missingFields: chunk.intent.missing_fields || [],
             gate: chunk.intent.gate,
+            imageUrl: chunk.intent.image_url,
+            videoPrompt: chunk.intent.video_prompt,
+            generationPrompt: chunk.intent.generation_prompt,
           })
         }
       }
@@ -230,6 +237,9 @@ export function useChat() {
             brandInput: chunk.intent.brand_input,
             missingFields: chunk.intent.missing_fields || [],
             gate: chunk.intent.gate,
+            imageUrl: chunk.intent.image_url,
+            videoPrompt: chunk.intent.video_prompt,
+            generationPrompt: chunk.intent.generation_prompt,
           })
         }
       }

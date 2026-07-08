@@ -51,6 +51,17 @@ export function ChatContainer() {
     setShowConfirm('plan')
   }, [])
 
+  const handleNavigateVideo = useCallback((prompt: string, imageUrl?: string | null) => {
+    const params = new URLSearchParams()
+    params.set('prompt', prompt)
+    if (imageUrl) params.set('image_url', imageUrl)
+    window.location.href = `/video-test?${params.toString()}`
+  }, [])
+
+  const handleNavigateImage = useCallback((prompt: string) => {
+    window.location.href = `/image-test?prompt=${encodeURIComponent(prompt)}`
+  }, [])
+
   const handleConfirmGenerate = useCallback(() => {
     if (!pendingBrandInput) return
     try {
@@ -84,6 +95,8 @@ export function ChatContainer() {
                   message={message}
                   onRetry={message.retryable ? retryMessage : undefined}
                   onGeneratePlan={latestBrandInput ? () => handleGeneratePlan(latestBrandInput) : undefined}
+                  onNavigateVideo={handleNavigateVideo}
+                  onNavigateImage={handleNavigateImage}
                 />
               ),
             )}

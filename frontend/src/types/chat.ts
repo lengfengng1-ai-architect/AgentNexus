@@ -21,7 +21,7 @@ export interface ChatMessage {
   role: 'user' | 'ai'
   content: string
   brandInput?: BrandInput
-  intent?: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context'
+  intent?: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context' | 'generate_video' | 'text_to_video' | 'text_to_image'
   isComplete?: boolean
   isError?: boolean
   isLoading?: boolean
@@ -31,6 +31,10 @@ export interface ChatMessage {
   missingFields?: string[]
   gate?: string | null
   confirmed?: boolean
+  /** 图标生成导航 */
+  imageUrl?: string | null
+  videoPrompt?: string | null
+  generationPrompt?: string | null
 }
 
 export type FieldKey = keyof BrandInput
