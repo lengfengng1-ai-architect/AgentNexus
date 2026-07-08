@@ -1,19 +1,12 @@
 #!/usr/bin/env bash
 # SearxNG 一键部署脚本（Linux / macOS / Git Bash on Windows）
 #
-# 用法:
-#   ./deploy.sh               # 代理端口默认 7890
-#   ./deploy.sh 7897          # 指定代理端口
-#   PROXY_PORT=1080 ./deploy.sh
-#
-# 前置: 已安装 Docker 且 Docker daemon 正在运行；本机有翻墙代理（用于容器访问外网搜索引擎）。
+# 用法: ./deploy.sh
+# 前置: 已安装 Docker 且 Docker daemon 正在运行。
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
-
-# 代理端口优先级: 命令行参数 > 环境变量 > 默认 7890
-PROXY_PORT="${1:-${PROXY_PORT:-7890}}"
 
 echo "==> 检查 Docker..."
 if ! command -v docker >/dev/null 2>&1; then
@@ -25,8 +18,7 @@ if ! docker info >/dev/null 2>&1; then
   exit 1
 fi
 
-echo "==> 通过代理端口 ${PROXY_PORT} 启动 SearxNG..."
-export PROXY_PORT
+echo "==> 启动 SearxNG..."
 docker compose up -d
 
 echo "==> 等待 SearxNG 就绪（最多 40s）..."
@@ -41,5 +33,4 @@ done
 
 echo "⚠️  SearxNG 40s 内未响应，请排查:"
 echo "   docker logs searxng"
-echo "   常见原因: 代理端口不对 / 代理未开启 / 搜索引擎被墙"
 exit 1

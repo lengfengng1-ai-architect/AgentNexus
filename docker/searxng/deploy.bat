@@ -2,17 +2,10 @@
 chcp 65001 >nul
 REM SearxNG 一键部署脚本（Windows）
 REM
-REM 用法:
-REM   deploy.bat            REM 代理端口默认 7890
-REM   deploy.bat 7897       REM 指定代理端口
-REM
-REM 前置: 已安装 Docker Desktop 且正在运行；本机有翻墙代理（用于容器访问外网搜索引擎）。
+REM 用法: deploy.bat
+REM 前置: 已安装 Docker Desktop 且正在运行。
 
 cd /d "%~dp0"
-
-REM 代理端口: 命令行参数 > 默认 7890
-set PROXY_PORT=7890
-if not "%~1"=="" set PROXY_PORT=%~1
 
 echo ==^> 检查 Docker...
 where docker >nul 2>&1
@@ -26,7 +19,7 @@ if errorlevel 1 (
   exit /b 1
 )
 
-echo ==^> 通过代理端口 %PROXY_PORT% 启动 SearxNG...
+echo ==^> 启动 SearxNG...
 docker compose up -d
 if errorlevel 1 (
   echo ❌ docker compose 启动失败
@@ -52,5 +45,4 @@ exit /b 0
 :timeout
 echo ⚠️ SearxNG 40s 内未响应，请排查:
 echo    docker logs searxng
-echo    常见原因: 代理端口不对 / 代理未开启 / 搜索引擎被墙
 exit /b 1
