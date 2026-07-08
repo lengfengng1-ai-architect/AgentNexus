@@ -548,6 +548,8 @@ export function usePlanRun() {
     dispatch({ type: 'SET_RUN_ID', runId })
     try {
       const result = await getPlanRunStatus(runId)
+      // 防止竞态:fetch 期间用户若发起了新 run,不再用旧 run 的状态覆盖新 run。
+      if (runIdRef.current !== runId) return
       dispatch({
         type: 'RESTORE_STATUS',
         status: result.status === 'canceled' ? 'idle' : result.status,
