@@ -638,18 +638,22 @@ async def _stream_events(
 ) -> AsyncGenerator[str, None]:
     """Consume astream_events v2 and yield standard SSE frames."""
     counter = [0]
-    # Pre-seed started with already-completed nodes so LangGraph resume
-    # replay doesn't emit duplicate node.start events.
-    completed: set[str] = set()
+    # Pre-seed started with already-executed nodes so LangGraph resume replay
+    # doesn't re-emit duplicate node.start events for them.
+    # 注意:不能用「输出非空」判断,因为节点可能返回空输出(falsy)但已执行过 ——
+    # 那样 resume replay 会重发 node.start,前端把已完成节点又标成「执行中」。
+    # 用 StateSnapshot.next 定位:next[0] 之前的节点都已执行过。
+    started: set[str] = set()
     try:
         state_obj = await graph.aget_state(_thread_config(run_id))
-        state_values = getattr(state_obj, "values", {}) or {}
-        for nid in _NODE_ORDER:
-            if state_values.get(nid):
-                completed.add(nid)
+        next_nodes = list(getattr(state_obj, "next", ()) or [])
+        # next[0] 之前的节点都已执行过,预填进去重掉 resume replay 的重复 node.start。
+        # next 为空 = 刚启动(无 checkpoint),started 保持空,所有节点正常发 node.start。
+        # (_stream_events 只在 start/approve/rerun 时调用,completed 不会进来。)
+        if next_nodes and next_nodes[0] in _NODE_ORDER:
+            started.update(_NODE_ORDER[: _NODE_ORDER.index(next_nodes[0])])
     except Exception:
         pass
-    started: set[str] = set(completed)
 
     async for event in graph.astream_events(
         input_value,
@@ -715,14 +719,6 @@ def _paused_snapshot(state: PlanState, node_id: str) -> dict[str, Any]:
     }
 
 
-def _next_node(state: PlanState) -> str | None:
-    """Return the first non-completed node (sequential order), or None."""
-    for nid in _NODE_ORDER:
-        if not state.get(nid):
-            return nid
-    return None
-
-
 async def _checkpoint_tuple(run_id: str) -> Any:
     """Fetch the latest checkpoint tuple for a run_id."""
     saver = await _get_saver()
@@ -743,9 +739,16 @@ def _status_for_state(
     state: PlanState | None,
     run_id: str,
     *,
+    next_nodes: list[str] | None = None,
     error: str | None = None,
 ) -> dict[str, Any]:
-    """Derive RunStatus from checkpoint state."""
+    """Derive RunStatus from checkpoint state.
+
+    next_nodes 来自 LangGraph checkpoint 的 ``next`` 字段(与 SSE _stream_events
+    同源),是判断 paused/running/completed 的准确依据。早期用 _next_node 扫描
+    channel_values 找第一个空输出节点,但中间节点可能返回空输出而流程已继续,
+    导致方案已完成后仍误判 paused → autoMode 误 approve → 节点反复「执行中」。
+    """
     if state is None:
         return {
             "run_id": run_id,
@@ -757,7 +760,7 @@ def _status_for_state(
             "error": None,
         }
 
-    # Find the first non-empty output; if all are empty, we're at the start.
+    # 已完成节点 = 输出非空的节点(仅用于展示,不决定 status)
     completed = [nid for nid in _NODE_ORDER if state.get(nid)]
     outputs = {nid: state[nid] for nid in completed}  # type: ignore[literal-required]
 
@@ -772,15 +775,15 @@ def _status_for_state(
             "error": error,
         }
 
-    # Determine next expected node based on completed outputs.
+    # 用 LangGraph 的 next 字段判断状态(与 SSE _stream_events 同源)。
+    # next 为空 → 流程结束 completed;next 非空且是 interrupt 节点 → paused;
+    # next 非空但不是 interrupt 节点 → running(并行节点执行中)。
     current_node: str | None = None
     paused_snapshot: dict[str, Any] | None = None
-    cn = _next_node(state)
-    if cn:
+    nn = next_nodes or []
+    if nn:
+        cn = nn[0]
         current_node = cn
-        # 仅当下一节点是 interrupt 检查点时才视为 paused；
-        # 并行节点(product_research/market_research/audience_insight)未完成说明图仍在执行中,
-        # 误判 paused 会导致前端轮询覆盖 SSE 的 running 状态并误弹「确认继续」。
         if cn in _INTERRUPT_BEFORE:
             paused_snapshot = _paused_snapshot(state, cn)
             status = "paused"
@@ -1044,8 +1047,21 @@ async def delete_run(run_id: str) -> None:
 
 async def get_status(run_id: str) -> dict[str, Any]:
     """Return current run status including paused snapshot if applicable."""
-    state = await _checkpoint_state(run_id)
-    st = _status_for_state(state, run_id)
+    tuple_ = await _checkpoint_tuple(run_id)
+    if tuple_ is None:
+        state = None
+        next_nodes: list[str] = []
+    else:
+        state = tuple_.checkpoint.get("channel_values")
+        # CheckpointTuple 没有 next 字段,用 graph.aget_state 拿 LangGraph 的 next
+        # (与 SSE _stream_events 同源),判断 paused/running/completed。
+        try:
+            graph = await _get_graph()
+            state_obj = await graph.aget_state(_thread_config(run_id))
+            next_nodes = list(getattr(state_obj, "next", ()) or [])
+        except Exception:
+            next_nodes = []
+    st = _status_for_state(state, run_id, next_nodes=next_nodes)
     outputs = st.setdefault("outputs", {})
     # 合并宣传视频状态到 outputs：优先内存缓存，兜底 DB
     promo_video = _promo_video_cache.get(run_id)
