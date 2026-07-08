@@ -123,7 +123,6 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
       return {
         ...state,
         status: 'paused',
-        isConnected: false,
         isLoading: false,
         pausedNode: action.snapshot?.node_id ?? null,
         pausedSnapshot: action.snapshot,

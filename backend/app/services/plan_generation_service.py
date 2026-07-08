@@ -914,6 +914,8 @@ async def approve_run(
     edited_input: dict[str, Any] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Resume a paused run from an interrupt checkpoint."""
+    global _current_run_id
+    _current_run_id = run_id
     logger.info("[plan] approve_run run=%s", run_id)
     graph = await _get_graph()
 
@@ -1018,6 +1020,8 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
 
 async def rerun_run(run_id: str) -> AsyncGenerator[str, None]:
     """Rerun the current paused node by clearing its output and resuming."""
+    global _current_run_id
+    _current_run_id = run_id
     graph = await _get_graph()
     tuple_ = await _checkpoint_tuple(run_id)
     if tuple_ is None:
