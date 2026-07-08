@@ -8,11 +8,11 @@
 
 ### Requirement: 视频 SHALL 支持从对话跳转自触发
 
-系统 SHALL 在对话识别到 `text_to_video` 或 `generate_video` 意图时，显示跳转按钮导航到视频测试页并自动触发生成。
+系统 SHALL 在对话识别到 `text_to_video` 或 `generate_video` 意图时，显示跳转按钮导航到视频测试页并自动触发生成。前端 SHALL 校验生成描述的有效性，仅在有效描述存在时才显示按钮。
 
 #### Scenario: 文生视频从对话跳转
 - **GIVEN** 用户输入"生成一段夕阳海滩的视频"
-- **WHEN** intent_recognition 返回 `intent: text_to_video`
+- **WHEN** intent_recognition 返回 `intent: text_to_video` 且 generationPrompt 长度 > 3
 - **THEN** 聊天气泡显示 [生成视频] 按钮
 - **WHEN** 用户点击按钮
 - **THEN** 跳转到 /video-test?prompt=<generation_prompt> 页面
@@ -20,11 +20,16 @@
 
 #### Scenario: 图生视频从对话跳转
 - **GIVEN** 用户上传图片 + 输入"把这张图做成视频"
-- **WHEN** intent_recognition 返回 `intent: generate_video` 且 image_url 有值
+- **WHEN** intent_recognition 返回 `intent: generate_video` 且 imageUrl 存在
 - **THEN** 聊天气泡显示 [生成视频] 按钮
 - **WHEN** 用户点击按钮
 - **THEN** 跳转到 /video-test?prompt=<prompt>&image_url=<image_url> 页面
 - **AND** VideoTestPage 自动开始图生视频
+
+#### Scenario: text_to_video 无 generation_prompt 时不显示按钮
+- **GIVEN** 用户输入"生成一段视频"
+- **WHEN** intent_recognition 返回 `intent: text_to_video` 但 generationPrompt 为空或长度 ≤ 3
+- **THEN** 不显示 [生成视频] 按钮
 
 ### Requirement: 系统 SHALL 支持文生视频
 

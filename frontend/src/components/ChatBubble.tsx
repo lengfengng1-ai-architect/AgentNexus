@@ -51,13 +51,19 @@ export function ChatBubble({ message, onRetry, onGeneratePlan, onNavigateVideo, 
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
 
+  const hasValidPrompt =
+    (message.intent === 'text_to_image' && message.generationPrompt && message.generationPrompt.length > 3) ||
+    (message.intent === 'text_to_video' && message.generationPrompt && message.generationPrompt.length > 3) ||
+    (message.intent === 'generate_video' && message.imageUrl)
+
   const handleNavigate = () => {
+    if (!hasValidPrompt) return
     if (message.intent === 'generate_video' && onNavigateVideo) {
-      onNavigateVideo(message.videoPrompt || message.content, message.imageUrl)
+      onNavigateVideo(message.videoPrompt || '', message.imageUrl)
     } else if (message.intent === 'text_to_video' && onNavigateVideo) {
-      onNavigateVideo(message.generationPrompt || message.content)
+      onNavigateVideo(message.generationPrompt!, message.imageUrl)
     } else if (message.intent === 'text_to_image' && onNavigateImage) {
-      onNavigateImage(message.generationPrompt || message.content)
+      onNavigateImage(message.generationPrompt!)
     }
   }
 
@@ -85,7 +91,7 @@ export function ChatBubble({ message, onRetry, onGeneratePlan, onNavigateVideo, 
             message.content
           )}
         </div>
-        {!isUser && message.intent && (message.intent === 'generate_video' || message.intent === 'text_to_video' || message.intent === 'text_to_image') && !isStreaming && (
+        {!isUser && hasValidPrompt && !isStreaming && (
           <button
             type="button"
             onClick={handleNavigate}
