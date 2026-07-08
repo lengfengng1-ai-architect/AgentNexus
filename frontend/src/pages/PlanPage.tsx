@@ -165,8 +165,29 @@ export function PlanPage() {
 
   const posterPromptText = buildPosterPrompt(displayedChapters) || '基于当前营销方案自动生成主视觉海报'
 
-  // 卡片顺序: 宣传视频(若有) → 海报生成 → 基础建议
-  const promoVideo = outputs?.promo_video
+  // 视频卡片:始终占位,没数据时显示生成中
+  const pv = outputs?.promo_video
+  const promoVideoCard = {
+    title: !pv
+      ? '🎬 宣传视频生成中…'
+      : pv.status === 'completed'
+        ? '🎬 宣传视频'
+        : pv.status === 'failed'
+          ? '🎬 视频生成失败'
+          : '🎬 宣传视频生成中…',
+    description: !pv
+      ? '视频正在生成中，请耐心等待…'
+      : pv.status === 'completed'
+        ? '点击播放查看营销方案宣传视频'
+        : pv.status === 'failed'
+          ? `视频生成失败: ${pv.error || ''}`
+          : '视频正在生成中，请耐心等待…',
+    buttonLabel: '查看详情',
+    type: 'video' as const,
+    videoUrl: pv?.video_url,
+    promoVideo: pv ?? { status: 'generating' as const },
+  }
+
   const actionItemsBase = outputs?.action_recommendations?.actions?.map((a: { title: string; description: string }) => ({
     title: a.title,
     description: a.description,
@@ -174,31 +195,12 @@ export function PlanPage() {
     type: 'normal' as const,
   })) ?? []
 
-  // 下一步建议只在完整方案生成后展示(completed 状态 + plan_generator 节点完成)
-  // 双重守卫:status 仅在 WORKFLOW_COMPLETE 时为 completed,但部分边界场景下 LangGraph 可能
-  // 提前发 on_chain_end,导致 status=completed 但 plan_generator 还没跑。所以加 outputs.plan_generator 存在性检查。
+  // "下一步建议"区域:plan_generator 有输出就展示,视频和海报各自轮询
   const planGeneratorDone = Array.isArray(outputs?.plan_generator?.chapters) && outputs!.plan_generator!.chapters.length > 0
-  const actionItems = status !== 'completed' || !planGeneratorDone
+  const actionItems = !planGeneratorDone
     ? undefined
     : [
-        ...(promoVideo
-          ? [{
-              title: promoVideo.status === 'completed'
-                ? '🎬 宣传视频'
-                : promoVideo.status === 'failed'
-                  ? '🎬 视频生成失败'
-                  : '🎬 宣传视频生成中…',
-              description: promoVideo.status === 'completed'
-                ? '点击播放查看营销方案宣传视频'
-                : promoVideo.status === 'failed'
-                  ? `视频生成失败: ${promoVideo.error || ''}`
-                  : '视频正在生成中，请耐心等待…',
-              buttonLabel: '查看详情',
-              type: 'video' as const,
-              videoUrl: promoVideo.video_url,
-              promoVideo: promoVideo,
-            }]
-          : []),
+        promoVideoCard,
         {
           title: '根据方案生成海报',
           description: posterPromptText,
@@ -218,20 +220,12 @@ export function PlanPage() {
   const [autoMode, setAutoMode] = useState(false)
   const userInteractedRef = useRef(false)
   const [activeTab, setActiveTab] = useState(0)
-  // 宣传视频轮询：流水线完成后如果视频不存在或还在生成中，定时轮询
+  // 视频轮询:generating 或 undefined 时拉,有结果自动停
   useEffect(() => {
-    if (status !== 'completed') return
-
-    const pv = outputs?.promo_video
-    // 视频已完成或已失败 → 停止轮询
-    if (pv && (pv.status === 'completed' || pv.status === 'failed')) return
-
-    const interval = setInterval(() => {
-      refreshStatus()
-    }, 5000)
-
+    if (pv?.status === 'completed' || pv?.status === 'failed') return
+    const interval = setInterval(refreshStatus, 5000)
     return () => clearInterval(interval)
-  }, [status, outputs?.promo_video?.status, refreshStatus])
+  }, [pv?.status, refreshStatus])
 
   const TABS = [
     { idx: 0, label: '概览', agentId: '' },

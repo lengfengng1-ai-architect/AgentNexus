@@ -101,18 +101,32 @@ async def _build_promo_video_prompt(state: PlanState) -> str:
 
 
 async def _run_promo_video(run_id: str, prompt: str) -> None:
-    """后台异步执行宣传视频生成，结果写入缓存。"""
+    """后台异步执行宣传视频生成，结果写入缓存和 DB。"""
     try:
         task = await create_video_task(prompt, ratio="16:9", resolution="720P", duration=5)
-        _promo_video_cache[run_id] = {
+        cache_entry = {
             "status": "generating",
             "task_id": task["task_id"],
         }
+        _promo_video_cache[run_id] = cache_entry
+        await _save_promo_video(run_id, cache_entry)
+        logger.info(
+            "[promo_video] task created run=%s task_id=%s prompt=%.200s",
+            run_id, task["task_id"], prompt,
+        )
+
         output = await poll_video_task(task["task_id"])
+        logger.info(
+            "[promo_video] poll finished run=%s task_id=%s output=%s",
+            run_id, task["task_id"],
+            json.dumps(output, default=str, ensure_ascii=False),
+        )
+
         if output.get("task_status") == "SUCCEEDED":
-            _promo_video_cache[run_id] = {
+            video_url = output.get("video_url")
+            cache_entry = {
                 "status": "completed",
-                "video_url": output.get("video_url"),
+                "video_url": video_url,
                 "task_id": task["task_id"],
                 "usage": {
                     "resolution": output.get("SR"),
@@ -120,14 +134,30 @@ async def _run_promo_video(run_id: str, prompt: str) -> None:
                     "duration": output.get("output_video_duration"),
                 },
             }
+            _promo_video_cache[run_id] = cache_entry
+            logger.info(
+                "[promo_video] SUCCEEDED run=%s video_url=%s usage=%s",
+                run_id, video_url, cache_entry.get("usage"),
+            )
         else:
-            _promo_video_cache[run_id] = {
+            error_msg = output.get("message", output.get("code", "视频生成失败"))
+            cache_entry = {
                 "status": "failed",
-                "error": output.get("message", output.get("code", "视频生成失败")),
+                "error": error_msg,
+                "task_id": task["task_id"],
             }
+            _promo_video_cache[run_id] = cache_entry
+            logger.warning(
+                "[promo_video] FAILED run=%s task_id=%s status=%s error=%s",
+                run_id, task["task_id"], output.get("task_status"), error_msg,
+            )
+
+        await _save_promo_video(run_id, cache_entry)
     except Exception as exc:
         logger.exception("[promo_video] background task failed run=%s", run_id)
-        _promo_video_cache[run_id] = {"status": "failed", "error": str(exc)}
+        cache_entry = {"status": "failed", "error": str(exc)}
+        _promo_video_cache[run_id] = cache_entry
+        await _save_promo_video(run_id, cache_entry)
 
 
 async def _ensure_plan_db_conn() -> aiosqlite.Connection:
@@ -146,12 +176,47 @@ async def _ensure_plan_db_conn() -> aiosqlite.Connection:
                 current_node TEXT
             )
         """)
+        # Add promo_video column if it doesn't exist (migration-friendly)
+        try:
+            await _conn.execute("SELECT promo_video FROM plan_records LIMIT 0")
+        except Exception:
+            await _conn.execute("ALTER TABLE plan_records ADD COLUMN promo_video TEXT")
         await _conn.commit()
         _plan_db_initialized = True
     if _conn is None:
         msg = "Database connection not initialized"
         raise RuntimeError(msg)
     return _conn
+
+
+async def _save_promo_video(run_id: str, data: dict[str, Any]) -> None:
+    """Persist promo_video status to plan_records table."""
+    try:
+        conn = await _ensure_plan_db_conn()
+        now = datetime.now(timezone.utc).isoformat()
+        await conn.execute(
+            "UPDATE plan_records SET promo_video = ?, updated_at = ? WHERE run_id = ?",
+            (json.dumps(data, ensure_ascii=False, default=str), now, run_id),
+        )
+        await conn.commit()
+    except Exception as exc:
+        logger.warning("failed to save promo_video run=%s: %s", run_id, exc)
+
+
+async def _load_promo_video(run_id: str) -> dict[str, Any] | None:
+    """Load persisted promo_video data from plan_records table."""
+    try:
+        conn = await _ensure_plan_db_conn()
+        cur = await conn.execute(
+            "SELECT promo_video FROM plan_records WHERE run_id = ?",
+            (run_id,),
+        )
+        row = await cur.fetchone()
+        if row and row[0]:
+            return json.loads(row[0])
+    except Exception as exc:
+        logger.warning("failed to load promo_video run=%s: %s", run_id, exc)
+    return None
 
 
 class PlanState(TypedDict):
@@ -268,7 +333,8 @@ def _build_node(node_id: str) -> Any:
                 prompt = await _build_promo_video_prompt(state)
                 logger.info("[promo_video] run=%s optimized prompt: %s", rid, prompt)
                 write_log("action_recommendations", f"📹 宣传视频提示词: {prompt}")
-                _promo_video_cache[rid] = {"status": "generating", "prompt": prompt}
+                _promo_video_cache[rid] = {"status": "generating", "prompt": prompt, "run_id": rid}
+                await _save_promo_video(rid, _promo_video_cache[rid])
                 asyncio.create_task(_run_promo_video(rid, prompt))
                 logger.info("[promo_video] triggered async task for run=%s", rid)
             except Exception:
@@ -466,7 +532,18 @@ async def _stream_events(
 ) -> AsyncGenerator[str, None]:
     """Consume astream_events v2 and yield standard SSE frames."""
     counter = [0]
-    started: set[str] = set()
+    # Pre-seed started with already-completed nodes so LangGraph resume
+    # replay doesn't emit duplicate node.start events.
+    completed: set[str] = set()
+    try:
+        state_obj = await graph.aget_state(_thread_config(run_id))
+        state_values = getattr(state_obj, "values", {}) or {}
+        for nid in _NODE_ORDER:
+            if state_values.get(nid):
+                completed.add(nid)
+    except Exception:
+        pass
+    started: set[str] = set(completed)
 
     async for event in graph.astream_events(
         input_value,
@@ -841,15 +918,30 @@ async def delete_run(run_id: str) -> None:
     saver = await _get_saver()
     await saver.adelete_thread(run_id)
     _promo_video_cache.pop(run_id, None)
+    try:
+        conn = await _ensure_plan_db_conn()
+        await conn.execute("UPDATE plan_records SET promo_video = NULL WHERE run_id = ?", (run_id,))
+        await conn.commit()
+    except Exception:
+        pass
 
 
 async def get_status(run_id: str) -> dict[str, Any]:
     """Return current run status including paused snapshot if applicable."""
     state = await _checkpoint_state(run_id)
     st = _status_for_state(state, run_id)
-    # 合并宣传视频状态到 outputs
-    if run_id in _promo_video_cache:
-        st.setdefault("outputs", {})["promo_video"] = _promo_video_cache[run_id]
+    # 合并宣传视频状态到 outputs：优先内存缓存，兜底 DB
+    promo_video = _promo_video_cache.get(run_id)
+    if promo_video is None:
+        promo_video = await _load_promo_video(run_id)
+        if promo_video is not None:
+            _promo_video_cache[run_id] = promo_video
+    if promo_video is not None:
+        st.setdefault("outputs", {})["promo_video"] = promo_video
+    logger.info(
+        "[promo_video] get_status run=%s promo_video=%s",
+        run_id, json.dumps(promo_video, default=str, ensure_ascii=False),
+    )
     # 更新批次记录的状态和更新时间
     await _update_plan_record(run_id, st["status"], st.get("current_node"))
     # 同步删除已 canceled 的旧记录（超过 50 条时清理）

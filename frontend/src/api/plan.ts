@@ -128,5 +128,6 @@ export async function getPlanRunStatus(runId: string): Promise<PlanRunStatus> {
     throw new Error(text)
   }
 
-  return response.json()
+  const body = await response.json()
+  return body.data as PlanRunStatus
 }
