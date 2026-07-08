@@ -131,3 +131,28 @@ export async function getPlanRunStatus(runId: string): Promise<PlanRunStatus> {
   const body = await response.json()
   return body.data as PlanRunStatus
 }
+
+export interface PosterStatus {
+  status: 'generating' | 'completed' | 'failed'
+  image_url?: string
+  error?: string
+  size?: string
+  width?: number
+  height?: number
+}
+
+export async function regeneratePoster(runId: string, size: string): Promise<PosterStatus> {
+  const response = await fetch(`${API_BASE_URL}/plan/runs/${runId}/poster`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ size }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '海报生成失败')
+    throw new Error(text)
+  }
+
+  const body = await response.json()
+  return body.data as PosterStatus
+}

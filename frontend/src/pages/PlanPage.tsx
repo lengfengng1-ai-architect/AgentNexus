@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { marked } from 'marked'
 import { usePlanRun } from '../hooks/usePlanRun'
+import { regeneratePoster } from '../api/plan'
 import type { BrandInput } from '../types/chat'
 import { PlanActionCards } from './PlanActionCards'
 import { PlanForm } from './PlanForm'
@@ -11,7 +12,6 @@ import { PipelineTimeline } from './PipelineTimeline'
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
 const RUN_ID_KEY = 'allygo_plan_run_id'
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
 // 从方案章节中拼出海报生成提示词：取各章标题 + 内容摘要
 function buildPosterPrompt(chapters: PlanChapter[]): string {
@@ -58,6 +58,7 @@ interface PlanFormData {
 
 export function PlanPage() {
   const {
+    runId,
     status,
     nodes,
     outputs,
@@ -104,64 +105,37 @@ export function PlanPage() {
 
   const displayedChapters = chapters.length > 0 ? chapters : (outputs?.plan_generator?.chapters || [])
 
-  // 海报生成状态
-  const [posterUrl, setPosterUrl] = useState<string | null>(null)
-  const [isGeneratingPoster, setIsGeneratingPoster] = useState(false)
-  const [posterError, setPosterError] = useState<string | null>(null)
+  // 海报:状态完全从后端 outputs.poster 读(后端 plan_generator 完成后自动生成并入库),
+  // 刷新页面不重新生成。posterSize 仅是本地尺寸选择。
+  const poster = outputs?.poster
+  const posterUrl = poster?.status === 'completed' ? poster.image_url : null
+  const isGeneratingPoster = poster?.status === 'generating'
   const [posterSize, setPosterSize] = useState('2688*1536')
   const [lightboxOpen, setLightboxOpen] = useState(false)
-  // 自动生成只触发一次,避免重复请求(即使 status 多次重渲染)
-  const autoTriggeredRef = useRef(false)
+  const [posterTriggerError, setPosterTriggerError] = useState<string | null>(null)
 
   const handleGeneratePoster = useCallback(async () => {
-    if (isGeneratingPoster) return
-    const prompt = buildPosterPrompt(displayedChapters)
-    if (!prompt) return
-    setIsGeneratingPoster(true)
-    setPosterError(null)
-    setPosterUrl(null)
+    if (!runId || isGeneratingPoster) return
+    setPosterTriggerError(null)
     try {
-      const resp = await fetch(`${API_BASE_URL}/image/generate`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, size: posterSize }),
-      })
-      const body = await resp.json()
-      if (!body.success) {
-        throw new Error(body.error?.detail || '海报生成失败')
-      }
-      setPosterUrl(body.data.image_url)
+      await regeneratePoster(runId, posterSize)
+      // 立即拉一次,让 outputs.poster 变成 generating(后续轮询接管)
+      refreshStatus()
     } catch (err) {
-      setPosterError(err instanceof Error ? err.message : '请求失败')
-    } finally {
-      setIsGeneratingPoster(false)
+      setPosterTriggerError(err instanceof Error ? err.message : '海报生成失败')
     }
-  }, [displayedChapters, isGeneratingPoster, posterSize])
+  }, [runId, isGeneratingPoster, posterSize, refreshStatus])
 
-  // 方案完成后自动生成海报(只触发一次)
-  useEffect(() => {
-    if (
-      status === 'completed'
-      && displayedChapters.length > 0
-      && !autoTriggeredRef.current
-      && !posterUrl
-      && !isGeneratingPoster
-    ) {
-      autoTriggeredRef.current = true
-      handleGeneratePoster()
-    }
-  }, [status, displayedChapters.length, posterUrl, isGeneratingPoster, handleGeneratePoster])
-
-  // 切换尺寸时若有图片,自动重新生成;无图片时只更新下拉值,等自动生成触发
+  // 切换尺寸:立即触发后端重新生成
   const handleSizeChange = useCallback((size: string) => {
     setPosterSize(size)
-    if (posterUrl) {
-      // 已有图片 → 切尺寸立即重生成
-      setPosterUrl(null)
-      // 等下一帧 state 更新后再触发(handleGeneratePoster 依赖 posterSize)
-      setTimeout(() => { handleGeneratePoster() }, 0)
+    if (runId && !isGeneratingPoster) {
+      setPosterTriggerError(null)
+      regeneratePoster(runId, size).then(() => refreshStatus()).catch((err) => {
+        setPosterTriggerError(err instanceof Error ? err.message : '海报生成失败')
+      })
     }
-  }, [posterUrl, handleGeneratePoster])
+  }, [runId, isGeneratingPoster, refreshStatus])
 
   const posterPromptText = buildPosterPrompt(displayedChapters) || '基于当前营销方案自动生成主视觉海报'
 
@@ -206,7 +180,7 @@ export function PlanPage() {
           description: posterPromptText,
           buttonLabel: isGeneratingPoster ? '生成中…' : (posterUrl ? '重新生成' : '生成海报'),
           onClick: handleGeneratePoster,
-          imageUrl: posterError ? null : posterUrl,
+          imageUrl: posterTriggerError ? null : posterUrl,
           isGenerating: isGeneratingPoster,
           hasImageLayout: true,
           onImageClick: posterUrl ? () => setLightboxOpen(true) : undefined,
@@ -220,12 +194,19 @@ export function PlanPage() {
   const [autoMode, setAutoMode] = useState(false)
   const userInteractedRef = useRef(false)
   const [activeTab, setActiveTab] = useState(0)
-  // 视频轮询:generating 或 undefined 时拉,有结果自动停
+  // 视频/海报轮询:仅在未连接 SSE 时拉。
+  // SSE 连接中由事件驱动节点状态,轮询会触发 RESTORE_STATUS 重建所有节点,
+  // 覆盖 SSE 刚推过来的 running 状态(节点状态闪烁/误弹确认继续)。
   useEffect(() => {
-    if (pv?.status === 'completed' || pv?.status === 'failed') return
+    if (isConnected) return
+    // 两个都还没开始(plan_generator 未完成)→ 不轮询
+    if (!pv && !poster) return
+    const pvDone = pv?.status === 'completed' || pv?.status === 'failed'
+    const posterDone = poster?.status === 'completed' || poster?.status === 'failed'
+    if (pvDone && posterDone) return
     const interval = setInterval(refreshStatus, 5000)
     return () => clearInterval(interval)
-  }, [pv?.status, refreshStatus])
+  }, [pv?.status, poster?.status, isConnected, refreshStatus])
 
   const TABS = [
     { idx: 0, label: '概览', agentId: '' },
