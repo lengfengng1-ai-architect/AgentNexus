@@ -152,13 +152,16 @@ async def _fetch(pages: list[dict[str, str]]) -> list[dict[str, Any]]:
                     text = text[:MAX_PAGE_CHARS] + "\n...[内容截断]"
                 write_log("market_research", f"✓ 成功读取 {url}（{len(text)} 字符）")
                 return {"url": url, "title": title, "content": text, "fetched": True}
-        except TimeoutException:
+        except TimeoutException as exc:
+            logger.warning("market_research timeout: %s (%s)", url, exc)
             write_log("market_research", f"⏱️ {url} 请求超时，跳过")
             return {"url": url, "title": None, "content": "", "fetched": False}
-        except HTTPError:
+        except HTTPError as exc:
+            logger.warning("market_research HTTP error: %s (%s)", url, exc)
             write_log("market_research", f"⚠️ {url} HTTP 错误，跳过")
             return {"url": url, "title": None, "content": "", "fetched": False}
         except Exception:
+            logger.exception("market_research fetch failed: %s", url)
             write_log("market_research", f"⚠️ {url} 读取失败，跳过")
             return {"url": url, "title": None, "content": "", "fetched": False}
 
