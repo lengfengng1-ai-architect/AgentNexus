@@ -61,7 +61,7 @@ async def test_search_node_sorts_and_dedupes():
         {"href": "https://a.com", "title": "A2", "body": "dup"},
         {"href": "https://apple.com", "title": "Official", "body": "official"},
     ]
-    with patch("app.agents.product_research_agent.duckduckgo_search") as mock_search:
+    with patch("app.agents.product_research_agent.searxng_search") as mock_search:
         mock_search.return_value = raw
 
         result = await search_node(ProductResearchState(product_name="iPhone"))

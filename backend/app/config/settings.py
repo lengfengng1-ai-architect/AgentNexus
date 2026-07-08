@@ -41,6 +41,8 @@ class Settings(BaseSettings):
 
     use_mock_data: bool = False
 
+    searxng_url: str = "http://localhost:8080"
+
     cors_origins: str = ""
 
 

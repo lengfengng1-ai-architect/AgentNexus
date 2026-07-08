@@ -11,12 +11,13 @@ import logging
 from typing import Any
 
 from httpx import AsyncClient, HTTPError, TimeoutException
+from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
 from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.graph import END, StateGraph
 from pydantic import BaseModel, Field
 
-from app.agents.llm_utils import build_chat_model, duckduckgo_search, write_log
+from app.agents.llm_utils import build_chat_model, searxng_search, write_log
 from app.agents.registry import register
 from app.config.cache_paths import AUDIENCE_DIR, persona_path
 from app.schemas.audience_insight import AudienceRawData, UserPersona
@@ -26,9 +27,12 @@ logger = logging.getLogger(__name__)
 
 # ── 常量 ──
 SEARCH_MAX = 8
-FETCH_TOP = 5
-FETCH_TIMEOUT = 15
-MAX_PAGE_CHARS = 8000
+FETCH_TOP = 25
+FETCH_TIMEOUT = 10
+MAX_PAGE_CHARS = 4000
+FETCH_CONCURRENCY = 8
+# 已知 403 屏蔽爬虫的域名，在搜索去重阶段跳过
+BLOCKED_DOMAINS = {"zhuanlan.zhihu.com", "baike.baidu.com", "wenku.baidu.com"}
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -87,7 +91,7 @@ async def search_node(state: State) -> dict:
 
     async def search_one(kw: str) -> list[dict[str, str]]:
         try:
-            return await duckduckgo_search(kw, max_results=SEARCH_MAX)
+            return await searxng_search(kw, max_results=SEARCH_MAX)
         except Exception:
             write_log("audience_insight", f"⚠️ 关键词「{kw}」搜索失败，跳过")
             return []
@@ -99,6 +103,10 @@ async def search_node(state: State) -> dict:
             url = item.get("href", "")
             if url and url not in seen:
                 seen.add(url)
+                # Skip known 403 domains
+                from urllib.parse import urlparse as _urlparse
+                if _urlparse(url).hostname in BLOCKED_DOMAINS:
+                    continue
                 all_results.append(SearchResult(url=url, title=item.get("title", ""), snippet=item.get("body", "")))
 
     write_log("audience_insight", f"📄 搜索完成，获得 {len(all_results)} 条相关结果")
@@ -137,8 +145,13 @@ async def fetch_node(state: State) -> dict:
             write_log("audience_insight", f"⚠️ {url} 读取失败，跳过")
             return FetchedPage(url=url, title=None, content="", fetched=False)
 
-    tasks = [fetch_one(r.url) for r in state.search_results]
-    results = await asyncio.gather(*tasks)
+    sem = asyncio.Semaphore(FETCH_CONCURRENCY)
+
+    async def wrapped(url: str) -> FetchedPage:
+        async with sem:
+            return await fetch_one(url)
+
+    results = await asyncio.gather(*[wrapped(r.url) for r in state.search_results])
     fetched_count = sum(1 for p in results if p.fetched)
     write_log("audience_insight", f"📄 抓取完成：成功 {fetched_count}/{len(results)} 个页面")
     return {"fetched_pages": list(results)}
