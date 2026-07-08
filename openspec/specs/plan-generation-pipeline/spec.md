@@ -205,15 +205,15 @@
 
 ### Requirement: market_research 节点 SHALL 通过联网搜索获取市场数据
 
-`market_research` 节点 SHALL 通过联网搜索（`duckduckgo_search`）获取真实网页，并发抓取后由 LLM 从网页内容提取结构化市场调研结果。调研 SHALL 覆盖四个字段组：市场定义（`market_definition`）、市场规模（`market_size`）、趋势（`trends`）、机会评估（`opportunities`）。节点 SHALL 不调研竞品（属 out_scope `competitor-analysis`）和目标用户（由 `audience_insight` 节点负责，避免重复）。
+`market_research` 节点 SHALL 通过 SearxNG 实例（`searxng_search`）聚合多引擎获取真实网页，并发抓取后由 LLM 从网页内容提取结构化市场调研结果。调研 SHALL 覆盖四个字段组：市场定义（`market_definition`）、市场规模（`market_size`）、趋势（`trends`）、机会评估（`opportunities`）。节点 SHALL 不调研竞品（属 out_scope `competitor-analysis`）和目标用户（由 `audience_insight` 节点负责，避免重复）。
 
 每条提取的非空信息 SHALL 标注来源 URL（来自已抓取的网页），网页未提及的字段 SHALL 写 null 或空值，LLM SHALL 不编造数据数值、机构名、品牌名。节点最终输出 SHALL 映射为 `MarketResearchOutput`（`market_summary` / `trends` / `opportunities`），下游节点契约不变。
 
 #### Scenario: market_research 从真实网页提取并标注来源
-- **GIVEN** 流水线真实模式运行（`USE_MOCK_DATA` 未开启）
+- **GIVEN** 流水线真实模式运行（`USE_MOCK_DATA` 未开启），`SEARXNG_URL` 指向可达 SearxNG 实例
 - **WHEN** `market_research` 节点执行
-- **THEN** 节点 SHALL 调用 `duckduckgo_search` 按品类/品牌相关关键词搜索
-- **AND** SHALL 并发抓取搜索返回的网页
+- **THEN** 节点 SHALL 调用 `searxng_search` 按品类/品牌相关关键词搜索
+- **AND** SHALL 并发抓取搜索返回的网页（约 20 条）
 - **AND** SHALL 用单次 LLM 调用从抓取到的网页内容提取市场调研结果
 - **AND** 提取结果中每条非空信息 SHALL 标注来源 URL
 
@@ -235,7 +235,7 @@
 - **AND** 下游节点（`strategy_generation`、`plan_generator`）SHALL 无需改动即可消费
 
 #### Scenario: 搜索失败时返回空结果而非崩溃
-- **GIVEN** 联网搜索返回 0 条结果或抓取全部失败
+- **GIVEN** SearxNG 实例不可达或搜索返回 0 条结果
 - **WHEN** `market_research` 节点执行
 - **THEN** 节点 SHALL 不抛异常
 - **AND** SHALL 返回空的 `MarketResearchOutput`（`market_summary` 提示未找到市场信息，`trends` / `opportunities` 为空列表）
@@ -295,3 +295,105 @@ action_recommendations 节点 handler 返回后，系统 SHALL 自动读取当�
 #### Scenario: plan_generator 未完成不误发 complete
 - **WHEN** LangGraph on_chain_end 触发但 plan_generator 输出缺失
 - **THEN** 不发 workflow.complete,前端 action 卡片守卫隐藏下一步行动建议
+
+### Requirement: market_research 节点 fetch 阶段 SHALL 有并发控制
+
+`market_research` 节点在并发抓取搜索结果的网页时，SHALL 使用 `asyncio.Semaphore(8)` 控制同时最大并发连接数，避免 25 个请求同时涌出导致连接池拥堵。
+
+#### Scenario: Semaphore 限制并发数
+- **WHEN** `_fetch` 开始发起 25 个 HTTP 请求
+- **THEN** 同时进行的请求 SHALL 不超过 8 个
+- **AND** 后续请求 SHALL 在已有请求完成后递补
+
+### Requirement: market_research 节点 fetch 超时 SHALL 为 10 秒
+
+`market_research` 节点在并发抓取网页时，单个 HTTP 请求的超时 SHALL 为 10 秒（原 15 秒），慢页面快速放弃。
+
+#### Scenario: 超时返回空结果
+- **WHEN** 单个 HTTP 请求超过 10 秒未响应
+- **THEN** 该页面 SHALL 标记为未抓取状态（`fetched: False`）
+- **AND** 节点 SHALL 继续处理剩余页面，不中断整体流程
+
+### Requirement: market_research 节点 SHOULD 跳过已知 403 域名
+
+`_search` 函数在去重 URL 阶段，SHOULD 跳过 hostname 命中 `BLOCKED_DOMAINS` 集合（`zhuanlan.zhihu.com`、`baike.baidu.com`、`wenku.baidu.com`）的 URL，避免无用请求消耗并发槽位。
+
+#### Scenario: 屏蔽域名不在搜索阶段展开
+- **WHEN** `_search` 函数去重遍历搜索结果
+- **THEN** URL 的 hostname 在 `BLOCKED_DOMAINS` 中时 SHALL 被跳过
+- **AND** 该 URL 不会进入后续 fetch 阶段
+- **AND** 不影响其他域名正常处理
+
+### Requirement: product_research 和 audience_insight 节点 fetch 阶段 SHALL 有并发控制
+
+product_research 和 audience_insight 节点在并发抓取搜索结果的网页时，SHALL 使用 `asyncio.Semaphore(8)` 控制最大并发连接数。
+
+#### Scenario: Semaphore 限制并发数
+- **WHEN** `fetch_node` 开始发起 HTTP 请求
+- **THEN** 同时进行的请求 SHALL 不超过 8 个
+- **AND** 后续请求 SHALL 在已有请求完成后递补
+
+### Requirement: product_research 和 audience_insight 节点 SHALL 使用 10 秒超时
+
+两个节点在并发抓取网页时，单个 HTTP 请求的超时 SHALL 为 10 秒。
+
+#### Scenario: 超时返回空结果
+- **WHEN** 单个 HTTP 请求超过 10 秒未响应
+- **THEN** 该页面 SHALL 标记为未抓取状态
+- **AND** 节点 SHALL 继续处理剩余页面，不中断整体流程
+
+### Requirement: product_research 和 audience_insight 节点 SHOULD 跳过已知 403 域名
+
+两个节点在搜索去重阶段，SHOULD 跳过 hostname 命中 `BLOCKED_DOMAINS` 集合（`zhuanlan.zhihu.com`、`baike.baidu.com`、`wenku.baidu.com`）的 URL。
+
+#### Scenario: 屏蔽域名不影响其他 URL
+- **WHEN** 搜索去重遍历搜索结果
+- **THEN** 命中 BLOCKED_DOMAINS 的 URL 被跳过
+- **AND** 不影响其他域名正常处理
+
+### Requirement: product_research 和 audience_insight 节点 SHALL 单页截断 4000 字符
+
+两个节点的 `MAX_PAGE_CHARS` SHALL 为 4000（与 market_research 对齐）。
+
+#### Scenario: 页面内容截断
+- **WHEN** 抓取的页面内容超过 4000 字符
+- **THEN** 内容 SHALL 截断并追加截断标记
+- **AND** LLM 提取环节仍能获取前 4000 字符的核心信息
+
+### Requirement: 调研 agent SHALL 通过 SearxNG 实例做并发网页检索
+
+`product_research` / `market_research` / `audience_insight` 三个调研 agent 的网页检索 SHALL 通过自托管 SearxNG 实例（`searxng_search()`）进行，而非直连单一搜索引擎。SearxNG 实例地址 SHALL 由 `SEARXNG_URL` 环境变量配置（默认 `http://localhost:8080`）。`searxng_search()` SHALL 返回与原 `duckduckgo_search` 同构的 `[{href, title, body}]` 列表，使三个 agent 仅改调用名即可切换。
+
+SearxNG 聚合多引擎（默认请求级参数 `engines=bing,baidu`），SHALL 支持三个 agent 并行、每个 agent 内部多个关键词并行而不触发限流。当 SearxNG 实例不可达时，该关键词 SHALL 走 agent 已有的搜索失败降级（返回空、继续其他关键词），不抛致命异常。
+
+#### Scenario: 三 agent 并行检索不被限流
+- **GIVEN** 流水线真实模式运行，`SEARXNG_URL` 指向可达的 SearxNG 实例
+- **WHEN** 三个调研 agent 同时启动、各自内部多关键词并行搜索
+- **THEN** 每个关键词 SHALL 能拿到非空结果（不再出现 DDG 那种并发全空）
+- **AND** 各 agent 的搜索结果池 SHALL 满足后续抓取需求
+
+#### Scenario: searxng_search 返回结构与 duckduckgo_search 一致
+- **WHEN** 调用 `searxng_search(keyword, max_results=N)`
+- **THEN** 返回值 SHALL 为 `list[dict]`，每个 dict 含 `href`、`title`、`body` 三个字符串键
+- **AND** `href` SHALL 为真实目标 URL（非 SearxNG 重定向链接）
+
+#### Scenario: SearxNG 不可达时降级
+- **GIVEN** `SEARXNG_URL` 指向的实例未启动或超时
+- **WHEN** 某关键词调用 `searxng_search` 抛异常
+- **THEN** agent SHALL 捕获异常、记录该关键词失败、继续其他关键词
+- **AND** 节点 SHALL 不因搜索失败而整体崩溃
+
+### Requirement: 调研 agent SHALL 抓取多个网页供 LLM 提取
+
+三个调研 agent 搜索去重后 SHALL 并发抓取前若干条 URL（`FETCH_TOP` 约 20-25）供 LLM 提取。抓取的并发控制、超时、单页截断由各 agent 的 fetch 阶段需求规定（见「fetch 阶段并发控制」「10 秒超时」「单页截断 4000 字符」「跳过已知 403 域名」等相关需求）。搜索去重阶段 SHALL 跳过已知屏蔽域名和二进制文件 URL。候选不足上限时 SHALL 抓取全部候选，不强制凑满。
+
+#### Scenario: 抓取多页供 LLM 提取
+- **GIVEN** 某调研 agent 搜索阶段去重后得到 ≥20 条候选
+- **WHEN** 进入抓取阶段
+- **THEN** SHALL 并发抓取前若干条 URL（受 Semaphore 限流）
+- **AND** LLM 提取阶段 SHALL 接收这些 URL 中抓取成功的有效正文
+
+#### Scenario: 候选不足时抓全部
+- **GIVEN** 搜索去重后候选少于抓取上限
+- **WHEN** 进入抓取阶段
+- **THEN** SHALL 抓取全部候选，不强制凑满

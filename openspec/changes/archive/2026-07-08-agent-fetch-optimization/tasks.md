@@ -17,4 +17,4 @@
 - [x] 3.1 运行 `pytest tests/test_agents/test_product_research_extra.py` ✅ 7 passed
 - [x] 3.2 运行 `pytest tests/test_agents/test_product_research_agent.py` ✅ 3 passed
 - [x] 3.3 运行 `pytest tests/test_agents/test_audience_insight_agent.py` ✅ 2 passed
-- [ ] 3.4 人工验证：后端启动后跑流水线确认三个 agent 耗时均下降
+- [x] 3.4 人工验证：后端启动后跑流水线确认三个 agent 耗时均下降
