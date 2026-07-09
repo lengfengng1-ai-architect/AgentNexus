@@ -1,16 +1,32 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { ChatPreviewPage } from './pages/ChatPreviewPage'
 import { PlanPage } from './pages/PlanPage'
 import { ImageTestPage } from './pages/ImageTestPage'
 import { IntentTestPage } from './pages/IntentTestPage'
 import { VideoTestPage } from './pages/VideoTestPage'
 import { XlsxTestPage } from './pages/XlsxTestPage'
+import { MobileWorkbenchPage } from './pages/mobile-workbench/MobileWorkbenchPage'
 
-type Page = 'chat' | 'plan' | 'intent' | 'image' | 'video' | 'xlsx'
+type Page = 'chat' | 'plan' | 'mobile' | 'intent' | 'image' | 'video' | 'xlsx'
+
+const PAGE_PATH: Record<Page, string> = {
+  chat: '/',
+  plan: '/plan',
+  mobile: '/mobile',
+  intent: '/intent-test',
+  image: '/image-test',
+  video: '/video-test',
+  xlsx: '/xlsx-test',
+}
+const PATH_PAGE: Record<string, Page> = Object.fromEntries(
+  Object.entries(PAGE_PATH).map(([k, v]) => [v, k as Page]),
+)
+const pageFromPath = (pathname: string): Page => PATH_PAGE[pathname] ?? 'chat'
 
 const NAV: { key: Page; label: string; children?: { key: string; label: string }[] }[] = [
   { key: 'chat', label: '对话' },
   { key: 'plan', label: '工作台' },
+  { key: 'mobile', label: '移动端' },
   {
     key: 'intent',
     label: '测试',
@@ -24,19 +40,17 @@ const NAV: { key: Page; label: string; children?: { key: string; label: string }
 ]
 
 function App() {
-  const [page, setPage] = useState<Page>(() => {
-    if (window.location.pathname === '/plan') return 'plan'
-    if (window.location.pathname === '/intent-test') return 'intent'
-    if (window.location.pathname === '/image-test') return 'image'
-    if (window.location.pathname === '/video-test') return 'video'
-    if (window.location.pathname === '/xlsx-test') return 'xlsx'
-    return 'chat'
-  })
+  const [page, setPage] = useState<Page>(() => pageFromPath(window.location.pathname))
+
+  useEffect(() => {
+    const onPop = () => setPage(pageFromPath(window.location.pathname))
+    window.addEventListener('popstate', onPop)
+    return () => window.removeEventListener('popstate', onPop)
+  }, [])
 
   const navigate = (p: Page) => {
     setPage(p)
-    const path = p === 'chat' ? '/' : p === 'plan' ? '/plan' : p === 'intent' ? '/intent-test' : p === 'image' ? '/image-test' : p === 'video' ? '/video-test' : '/xlsx-test'
-    window.history.pushState(null, '', path)
+    window.history.pushState(null, '', PAGE_PATH[p])
   }
 
   return (
@@ -76,6 +90,7 @@ function App() {
       <main style={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
         {page === 'chat' && <ChatPreviewPage />}
         {page === 'plan' && <PlanPage />}
+        {page === 'mobile' && <MobileWorkbenchPage />}
         {page === 'intent' && <IntentTestPage />}
         {page === 'image' && <ImageTestPage />}
         {page === 'video' && <VideoTestPage />}
