@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useReducer, useRef } from 'react'
 import {
   approvePlanRun,
   cancelPlanRun,
+  getPlanMediaStatus,
   getPlanRunStatus,
   rejectPlanRun,
   rerunPlanRun,
@@ -60,6 +61,7 @@ type PlanRunAction =
   | { type: 'SET_LOADING'; loading: boolean }
   | { type: 'RESTORE_STATUS'; status: PlanRunStatus; outputs: PlanOutputs; failedNode: string | null; error: string | null; completedNodes: string[]; pausedNode: string | null; pausedSnapshot: PlanRunState['pausedSnapshot'] }
   | { type: 'SYNC_NODE_STATUSES'; nodeStatuses: { node_id: string; status: string; started_at?: string; completed_at?: string }[] }
+  | { type: 'UPDATE_MEDIA'; promoVideo: Record<string, unknown> | null; poster: Record<string, unknown> | null }
 
 function buildInitialNodes(): PlanNode[] {
   return PIPELINE_NODES.map((node) => ({
@@ -123,7 +125,6 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
       return {
         ...state,
         status: 'paused',
-        isConnected: false,
         isLoading: false,
         pausedNode: action.snapshot?.node_id ?? null,
         pausedSnapshot: action.snapshot,
@@ -218,6 +219,14 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
           return { ...n, status: newStatus, startedAt: found.started_at ? Date.now() : n.startedAt, completedAt: found.completed_at ? Date.now() : n.completedAt }
         }),
       }
+    }
+    case 'UPDATE_MEDIA': {
+      const nextOutputs = { ...state.outputs }
+      if (action.promoVideo) nextOutputs.promo_video = action.promoVideo
+      else delete nextOutputs.promo_video
+      if (action.poster) nextOutputs.poster = action.poster
+      else delete nextOutputs.poster
+      return { ...state, outputs: nextOutputs }
     }
     default:
       return state
@@ -565,6 +574,17 @@ export function usePlanRun() {
     }
   }, [state.runId])
 
+  const checkMediaStatus = useCallback(async () => {
+    const rid = runIdRef.current
+    if (!rid) return
+    try {
+      const result = await getPlanMediaStatus(rid)
+      dispatch({ type: 'UPDATE_MEDIA', promoVideo: result.promo_video, poster: result.poster })
+    } catch {
+      // 媒体状态查询失败不影响 pipeline，忽略
+    }
+  }, [])
+
   const restoreFromRunId = useCallback(async (runId: string) => {
     dispatch({ type: 'SET_RUN_ID', runId })
     try {
@@ -617,6 +637,7 @@ export function usePlanRun() {
     rerun,
     reset,
     refreshStatus,
+    checkMediaStatus,
     restoreFromRunId,
   }
 }

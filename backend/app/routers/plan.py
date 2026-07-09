@@ -16,6 +16,7 @@ from app.schemas.plan_run import ApproveRequest, PlanRunRequest, RejectRequest
 from app.services.plan_generation_service import (
     approve_run,
     delete_run,
+    get_media_status,
     get_status,
     list_runs,
     regenerate_poster,
@@ -175,6 +176,21 @@ async def plan_run_regenerate_poster(
         logger.exception("failed to regenerate poster for run %s", run_id)
         return _error_response(500, f"Failed to regenerate poster: {exc}", ErrorCode.INTERNAL_ERROR)
     return APIResponse(success=True, data=poster)
+
+
+@router.get("/plan/runs/{run_id}/media-status")
+async def plan_run_media_status(run_id: str = Path(..., description="运行实例 ID")):
+    """查询视频/海报媒体状态（轻量，不读 checkpoint）。"""
+    try:
+        status = get_media_status(run_id)
+    except Exception as exc:
+        logger.exception("failed to get media status for run %s", run_id)
+        return _error_response(
+            500,
+            f"Failed to get media status: {exc}",
+            ErrorCode.INTERNAL_ERROR,
+        )
+    return APIResponse(success=True, data=status)
 
 
 @router.get("/plan/runs")

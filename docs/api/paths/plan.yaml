@@ -176,6 +176,29 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /plan/runs/{run_id}/media-status:
+    get:
+      operationId: "plan_run_media_status"
+      summary: "查询视频/海报媒体状态"
+      description: |
+        轻量查询，只返回 promo_video 和 poster 的最新状态，
+        不读 LangGraph checkpoint，不与 SSE 事件驱动的 pipeline 状态冲突。
+      parameters:
+        - name: run_id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: "媒体状态"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MediaStatus"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
 components:
   schemas:
     PlanRunRequest:
@@ -282,6 +305,24 @@ components:
           type: string
           nullable: true
           description: "失败时的错误消息"
+
+    MediaStatus:
+      type: object
+      description: "媒体状态（视频/海报），不读 checkpoint"
+      required:
+        - promo_video
+        - poster
+      properties:
+        promo_video:
+          type: object
+          nullable: true
+          description: "宣传视频状态，null 表示未启动"
+          additionalProperties: true
+        poster:
+          type: object
+          nullable: true
+          description: "海报状态，null 表示未启动"
+          additionalProperties: true
 
     # ── SSE 事件负载 schemas ──
     SSEEventBase:
