@@ -11,6 +11,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextvars
 import json
 import logging
 import uuid
@@ -68,7 +69,7 @@ _promo_video_cache: dict[str, dict[str, Any]] = {}
 # ── 海报图片缓存 ──────────────────────────────────────────
 # key: run_id, value: {status, image_url?, error?, size?}
 _poster_cache: dict[str, dict[str, Any]] = {}
-_current_run_id: str | None = None  # 跟踪当前正在执行的 run_id
+_current_run_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("_current_run_id", default=None)  # 跟踪当前正在执行的 run_id
 
 
 async def _build_promo_video_prompt(state: PlanState) -> str:
@@ -466,7 +467,7 @@ def _build_node(node_id: str) -> Any:
 
     async def node_fn(state: PlanState) -> dict[str, Any]:
         inputs = _node_inputs(node_id, state)
-        rid = _current_run_id or ""
+        rid = _current_run_id.get() or ""
         await _save_node_status(rid, node_id, "running")
         try:
             result = {node_id: await handler(inputs)}
@@ -480,7 +481,7 @@ def _build_node(node_id: str) -> Any:
         # 独立 try：视频触发的任何异常都不能影响节点主输出。
         if node_id == "action_recommendations":
             try:
-                rid = _current_run_id or ""
+                rid = _current_run_id.get() or ""
                 prompt = await _build_promo_video_prompt(state)
                 logger.info("[promo_video] run=%s optimized prompt: %s", rid, prompt)
                 write_log("action_recommendations", f"📹 宣传视频提示词: {prompt}")
@@ -495,7 +496,7 @@ def _build_node(node_id: str) -> Any:
         # chapters 在本节点输出 result 中，取出拼成 plan_content 后后台生成。
         if node_id == "plan_generator":
             try:
-                rid = _current_run_id or ""
+                rid = _current_run_id.get() or ""
                 chapters = (result.get("plan_generator") or {}).get("chapters") or []
                 plan_content = _build_poster_content(chapters)
                 if plan_content:
@@ -705,15 +706,22 @@ async def _stream_events(
     # 注意:不能用「输出非空」判断,因为节点可能返回空输出(falsy)但已执行过 ——
     # 那样 resume replay 会重发 node.start,前端把已完成节点又标成「执行中」。
     # 用 StateSnapshot.next 定位:next[0] 之前的节点都已执行过。
+    # 并行节点(Send 分发,product_research/market_research/audience_insight)
+    # 不在线性顺序中,需要单独从 state_values 中判断。
     started: set[str] = set()
     try:
         state_obj = await graph.aget_state(_thread_config(run_id))
         next_nodes = list(getattr(state_obj, "next", ()) or [])
+        state_values = getattr(state_obj, "values", {}) or {}
         # next[0] 之前的节点都已执行过,预填进去重掉 resume replay 的重复 node.start。
         # next 为空 = 刚启动(无 checkpoint),started 保持空,所有节点正常发 node.start。
         # (_stream_events 只在 start/approve/rerun 时调用,completed 不会进来。)
         if next_nodes and next_nodes[0] in _NODE_ORDER:
             started.update(_NODE_ORDER[: _NODE_ORDER.index(next_nodes[0])])
+        # 对并行节点用 state_values 判:有非空输出 → 已执行过
+        for nid in _PARALLEL_NODES:
+            if state_values.get(nid):
+                started.add(nid)
     except Exception:
         pass
 
@@ -874,9 +882,8 @@ async def start_run(
     run_id: str | None = None,
 ) -> AsyncGenerator[str, None]:
     """Start a new plan generation run and stream SSE events."""
-    global _current_run_id
     run_id = run_id or str(uuid.uuid4())
-    _current_run_id = run_id
+    _current_run_id.set(run_id)
     now = datetime.now(timezone.utc).isoformat()
     logger.info("[plan] start_run run=%s brand=%s", run_id, brand_input.get("brand_name"))
     # 持久化批次记录到 SQLite
@@ -914,8 +921,7 @@ async def approve_run(
     edited_input: dict[str, Any] | None = None,
 ) -> AsyncGenerator[str, None]:
     """Resume a paused run from an interrupt checkpoint."""
-    global _current_run_id
-    _current_run_id = run_id
+    _current_run_id.set(run_id)
     logger.info("[plan] approve_run run=%s", run_id)
     graph = await _get_graph()
 
@@ -1020,8 +1026,7 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
 
 async def rerun_run(run_id: str) -> AsyncGenerator[str, None]:
     """Rerun the current paused node by clearing its output and resuming."""
-    global _current_run_id
-    _current_run_id = run_id
+    _current_run_id.set(run_id)
     graph = await _get_graph()
     tuple_ = await _checkpoint_tuple(run_id)
     if tuple_ is None:
@@ -1109,6 +1114,14 @@ async def delete_run(run_id: str) -> None:
         await conn.commit()
     except Exception:
         pass
+
+
+async def get_media_status(run_id: str) -> dict[str, Any]:
+    """Return promo_video and poster status for a run, without touching LangGraph checkpoint."""
+    return {
+        "promo_video": _promo_video_cache.get(run_id),
+        "poster": _poster_cache.get(run_id),
+    }
 
 
 async def get_status(run_id: str) -> dict[str, Any]:

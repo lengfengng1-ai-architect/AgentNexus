@@ -156,3 +156,20 @@ export async function regeneratePoster(runId: string, size: string): Promise<Pos
   const body = await response.json()
   return body.data as PosterStatus
 }
+
+export interface MediaStatus {
+  promo_video: Record<string, unknown> | null
+  poster: Record<string, unknown> | null
+}
+
+export async function getPlanMediaStatus(runId: string): Promise<MediaStatus> {
+  const response = await fetch(`${API_BASE_URL}/plan/runs/${runId}/media-status`)
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '查询媒体状态失败')
+    throw new Error(text)
+  }
+
+  const body = await response.json()
+  return body.data as MediaStatus
+}

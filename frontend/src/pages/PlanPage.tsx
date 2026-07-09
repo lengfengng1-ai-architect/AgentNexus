@@ -76,7 +76,7 @@ export function PlanPage() {
     cancel,
     rerun,
     restoreFromRunId,
-    refreshStatus,
+    checkMediaStatus,
   } = usePlanRun()
   const { seed, save } = usePlanSession()
 
@@ -120,22 +120,22 @@ export function PlanPage() {
     try {
       await regeneratePoster(runId, posterSize)
       // 立即拉一次,让 outputs.poster 变成 generating(后续轮询接管)
-      refreshStatus()
+      checkMediaStatus()
     } catch (err) {
       setPosterTriggerError(err instanceof Error ? err.message : '海报生成失败')
     }
-  }, [runId, isGeneratingPoster, posterSize, refreshStatus])
+  }, [runId, isGeneratingPoster, posterSize, checkMediaStatus])
 
   // 切换尺寸:立即触发后端重新生成
   const handleSizeChange = useCallback((size: string) => {
     setPosterSize(size)
     if (runId && !isGeneratingPoster) {
       setPosterTriggerError(null)
-      regeneratePoster(runId, size).then(() => refreshStatus()).catch((err) => {
+      regeneratePoster(runId, size).then(() => checkMediaStatus()).catch((err) => {
         setPosterTriggerError(err instanceof Error ? err.message : '海报生成失败')
       })
     }
-  }, [runId, isGeneratingPoster, refreshStatus])
+  }, [runId, isGeneratingPoster, checkMediaStatus])
 
   const posterPromptText = buildPosterPrompt(displayedChapters) || '基于当前营销方案自动生成主视觉海报'
 
@@ -204,9 +204,9 @@ export function PlanPage() {
     const pvDone = pv?.status === 'completed' || pv?.status === 'failed'
     const posterDone = poster?.status === 'completed' || poster?.status === 'failed'
     if (pvDone && posterDone) return
-    const interval = setInterval(refreshStatus, 5000)
+    const interval = setInterval(checkMediaStatus, 5000)
     return () => clearInterval(interval)
-  }, [pv?.status, poster?.status, isConnected, refreshStatus])
+  }, [pv?.status, poster?.status, isConnected, checkMediaStatus])
 
   const TABS = [
     { idx: 0, label: '概览', agentId: '' },
