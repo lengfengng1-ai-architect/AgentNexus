@@ -1,0 +1,570 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>png · 营销方案工作台 — 手机端重设计</title>
+<style>
+  /* ============================================================
+     png design system · 营销方案工作台手机端重设计（5 屏完整流程）
+     对话入口 → 简报 → 方案生成 → 行动建议 → 下发转发达成
+     严格使用注册调色板 6 色 + color-mix 蓝色阶；不引入新色字面量。
+     ============================================================ */
+  :root{
+    --bg:#ffffff; --fg:#111111; --accent:#1677ff; --surface:#f7f8fa;
+    --muted:#6b7280; --border:#d9dee7;
+    --accent-deep:color-mix(in srgb,#1677ff 52%,#111111);
+    --accent-soft:color-mix(in srgb,#1677ff 14%,#ffffff);
+    --accent-softer:color-mix(in srgb,#1677ff 6%,#ffffff);
+    --accent-border:color-mix(in srgb,#1677ff 32%,#ffffff);
+    --fg-soft:color-mix(in srgb,#111111 72%,#ffffff);
+    --shadow:color-mix(in srgb,#111111 16%,transparent);
+    --shadow-lg:color-mix(in srgb,#111111 22%,transparent);
+    --line:color-mix(in srgb,#d9dee7 55%,#ffffff);
+    --dark-1:#111111;
+    --dark-2:color-mix(in srgb,#111111 80%,#ffffff);
+    --r-xs:6px; --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px;
+    --ff:Inter,"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+    --ff-mono:"SFMono-Regular",Consolas,Menlo,Courier,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;-webkit-font-smoothing:antialiased;}
+  html,body{background:var(--surface);color:var(--fg);font-family:var(--ff);}
+  body{padding:40px 24px 80px;}
+
+  .hd{max-width:1240px;margin:0 auto 32px;}
+  .hd .crumb{display:inline-flex;align-items:center;gap:8px;padding:5px 12px;border-radius:var(--r-sm);
+    background:var(--accent-softer);color:var(--accent);font-size:12px;font-weight:600;}
+  .hd h1{font-size:28px;font-weight:700;letter-spacing:-.01em;margin:14px 0 6px;}
+  .hd p{color:var(--muted);font-size:14px;max-width:66ch;line-height:1.6;}
+  .hd .src{margin-top:10px;font-size:12px;color:var(--muted);}
+  .hd .src b{color:var(--fg);}
+  .hd .flow{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px;align-items:center;}
+  .hd .flow span{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--bg);border:1px solid var(--border);color:var(--fg-soft);}
+  .hd .flow span.on{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent);font-weight:600;}
+  .hd .flow i{color:var(--muted);font-style:normal;}
+
+  .stage{max-width:1240px;margin:0 auto;display:flex;gap:26px;justify-content:center;align-items:flex-start;flex-wrap:wrap;}
+  .col{display:flex;flex-direction:column;align-items:center;gap:12px;}
+  .cap{font-size:13px;font-weight:600;color:var(--fg);text-align:center;}
+  .cap span{font-weight:400;color:var(--muted);}
+
+  .phone{width:360px;height:740px;background:var(--bg);border-radius:40px;border:9px solid var(--fg);
+    overflow:hidden;position:relative;box-shadow:0 18px 44px var(--shadow-lg);transition:outline-color .2s;}
+  .phone.flash{outline:3px solid var(--accent);outline-offset:4px;}
+  .notch{position:absolute;top:0;left:50%;transform:translateX(-50%);width:128px;height:24px;background:var(--fg);
+    border-radius:0 0 16px 16px;z-index:30;}
+  .home-ind{position:absolute;bottom:7px;left:50%;transform:translateX(-50%);width:124px;height:4px;border-radius:2px;
+    background:var(--fg);opacity:.22;z-index:30;}
+  .screen{height:100%;overflow-y:auto;scrollbar-width:none;padding-bottom:64px;}
+  .screen::-webkit-scrollbar{display:none;}
+
+  .statusbar{height:34px;display:flex;align-items:flex-end;justify-content:space-between;padding:0 22px 6px;
+    font-size:12px;font-weight:600;color:var(--fg);}
+  .statusbar .sb-r{display:flex;gap:5px;align-items:center;}
+  .topbar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 14px;
+    font-size:14px;font-weight:700;background:var(--bg);position:sticky;top:0;z-index:10;}
+  .topbar .ico{color:var(--muted);font-size:18px;font-weight:400;cursor:pointer;}
+  .topbar .t{flex:1;text-align:center;}
+  .topbar .t small{display:block;font-size:10px;font-weight:400;color:var(--muted);margin-top:-2px;}
+
+  /* —— 对话入口 chat —— */
+  .chat{padding:10px 12px 12px;display:flex;flex-direction:column;gap:10px;}
+  .bubble{max-width:84%;font-size:13px;line-height:1.5;}
+  .bubble.agent{align-self:flex-start;background:var(--surface);border:1px solid var(--border);border-radius:14px 14px 14px 4px;padding:9px 12px;color:var(--fg);}
+  .bubble.user{align-self:flex-end;background:var(--accent);color:#ffffff;border-radius:14px 14px 4px 14px;padding:9px 12px;}
+  .bubble.agent .who{font-size:10px;font-weight:700;color:var(--accent);margin-bottom:3px;}
+  .bubble.agent .msg b{color:var(--accent);}
+  .chat-card{margin-top:8px;border:1px solid var(--accent-border);border-radius:var(--r-sm);background:var(--accent-softer);padding:9px 11px;display:flex;align-items:center;gap:8px;cursor:pointer;}
+  .chat-card .cc-t{font-size:12px;font-weight:700;color:var(--fg);}
+  .chat-card .cc-d{font-size:10px;color:var(--muted);flex:1;}
+  .chat-card .cc-go{font-size:11px;font-weight:600;color:var(--accent);}
+  .inputbar{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);
+    padding:8px 10px 14px;display:flex;gap:8px;align-items:center;z-index:15;}
+  .inputbar .quick{font-size:11px;padding:7px 11px;border-radius:20px;background:var(--accent-soft);color:var(--accent);font-weight:600;cursor:pointer;flex:none;}
+  .inputbar input{flex:1;height:38px;border:1px solid var(--border);border-radius:20px;padding:0 14px;font-family:var(--ff);font-size:13px;outline:none;}
+  .inputbar input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-softer);}
+  .inputbar .send{width:38px;height:38px;border:none;border-radius:50%;background:var(--accent);color:#ffffff;font-size:16px;cursor:pointer;flex:none;}
+  .inputbar .send:active{background:var(--accent-deep);}
+
+  /* —— 方案头部卡 —— */
+  .wk-head{background:linear-gradient(135deg,var(--accent),var(--accent-deep));color:#ffffff;padding:14px 16px 16px;}
+  .wk-head .brand{font-size:11px;opacity:.85;}
+  .wk-head .name{font-size:18px;font-weight:700;margin-top:2px;line-height:1.3;}
+  .wk-head .matrix{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .wk-head .matrix span{font-size:10px;padding:3px 8px;border-radius:6px;background:color-mix(in srgb,#ffffff 22%,transparent);font-weight:600;}
+  .wk-head .meta{display:flex;gap:14px;margin-top:10px;font-size:11px;opacity:.9;}
+  .wk-head .meta b{font-size:13px;font-weight:700;}
+
+  .sec{padding:14px 16px 2px;}
+  .sec h3{font-size:13px;font-weight:700;display:flex;align-items:center;gap:6px;}
+  .sec h3 .more{margin-left:auto;font-size:11px;color:var(--muted);font-weight:400;cursor:pointer;}
+
+  /* —— 表单 —— */
+  .form{padding:6px 16px 10px;display:flex;flex-direction:column;gap:12px;}
+  .field label{display:block;margin-bottom:5px;font-size:11px;font-weight:600;color:var(--fg-soft);}
+  .field label .req{color:var(--accent);}
+  .field input,.field select,.field textarea{
+    width:100%;height:38px;padding:0 12px;font-family:var(--ff);font-size:13px;color:var(--fg);
+    background:var(--bg);border:1px solid var(--border);border-radius:var(--r-sm);outline:none;transition:border-color .15s;}
+  .field textarea{height:auto;padding:9px 12px;resize:vertical;line-height:1.5;}
+  .field input:focus,.field select:focus,.field textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-softer);}
+  .field select{appearance:none;background-image:linear-gradient(45deg,transparent 50%,var(--muted) 50%),linear-gradient(135deg,var(--muted) 50%,transparent 50%);background-position:calc(100% - 14px) 17px,calc(100% - 9px) 17px;background-size:5px 5px;background-repeat:no-repeat;}
+  .chips-multi{display:flex;gap:6px;flex-wrap:wrap;}
+  .chips-multi .chip{font-size:11px;padding:6px 11px;border-radius:20px;border:1px solid var(--border);color:var(--muted);background:var(--surface);cursor:pointer;}
+  .chips-multi .chip.on{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent);font-weight:600;}
+
+  /* —— 吸底生成栏 —— */
+  .dock{position:absolute;left:0;right:0;bottom:0;background:var(--bg);border-top:1px solid var(--line);
+    padding:10px 16px 16px;display:flex;gap:10px;align-items:center;z-index:15;}
+  .dock .gen{flex:1;height:42px;border:none;border-radius:var(--r-sm);background:var(--accent);color:#ffffff;
+    font-family:var(--ff);font-size:14px;font-weight:600;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;}
+  .dock .gen:active{background:var(--accent-deep);}
+  .dock .hint{font-size:10px;color:var(--muted);line-height:1.3;max-width:96px;}
+
+  /* —— Agent 流水线 —— */
+  .pipe{padding:6px 16px 8px;}
+  .step{display:flex;gap:12px;padding:11px 0;position:relative;}
+  .step:not(:last-child)::before{content:"";position:absolute;left:13px;top:34px;bottom:-4px;width:2px;background:var(--border);}
+  .step.done:not(:last-child)::before{background:var(--accent);}
+  .step .dot{width:28px;height:28px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+    font-size:12px;font-weight:700;border:2px solid var(--border);background:var(--bg);color:var(--muted);z-index:1;position:relative;}
+  .step.done .dot{background:var(--accent);border-color:var(--accent);color:#ffffff;}
+  .step.now .dot{background:var(--accent-soft);border-color:var(--accent);color:var(--accent);}
+  .step .body{flex:1;padding-top:3px;}
+  .step .st{font-size:13px;font-weight:600;color:var(--fg);}
+  .step.now .st{color:var(--accent);}
+  .step .sd{font-size:11px;color:var(--muted);margin-top:2px;line-height:1.4;}
+  .step .sd b{color:var(--fg-soft);font-weight:600;}
+
+  /* —— 生成方案卡 —— */
+  .plancard{margin:4px 16px 10px;border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;background:var(--bg);}
+  .plancard .ph{padding:10px 12px;background:var(--surface);border-bottom:1px solid var(--line);font-size:12px;font-weight:700;display:flex;align-items:center;gap:6px;}
+  .plancard .ph .tag{margin-left:auto;font-size:10px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 7px;border-radius:6px;}
+  .plancard .pb{padding:11px 12px;}
+  .plancard .pb p{font-size:12px;color:var(--fg-soft);line-height:1.55;}
+  .plancard .pb p b{color:var(--fg);}
+  .model{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px;}
+  .model span{font-size:10px;padding:3px 8px;border-radius:6px;background:var(--accent-softer);color:var(--accent);font-weight:600;}
+
+  .kpi-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:10px;}
+  .kpi-row .k{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-sm);padding:8px 6px;text-align:center;}
+  .kpi-row .k .n{font-size:14px;font-weight:700;color:var(--accent);}
+  .kpi-row .k .l{font-size:9px;color:var(--muted);margin-top:2px;}
+
+  .cta-line{margin:4px 16px 6px;display:flex;gap:10px;align-items:center;background:linear-gradient(90deg,var(--accent),var(--accent-deep));
+    color:#ffffff;border-radius:var(--r-md);padding:12px 14px;}
+  .cta-line .big{font-size:13px;font-weight:700;}
+  .cta-line .small{font-size:10px;opacity:.88;margin-top:1px;}
+  .cta-line .go{margin-left:auto;background:color-mix(in srgb,#ffffff 22%,transparent);padding:7px 12px;border-radius:var(--r-sm);font-size:11px;font-weight:600;cursor:pointer;}
+
+  /* —— 行动建议卡 —— */
+  .filters{padding:10px 12px 6px;display:flex;gap:8px;overflow-x:auto;scrollbar-width:none;}
+  .filters::-webkit-scrollbar{display:none;}
+  .fchip{flex:none;font-size:11px;padding:6px 12px;border-radius:20px;border:1px solid var(--border);color:var(--muted);background:var(--bg);cursor:pointer;}
+  .fchip.on{background:var(--accent-soft);border-color:var(--accent-border);color:var(--accent);font-weight:600;}
+
+  .feed{padding:6px 16px 10px;display:flex;flex-direction:column;gap:12px;}
+  .acard{border:1px solid var(--border);border-radius:var(--r-md);overflow:hidden;background:var(--bg);}
+  .acard .thumb{height:84px;background:var(--accent-softer);position:relative;display:flex;align-items:center;justify-content:center;color:var(--accent);font-weight:700;font-size:14px;}
+  .acard .thumb .type{position:absolute;top:8px;left:8px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--accent-soft);color:var(--accent);}
+  .acard .thumb .stage{position:absolute;top:8px;right:8px;font-size:10px;font-weight:600;padding:3px 8px;border-radius:6px;background:var(--fg);color:#ffffff;}
+  .acard .ab{padding:10px 12px;}
+  .acard .at{font-size:13px;font-weight:700;line-height:1.35;}
+  .acard .am{font-size:11px;color:var(--muted);margin-top:5px;display:flex;gap:10px;flex-wrap:wrap;}
+  .acard .am b{color:var(--fg-soft);font-weight:600;}
+  .acard .af{display:flex;align-items:center;gap:8px;margin-top:9px;padding-top:9px;border-top:1px solid var(--line);}
+  .acard .af .meta{flex:1;font-size:10px;color:var(--muted);}
+  .acard .adopt{font-size:11px;font-weight:600;padding:6px 14px;border-radius:var(--r-sm);background:var(--accent);color:#ffffff;border:none;cursor:pointer;}
+  .acard.adopted .adopt{background:var(--surface);color:var(--muted);border:1px solid var(--border);}
+  .acard.adopted .thumb{opacity:.7;}
+
+  /* —— 下发与转发达成 —— */
+  .dp-hero{background:linear-gradient(135deg,var(--dark-1),var(--dark-2));color:#ffffff;padding:14px 16px 16px;}
+  .dp-hero .k{font-size:11px;opacity:.82;}
+  .dp-hero .v{font-size:18px;font-weight:700;margin-top:2px;}
+  .dp-hero .tagline{font-size:11px;opacity:.78;margin-top:4px;}
+  .dp-hero .dp-stats{display:flex;gap:16px;margin-top:12px;font-size:11px;opacity:.92;}
+  .dp-hero .dp-stats b{font-size:15px;font-weight:700;color:#ffffff;display:block;}
+  .fwd-list{padding:4px 16px 10px;}
+  .frow{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px solid var(--line);}
+  .frow .av{width:36px;height:36px;border-radius:10px;background:var(--accent-softer);color:var(--accent);display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;flex:none;}
+  .frow .info{flex:1;min-width:0;}
+  .frow .nm{font-size:13px;font-weight:600;}
+  .frow .mt{font-size:10px;color:var(--muted);margin-top:1px;}
+  .fwd{font-size:10px;font-weight:600;padding:3px 9px;border-radius:20px;cursor:pointer;flex:none;}
+  .fwd.done{background:var(--accent-soft);color:var(--accent);}
+  .fwd.wait{background:var(--surface);color:var(--muted);border:1px solid var(--border);}
+
+  .note{text-align:center;font-size:11px;color:var(--muted);margin-top:30px;}
+</style>
+</head>
+<body>
+
+<header class="hd" data-od-id="wb-header">
+  <div class="crumb">png · 营销方案工作台 · 手机端重设计</div>
+  <h1 data-od-id="wb-title">营销方案工作台 → 手机端</h1>
+  <p>把桌面工作台（23/24/25.png）内容重设计为手机端 <b>5 屏完整流程</b>：对话入口 → 简报 → 方案生成 → 行动建议 → 下发转发达成。文案取自《娃哈哈魅力系列集群营销方案》真实内容。</p>
+  <div class="flow">
+    <span class="on">① 对话入口</span><i>→</i>
+    <span>② 简报</span><i>→</i>
+    <span>③ 方案生成</span><i>→</i>
+    <span>④ 行动建议</span><i>→</i>
+    <span>⑤ 下发转发达成</span>
+  </div>
+  <div class="src">来源：<b>assets/23.png · 24.png · 25.png</b>（桌面工作台）＋ <b>assets/娃哈哈魅力系列集群营销方案.docx</b>（真实方案文案）</div>
+</header>
+
+<div class="stage">
+
+  <!-- ============ ① 对话入口 (chat) ============ -->
+  <div class="col">
+    <div class="phone" data-od-id="phone-chat">
+      <div class="notch"></div><div class="home-ind"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="sb-r">
+          <svg width="16" height="10" viewBox="0 0 16 10"><rect x="0" y="6" width="3" height="4" rx="1" fill="#111111"/><rect x="4" y="4" width="3" height="6" rx="1" fill="#111111"/><rect x="8" y="2" width="3" height="8" rx="1" fill="#111111"/><rect x="12" y="0" width="3" height="10" rx="1" fill="#111111"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10"><path d="M7 9.2 1 3.4a8.5 8.5 0 0 1 12 0L7 9.2Z" fill="#111111"/></svg>
+          <svg width="22" height="10" viewBox="0 0 22 10"><rect x="0.5" y="0.5" width="18" height="9" rx="2" fill="none" stroke="#111111"/><rect x="2" y="2" width="13" height="6" rx="1" fill="#111111"/><rect x="19" y="3" width="2" height="4" rx="1" fill="#111111"/></svg>
+        </span></div>
+        <div class="topbar"><span class="ico">‹</span><span class="t">营销方案助手<small>AllyGo Agent · 4M+1C 模型</small></span><span class="ico">⋯</span></div>
+
+        <div class="chat" data-od-id="chat-list">
+          <div class="bubble agent">
+            <div class="who">Agent</div>
+            <div class="msg">你好，我是营销方案助手。告诉我品牌、产品和目标，我帮你生成集群营销方案。</div>
+          </div>
+          <div class="bubble user">
+            <div class="msg">娃哈哈魅力系列，三款果汁（蓝莓/石榴/荔枝），想用运动盟域做 3 个月集群营销</div>
+          </div>
+          <div class="bubble agent">
+            <div class="who">Agent</div>
+            <div class="msg">已理解。按 <b>4M+1C</b> 模型拆解：Motion 运动场景 · Member 会员 · Media 内容 · Merchant 商户 · Community 社群。先填一份简报确认细节：</div>
+            <div class="chat-card" data-od-id="chat-goto-brief">
+              <div><div class="cc-t">填写方案简报</div><div class="cc-d">品牌 · 产品线 · 人群 · 周期</div></div>
+              <div class="cc-go">去填写 ›</div>
+            </div>
+          </div>
+          <div class="bubble agent">
+            <div class="who">Agent</div>
+            <div class="msg">预期 3 个月：曝光 <b>≥1亿</b> · 私域会员 <b>≥50万</b> · 达人 GMV <b>≥500万</b>。</div>
+          </div>
+        </div>
+
+        <div class="inputbar" data-od-id="chat-inputbar">
+          <div class="quick" data-od-id="quick-brief">填写简报</div>
+          <input type="text" placeholder="给 Agent 发消息…" id="chat-input">
+          <button class="send" id="chat-send" aria-label="发送">↑</button>
+        </div>
+      </div>
+    </div>
+    <div class="cap">① 对话入口 <span>（聊天式简报）</span></div>
+  </div>
+
+  <!-- ============ ② 工作台·简报 (23.png) ============ -->
+  <div class="col">
+    <div class="phone" data-od-id="phone-workbench-brief">
+      <div class="notch"></div><div class="home-ind"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="sb-r">
+          <svg width="16" height="10" viewBox="0 0 16 10"><rect x="0" y="6" width="3" height="4" rx="1" fill="#111111"/><rect x="4" y="4" width="3" height="6" rx="1" fill="#111111"/><rect x="8" y="2" width="3" height="8" rx="1" fill="#111111"/><rect x="12" y="0" width="3" height="10" rx="1" fill="#111111"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10"><path d="M7 9.2 1 3.4a8.5 8.5 0 0 1 12 0L7 9.2Z" fill="#111111"/></svg>
+          <svg width="22" height="10" viewBox="0 0 22 10"><rect x="0.5" y="0.5" width="18" height="9" rx="2" fill="none" stroke="#111111"/><rect x="2" y="2" width="13" height="6" rx="1" fill="#111111"/><rect x="19" y="3" width="2" height="4" rx="1" fill="#111111"/></svg>
+        </span></div>
+        <div class="topbar"><span class="ico">‹</span><span class="t">营销方案工作台<small>娃哈哈 · 魅力系列</small></span><span class="ico">⚙</span></div>
+
+        <div class="wk-head" data-od-id="wk-plan-head">
+          <div class="brand">娃哈哈新产品 · 集群营销全功能方案</div>
+          <div class="name">魅力系列 · 运动盟域跨界整合</div>
+          <div class="matrix"><span>蓝莓魅力饮</span><span>石榴魅力饮</span><span>荔枝魅力饮</span></div>
+          <div class="meta"><div><b>150ml</b> 规格</div><div><b>¥20</b> 中高端</div><div><b>3个月</b> 周期</div></div>
+        </div>
+
+        <div class="sec"><h3>方案简报 <span class="more">存草稿</span></h3></div>
+        <div class="form" data-od-id="wk-brief-form">
+          <div class="field"><label>品牌 <span class="req">*</span></label><input type="text" value="娃哈哈"></div>
+          <div class="field"><label>产品线 <span class="req">*</span></label><input type="text" value="魅力系列（蓝莓/石榴/荔枝）"></div>
+          <div class="field"><label>目标人群</label>
+            <select><option>25-35岁 一线白领</option><option>运动健身爱好者</option><option>新中产人群</option><option>Z 世代</option></select></div>
+          <div class="field"><label>营销目标</label><input type="text" value="认知度 ≥60% · 私域会员 ≥50万"></div>
+          <div class="field"><label>投放周期</label>
+            <select><option>3 个月（12 周）</option><option>1 个月</option><option>6 个月</option></select></div>
+          <div class="field"><label>首批城市</label>
+            <div class="chips-multi" data-od-id="city-chips">
+              <span class="chip on">北京</span><span class="chip on">上海</span>
+              <span class="chip on">广州</span><span class="chip on">深圳</span><span class="chip">成都</span>
+            </div></div>
+          <div class="field"><label>核心策略</label><textarea rows="2">以「运动盟域」为载体，4M+1C 集群营销模型，构建产品-场景-人群三位一体闭环。</textarea></div>
+        </div>
+      </div>
+      <div class="dock" data-od-id="wk-gen-dock">
+        <button class="gen" id="gen-btn">✦ AI 生成方案</button>
+        <div class="hint">基于简报自动拆解 4M+1C 策略与执行</div>
+      </div>
+    </div>
+    <div class="cap">② 工作台 · 简报 <span>（对应 23.png）</span></div>
+  </div>
+
+  <!-- ============ ③ 工作台·方案生成 (24.png) ============ -->
+  <div class="col">
+    <div class="phone" data-od-id="phone-workbench-gen">
+      <div class="notch"></div><div class="home-ind"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="sb-r">
+          <svg width="16" height="10" viewBox="0 0 16 10"><rect x="0" y="6" width="3" height="4" rx="1" fill="#111111"/><rect x="4" y="4" width="3" height="6" rx="1" fill="#111111"/><rect x="8" y="2" width="3" height="8" rx="1" fill="#111111"/><rect x="12" y="0" width="3" height="10" rx="1" fill="#111111"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10"><path d="M7 9.2 1 3.4a8.5 8.5 0 0 1 12 0L7 9.2Z" fill="#111111"/></svg>
+          <svg width="22" height="10" viewBox="0 0 22 10"><rect x="0.5" y="0.5" width="18" height="9" rx="2" fill="none" stroke="#111111"/><rect x="2" y="2" width="13" height="6" rx="1" fill="#111111"/><rect x="19" y="3" width="2" height="4" rx="1" fill="#111111"/></svg>
+        </span></div>
+        <div class="topbar"><span class="ico">‹</span><span class="t">方案生成<small>魅力系列 · 运动盟域</small></span><span class="ico">⋯</span></div>
+
+        <div class="sec"><h3>Agent 生成流水线 <span class="more">日志 ›</span></h3></div>
+        <div class="pipe" data-od-id="wk-pipeline">
+          <div class="step done"><div class="dot">✓</div><div class="body"><div class="st">理解需求</div><div class="sd">解析简报：娃哈哈魅力系列 · 三款果汁 · 3个月周期</div></div></div>
+          <div class="step done"><div class="dot">✓</div><div class="body"><div class="st">拆解策略</div><div class="sd">匹配 <b>4M+1C 集群营销模型</b>，锁定运动盟域载体</div></div></div>
+          <div class="step now"><div class="dot">◉</div><div class="body"><div class="st">生成方案</div><div class="sd">输出策略定位、赛事体系、KPI…</div></div></div>
+          <div class="step"><div class="dot">4</div><div class="body"><div class="st">优化</div><div class="sd">内容模型与转化链路调优</div></div></div>
+          <div class="step"><div class="dot">5</div><div class="body"><div class="st">下发盟域</div><div class="sd">下发至 4 城 × 4 个运动盟域</div></div></div>
+        </div>
+
+        <div class="sec"><h3>生成结果</h3></div>
+
+        <div class="plancard" data-od-id="plan-strategy">
+          <div class="ph">策略定位 <span class="tag">已生成</span></div>
+          <div class="pb">
+            <p>以<b>「运动盟域」</b>为核心载体，整合一线城市代理商、运动场馆、健身达人、社群领袖，通过<b>「全民赛事定制 + 合作加盟代理」</b>跨界模式，构建产品-场景-人群三位一体闭环。</p>
+            <div class="model"><span>Motion 运动场景</span><span>Member 会员</span><span>Media 内容</span><span>Merchant 商户</span><span>Community 社群</span></div>
+          </div>
+        </div>
+
+        <div class="plancard" data-od-id="plan-events">
+          <div class="ph">三级赛事体系 <span class="tag">已生成</span></div>
+          <div class="pb">
+            <p><b>主题赛事</b>（每月1场）：魅力蓝莓·城市夜跑、石榴魅力·瑜伽星空嘉年华，单场 500-1000 人。</p>
+            <p style="margin-top:6px"><b>联盟赛事</b>（每季1场）：城市马拉松、斯巴达勇士赛，官方指定饮品。</p>
+            <p style="margin-top:6px"><b>跨界活动</b>（每月2-3场）：健身房品鉴会、打卡挑战。</p>
+          </div>
+        </div>
+
+        <div class="plancard" data-od-id="plan-kpi">
+          <div class="ph">核心 KPI <span class="tag">3个月</span></div>
+          <div class="pb">
+            <div class="kpi-row">
+              <div class="k"><div class="n">≥1亿</div><div class="l">短视频曝光</div></div>
+              <div class="k"><div class="n">≥50万</div><div class="l">私域会员</div></div>
+              <div class="k"><div class="n">≥500万</div><div class="l">达人 GMV</div></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="cta-line" data-od-id="plan-next-actions">
+          <div><div class="big">下一步行动建议</div><div class="small">基于方案生成 6 项可执行动作</div></div>
+          <div class="go" data-od-id="goto-actions">查看 ›</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">③ 工作台 · 方案生成 <span>（对应 24.png）</span></div>
+  </div>
+
+  <!-- ============ ④ 下一步行动建议 (25.png) ============ -->
+  <div class="col">
+    <div class="phone" data-od-id="phone-actions">
+      <div class="notch"></div><div class="home-ind"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="sb-r">
+          <svg width="16" height="10" viewBox="0 0 16 10"><rect x="0" y="6" width="3" height="4" rx="1" fill="#111111"/><rect x="4" y="4" width="3" height="6" rx="1" fill="#111111"/><rect x="8" y="2" width="3" height="8" rx="1" fill="#111111"/><rect x="12" y="0" width="3" height="10" rx="1" fill="#111111"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10"><path d="M7 9.2 1 3.4a8.5 8.5 0 0 1 12 0L7 9.2Z" fill="#111111"/></svg>
+          <svg width="22" height="10" viewBox="0 0 22 10"><rect x="0.5" y="0.5" width="18" height="9" rx="2" fill="none" stroke="#111111"/><rect x="2" y="2" width="13" height="6" rx="1" fill="#111111"/><rect x="19" y="3" width="2" height="4" rx="1" fill="#111111"/></svg>
+        </span></div>
+        <div class="topbar"><span class="ico">‹</span><span class="t">下一步行动建议<small>魅力系列 · 共 6 项</small></span><span class="ico">?</span></div>
+
+        <div class="filters" data-od-id="action-filters">
+          <span class="fchip on">全部</span><span class="fchip">海报</span><span class="fchip">短视频</span>
+          <span class="fchip">赛事</span><span class="fchip">直播</span>
+        </div>
+
+        <div class="feed" data-od-id="action-feed">
+          <div class="acard" data-od-id="action-poster">
+            <div class="thumb">品牌悬念海报<span class="type">海报</span><span class="stage">预热期</span></div>
+            <div class="ab">
+              <div class="at">魅力系列 · 新品悬念海报</div>
+              <div class="am"><span><b>目标</b> 制造期待感</span><span><b>渠道</b> 抖音/视频号</span></div>
+              <div class="af"><div class="meta">第 1-2 周 · 种草类</div>
+                <button class="adopt">采纳</button></div>
+            </div>
+          </div>
+
+          <div class="acard" data-od-id="action-night-run">
+            <div class="thumb">魅力蓝莓·城市夜跑<span class="type">主题赛事</span><span class="stage">爆发期</span></div>
+            <div class="ab">
+              <div class="at">魅力蓝莓 · 城市夜跑</div>
+              <div class="am"><span><b>规模</b> 500-1000人</span><span><b>城市</b> 北上广深</span></div>
+              <div class="af"><div class="meta">每月1场 · 娃哈哈冠名</div>
+                <button class="adopt">采纳</button></div>
+            </div>
+          </div>
+
+          <div class="acard" data-od-id="action-yoga">
+            <div class="thumb">石榴魅力·瑜伽嘉年华<span class="type">主题赛事</span><span class="stage">爆发期</span></div>
+            <div class="ab">
+              <div class="at">石榴魅力 · 瑜伽星空嘉年华</div>
+              <div class="am"><span><b>诉求</b> 美容养颜</span><span><b>人群</b> 年轻女性</span></div>
+              <div class="af"><div class="meta">每月1场 · 跨界活动</div>
+                <button class="adopt">采纳</button></div>
+            </div>
+          </div>
+
+          <div class="acard" data-od-id="action-video">
+            <div class="thumb">工厂溯源短视频<span class="type">短视频</span><span class="stage">预热期</span></div>
+            <div class="ab">
+              <div class="at">100% 纯天然 · 工厂溯源</div>
+              <div class="am"><span><b>节奏</b> 每周3条</span><span><b>KPI</b> 曝光≥3000万/月</span></div>
+              <div class="af"><div class="meta">第 1-2 周 · 种草类</div>
+                <button class="adopt">采纳</button></div>
+            </div>
+          </div>
+
+          <div class="acard" data-od-id="action-live">
+            <div class="thumb">运动达人带货直播<span class="type">直播</span><span class="stage">爆发期</span></div>
+            <div class="ab">
+              <div class="at">腰部达人 · 运动带练直播</div>
+              <div class="am"><span><b>达人</b> 50-80名 KOL</span><span><b>GMV</b> ≥500万</span></div>
+              <div class="af"><div class="meta">第 5-9 周 · 内容共创</div>
+                <button class="adopt">采纳</button></div>
+            </div>
+          </div>
+        </div>
+        <div class="cta-line" data-od-id="actions-dispatch">
+          <div><div class="big">采纳并下发至 16 盟域</div><div class="small">统一发声 · 跨盟转发执行</div></div>
+          <div class="go" data-od-id="goto-dispatch">下发 ›</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">④ 下一步行动建议 <span>（对应 25.png）</span></div>
+  </div>
+
+  <!-- ============ ⑤ 下发与转发达成 ============ -->
+  <div class="col">
+    <div class="phone" data-od-id="phone-dispatch">
+      <div class="notch"></div><div class="home-ind"></div>
+      <div class="screen">
+        <div class="statusbar"><span>9:41</span><span class="sb-r">
+          <svg width="16" height="10" viewBox="0 0 16 10"><rect x="0" y="6" width="3" height="4" rx="1" fill="#111111"/><rect x="4" y="4" width="3" height="6" rx="1" fill="#111111"/><rect x="8" y="2" width="3" height="8" rx="1" fill="#111111"/><rect x="12" y="0" width="3" height="10" rx="1" fill="#111111"/></svg>
+          <svg width="14" height="10" viewBox="0 0 14 10"><path d="M7 9.2 1 3.4a8.5 8.5 0 0 1 12 0L7 9.2Z" fill="#111111"/></svg>
+          <svg width="22" height="10" viewBox="0 0 22 10"><rect x="0.5" y="0.5" width="18" height="9" rx="2" fill="none" stroke="#111111"/><rect x="2" y="2" width="13" height="6" rx="1" fill="#111111"/><rect x="19" y="3" width="2" height="4" rx="1" fill="#111111"/></svg>
+        </span></div>
+        <div class="topbar"><span class="ico">‹</span><span class="t">下发与转发达成<small>统一发声 · 跨盟下发</small></span><span class="ico">⚙</span></div>
+
+        <div class="dp-hero" data-od-id="dp-hero">
+          <div class="k">已下发方案</div>
+          <div class="v">魅力系列集群营销</div>
+          <div class="tagline">下发至 4 城 × 4 个运动盟域 · 共 16 个盟域</div>
+          <div class="dp-stats">
+            <div><b>4/5</b>已转发盟</div>
+            <div><b>12.4w</b>累计曝光</div>
+            <div><b>86%</b>盟域活跃</div>
+          </div>
+        </div>
+
+        <div class="sec"><h3>转发达成看板 <span class="more">本次预热 ›</span></h3></div>
+        <div class="fwd-list" data-od-id="fwd-list">
+          <div class="frow"><div class="av">篮</div><div class="info"><div class="nm">锐动篮球盟 · 北京</div><div class="mt">曝光 5.2w · 互动 1.1k</div></div><span class="fwd done">已转发</span></div>
+          <div class="frow"><div class="av">羽</div><div class="info"><div class="nm">羽悦盟 · 上海</div><div class="mt">曝光 3.1w · 互动 640</div></div><span class="fwd done">已转发</span></div>
+          <div class="frow"><div class="av">跑</div><div class="info"><div class="nm">城市跑团 · 广州</div><div class="mt">曝光 2.8w · 互动 520</div></div><span class="fwd done">已转发</span></div>
+          <div class="frow"><div class="av">泳</div><div class="info"><div class="nm">泳动生活 · 深圳</div><div class="mt">曝光 1.3w · 互动 210</div></div><span class="fwd done">已转发</span></div>
+          <div class="frow"><div class="av">街</div><div class="info"><div class="nm">街球俱乐部 · 北京</div><div class="mt">待跟进 · 已发提醒</div></div><span class="fwd wait">未转发</span></div>
+        </div>
+
+        <div class="cta-line" data-od-id="dp-cta">
+          <div><div class="big">统一发声 · 再下发一条</div><div class="small">发一条 → 下发旗下 16 个盟域</div></div>
+          <div class="go">发布 ›</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">⑤ 下发与转发达成 <span>（跨盟下发闭环）</span></div>
+  </div>
+
+</div>
+
+<div class="note">png 设计系统 · 营销方案工作台手机端 5 屏 · 内容取自《娃哈哈魅力系列集群营销方案》</div>
+
+<script>
+  // 真实交互：对话发送、跳转高亮、城市多选、生成推进、行动筛选、采纳切换、转发切换
+  (function(){
+    // —— 对话入口：发送消息 ——
+    var chatSend=document.getElementById('chat-send');
+    var chatInput=document.getElementById('chat-input');
+    var chatList=document.querySelector('[data-od-id="chat-list"]');
+    function scrollChatBottom(){ if(chatList) chatList.parentElement.scrollTop=chatList.parentElement.scrollHeight; }
+    function sendMsg(){
+      if(!chatInput||!chatList) return;
+      var v=chatInput.value.trim(); if(!v) return;
+      var ub=document.createElement('div'); ub.className='bubble user';
+      var um=document.createElement('div'); um.className='msg'; um.textContent=v;
+      ub.appendChild(um); chatList.appendChild(ub);
+      chatInput.value=''; scrollChatBottom();
+      setTimeout(function(){
+        var ab=document.createElement('div'); ab.className='bubble agent';
+        var who=document.createElement('div'); who.className='who'; who.textContent='Agent';
+        var msg=document.createElement('div'); msg.className='msg';
+        msg.textContent='收到，正在按 4M+1C 拆解，可点「填写简报」确认细节。';
+        ab.appendChild(who); ab.appendChild(msg); chatList.appendChild(ab); scrollChatBottom();
+      },420);
+    }
+    if(chatSend) chatSend.addEventListener('click',sendMsg);
+    if(chatInput) chatInput.addEventListener('keydown',function(e){ if(e.key==='Enter'){e.preventDefault();sendMsg();} });
+
+    // —— 跨屏跳转高亮（不用 scrollIntoView，避免破坏预览）——
+    function flash(sel){
+      var t=document.querySelector(sel); if(!t) return;
+      t.classList.add('flash'); setTimeout(function(){t.classList.remove('flash');},1400);
+    }
+    document.querySelectorAll('[data-od-id="chat-goto-brief"],[data-od-id="quick-brief"]').forEach(function(el){
+      el.addEventListener('click',function(){ flash('[data-od-id="phone-workbench-brief"]'); });
+    });
+    var gotoDisp=document.querySelector('[data-od-id="goto-dispatch"]');
+    if(gotoDisp) gotoDisp.addEventListener('click',function(){ flash('[data-od-id="phone-dispatch"]'); });
+    var gotoAct=document.querySelector('[data-od-id="goto-actions"]');
+    if(gotoAct) gotoAct.addEventListener('click',function(){ flash('[data-od-id="phone-actions"]'); });
+
+    // —— 城市多选 ——
+    document.querySelectorAll('.chips-multi').forEach(function(g){
+      g.addEventListener('click',function(e){ var el=e.target.closest('.chip'); if(!el) return; el.classList.toggle('on'); });
+    });
+
+    // —— 生成按钮 → 推进流水线 ——
+    var genBtn=document.getElementById('gen-btn');
+    if(genBtn) genBtn.addEventListener('click',function(){
+      var pipe=document.querySelector('[data-od-id="wk-pipeline"]'); if(!pipe) return;
+      var steps=pipe.querySelectorAll('.step');
+      steps.forEach(function(s){ s.classList.remove('now'); });
+      steps[0].classList.add('done'); steps[1].classList.add('done');
+      steps[2].classList.add('done');
+      if(steps[3]){ steps[3].classList.add('now'); steps[3].querySelector('.dot').textContent='◉'; }
+      genBtn.textContent='✦ 重新生成';
+      flash('[data-od-id="phone-workbench-gen"]');
+    });
+
+    // —— 行动筛选互斥 ——
+    document.querySelectorAll('.filters').forEach(function(g){
+      g.addEventListener('click',function(e){ var el=e.target.closest('.fchip'); if(!el) return;
+        g.querySelectorAll('.fchip').forEach(function(n){n.classList.remove('on');}); el.classList.add('on'); });
+    });
+
+    // —— 采纳切换 ——
+    document.querySelectorAll('.acard .adopt').forEach(function(btn){
+      btn.addEventListener('click',function(){
+        var card=btn.closest('.acard'); var on=card.classList.toggle('adopted');
+        btn.textContent=on?'已采纳':'采纳';
+      });
+    });
+
+    // —— 转发状态切换（已转发↔未转发）——
+    document.querySelectorAll('.fwd').forEach(function(pill){
+      pill.addEventListener('click',function(){
+        var done=pill.classList.toggle('done'); pill.classList.toggle('wait',!done);
+        pill.textContent=done?'已转发':'未转发';
+      });
+    });
+  })();
+</script>
+</body>
+</html>
