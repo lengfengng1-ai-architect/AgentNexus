@@ -8,17 +8,20 @@ superpowers in_scope ID: audience-insight
 import asyncio
 import json
 import logging
-from typing import Any
+from functools import cache
+from typing import Annotated, Any
 
 from httpx import AsyncClient, HTTPError, TimeoutException
 from bs4 import BeautifulSoup
 from jinja2 import Environment, FileSystemLoader
-from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import END, StateGraph
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langgraph.graph import END, StateGraph, add_messages
+from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model, searxng_search, write_log
 from app.agents.registry import register
+from app.agents.tools import web_fetch_tool, web_search_tool
 from app.config.cache_paths import AUDIENCE_DIR, persona_path
 from app.schemas.audience_insight import AudienceRawData, UserPersona
 from app.utils import extract_text_from_html
@@ -31,6 +34,7 @@ FETCH_TOP = 25
 FETCH_TIMEOUT = 10
 MAX_PAGE_CHARS = 4000
 FETCH_CONCURRENCY = 8
+MAX_TOOL_ROUNDS = 3
 # 已知 403 屏蔽爬虫的域名，在搜索去重阶段跳过
 BLOCKED_DOMAINS = {"zhuanlan.zhihu.com", "baike.baidu.com", "wenku.baidu.com"}
 USER_AGENT = (
@@ -59,12 +63,18 @@ class State(BaseModel):
     market_info: dict = Field(default_factory=dict)
     search_results: list[SearchResult] = Field(default_factory=list)
     fetched_pages: list[FetchedPage] = Field(default_factory=list)
+    # ReAct 对话与计数
+    messages: Annotated[list, add_messages] = Field(default_factory=list)
+    tool_call_count: int = 0
     audience_data: AudienceRawData | None = None
     persona: UserPersona | None = None
 
 
 # ── 辅助 ──
 
+@cache
+def _build_model():
+    return build_chat_model()
 
 
 def _load_template(name: str, **kwargs) -> str:
@@ -212,6 +222,45 @@ async def generate_persona_node(state: State) -> dict:
     return {"persona": result}
 
 
+# ── ReAct 节点 ──
+
+
+async def init_react_node(state: State) -> dict:
+    """初始化 ReAct 对话：将批量抓取的页面内容注入 system prompt。"""
+    valid = [p for p in state.fetched_pages if p.fetched and p.content]
+    prompt = _load_template("audience_insight_react.md.j2",
+                             product_name=state.product_name,
+                             initial_pages=valid)
+    messages = [
+        SystemMessage(content=prompt),
+        HumanMessage(content=f"请调研产品「{state.product_name}」的目标人群信息。"),
+    ]
+    write_log("audience_insight", f"🚀 进入 ReAct 阶段（已有 {len(valid)} 个有效页面）")
+    return {"messages": messages, "tool_call_count": 0}
+
+
+async def agent_node(state: State) -> dict:
+    """ReAct agent：绑定 web_search/web_fetch 工具，基于已有页面内容决定是否补充搜索。"""
+    new_count = state.tool_call_count
+    if state.messages and isinstance(state.messages[-1], ToolMessage):
+        new_count = state.tool_call_count + 1
+        write_log("audience_insight", f"🛠️ ReAct 工具调用累计 {new_count}/{MAX_TOOL_ROUNDS} 轮")
+
+    llm = _build_model().bind_tools([web_search_tool, web_fetch_tool])
+    response = await llm.ainvoke(list(state.messages))
+    return {"messages": [response], "tool_call_count": new_count}
+
+
+def _route_after_agent(state: State) -> str:
+    """agent 之后：有工具调用且未超轮次 → tools；否则 → extract_audience。"""
+    last = state.messages[-1] if state.messages else None
+    if not (last and getattr(last, "tool_calls", None)):
+        return "extract_audience"
+    if state.tool_call_count >= MAX_TOOL_ROUNDS:
+        return "extract_audience"
+    return "tools"
+
+
 # ── 图构建 ──
 
 
@@ -219,12 +268,20 @@ def _build_graph():
     g = StateGraph(State)
     g.add_node("search", search_node)
     g.add_node("fetch", fetch_node)
+    g.add_node("init_react", init_react_node)
+    g.add_node("agent", agent_node)
+    g.add_node("tools", ToolNode([web_search_tool, web_fetch_tool]))
     g.add_node("extract_audience", extract_audience_node)
     g.add_node("generate_persona", generate_persona_node)
 
     g.set_entry_point("search")
     g.add_edge("search", "fetch")
-    g.add_edge("fetch", "extract_audience")
+    g.add_edge("fetch", "init_react")
+    g.add_edge("init_react", "agent")
+    g.add_conditional_edges(
+        "agent", _route_after_agent, {"tools": "tools", "extract_audience": "extract_audience"}
+    )
+    g.add_edge("tools", "agent")
     g.add_edge("extract_audience", "generate_persona")
     g.add_edge("generate_persona", END)
     return g.compile()
@@ -310,7 +367,7 @@ register("generate_persona", run_generate_persona)
 
 
 async def run_audience_insight_full(state: dict[str, Any]) -> dict[str, Any]:
-    """Full pipeline handler: search → fetch → extract → generate_persona.
+    """Full pipeline handler: search → fetch → ReAct → extract → generate_persona.
 
     Used by plan_generation_service via get_handler('audience_insight').
     Returns both audience_data and persona so downstream nodes have
@@ -320,25 +377,13 @@ async def run_audience_insight_full(state: dict[str, Any]) -> dict[str, Any]:
     if not product_name:
         raise ValueError("Missing required input: product_name or brand_name")
 
-    # Step 1: Search
-    s = State(product_name=product_name, product_info=state.get("product_info", {}), market_info=state.get("market_info", {}))
-    search_result = await search_node(s)
-    results = search_result["search_results"]
-
-    # Step 2: Fetch pages
-    fetch_state = State(product_name=product_name, search_results=results)
-    fetch_result = await fetch_node(fetch_state)
-    pages = fetch_result["fetched_pages"]
-
-    # Step 3: Extract audience data
-    extract_state = State(product_name=product_name, search_results=results, fetched_pages=pages)
-    extract_result = await extract_audience_node(extract_state)
-    audience = extract_result["audience_data"]
-
-    # Step 4: Generate persona
-    generate_state = State(product_name=product_name, product_info=state.get("product_info", {}), market_info=state.get("market_info", {}), audience_data=audience)
-    persona_result = await generate_persona_node(generate_state)
-    persona = persona_result["persona"]
+    result = await _graph.ainvoke({
+        "product_name": product_name,
+        "product_info": state.get("product_info", {}),
+        "market_info": state.get("market_info", {}),
+    })
+    audience = result.get("audience_data")
+    persona = result.get("persona")
 
     if audience is None or persona is None:
         raise ValueError("Agent did not return complete result")

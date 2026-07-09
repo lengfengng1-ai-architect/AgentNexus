@@ -1,6 +1,6 @@
 """Tests for market research agent in plan generation pipeline.
 
-Corresponding OpenSpec: openspec/changes/market-research-web-search/
+Corresponding OpenSpec: openspec/changes/insight-market-react-research/
 """
 
 import os
@@ -11,6 +11,18 @@ import pytest
 from app.agents.market_research_agent import run_market_research
 from app.schemas.plan_generation import MarketResearchOutput
 
+from langchain_core.messages import AIMessage, ToolMessage
+
+
+def _make_state(messages=None, tool_call_count=0):
+    from app.agents.market_research_agent import State
+    return State(
+        brand_name="Nike",
+        category="运动服装",
+        messages=messages or [],
+        tool_call_count=tool_call_count,
+    )
+
 
 @pytest.mark.asyncio
 async def test_missing_category_raises():
@@ -20,41 +32,29 @@ async def test_missing_category_raises():
 
 
 @pytest.mark.asyncio
-async def test_search_empty_returns_empty_output():
-    """When search returns nothing, output should be empty (not crash)."""
-    with patch("app.agents.market_research_agent._search", new_callable=AsyncMock, return_value=[]):
-        result = await run_market_research({"brand_name": "Nike", "category": "运动服装"})
-    output = MarketResearchOutput.model_validate(result)
-    assert "未返回市场信息" in output.market_summary
-    assert output.trends == []
-    assert output.opportunities == []
+async def test_graph_returns_empty_output():
+    """When graph returns no output, should not error."""
+    from app.agents.market_research_agent import _graph
+
+    with patch.object(_graph, "ainvoke", new_callable=AsyncMock, return_value={"output": None}):
+        with pytest.raises(ValueError, match="did not return structured output"):
+            await run_market_research({"brand_name": "Nike", "category": "运动服装"})
 
 
 @pytest.mark.asyncio
 async def test_normal_mode_extracts_structured_data():
-    """Full flow: search → fetch → extract, verify output shape."""
-    mock_search = [
-        {"href": "https://example.com/report1", "title": "报告1"},
-        {"href": "https://example.com/report2", "title": "报告2"},
-    ]
-    mock_fetch = [
-        {"url": "https://example.com/report1", "title": "行业报告1", "content": "运动服饰市场规模持续增长，年增长率10%", "fetched": True},
-        {"url": "https://example.com/report2", "title": "行业报告2", "content": "健康生活方式成为趋势，女性运动市场增速明显", "fetched": True},
-    ]
-    mock_extract_result = MarketResearchOutput(
-        market_summary="Nike 所在的运动服装市场：运动服饰市场规模持续增长，年增长率10%。健康生活方式成为主流趋势。",
+    """Full flow: graph returns structured output."""
+    mock_output = MarketResearchOutput(
+        market_summary="Nike 所在的运动服装市场：运动服饰市场规模持续增长，年增长率10%。",
         trends=[
             {"title": "健康生活方式常态化", "description": "运动场景从专业健身房扩展到日常社交场合。"},
             {"title": "女性运动市场快速增长", "description": "瑜伽、普拉提等品类增速领先。"},
         ],
         opportunities=["城市运动社群渗透带来精准触达机会", "女性细分品类增长空间显著"],
     )
+    from app.agents.market_research_agent import _graph
 
-    with (
-        patch("app.agents.market_research_agent._search", new_callable=AsyncMock, return_value=mock_search),
-        patch("app.agents.market_research_agent._fetch", new_callable=AsyncMock, return_value=mock_fetch),
-        patch("app.agents.market_research_agent._extract", new_callable=AsyncMock, return_value=mock_extract_result),
-    ):
+    with patch.object(_graph, "ainvoke", new_callable=AsyncMock, return_value={"output": mock_output}):
         result = await run_market_research({"brand_name": "Nike", "category": "运动服装"})
 
     output = MarketResearchOutput.model_validate(result)
@@ -105,3 +105,39 @@ async def test_extract_empty_pages_returns_default():
     result = await _extract("Nike", "运动服装", [])
     assert isinstance(result, MarketResearchOutput)
     assert "未找到市场信息" in result.market_summary
+
+
+# ── ReAct 路由逻辑测试 ──
+
+
+def test_route_no_tool_calls():
+    """最后一条消息无 tool_calls → extract。"""
+    from app.agents.market_research_agent import _route_after_agent
+    state = _make_state(messages=[AIMessage(content="done")])
+    assert _route_after_agent(state) == "extract"
+
+
+def test_route_empty_messages():
+    """messages 为空 → extract。"""
+    from app.agents.market_research_agent import _route_after_agent
+    state = _make_state()
+    assert _route_after_agent(state) == "extract"
+
+
+def test_route_has_tool_calls_under_limit():
+    """有 tool_calls 且未超 3 轮 → tools。"""
+    from app.agents.market_research_agent import _route_after_agent
+    msg = AIMessage(content="", tool_calls=[{"name": "web_search", "args": {}, "id": "1"}])
+    state = _make_state(messages=[msg], tool_call_count=1)
+    assert _route_after_agent(state) == "tools"
+
+
+def test_route_reached_limit():
+    """tool_call_count >= 3 → extract。"""
+    from app.agents.market_research_agent import _route_after_agent
+    msg = AIMessage(content="", tool_calls=[{"name": "web_search", "args": {}, "id": "1"}])
+    state = _make_state(messages=[msg], tool_call_count=3)
+    assert _route_after_agent(state) == "extract"
+
+    state2 = _make_state(messages=[msg], tool_call_count=5)
+    assert _route_after_agent(state2) == "extract"
