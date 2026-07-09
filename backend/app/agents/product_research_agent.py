@@ -13,6 +13,7 @@ superpowers in_scope ID: product-research
 
 import asyncio
 import logging
+from functools import cache
 from pathlib import Path
 from typing import Annotated, Any
 
@@ -71,7 +72,7 @@ PRIORITY_DOMAINS = {
     "zol.com.cn", "smzdm.com", "ithome.com", "pcpop.com",
 }
 
-# 记录最近一次抓取的 URL，供 retry 时排除
+# 记录最近一次抓取的 URL，供 content-filter 重试排除时使用
 _last_fetched_urls: list[str] = []
 
 
@@ -104,14 +105,9 @@ class ProductResearchState(BaseModel):
 
 # ── 辅助函数 ────────────────────────────────────────────────
 
-_model = None
-
-
+@cache
 def _build_model():
-    global _model
-    if _model is None:
-        _model = build_chat_model()
-    return _model
+    return build_chat_model()
 
 
 def _load_prompt(product_name: str, initial_pages: list[FetchedPage]) -> str:
@@ -242,8 +238,7 @@ async def fetch_node(state: ProductResearchState) -> dict:
 
     results = await asyncio.gather(*[wrapped(url) for url in urls])
 
-    global _last_fetched_urls
-    _last_fetched_urls = [r.url for r in results if r.fetched]
+    _last_fetched_urls[:] = [r.url for r in results if r.fetched]
 
     fetched_count = sum(1 for p in results if p.fetched)
     write_log("product_research", f"📄 抓取完成：成功 {fetched_count}/{len(results)} 个页面")

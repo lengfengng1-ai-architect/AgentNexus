@@ -1,7 +1,7 @@
 """Market research agent for plan generation pipeline.
 
-Rewritten: pure-LLM 7-chain replaced by web search → fetch → extract.
-Corresponding OpenSpec: openspec/changes/market-research-web-search/
+Rewritten: pure-LLM 7-chain replaced by web search → fetch → ReAct → extract.
+Corresponding OpenSpec: changes/insight-market-react-research/
 Corresponding in_scope ID: plan-generation
 """
 
@@ -10,16 +10,21 @@ import json
 import logging
 import os
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from bs4 import BeautifulSoup
+from functools import cache
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
-from langchain_core.messages import HumanMessage, SystemMessage
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langgraph.graph import END, StateGraph, add_messages
+from langgraph.prebuilt import ToolNode
+from pydantic import BaseModel, Field
 from urllib.parse import urlparse
 
 from app.agents.llm_utils import build_chat_model, searxng_search, write_log
 from app.agents.registry import register
+from app.agents.tools import web_fetch_tool, web_search_tool
 from app.schemas.plan_generation import MarketResearchOutput, MarketTrend
 
 logger = logging.getLogger(__name__)
@@ -29,6 +34,7 @@ FETCH_TIMEOUT = 10
 FETCH_TOP = 25
 MAX_PAGE_CHARS = 4000
 FETCH_CONCURRENCY = 8
+MAX_TOOL_ROUNDS = 3
 USER_AGENT = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
     "AppleWebKit/537.36 (KHTML, like Gecko) "
@@ -44,7 +50,26 @@ SEARCH_QUERIES = [
     "{category} 市场机会 投资 前景",         # opportunities
 ]
 
+# ── State ──
+
+
+class State(BaseModel):
+    brand_name: str = ""
+    category: str = ""
+    search_results: list[dict] = Field(default_factory=list)
+    fetched_pages: list[dict] = Field(default_factory=list)
+    # ReAct 对话与计数
+    messages: Annotated[list, add_messages] = Field(default_factory=list)
+    tool_call_count: int = 0
+    output: MarketResearchOutput | None = None
+
+
 # ── Helpers ──
+
+
+@cache
+def _build_model():
+    return build_chat_model()
 
 
 def _category_slug(category: str) -> str:
@@ -55,7 +80,6 @@ def _category_slug(category: str) -> str:
 def _load_mock_data(category: str) -> dict[str, Any] | None:
     """Load preset mock data for category, or None if not found."""
     mock_dir = Path("mock_data") / "market_research"
-    # Try exact match first, then slug match
     for candidate in (f"{category}.json", f"{_category_slug(category)}.json"):
         path = mock_dir / candidate
         if path.exists():
@@ -65,7 +89,6 @@ def _load_mock_data(category: str) -> dict[str, Any] | None:
                 logger.warning("failed to load mock data %s: %s", path, exc)
                 return None
 
-    # Try listing files and fuzzy match by name
     if mock_dir.is_dir():
         for f in mock_dir.iterdir():
             if f.suffix == ".json":
@@ -96,7 +119,7 @@ def _build_output(
     )
 
 
-# ── Search ──
+# ── Node: Search ──
 
 
 async def _search(category: str) -> list[dict[str, str]]:
@@ -119,11 +142,9 @@ async def _search(category: str) -> list[dict[str, str]]:
             url = item.get("href", "")
             if url and url not in seen:
                 seen.add(url)
-                # Skip binary/datasheet URLs
                 path_part = url.split("?")[0].lower()
                 if any(path_part.endswith(ext) for ext in SKIP_EXTENSIONS):
                     continue
-                # Skip known 403 domains
                 hostname = urlparse(url).hostname or ""
                 if hostname in BLOCKED_DOMAINS:
                     continue
@@ -133,7 +154,13 @@ async def _search(category: str) -> list[dict[str, str]]:
     return deduped
 
 
-# ── Fetch ──
+async def search_node(state: State) -> dict:
+    """搜索市场信息（关键词并行）。"""
+    results = await _search(state.category)
+    return {"search_results": results}
+
+
+# ── Node: Fetch ──
 
 
 async def _fetch(pages: list[dict[str, str]]) -> list[dict[str, Any]]:
@@ -153,7 +180,6 @@ async def _fetch(pages: list[dict[str, str]]) -> list[dict[str, Any]]:
                 raw = resp.text
                 soup = BeautifulSoup(raw, "lxml")
                 title = soup.title.string.strip() if soup.title and soup.title.string else None
-                # Extract readable text
                 for tag in soup(["script", "style", "nav", "header", "footer", "aside"]):
                     tag.decompose()
                 text = soup.get_text(separator="\n", strip=True)
@@ -187,87 +213,58 @@ async def _fetch(pages: list[dict[str, str]]) -> list[dict[str, Any]]:
     return results
 
 
-# ── Extract ──
+async def fetch_node(state: State) -> dict:
+    """并发读取页面内容。"""
+    pages = await _fetch(state.search_results)
+    return {"fetched_pages": pages}
 
 
-async def _extract(
-    brand_name: str,
-    category: str,
-    fetched_pages: list[dict[str, Any]],
-) -> MarketResearchOutput:
-    """Single LLM call: extract structured market research from fetched pages."""
-    valid_pages = [p for p in fetched_pages if p["fetched"] and p["content"]]
-    if not valid_pages:
-        write_log("market_research", "⚠️ 没有有效页面内容可供分析")
-        return MarketResearchOutput(
-            market_summary=f"{brand_name} 所在的 {category} 市场：未找到市场信息",
-            trends=[],
-            opportunities=[],
-        )
+# ── Node: Init ReAct ──
 
-    write_log("market_research", f"🤖 正在用 AI 分析 {len(valid_pages)} 个页面的内容，提取结构化市场信息…")
 
+async def init_react_node(state: State) -> dict:
+    """初始化 ReAct 对话：将批量抓取的页面内容注入 system prompt。"""
+    valid = [p for p in state.fetched_pages if p.get("fetched") and p.get("content")]
     env = Environment(loader=FileSystemLoader("app/prompt_templates"))
-    prompt = env.get_template("market_research_extract.md.j2").render(
-        market_name=brand_name,
-        category=category,
-        fetched_pages=valid_pages,
+    prompt = env.get_template("market_research_react.md.j2").render(
+        market_name=state.brand_name,
+        category=state.category,
+        fetched_pages=valid,
     )
-
-    llm = build_chat_model()
-
-    try:
-        result = await llm.with_structured_output(_ExtractionResult).ainvoke([
-            SystemMessage(content=prompt),
-            HumanMessage(content=f"请对「{brand_name}」所在「{category}」市场进行调研分析。"),
-        ])
-    except Exception as exc:
-        logger.warning("market_research extraction failed: %s", exc)
-        write_log("market_research", "⚠️ AI 提取失败，返回空结果")
-        return MarketResearchOutput(
-            market_summary=f"{brand_name} 所在的 {category} 市场：分析失败",
-            trends=[],
-            opportunities=[],
-        )
-
-    write_log("market_research", "🤖 AI 提取完成")
-
-    # Build summary from definition + size
-    def_notes = result.market_definition.definition_notes or ""
-    size_str = ""
-    if result.market_size and result.market_size.tam and result.market_size.tam.value:
-        site = result.market_size.tam.source_url or ""
-        size_str = f"市场规模约{result.market_size.tam.value}亿元"
-        if result.market_size.cagr:
-            size_str += f"，CAGR {result.market_size.cagr}%"
-        if site:
-            size_str += f"（{site}）"
-    if size_str:
-        market_summary = f"{brand_name} 所在的 {category} 市场：{def_notes} {size_str}"
-    else:
-        market_summary = f"{brand_name} 所在的 {category} 市场分析：{def_notes}"
-
-    # Build trends
-    trends_raw = []
-    for t in result.trends:
-        trends_raw.append({"title": t.title, "summary": t.summary})
-
-    # Build opportunities
-    opportunities_raw = [o for o in result.opportunities.key_opportunities if o]
-
-    write_log("market_research", f"✓ 提取到 {len(trends_raw)} 条趋势、{len(opportunities_raw)} 个机会点")
-
-    return _build_output(
-        market_summary=market_summary[:300],
-        trends_raw=trends_raw,
-        opportunities=opportunities_raw,
-    )
+    messages = [
+        SystemMessage(content=prompt),
+        HumanMessage(content=f"请对「{state.brand_name}」所在「{state.category}」市场进行调研分析。"),
+    ]
+    write_log("market_research", f"🚀 进入 ReAct 阶段（已有 {len(valid)} 个有效页面）")
+    return {"messages": messages, "tool_call_count": 0}
 
 
-# ── Pydantic schema for structured extraction ──
+# ── Node: ReAct Agent ──
 
 
-from pydantic import BaseModel, Field
+async def agent_node(state: State) -> dict:
+    """ReAct agent：绑定 web_search/web_fetch 工具，基于已有页面内容决定是否补充搜索。"""
+    new_count = state.tool_call_count
+    if state.messages and isinstance(state.messages[-1], ToolMessage):
+        new_count = state.tool_call_count + 1
+        write_log("market_research", f"🛠️ ReAct 工具调用累计 {new_count}/{MAX_TOOL_ROUNDS} 轮")
+
+    llm = _build_model().bind_tools([web_search_tool, web_fetch_tool])
+    response = await llm.ainvoke(list(state.messages))
+    return {"messages": [response], "tool_call_count": new_count}
+
+
+def _route_after_agent(state: State) -> str:
+    """agent 之后：有工具调用且未超轮次 → tools；否则 → extract。"""
+    last = state.messages[-1] if state.messages else None
+    if not (last and getattr(last, "tool_calls", None)):
+        return "extract"
+    if state.tool_call_count >= MAX_TOOL_ROUNDS:
+        return "extract"
+    return "tools"
+
+
+# ── Extract helpers (Pydantic schemas for structured output) ──
 
 
 class _MarketSizeItem(BaseModel):
@@ -316,6 +313,115 @@ class _MarketSize(BaseModel):
     conflict_notes: str = ""
 
 
+# ── Node: Extract ──
+
+
+async def _extract(
+    brand_name: str,
+    category: str,
+    fetched_pages: list[dict[str, Any]],
+) -> MarketResearchOutput:
+    """Single LLM call: extract structured market research from fetched pages."""
+    valid_pages = [p for p in fetched_pages if p.get("fetched") and p.get("content")]
+    if not valid_pages:
+        write_log("market_research", "⚠️ 没有有效页面内容可供分析")
+        return MarketResearchOutput(
+            market_summary=f"{brand_name} 所在的 {category} 市场：未找到市场信息",
+            trends=[],
+            opportunities=[],
+        )
+
+    write_log("market_research", f"🤖 正在用 AI 分析 {len(valid_pages)} 个页面的内容，提取结构化市场信息…")
+
+    env = Environment(loader=FileSystemLoader("app/prompt_templates"))
+    prompt = env.get_template("market_research_extract.md.j2").render(
+        market_name=brand_name,
+        category=category,
+        fetched_pages=valid_pages,
+    )
+
+    llm = build_chat_model()
+
+    try:
+        result = await llm.with_structured_output(_ExtractionResult).ainvoke([
+            SystemMessage(content=prompt),
+            HumanMessage(content=f"请对「{brand_name}」所在「{category}」市场进行调研分析。"),
+        ])
+    except Exception as exc:
+        logger.warning("market_research extraction failed: %s", exc)
+        write_log("market_research", "⚠️ AI 提取失败，返回空结果")
+        return MarketResearchOutput(
+            market_summary=f"{brand_name} 所在的 {category} 市场：分析失败",
+            trends=[],
+            opportunities=[],
+        )
+
+    write_log("market_research", "🤖 AI 提取完成")
+
+    def_notes = result.market_definition.definition_notes or ""
+    size_str = ""
+    if result.market_size and result.market_size.tam and result.market_size.tam.value:
+        site = result.market_size.tam.source_url or ""
+        size_str = f"市场规模约{result.market_size.tam.value}亿元"
+        if result.market_size.cagr:
+            size_str += f"，CAGR {result.market_size.cagr}%"
+        if site:
+            size_str += f"（{site}）"
+    if size_str:
+        market_summary = f"{brand_name} 所在的 {category} 市场：{def_notes} {size_str}"
+    else:
+        market_summary = f"{brand_name} 所在的 {category} 市场分析：{def_notes}"
+
+    trends_raw = []
+    for t in result.trends:
+        trends_raw.append({"title": t.title, "summary": t.summary})
+
+    opportunities_raw = [o for o in result.opportunities.key_opportunities if o]
+
+    write_log("market_research", f"✓ 提取到 {len(trends_raw)} 条趋势、{len(opportunities_raw)} 个机会点")
+
+    return _build_output(
+        market_summary=market_summary[:300],
+        trends_raw=trends_raw,
+        opportunities=opportunities_raw,
+    )
+
+
+async def extract_node(state: State) -> dict:
+    """从页面内容提取结构化市场信息。"""
+    output = await _extract(state.brand_name, state.category, state.fetched_pages)
+    return {"output": output}
+
+
+# ── Graph ──
+
+
+def _build_graph():
+    graph = StateGraph(State)
+
+    graph.add_node("search", search_node)
+    graph.add_node("fetch", fetch_node)
+    graph.add_node("init_react", init_react_node)
+    graph.add_node("agent", agent_node)
+    graph.add_node("tools", ToolNode([web_search_tool, web_fetch_tool]))
+    graph.add_node("extract", extract_node)
+
+    graph.set_entry_point("search")
+    graph.add_edge("search", "fetch")
+    graph.add_edge("fetch", "init_react")
+    graph.add_edge("init_react", "agent")
+    graph.add_conditional_edges(
+        "agent", _route_after_agent, {"tools": "tools", "extract": "extract"}
+    )
+    graph.add_edge("tools", "agent")
+    graph.add_edge("extract", END)
+
+    return graph.compile()
+
+
+_graph = _build_graph()
+
+
 # ── Entry Point ──
 
 
@@ -324,7 +430,7 @@ async def run_market_research(state: dict[str, Any]) -> dict[str, Any]:
 
     Three modes:
     1. Mock mode (USE_MOCK_DATA=true): reads preset data from mock_data/market_research/
-    2. Normal mode: web search → fetch → extract
+    2. Normal mode: web search → fetch → ReAct → extract (via LangGraph)
     """
     brand_name = state.get("brand_name") or state.get("brand_input", {}).get("brand_name")
     category = state.get("category") or state.get("brand_input", {}).get("category")
@@ -351,20 +457,14 @@ async def run_market_research(state: dict[str, Any]) -> dict[str, Any]:
             write_log("market_research", "✓ 市场分析完成（mock-空）")
             return output.model_dump()
 
-    # ── Real mode: search → fetch → extract ──
-    search_results = await _search(category)
-    if not search_results:
-        write_log("market_research", "⚠️ 搜索未返回结果")
-        output = MarketResearchOutput(
-            market_summary=f"{brand_name} 所在的 {category} 市场：搜索未返回市场信息",
-            trends=[],
-            opportunities=[],
-        )
-        write_log("market_research", "✓ 市场分析完成（无搜索结果）")
-        return output.model_dump()
-
-    fetched_pages = await _fetch(search_results)
-    output = await _extract(brand_name, category, fetched_pages)
+    # ── Real mode: LangGraph ──
+    result = await _graph.ainvoke({
+        "brand_name": brand_name,
+        "category": category,
+    })
+    output = result.get("output")
+    if output is None:
+        raise ValueError("Market research agent did not return structured output")
 
     write_log("market_research", "✓ 市场分析完成")
     return output.model_dump()
