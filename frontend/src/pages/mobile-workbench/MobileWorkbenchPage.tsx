@@ -4,6 +4,10 @@
 import { useState } from 'react'
 import { PhoneFrame } from './PhoneFrame'
 import { ScreenChat, type MobileScreen } from './ScreenChat'
+import { ScreenBrief } from './ScreenBrief'
+import { ScreenGenerate } from './ScreenGenerate'
+import { ScreenActions } from './ScreenActions'
+import { ScreenDispatch } from './ScreenDispatch'
 import './mobile-workbench.css'
 
 const TABS: { key: MobileScreen; label: string }[] = [
@@ -20,16 +24,6 @@ const TOPBAR: Record<MobileScreen, { t: string; sub: string }> = {
   generate: { t: '方案生成', sub: '魅力系列 · 运动盟域' },
   actions: { t: '下一步行动建议', sub: '魅力系列 · 共 6 项' },
   dispatch: { t: '下发与转发达成', sub: '统一发声 · 跨盟下发' },
-}
-
-function Placeholder({ screen }: { screen: MobileScreen }) {
-  const meta = TOPBAR[screen]
-  return (
-    <div className="mw-placeholder">
-      <div className="ph-title">{meta.t}</div>
-      <div>开发中（P1 范围外，后续变更补齐）</div>
-    </div>
-  )
 }
 
 export function MobileWorkbenchPage() {
@@ -63,8 +57,14 @@ export function MobileWorkbenchPage() {
       <PhoneFrame topbar={topbar}>
         {screen === 'chat' ? (
           <ScreenChat onNavigate={setScreen} />
+        ) : screen === 'brief' ? (
+          <ScreenBrief onNavigate={setScreen} />
+        ) : screen === 'generate' ? (
+          <ScreenGenerate onNavigate={setScreen} />
+        ) : screen === 'actions' ? (
+          <ScreenActions onNavigate={setScreen} />
         ) : (
-          <Placeholder screen={screen} />
+          <ScreenDispatch />
         )}
       </PhoneFrame>
     </div>
