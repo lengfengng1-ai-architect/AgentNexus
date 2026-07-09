@@ -1,28 +1,34 @@
 """产品信息调研 Agent
 
-通过 Web 搜索和深度读页，提取产品的结构化基础信息。
+Hybrid 架构（批量并行搜索抓取 + ReAct 工具调用）：
+Step 1: batch_search_fetch 节点 —— 3 关键词并行搜索 + 并发抓取 top 25 页面，注入 prompt。
+Step 2: ReAct 循环 —— LLM 绑定 web_search/web_fetch 工具，自主决定是否查漏补缺（最多 3 轮）。
+Step 3: finalize 节点 —— with_structured_output(ProductResearchResult) 做最终结构化输出。
+
 输出按 identity / official_description / features / specifications / availability 五大模块组织。
 
-OpenSpec: changes/product-research-v2
+OpenSpec: changes/product-research-tool-calling
 superpowers in_scope ID: product-research
 """
 
 import asyncio
 import logging
 from pathlib import Path
-from typing import Any
+from typing import Annotated, Any
 
 from bs4 import BeautifulSoup
 from httpx import AsyncClient, HTTPError, TimeoutException
 from jinja2 import Environment, FileSystemLoader
 
-from langchain_core.messages import HumanMessage, SystemMessage
-from langgraph.graph import END, StateGraph
+from langchain_core.messages import HumanMessage, SystemMessage, ToolMessage
+from langgraph.graph import END, StateGraph, add_messages
+from langgraph.prebuilt import ToolNode
 from openai import BadRequestError
 from pydantic import BaseModel, Field
 
 from app.agents.llm_utils import build_chat_model, searxng_search, write_log
 from app.agents.registry import register
+from app.agents.tools import web_fetch_tool, web_search_tool
 from app.schemas.product_info import (
     ProductResearchResult,
 )
@@ -47,6 +53,8 @@ FETCH_TIMEOUT = 10
 MAX_PAGE_CHARS = 4000
 SKIP_EXTENSIONS = {'.pdf', '.doc', '.docx', '.zip', '.jpg', '.png', '.gif', '.ppt', '.pptx', '.xls', '.xlsx'}
 FETCH_CONCURRENCY = 8
+# ReAct 循环最大工具调用轮次
+MAX_TOOL_ROUNDS = 3
 # 已知 403 屏蔽爬虫的域名，在搜索去重阶段跳过
 BLOCKED_DOMAINS = {"zhuanlan.zhihu.com", "baike.baidu.com", "wenku.baidu.com"}
 USER_AGENT = (
@@ -84,6 +92,12 @@ class ProductResearchState(BaseModel):
     product_name: str
     search_results: list[SearchResult] = Field(default_factory=list)
     fetched_pages: list[FetchedPage] = Field(default_factory=list)
+    # Step 1 输出
+    initial_pages: list[FetchedPage] = Field(default_factory=list)
+    seen_urls: list[str] = Field(default_factory=list)
+    # Step 2 ReAct 对话与计数
+    messages: Annotated[list, add_messages] = Field(default_factory=list)
+    tool_call_count: int = 0
     output: ProductResearchResult | None = None
     exclude_urls: list[str] = Field(default_factory=list)
 
@@ -100,10 +114,10 @@ def _build_model():
     return _model
 
 
-def _load_prompt(product_name: str, fetched_pages: list[FetchedPage]) -> str:
+def _load_prompt(product_name: str, initial_pages: list[FetchedPage]) -> str:
     env = Environment(loader=FileSystemLoader("app/prompt_templates"))
     template = env.get_template("product_research.md.j2")
-    return template.render(product_name=product_name, fetched_pages=fetched_pages)
+    return template.render(product_name=product_name, initial_pages=initial_pages)
 
 
 def _domain_priority(url: str) -> int:
@@ -237,75 +251,106 @@ async def fetch_node(state: ProductResearchState) -> dict:
     return {"fetched_pages": list(results)}
 
 
-async def extract_node(state: ProductResearchState) -> dict:
-    """LLM 提取结构化产品信息（五大模块）。"""
-    valid_pages = [
-        p for p in state.fetched_pages
-        if p.fetched and p.content
-    ]
-    all_urls = [p.url for p in valid_pages]
+# ── Step 1: 批量搜索 + 抓取 ─────────────────────────────────
 
-    if not valid_pages:
+
+async def batch_search_fetch_node(state: ProductResearchState) -> dict:
+    """Step 1：复用 search_node + fetch_node 做批量并行搜索抓取，并初始化 ReAct 对话。"""
+    write_log("product_research", "🚀 Step 1：批量并行搜索 + 抓取")
+
+    search_out = await search_node(state)
+    intermediate = state.model_copy(update={"search_results": search_out["search_results"]})
+    fetch_out = await fetch_node(intermediate)
+
+    pages: list[FetchedPage] = fetch_out["fetched_pages"]
+    valid = [p for p in pages if p.fetched and p.content]
+    seen = [p.url for p in pages]
+    write_log("product_research", f"📄 批量抓取完成：有效页面 {len(valid)} 个，进入 ReAct 阶段")
+
+    # 初始化 ReAct 对话：系统 prompt 注入 initial_pages 内容 + 工具说明 + 任务指令
+    sys_prompt = _load_prompt(state.product_name, valid)
+    messages = [
+        SystemMessage(content=sys_prompt),
+        HumanMessage(
+            content=(
+                f"请调研产品「{state.product_name}」的结构化信息。"
+                "信息充足时直接给出调研结论（不要调用工具）；"
+                "缺少关键信息时可调用 web_search / web_fetch 补充。"
+            )
+        ),
+    ]
+    return {
+        "search_results": search_out["search_results"],
+        "fetched_pages": pages,
+        "initial_pages": valid,
+        "seen_urls": seen + list(state.exclude_urls),
+        "messages": messages,
+        "tool_call_count": 0,
+    }
+
+
+# ── Step 2: ReAct 循环 ──────────────────────────────────────
+
+
+async def agent_node(state: ProductResearchState) -> dict:
+    """ReAct agent：绑定 web_search/web_fetch 工具，基于已有页面内容决定是否补充搜索。"""
+    # 刚从 tools 返回（上一条是 ToolMessage）→ 一轮工具调用完成
+    new_count = state.tool_call_count
+    if state.messages and isinstance(state.messages[-1], ToolMessage):
+        new_count = state.tool_call_count + 1
+        write_log("product_research", f"🛠️ ReAct 工具调用累计 {new_count}/{MAX_TOOL_ROUNDS} 轮")
+
+    llm = _build_model().bind_tools([web_search_tool, web_fetch_tool])
+    response = await llm.ainvoke(list(state.messages))
+    return {"messages": [response], "tool_call_count": new_count}
+
+
+def _route_after_agent(state: ProductResearchState) -> str:
+    """agent 之后：有工具调用且未超轮次 → tools；否则 → finalize。"""
+    last = state.messages[-1] if state.messages else None
+    if not (last and getattr(last, "tool_calls", None)):
+        return "finalize"
+    if state.tool_call_count >= MAX_TOOL_ROUNDS:
+        return "finalize"
+    return "tools"
+
+
+def _collect_tool_fetch_urls(messages: list) -> list[str]:
+    """从 ReAct 对话中收集 web_fetch 工具调用抓取过的 URL，用于溯源。"""
+    urls: list[str] = []
+    for m in messages:
+        calls = getattr(m, "tool_calls", None) or []
+        for c in calls:
+            if c.get("name") == "web_fetch":
+                url = c.get("args", {}).get("url")
+                if url:
+                    urls.append(url)
+    return urls
+
+
+# ── Step 3: 最终结构化输出 ──────────────────────────────────
+
+
+async def finalize_node(state: ProductResearchState) -> dict:
+    """用 with_structured_output 做最终结构化输出，复用溯源逻辑。"""
+    write_log("product_research", "🤖 Step 2：生成结构化输出")
+
+    has_batch = any(p.fetched and p.content for p in state.initial_pages)
+    if not has_batch and state.tool_call_count == 0:
         write_log("product_research", "⚠️ 没有有效页面内容可供分析")
         return {"output": ProductResearchResult()}
 
-    write_log("product_research", f"🤖 正在用 AI 分析 {len(valid_pages)} 个页面的内容，提取结构化信息…")
-    prompt = _load_prompt(state.product_name, valid_pages)
     llm = _build_model().with_structured_output(ProductResearchResult)
-
-    result: ProductResearchResult = await llm.ainvoke([
-        SystemMessage(content=prompt),
-        HumanMessage(content=f"请提取产品「{state.product_name}」的结构化信息。"),
-    ])
-
-    write_log("product_research", "🤖 AI 提取完成，正在整理字段溯源…")
+    result: ProductResearchResult = await llm.ainvoke(list(state.messages))
+    # 溯源：批量页面 + ReAct 中 web_fetch 抓取的新 URL
+    all_urls = [p.url for p in state.initial_pages if p.fetched and p.content]
+    all_urls += _collect_tool_fetch_urls(state.messages)
     _fill_sourced_fields(result, all_urls)
-    write_log("product_research", f"✓ 提取到 {len(result.features)} 个功能、{len(result.identity.model_fields)} 个标识字段")
-
+    write_log(
+        "product_research",
+        f"✓ 提取到 {len(result.features)} 个功能、{len(result.identity.model_fields)} 个标识字段",
+    )
     return {"output": result}
-
-
-async def enrich_website_node(state: ProductResearchState) -> dict:
-    """补充官网 URL 到 identity。"""
-    output = state.output
-    if output is None:
-        return {}
-
-    product = state.product_name
-    # 如果已有官网值且看起来不像通用首页，跳过
-    existing = output.identity.product_name.value
-    if existing and ("product" in existing.lower() or "shop" in existing.lower()):
-        return {}
-
-    try:
-        raw = await searxng_search(f"{product} 官方网站", max_results=5)
-    except Exception:
-        return {}
-
-    for item in raw:
-        url = item.get("href", "")
-        if not url:
-            continue
-        if "官方" not in item.get("title", "") + item.get("body", "") and "官网" not in item.get("title", "") + item.get("body", ""):
-            continue
-        write_log("product_research", f"🌐 正在验证官网链接 {url}…")
-        try:
-            async with AsyncClient(timeout=FETCH_TIMEOUT) as client:
-                resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
-                resp.raise_for_status()
-                text = extract_text_from_html(resp.text)
-                if product.lower() in (text or "").lower()[:800]:
-                    if url not in output.identity.product_name.sources:
-                        output.identity.product_name.sources.append(url)
-                        write_log("product_research", f"✓ 确认官网：{url}")
-                    break
-                else:
-                    write_log("product_research", f"⚠️ {url} 内容不匹配，跳过")
-        except Exception:
-            write_log("product_research", f"⚠️ 访问 {url} 失败，跳过")
-            continue
-
-    return {"output": output}
 
 
 # ── 图构建 ──────────────────────────────────────────────────
@@ -314,16 +359,18 @@ async def enrich_website_node(state: ProductResearchState) -> dict:
 def _build_graph():
     graph = StateGraph(ProductResearchState)
 
-    graph.add_node("search", search_node)
-    graph.add_node("fetch", fetch_node)
-    graph.add_node("extract", extract_node)
-    graph.add_node("enrich_website", enrich_website_node)
+    graph.add_node("batch_search_fetch", batch_search_fetch_node)
+    graph.add_node("agent", agent_node)
+    graph.add_node("tools", ToolNode([web_search_tool, web_fetch_tool]))
+    graph.add_node("finalize", finalize_node)
 
-    graph.set_entry_point("search")
-    graph.add_edge("search", "fetch")
-    graph.add_edge("fetch", "extract")
-    graph.add_edge("extract", "enrich_website")
-    graph.add_edge("enrich_website", END)
+    graph.set_entry_point("batch_search_fetch")
+    graph.add_edge("batch_search_fetch", "agent")
+    graph.add_conditional_edges(
+        "agent", _route_after_agent, {"tools": "tools", "finalize": "finalize"}
+    )
+    graph.add_edge("tools", "agent")
+    graph.add_edge("finalize", END)
 
     return graph.compile()
 
