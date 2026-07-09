@@ -327,7 +327,11 @@ def _collect_tool_fetch_urls(messages: list) -> list[str]:
 
 
 async def finalize_node(state: ProductResearchState) -> dict:
-    """用 with_structured_output 做最终结构化输出，复用溯源逻辑。"""
+    """用 with_structured_output 做最终结构化输出，复用溯源逻辑。
+
+    ponytail: 流式 with_structured_output 偶发空首 chunk 导致 ValueError，
+    捕获后降级为非流式调用重试一次。
+    """
     write_log("product_research", "🤖 Step 2：生成结构化输出")
 
     has_batch = any(p.fetched and p.content for p in state.initial_pages)
@@ -335,8 +339,17 @@ async def finalize_node(state: ProductResearchState) -> dict:
         write_log("product_research", "⚠️ 没有有效页面内容可供分析")
         return {"output": ProductResearchResult()}
 
-    llm = _build_model().with_structured_output(ProductResearchResult)
-    result: ProductResearchResult = await llm.ainvoke(list(state.messages))
+    try:
+        llm = _build_model().with_structured_output(ProductResearchResult)
+        result: ProductResearchResult = await llm.ainvoke(list(state.messages))
+    except ValueError:
+        logger.warning("product_research finalize_node: streaming parse failed, retrying non-streaming")
+        write_log("product_research", "⚠️ 结构化输出解析失败，正在重试…")
+        # 降级为非流式调用：用 agenerate 代替流式 ainvoke
+        model = _build_model()
+        structured = model.with_structured_output(ProductResearchResult, method="json_mode")
+        result = await structured.ainvoke(list(state.messages))
+
     # 溯源：批量页面 + ReAct 中 web_fetch 抓取的新 URL
     all_urls = [p.url for p in state.initial_pages if p.fetched and p.content]
     all_urls += _collect_tool_fetch_urls(state.messages)

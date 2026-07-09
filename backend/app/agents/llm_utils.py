@@ -4,6 +4,7 @@ Corresponding in_scope ID: workflow-orchestration
 """
 
 import json
+import logging
 from typing import Any, AsyncGenerator
 
 from bs4 import BeautifulSoup
@@ -12,6 +13,8 @@ from langchain.chat_models import init_chat_model
 from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 _log_buffer: list[dict[str, str]] = []
 # Cache for model instances keyed by provider name.
@@ -185,15 +188,25 @@ async def stream_chat(
 
 
 async def invoke_json(system_prompt: str, user_msg: str) -> dict[str, Any]:
-    """Invoke LLM and parse JSON from markdown code fences if present."""
-    msg = await build_chat_model().ainvoke([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_msg),
-    ])
-    raw = (msg.content or "").strip()
-    if raw.startswith("```"):
-        raw = raw.split("\n", 1)[1]
-        if raw.endswith("```"):
-            raw = raw[:-3]
-        raw = raw.strip()
-    return json.loads(raw)
+    """Invoke LLM and parse JSON from markdown code fences if present.
+
+    ponytail: 重试 1 次以应对 LLM 偶发的 JSON 格式溢出。
+    """
+    for attempt in (1, 2):
+        try:
+            msg = await build_chat_model().ainvoke([
+                SystemMessage(content=system_prompt),
+                HumanMessage(content=user_msg + ("\n\n注意：请只输出有效的 JSON，不要包含其他文字。" if attempt == 2 else "")),
+            ])
+            raw = (msg.content or "").strip()
+            if raw.startswith("```"):
+                raw = raw.split("\n", 1)[1]
+                if raw.endswith("```"):
+                    raw = raw[:-3]
+                raw = raw.strip()
+            return json.loads(raw)
+        except (json.JSONDecodeError, ValueError) as exc:
+            if attempt == 1:
+                logger.warning("invoke_json JSON parse failed (attempt 1/2), retrying… error=%s", exc)
+            else:
+                raise

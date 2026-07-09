@@ -96,6 +96,11 @@ def create_app() -> FastAPI:
     upload_dir.mkdir(parents=True, exist_ok=True)
     app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
 
+    # 挂载生成的 XLSX 文件目录
+    xlsx_dir = Path("generated_xlsx")
+    xlsx_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/xlsx", StaticFiles(directory=str(xlsx_dir)), name="xlsx")
+
     return app
 
 

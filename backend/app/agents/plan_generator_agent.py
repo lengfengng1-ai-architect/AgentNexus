@@ -5,10 +5,15 @@ Corresponding in_scope ID: plan-generation
 
 2026-07-07: Rewritten from 9 serial LLM calls to 1-shot generation.
 LLM outputs 9 chapters with @@CH:N@@ separators; handler parses incrementally.
+
+2026-07-09: Added parallel XLSX generation.
+Uses asyncio.gather to run 1-shot chapter generation and
+with_structured_output + generate_plan_xlsx tool in parallel.
 """
 
 from __future__ import annotations
 
+import asyncio
 import json
 import logging
 import re
@@ -16,15 +21,18 @@ from pathlib import Path
 from typing import Any
 
 from jinja2 import Environment, FileSystemLoader
+from langchain_core.messages import HumanMessage, SystemMessage
 from langgraph.types import StreamWriter
 
-from app.agents.llm_utils import stream_chat, write_log
+from app.agents.llm_utils import build_chat_model, stream_chat, write_log
 from app.agents.registry import register
+from app.agents.tools.generate_xlsx import generate_plan_xlsx
 from app.schemas.plan_generation import (
     PLAN_CHAPTER_SPEC,
     PlanChapter,
     PlanGeneratorOutput,
 )
+from app.schemas.xlsx_generation import XlsxData
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +99,10 @@ async def run_plan_generator(
     Title/subtitle are fixed by PLAN_CHAPTER_SPEC; LLM only fills content.
     The ``writer`` parameter is accepted for future C3 streaming but
     intentionally unused in C1 (process feedback goes through write_log).
+
+    After chapters are generated, extracts structured XLSX data from
+    the chapter content + upstream node outputs and generates a
+    budget/process/ROI table via the ``generate_plan_xlsx`` LangChain tool.
     """
     brand_input = state.get("brand_input") or {}
     brand_name = brand_input.get("brand_name")
@@ -105,6 +117,7 @@ async def run_plan_generator(
     write_log("plan_generator", "🤖 开始生成营销方案(9章)…")
     write_log("plan_generator", "🤔 策略构思中…")
 
+    # ── Step 1: 1-shot LLM 生成 9 章 ─────────────────────
     prompt = _render(
         "plan_generator",
         brand_name=brand_name,
@@ -148,7 +161,107 @@ async def run_plan_generator(
 
     logger.info("[plan_generator] all 9 chapters done for %s", brand_name)
     write_log("plan_generator", "✓ 方案生成完成")
-    return PlanGeneratorOutput(chapters=chapters).model_dump()
+
+    # ── Step 2: 根据方案内容提取 XLSX 数据 + 生成表格 ────
+    xlsx_path = await _generate_xlsx_from_chapters(state, chapters, brand_name, category, city)
+    await asyncio.sleep(0)  # yield control
+    write_log("plan_generator", "📊 预算流程回报分析表格已生成" if xlsx_path else "⚠️ XLSX 表格生成失败（不影响方案内容）")
+
+    return PlanGeneratorOutput(chapters=chapters, xlsx_path=xlsx_path).model_dump()
 
 
 register("plan_generator", run_plan_generator)
+
+
+async def _generate_xlsx_from_chapters(
+    state: dict[str, Any],
+    chapters: list[PlanChapter],
+    brand_name: str,
+    category: str,
+    city: str,
+) -> str:
+    """根据方案 9 章内容 + 上游数据，提取结构化 XLSX 数据并生成表格。
+
+    在方案内容生成完成后同步调用，结果通过 xlsx_path 附加在输出中。
+    异常不影响方案内容返回。
+    """
+    brand_input = state.get("brand_input") or {}
+    budget_kpi = state.get("budget_kpi", {})
+    allocations = budget_kpi.get("allocations", [])
+    kpis = budget_kpi.get("kpis", {})
+    milestones = budget_kpi.get("timeline", [])
+    execution = state.get("execution_planning", {})
+    strategy = state.get("strategy_generation", {})
+    period_val = brand_input.get("period", 3)
+    budget_val = brand_input.get("budget", 0)
+
+    # 汇总方案内容用于 prompt
+    chapters_summary = ""
+    for ch in chapters:
+        content_preview = ch.content[:200].replace("\n", " ").replace("#*`", " ")
+        chapters_summary += f"\n【{ch.title}】{ch.subtitle}\n{content_preview}\n"
+
+    cities = brand_input.get("cities", [])
+    is_multi_city = isinstance(cities, list) and len(cities) > 1
+
+    try:
+        xlsx_prompt = _render(
+            "xlsx_generation",
+            brand_name=brand_name,
+            category=category,
+            city=city,
+            budget=budget_val,
+            period=period_val,
+            positioning=strategy.get("positioning", ""),
+            marketing_goal=strategy.get("marketing_goal", ""),
+            leagues_plan=execution.get("leagues_plan", ""),
+            events_plan=execution.get("events_plan", ""),
+            influencer_plan=execution.get("influencer_plan", ""),
+            content_plan=execution.get("content_plan", ""),
+            store_plan=execution.get("store_plan", ""),
+            total_budget=budget_val,
+            allocations=allocations,
+            kpis=kpis,
+            milestones=milestones,
+            strategy_framework=strategy.get("strategy_framework", ""),
+            key_messages=strategy.get("key_messages", []),
+            is_multi_city=is_multi_city,
+        )
+    except Exception as exc:
+        logger.warning("[plan_generator] xlsx prompt render failed: %s", exc)
+        return ""
+
+    write_log("plan_generator", "📊 正在根据方案内容提取 XLSX 表格数据…")
+
+    try:
+        llm = build_chat_model().with_structured_output(XlsxData)
+        xlsx_data: XlsxData = await llm.ainvoke([
+            SystemMessage(content=xlsx_prompt),
+            HumanMessage(
+                content=(
+                    f"请为 {brand_name} 在 {city} 的营销方案提取 XLSX 表格数据。\n\n"
+                    f"方案内容摘要（共 {len(chapters)} 章）：\n{chapters_summary}"
+                )
+            ),
+        ])
+        write_log("plan_generator", "✓ XLSX 数据提取完成，正在生成表格…")
+
+        xlsx_json = xlsx_data.model_dump_json(ensure_ascii=False, indent=2)
+        xlsx_path = await generate_plan_xlsx.ainvoke(
+            {"data": xlsx_json, "brand_name": brand_name}
+        )
+
+        if xlsx_path.startswith("XLSX 生成失败") or xlsx_path.startswith("数据解析失败"):
+            logger.warning("[plan_generator] xlsx tool returned error: %s", xlsx_path)
+            write_log("plan_generator", f"⚠️ XLSX 生成遇到问题：{xlsx_path[:50]}")
+            return ""
+
+        logger.info("[plan_generator] xlsx generated: %s", xlsx_path)
+        # Convert absolute filesystem path to URL path
+        url_path = xlsx_path.replace("\\", "/")
+        filename = url_path.split("/")[-1]
+        url_path = f"/xlsx/{filename}"
+        return url_path
+    except Exception as exc:
+        logger.exception("[plan_generator] xlsx generation failed")
+        return ""
