@@ -1117,11 +1117,17 @@ async def delete_run(run_id: str) -> None:
 
 
 async def get_media_status(run_id: str) -> dict[str, Any]:
-    """Return promo_video and poster status for a run, without touching LangGraph checkpoint."""
-    return {
-        "promo_video": _promo_video_cache.get(run_id),
-        "poster": _poster_cache.get(run_id),
-    }
+    """Return promo_video and poster status for a run, without touching LangGraph checkpoint.
+
+    缓存 miss 时回读 plan_records 表,使进程重启/多进程也能返回已落库的 url。
+    """
+    promo_video = _promo_video_cache.get(run_id)
+    if promo_video is None:
+        promo_video = await _load_promo_video(run_id)
+    poster = _poster_cache.get(run_id)
+    if poster is None:
+        poster = await _load_poster(run_id)
+    return {"promo_video": promo_video, "poster": poster}
 
 
 async def get_status(run_id: str) -> dict[str, Any]:
