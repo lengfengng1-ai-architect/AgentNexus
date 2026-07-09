@@ -40,10 +40,49 @@ export function ScreenChat({ onNavigate }: { onNavigate: (s: MobileScreen) => vo
   const [messages, setMessages] = useState<Msg[]>(() => INITIAL.map(m => ({ ...m })))
   const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const [isListening, setIsListening] = useState(false)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
+
+  const handleVoice = () => {
+    const API: new () => SpeechRecognition =
+      (window as unknown as { SpeechRecognition: new () => SpeechRecognition }).SpeechRecognition ??
+      (window as unknown as { webkitSpeechRecognition: new () => SpeechRecognition }).webkitSpeechRecognition
+    if (!API) return
+    if (isListening) { recognitionRef.current?.stop(); setIsListening(false); return }
+    const recognition = new API()
+    recognition.lang = 'zh-CN'
+    recognition.continuous = true
+    recognition.interimResults = true
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalText = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) finalText += event.results[i][0].transcript
+      }
+      if (finalText) setInput(prev => prev + (prev ? ' ' : '') + finalText)
+    }
+    recognition.onend = () => setIsListening(false)
+    recognition.onerror = () => setIsListening(false)
+    recognition.start()
+    recognitionRef.current = recognition
+    setIsListening(true)
+  }
+
+  const handlePrefillTemplate = () => {
+    setInput('我是 [品牌名]，属于 [品类]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
+  }
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (files && files.length > 0) {
+      console.log('Selected files:', Array.from(files).map(f => f.name).join(', '))
+    }
+    e.target.value = ''
+  }
 
   const send = () => {
     const v = input.trim()
@@ -79,25 +118,39 @@ export function ScreenChat({ onNavigate }: { onNavigate: (s: MobileScreen) => vo
         ))}
         <div ref={bottomRef} />
       </div>
+
+      <input
+        ref={fileInputRef}
+        type="file"
+        multiple
+        style={{ display: 'none' }}
+        onChange={handleFileSelect}
+      />
+
       <div className="inputbar">
-        <button className="quick" onClick={() => onNavigate('brief')}>
-          填写简报
-        </button>
-        <input
-          type="text"
-          placeholder="给 Agent 发消息…"
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => {
-            if (e.key === 'Enter') {
-              e.preventDefault()
-              send()
-            }
-          }}
-        />
-        <button className="send" aria-label="发送" onClick={send}>
-          ↑
-        </button>
+        <div className="quick-btns">
+          <button className="qb" onClick={() => onNavigate('brief')}>填写简报</button>
+          <button className="qb" onClick={handleVoice}>语音输入</button>
+          <button className="qb" onClick={() => fileInputRef.current?.click()}>附件</button>
+          <button className="qb" onClick={handlePrefillTemplate}>方案模板</button>
+        </div>
+        <div className="inputbar-row">
+          <input
+            type="text"
+            placeholder="给 Agent 发消息…"
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => {
+              if (e.key === 'Enter') {
+                e.preventDefault()
+                send()
+              }
+            }}
+          />
+          <button className="send" aria-label="发送" onClick={send}>
+            ↑
+          </button>
+        </div>
       </div>
     </>
   )

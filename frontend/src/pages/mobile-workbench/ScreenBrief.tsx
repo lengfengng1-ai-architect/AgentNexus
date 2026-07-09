@@ -46,7 +46,6 @@ export function ScreenBrief({ onNavigate: _onNavigate }: { onNavigate: (s: Mobil
       </div>
       <div className="dock">
         <button className="gen" onClick={() => console.log('AI generate')}>✦ AI 生成方案</button>
-        <div className="hint">基于简报自动拆解 4M+1C 策略与执行</div>
       </div>
     </>
   )
