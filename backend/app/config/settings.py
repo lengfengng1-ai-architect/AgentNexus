@@ -45,5 +45,8 @@ class Settings(BaseSettings):
 
     cors_origins: str = ""
 
+    upload_dir: str = "uploads"
+    max_upload_size: int = 50 * 1024 * 1024  # 50 MB
+
 
 settings = Settings()
