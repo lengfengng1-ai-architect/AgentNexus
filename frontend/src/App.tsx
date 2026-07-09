@@ -4,9 +4,10 @@ import { PlanPage } from './pages/PlanPage'
 import { ImageTestPage } from './pages/ImageTestPage'
 import { IntentTestPage } from './pages/IntentTestPage'
 import { VideoTestPage } from './pages/VideoTestPage'
+import { XlsxTestPage } from './pages/XlsxTestPage'
 import { MobileWorkbenchPage } from './pages/mobile-workbench/MobileWorkbenchPage'
 
-type Page = 'chat' | 'plan' | 'mobile' | 'intent' | 'image' | 'video'
+type Page = 'chat' | 'plan' | 'mobile' | 'intent' | 'image' | 'video' | 'xlsx'
 
 const PAGE_PATH: Record<Page, string> = {
   chat: '/',
@@ -15,6 +16,7 @@ const PAGE_PATH: Record<Page, string> = {
   intent: '/intent-test',
   image: '/image-test',
   video: '/video-test',
+  xlsx: '/xlsx-test',
 }
 const PATH_PAGE: Record<string, Page> = Object.fromEntries(
   Object.entries(PAGE_PATH).map(([k, v]) => [v, k as Page]),
@@ -32,6 +34,7 @@ const NAV: { key: Page; label: string; children?: { key: string; label: string }
       { key: 'intent', label: '意图识别' },
       { key: 'image', label: '图片生成' },
       { key: 'video', label: '视频生成' },
+      { key: 'xlsx', label: 'XLSX表格' },
     ],
   },
 ]
@@ -91,6 +94,7 @@ function App() {
         {page === 'intent' && <IntentTestPage />}
         {page === 'image' && <ImageTestPage />}
         {page === 'video' && <VideoTestPage />}
+        {page === 'xlsx' && <XlsxTestPage />}
       </main>
     </div>
   )

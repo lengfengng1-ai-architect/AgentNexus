@@ -12,6 +12,7 @@ import { PipelineTimeline } from './PipelineTimeline'
 const BRAND_INPUT_KEY = 'allygo_pending_brand_input'
 const STORAGE_KEY = 'allygo_plan_session'
 const RUN_ID_KEY = 'allygo_plan_run_id'
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
 // 从方案章节中拼出海报生成提示词：取各章标题 + 内容摘要
 function buildPosterPrompt(chapters: PlanChapter[]): string {
@@ -491,7 +492,13 @@ export function PlanPage() {
               导出 PDF
             </button>
             <button
-              onClick={() => exportPdf(displayedChapters)}
+              onClick={() => {
+                const xlsxPath = outputs?.plan_generator?.xlsx_path as string | undefined
+                if (xlsxPath) {
+                  const downloadUrl = `${API_BASE.replace('/api/v1', '')}${xlsxPath}`
+                  window.open(downloadUrl, '_blank')
+                }
+              }}
               style={{
                 padding: '8px 14px', borderRadius: 6, fontSize: 13, fontWeight: 600,
                 cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: 6,
@@ -499,12 +506,11 @@ export function PlanPage() {
               }}
             >
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
-                <polyline points="14 2 14 8 20 8" />
-                <line x1="16" y1="13" x2="8" y2="13" />
-                <line x1="16" y1="17" x2="8" y2="17" />
+                <rect x="2" y="3" width="20" height="18" rx="2" ry="2" />
+                <line x1="2" y1="9" x2="22" y2="9" />
+                <line x1="9" y1="3" x2="9" y2="21" />
               </svg>
-              导出 Word
+              导出 XLSX
             </button>
           </div>
         </header>

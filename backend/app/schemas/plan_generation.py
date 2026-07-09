@@ -199,6 +199,9 @@ class PlanGeneratorOutput(BaseModel):
     """方案生成节点最终输出。"""
 
     chapters: list[PlanChapter] = Field(..., description="9 章方案列表")
+    xlsx_path: str = Field(
+        default="", description="预算流程回报分析 XLSX 文件路径（可选）"
+    )
 
 
 # Union of all plan generation agent outputs for type mapping.

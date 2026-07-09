@@ -12,6 +12,7 @@ from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel, Field
 
 from app.schemas.common import APIError, APIResponse, ErrorCode
+from app.schemas.xlsx_generation import XlsxData, BrandInfo, BudgetOverviewSheet, BudgetOverviewRow, BudgetDetailSheet, BudgetDetailItem, TimelineSheet, TimelineItem, GanttItem, KPISheet, KPIRow, ROIRow, ROIChartPoint, RadarScore
 from app.schemas.plan_run import ApproveRequest, PlanRunRequest, RejectRequest
 from app.services.plan_generation_service import (
     approve_run,
@@ -206,3 +207,122 @@ async def plan_list_runs(limit: int = 20):
             f"Failed to list runs: {exc}",
             ErrorCode.WORKFLOW_LIST_ERROR,
         )
+
+
+from app.agents.tools.generate_xlsx import generate_plan_xlsx
+
+
+@router.post("/plan/test-xlsx")
+async def plan_test_xlsx():
+    """测试 xlsx 表格生成：用固定示例数据生成并返回下载URL。"""
+    from app.schemas.xlsx_generation import XlsxData, BrandInfo, BudgetOverviewSheet, BudgetOverviewRow, \
+        BudgetDetailSheet, BudgetDetailItem, TimelineSheet, TimelineItem, GanttItem, \
+        KPISheet, KPIRow, ROIRow, ROIChartPoint, RadarScore
+
+    data = XlsxData(
+        brand_info=BrandInfo(
+            brand_name="测试品牌",
+            subtitle="完整版（多城市 · 400万） vs 上海版（单城 · 300万） | 执行周期：3个月",
+            duration_months=3,
+            version_a_name="完整版",
+            version_a_budget=400.0,
+            version_b_name="上海版",
+            version_b_budget=300.0,
+        ),
+        budget_overview=BudgetOverviewSheet(
+            rows=[
+                BudgetOverviewRow(category="赛事/活动费用", amount_version_a=80, pct_version_a="20.0%",
+                                  amount_version_b=84, pct_version_b="28.0%", diff="上海版单城密度更高"),
+                BudgetOverviewRow(category="短视频内容制作与投放", amount_version_a=60, pct_version_a="15.0%",
+                                  amount_version_b=45, pct_version_b="15.0%", diff="上海版缩减"),
+                BudgetOverviewRow(category="达人代言与合作", amount_version_a=100, pct_version_a="25.0%",
+                                  amount_version_b=90, pct_version_b="30.0%", diff="上海版聚焦本地达人"),
+                BudgetOverviewRow(category="数字化平台建设", amount_version_a=30, pct_version_a="7.5%",
+                                  amount_version_b=36, pct_version_b="12.0%", diff="上海版投入加大"),
+                BudgetOverviewRow(category="渠道铺货与陈列支持", amount_version_a=50, pct_version_a="12.5%",
+                                  amount_version_b=0, pct_version_b="0%", diff="上海版未单列"),
+                BudgetOverviewRow(category="代理商培训与激励", amount_version_a=40, pct_version_a="10.0%",
+                                  amount_version_b=0, pct_version_b="0%", diff="上海版未单列"),
+                BudgetOverviewRow(category="盟域共建费用", amount_version_a=0, pct_version_a="0%",
+                                  amount_version_b=30, pct_version_b="10.0%", diff="上海版新增专项"),
+                BudgetOverviewRow(category="应急与机动预算", amount_version_a=40, pct_version_a="10.0%",
+                                  amount_version_b=15, pct_version_b="5.0%", diff="完整版弹性更大"),
+            ],
+            total_a=400.0,
+            total_b=300.0,
+            note="完整版覆盖四城，预算400万；上海版单城执行，预算300万。执行周期均为3个月。",
+        ),
+        budget_detail=BudgetDetailSheet(
+            items=[
+                BudgetDetailItem(category="赛事/活动费用", sub="主题赛事（月度1场）", desc="品牌冠名主办的主题赛事", amount_a=30, amount_b=35, note="单场500-1000人"),
+                BudgetDetailItem(category="赛事/活动费用", sub="联盟赛事（季度1场）", desc="联合第三方赛事机构", amount_a=25, amount_b=20),
+                BudgetDetailItem(category="短视频内容制作与投放", sub="短视频拍摄制作", desc="每周3条，覆盖7大类型", amount_a=25, amount_b=20, note="12周共36条"),
+                BudgetDetailItem(category="短视频内容制作与投放", sub="DOU+投放", desc="抖音信息流投放", amount_a=20, amount_b=15),
+                BudgetDetailItem(category="达人代言与合作", sub="头部代言人（4-6名）", desc="百万级粉丝运动博主", amount_a=50, amount_b=40),
+                BudgetDetailItem(category="达人代言与合作", sub="腰部达人（50-80名）", desc="10-50万粉KOL", amount_a=35, amount_b=35),
+                BudgetDetailItem(category="数字化平台建设", sub="小程序/APP功能开发", desc="赛事报名、会员系统", amount_a=15, amount_b=18),
+                BudgetDetailItem(category="数字化平台建设", sub="运营工具与数据看板", desc="数据分析、订单追踪", amount_a=10, amount_b=12),
+                BudgetDetailItem(category="渠道铺货与陈列支持", sub="首批试饮装", desc="试饮装生产与派发", amount_a=20, amount_b=0),
+                BudgetDetailItem(category="代理商培训与激励", sub="培训体系", desc="产品知识、销售技巧培训", amount_a=15, amount_b=0),
+                BudgetDetailItem(category="盟域共建费用", sub="盟域签约与资源投入", desc="代理商盟域共建协议", amount_a=0, amount_b=18),
+                BudgetDetailItem(category="应急与机动预算", sub="应急备用金", desc="突发情况备用", amount_a=25, amount_b=10),
+            ],
+        ),
+        timeline=TimelineSheet(
+            items=[
+                TimelineItem(phase="筹备期", week="第1-2周", goal="搭建基础、签约资源", task="代理商签约与盟域选址", action="四城代理商签约", owner="城市代理商", deliverable="4城×4盟域总部确定"),
+                TimelineItem(phase="筹备期", week="第1-2周", goal="搭建基础、签约资源", task="运动达人筛选与签约", action="确定头部+腰部达人名单", owner="品牌部", deliverable="达人合作矩阵建立"),
+                TimelineItem(phase="预热期", week="第3-4周", goal="制造期待、启动招募", task="品牌悬念内容发布", action="品牌悬念海报+短视频", owner="内容团队", deliverable="预热内容上线"),
+                TimelineItem(phase="预热期", week="第3-4周", goal="制造期待、启动招募", task="线下试饮与社群招募", action="首批线下试饮活动", owner="盟域运营", deliverable="试饮活动完成"),
+                TimelineItem(phase="爆发期", week="第5-9周", goal="集中引爆、全量投放", task="主题赛事密集举办", action="每周1-2场赛事", owner="赛事部", deliverable="5-10场赛事落地"),
+                TimelineItem(phase="爆发期", week="第5-9周", goal="集中引爆、全量投放", task="短视频集中投放", action="四线平台投放", owner="投放团队", deliverable="月均曝光≥3000万"),
+                TimelineItem(phase="收割期", week="第10-12周", goal="数据复盘、持续转化", task="数据复盘与优化", action="复盘各维度数据", owner="数据分析", deliverable="复盘报告"),
+                TimelineItem(phase="收割期", week="第10-12周", goal="数据复盘、持续转化", task="会员复购促活", action="会员复购优惠", owner="私域运营", deliverable="复购率≥25%"),
+            ],
+            gantt=[
+                GanttItem(phase="筹备期", start_week=1, duration_weeks=2),
+                GanttItem(phase="预热期", start_week=3, duration_weeks=2),
+                GanttItem(phase="爆发期", start_week=5, duration_weeks=5),
+                GanttItem(phase="收割期", start_week=10, duration_weeks=3),
+            ],
+        ),
+        kpi=KPISheet(
+            kpis=[
+                KPIRow(dim="品牌传播", metric="短视频总曝光量", definition="全平台曝光总和", target_a="≥ 1亿次", target_b="≥ 240万次", target_a_num=10000, target_b_num=240, path="月均曝光≥3000万"),
+                KPIRow(dim="品牌传播", metric="品牌话题讨论量", definition="话题讨论/转发/评论数", target_a="≥ 50万条", target_b="≥ 10万条", target_a_num=50, target_b_num=10, path="UGC挑战赛"),
+                KPIRow(dim="用户增长", metric="私域会员沉淀", definition="社群+小程序会员总数", target_a="≥ 50万人", target_b="≥ 15万人", target_a_num=50, target_b_num=15, path="赛事报名转化"),
+                KPIRow(dim="用户增长", metric="社群月均活跃率", definition="月活跃用户/总会员", target_a="≥ 30%", target_b="≥ 30%", target_a_num=30, target_b_num=30, path="每日打卡+周福利"),
+                KPIRow(dim="销售转化", metric="达人带货GMV", definition="直播+短视频带货总额", target_a="≥ 500万元", target_b="≥ 150万元", target_a_num=500, target_b_num=150, path="头部+腰部达人直播"),
+                KPIRow(dim="销售转化", metric="预估总营收", definition="赛事+终端+达人带货总和", target_a="≥ 2000万元", target_b="≥ 600万元", target_a_num=2000, target_b_num=600, path="GMV = 铺货量×动销率×客单价"),
+                KPIRow(dim="渠道建设", metric="运动盟域总部数量", definition="城市盟域总部总数", target_a="16个", target_b="4个", target_a_num=16, target_b_num=4, path="代理商牵头"),
+                KPIRow(dim="渠道建设", metric="签约运动达人", definition="三级达人矩阵总数", target_a="554人", target_b="172人", target_a_num=554, target_b_num=172, path="合作中心筛选签约"),
+            ],
+            roi=[
+                ROIRow(type="投入", metric="总预算", definition="3个月营销总投入", value_a="400万元", value_b="300万元", note="含赛事/内容/达人/数字化/渠道"),
+                ROIRow(type="产出", metric="预估总营收", definition="赛事+终端+达人带货GMV", value_a="≥ 2000万元", value_b="≥ 600万元", note="保守估算"),
+                ROIRow(type="ROI", metric="投入产出比", definition="预估营收 / 总预算", value_a="≥ 5:1", value_b="≥ 2:1", note="规模效应更高"),
+                ROIRow(type="效率", metric="单会员获取成本", definition="总预算 / 私域会员数", value_a="≤ 8元/人", value_b="≤ 20元/人", note="摊薄更优"),
+            ],
+            roi_chart=[
+                ROIChartPoint(name="总预算(投入)", value_a=400, value_b=300),
+                ROIChartPoint(name="预估营收(产出)", value_a=2000, value_b=600),
+                ROIChartPoint(name="净收益", value_a=1600, value_b=300),
+            ],
+            radar_chart=[
+                RadarScore(dim="品牌传播", score_a=95, score_b=60),
+                RadarScore(dim="用户增长", score_a=90, score_b=55),
+                RadarScore(dim="销售转化", score_a=85, score_b=50),
+                RadarScore(dim="渠道建设", score_a=90, score_b=45),
+            ],
+        ),
+    )
+    try:
+        data_json = data.model_dump_json(ensure_ascii=False)
+        abs_path = await generate_plan_xlsx.ainvoke({"data": data_json, "brand_name": "测试品牌"})
+        url_path = abs_path.replace("\\", "/")
+        filename = url_path.split("/")[-1]
+        download_url = f"/xlsx/{filename}"
+        return APIResponse(success=True, data={"download_url": download_url, "file_path": abs_path})
+    except Exception as exc:
+        logger.exception("test xlsx generation failed")
+        return _error_response(500, f"XLSX 生成失败: {exc}", ErrorCode.INTERNAL_ERROR)
