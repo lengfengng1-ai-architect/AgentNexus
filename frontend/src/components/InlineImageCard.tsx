@@ -3,6 +3,12 @@ import type { ChatMessage } from '../types/chat'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 
+const IMAGE_SIZES = [
+  { label: '1:1 方图', value: '2048*2048' },
+  { label: '16:9 横图', value: '2688*1536' },
+  { label: '9:16 竖图', value: '1536*2688' },
+]
+
 interface InlineImageCardProps {
   prompt: string
   messageId: string
@@ -10,12 +16,14 @@ interface InlineImageCardProps {
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function InlineImageCard({ prompt, messageId, existingResult, onImageResult }: InlineImageCardProps) {
+export function InlineImageCard({ prompt: initialPrompt, messageId, existingResult, onImageResult }: InlineImageCardProps) {
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<ChatMessage['imageResult']>(existingResult ?? undefined)
   const [error, setError] = useState<string | null>(null)
   const [showFullscreen, setShowFullscreen] = useState(false)
   const [copied, setCopied] = useState(false)
+  const [prompt, setPrompt] = useState(initialPrompt)
+  const [size, setSize] = useState('2048*2048')
   const mountedRef = useRef(true)
 
   const handleCopyUrl = useCallback(async (url: string) => {
@@ -26,9 +34,8 @@ export function InlineImageCard({ prompt, messageId, existingResult, onImageResu
     } catch { /* ignore clipboard errors */ }
   }, [])
 
-  // Fullscreen image ref for detecting alt click
   const handleGenerate = useCallback(async () => {
-    if (isLoading) return
+    if (isLoading || !prompt.trim()) return
     setIsLoading(true)
     setError(null)
 
@@ -36,7 +43,7 @@ export function InlineImageCard({ prompt, messageId, existingResult, onImageResu
       const resp = await fetch(`${API_BASE}/image/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, size: '2048*2048' }),
+        body: JSON.stringify({ prompt: prompt.trim(), size }),
       })
       if (!mountedRef.current) return
       const body = await resp.json()
@@ -50,7 +57,7 @@ export function InlineImageCard({ prompt, messageId, existingResult, onImageResu
     } finally {
       if (mountedRef.current) setIsLoading(false)
     }
-  }, [isLoading, prompt, messageId, onImageResult])
+  }, [isLoading, prompt, size, messageId, onImageResult])
 
   if (result?.image_url) {
     return (
@@ -119,22 +126,52 @@ export function InlineImageCard({ prompt, messageId, existingResult, onImageResu
 
   return (
     <div className="mt-3 space-y-3 rounded-xl border border-line bg-mist/50 p-3">
-      {/* Prompt preview */}
-      <details className="group">
-        <summary className="cursor-pointer text-[10px] font-medium text-track/50 transition-colors hover:text-track/70">
-          图片描述预览
-        </summary>
-        <div className="mt-1 max-h-[120px] overflow-y-auto whitespace-pre-wrap rounded-lg bg-white/50 p-2 text-[11px] leading-relaxed text-track/70">
-          {prompt}
+      {/* 提示词输入框 */}
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-track/50">
+          图片描述
+        </label>
+        <textarea
+          rows={3}
+          value={prompt}
+          onChange={e => setPrompt(e.target.value)}
+          disabled={isLoading}
+          placeholder="请描述您希望生成的图片内容，例如场景、主题、风格等"
+          className="w-full resize-none rounded-lg border border-line bg-white p-2 text-xs outline-none placeholder:text-track/30 focus:border-start focus:ring-1 focus:ring-start disabled:bg-mist"
+        />
+      </div>
+
+      {/* 尺寸选择 */}
+      <div>
+        <label className="mb-1 block text-[10px] font-medium text-track/50">
+          图片尺寸
+        </label>
+        <div className="flex flex-wrap gap-1.5">
+          {IMAGE_SIZES.map(s => (
+            <button
+              key={s.value}
+              type="button"
+              onClick={() => setSize(s.value)}
+              disabled={isLoading}
+              className={`rounded-lg border px-3 py-1 text-[11px] transition-colors ${
+                size === s.value
+                  ? 'border-start bg-start/10 text-start font-medium'
+                  : 'border-line text-track/60 hover:border-track/30'
+              } disabled:opacity-50`}
+            >
+              {s.label}
+            </button>
+          ))}
         </div>
-      </details>
+      </div>
 
       {/* Generate button or loading */}
       {!isLoading && !error && (
         <button
           type="button"
           onClick={handleGenerate}
-          className="w-full rounded-lg bg-start px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-start/90"
+          disabled={!prompt.trim()}
+          className="w-full rounded-lg bg-start px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-start/90 disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40"
         >
           生成图片
         </button>
