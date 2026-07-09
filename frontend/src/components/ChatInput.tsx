@@ -14,15 +14,38 @@ function normalizeUrl(s: string): string {
   return trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : ''
 }
 
+/** Icon button inside the floating plus menu */
+function MenuBtn({ icon, label, onClick }: { icon: string; label: string; onClick: () => void }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex flex-col items-center gap-1 rounded-lg px-2 py-2 text-xs transition-colors hover:bg-mist focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
+    >
+      <span className="text-lg leading-none">{icon}</span>
+      <span className="text-[10px] text-track/60">{label}</span>
+    </button>
+  )
+}
+
 export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showAttach, setShowAttach] = useState(false)
   const [urlRows, setUrlRows] = useState<string[]>([''])
+  const [showMenu, setShowMenu] = useState(false)
+  const [isListening, setIsListening] = useState(false)
+  const [toast, setToast] = useState<string | null>(null)
+  const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const menuAreaRef = useRef<HTMLDivElement>(null)
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout>>()
+  const valueRef = useRef(value)
 
   const imageUrls = useMemo(() =>
     urlRows.map(normalizeUrl).filter(Boolean),
-    [urlRows]
+    [urlRows],
   )
+
+  useEffect(() => { valueRef.current = value }, [value])
 
   useEffect(() => {
     const el = textareaRef.current
@@ -31,6 +54,31 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
     el.style.height = `${Math.min(el.scrollHeight, 160)}px`
   }, [value])
 
+  // ── Click outside to close floating menu ──────────────────────────
+  useEffect(() => {
+    if (!showMenu) return
+    const handler = (e: MouseEvent) => {
+      if (menuAreaRef.current && !menuAreaRef.current.contains(e.target as Node)) {
+        setShowMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [showMenu])
+
+  // ── Cleanup speech recognition on unmount ─────────────────────────
+  useEffect(() => {
+    return () => { recognitionRef.current?.stop() }
+  }, [])
+
+  // ── Toast helper ──────────────────────────────────────────────────
+  const showToast = useCallback((msg: string) => {
+    setToast(msg)
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current)
+    toastTimerRef.current = setTimeout(() => setToast(null), 2500)
+  }, [])
+
+  // ── URL row handlers (unchanged) ────────────────────────────────
   const handleUrlRowChange = useCallback((index: number, val: string) => {
     setUrlRows(prev => {
       const next = [...prev]
@@ -82,15 +130,98 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
 
   function toggleAttach() {
     setShowAttach(prev => {
-      if (prev) {
-        setUrlRows([''])
-      }
+      if (prev) setUrlRows([''])
       return !prev
     })
   }
 
+  // ── Plus button ───────────────────────────────────────────────
+  const handlePlusClick = useCallback(() => {
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+    } else {
+      setShowMenu(prev => !prev)
+    }
+  }, [isListening])
+
+  // ── 📎附件 ─────────────────────────────────────────────────────
+  const handleAttachClick = useCallback(() => {
+    toggleAttach()
+    setShowMenu(false)
+  }, [])
+
+  // ── 📋方案 ─────────────────────────────────────────────────────
+  const handlePrefillTemplate = useCallback(() => {
+    const template = '我是 [品牌名]，属于 [品类]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月'
+    onChange(template)
+    setShowMenu(false)
+    setTimeout(() => textareaRef.current?.focus(), 0)
+  }, [onChange])
+
+  // ── 💬语音 ─────────────────────────────────────────────────────
+  const handleVoice = useCallback(() => {
+    setShowMenu(false)
+    const API: new () => SpeechRecognition =
+      (window as unknown as { SpeechRecognition: new () => SpeechRecognition }).SpeechRecognition ??
+      (window as unknown as { webkitSpeechRecognition: new () => SpeechRecognition }).webkitSpeechRecognition
+
+    if (!API) {
+      showToast('当前浏览器不支持语音识别')
+      return
+    }
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+      return
+    }
+    const recognition = new API()
+    recognition.lang = 'zh-CN'
+    recognition.continuous = true
+    recognition.interimResults = true
+
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalText = ''
+      for (let i = event.resultIndex; i < event.results.length; i++) {
+        if (event.results[i].isFinal) {
+          finalText += event.results[i][0].transcript
+        }
+      }
+      if (finalText) {
+        const cur = valueRef.current
+        onChange(cur + (cur ? ' ' : '') + finalText)
+      }
+    }
+
+    recognition.onend = () => setIsListening(false)
+
+    recognition.onerror = () => {
+      setIsListening(false)
+      showToast('语音识别出错，请重试')
+    }
+
+    recognition.start()
+    recognitionRef.current = recognition
+    setIsListening(true)
+  }, [isListening, onChange, showToast])
+
+  // ── 占位按钮（制图/数据） ──────────────────────────────────────
+  const showPlaceholderToast = useCallback(() => {
+    setShowMenu(false)
+    showToast('功能开发中，敬请期待')
+  }, [showToast])
+
   return (
     <div className="border-t border-line bg-white px-4 py-3 sm:px-6 sm:py-4">
+      {/* Toast */}
+      {toast && (
+        <div className="mx-auto mb-2 max-w-3xl">
+          <div className="rounded-lg bg-track/90 px-3 py-1.5 text-center text-xs text-white shadow-lg">
+            {toast}
+          </div>
+        </div>
+      )}
+
       {/* 附件栏（折叠） */}
       {showAttach && (
         <div className="mx-auto mb-2 max-w-3xl space-y-2">
@@ -106,7 +237,6 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
                   placeholder={i === urlRows.length - 1 ? `输入或粘贴图片 URL，自动拆分` : `图片 URL ${i + 1}`}
                   className="w-full rounded-lg border border-line bg-mist px-3 py-2 pr-10 text-xs outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:opacity-50"
                 />
-                {/* 缩略图 */}
                 {normalizeUrl(row) && (
                   <ThumbnailPreview url={normalizeUrl(row)} />
                 )}
@@ -129,21 +259,49 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
       )}
 
       <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-line bg-mist p-2 focus-within:border-start focus-within:ring-1 focus-within:ring-start">
-        <button
-          type="button"
-          onClick={toggleAttach}
-          disabled={disabled}
-          aria-label="附件"
-          className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start ${
-            showAttach
-              ? 'bg-start/10 text-start'
-              : 'text-track/40 hover:bg-line/50 hover:text-track/60'
-          } disabled:cursor-not-allowed disabled:opacity-40`}
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-            <path fillRule="evenodd" d="M18.97 3.659a2.25 2.25 0 0 0-3.182 0l-10.94 10.94a3.75 3.75 0 1 0 5.304 5.303l7.693-7.693a.75.75 0 0 1 1.06 1.06l-7.693 7.693a5.25 5.25 0 1 1-7.424-7.424l10.939-10.94a3.75 3.75 0 1 1 5.303 5.304L9.097 16.835a2.25 2.25 0 0 1-3.182-3.182l10.939-10.94a.75.75 0 0 1 1.06 1.061l-10.939 10.94a.75.75 0 1 0 1.06 1.06l10.94-10.94a2.25 2.25 0 0 0 0-3.182Z" clipRule="evenodd" />
-          </svg>
-        </button>
+        {/* ➕ 聚合按钮 */}
+        <div className="relative" ref={menuAreaRef}>
+          <button
+            type="button"
+            onClick={handlePlusClick}
+            disabled={disabled}
+            aria-label={isListening ? '停止录音' : '菜单'}
+            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start ${
+              isListening
+                ? 'animate-pulse bg-red-50 text-red-500'
+                : showAttach
+                  ? 'bg-start/10 text-start'
+                  : showMenu
+                    ? 'bg-line/50 text-track/60'
+                    : 'text-track/40 hover:bg-line/50 hover:text-track/60'
+            } disabled:cursor-not-allowed disabled:opacity-40`}
+          >
+            {isListening ? (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
+                <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
+              </svg>
+            ) : (
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                <path fillRule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H5.25a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
+              </svg>
+            )}
+          </button>
+
+          {/* 浮层面板 */}
+          {showMenu && (
+            <div className="absolute bottom-full left-0 mb-2 z-50 min-w-[11rem] rounded-xl border border-line bg-white p-2 shadow-lg">
+              <div className="grid grid-cols-3 gap-1">
+                <MenuBtn icon="📎" label="附件" onClick={handleAttachClick} />
+                <MenuBtn icon="🖼️" label="制图" onClick={showPlaceholderToast} />
+                <MenuBtn icon="📋" label="方案" onClick={handlePrefillTemplate} />
+                <MenuBtn icon="💬" label="语音" onClick={handleVoice} />
+                <MenuBtn icon="📈" label="数据" onClick={showPlaceholderToast} />
+              </div>
+            </div>
+          )}
+        </div>
+
         <textarea
           ref={textareaRef}
           rows={1}
