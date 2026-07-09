@@ -46,6 +46,12 @@ tbd: 后续可能根据功能扩展调整菜单内容
 - **THEN** 在输入框容器内部上沿的预览条中展示附件卡片
 - **AND** 图片展示缩略图，非图片展示文件名+后缀
 
+#### Scenario: 附件预览条嵌入输入行
+- **WHEN** 用户选中或拖拽文件到上传区
+- **THEN** 附件预览条不再显示在独立的 `rounded-t-2xl bg-mist` 区域
+- **AND** 附件卡片嵌入输入框容器内部的 flex-col 布局中，与 textarea 同一背景无分割
+- **AND** 图片预览缩小为 32×32，文件 chip 更紧凑
+
 #### Scenario: 关闭附件模式后 ➕ 按钮恢复
 - **WHEN** 用户再次点击高亮的 ➕ 按钮，或所有附件被删除后
 - **THEN** 附件预览条折叠，➕ 按钮恢复正常态
@@ -113,9 +119,14 @@ InlineImageCard 在无生成结果时展示图片描述输入框和尺寸选择�
 
 #### Scenario: 参数卡可编辑后生成
 - **WHEN** InlineImageCard 在待输入状态
-- **THEN** 展示 textarea 输入框
+- **THEN** 展示 textarea 输入框（placeholder: "请描述您希望生成的图片内容"）
 - **AND** 展示尺寸选择按钮（1:1方图 / 16:9横图 / 9:16竖图）
 - **AND** "生成图片"按钮在描述为空时 disabled
 - **WHEN** 用户填写描述并点击生成
 - **THEN** 请求 POST /api/v1/image/generate 携带 prompt 和 size
-- **AND** 成功后显示生成的图片及操作按钮
+- **AND** 成功后显示生成的图片及全屏/复制/重做按钮
+
+#### Scenario: 用户输入"生成图片"且不附带图片要求
+- **WHEN** 用户输入"生成图片""帮我生成一张图片"等（无描述）
+- **THEN** 意图识别返回 `intent: "text_to_image"`，而非 `chat`
+- **AND** 前端展示参数卡供用户填写
