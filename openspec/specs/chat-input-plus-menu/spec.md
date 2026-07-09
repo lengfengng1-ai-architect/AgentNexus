@@ -90,3 +90,32 @@ tbd: 后续可能根据功能扩展调整菜单内容
 - **WHEN** 用户点击 🖼️制图 或 📈数据
 - **THEN** 弹出 Toast（或简化提示）"功能开发中，敬请期待"
 - **AND** 不做路由跳转或其他任何操作
+
+### Requirement: 意图识别 text_to_image / text_to_video 入口
+
+修改意图识别 prompt 规则，使用户说"生成宣传片/宣传图"等无具体描述关键词时也能触发对应意图，展示前端参数填写卡片。
+
+#### Scenario: 用户输入"我要生成宣传图"
+- **WHEN** 用户输入"我要生成宣传图"或类似表述（无具体图片内容描述）
+- **THEN** 意图识别返回 `intent: "text_to_image"`
+- **AND** ChatBubble 渲染 InlineImageCard（含图片描述输入框、尺寸选择、生成按钮）
+- **AND** AI 回复引导文字
+
+#### Scenario: 用户输入"我要生成宣传片"
+- **WHEN** 用户输入"我要生成宣传片"或类似表述（无具体视频内容描述）
+- **THEN** 意图识别返回 `intent: "text_to_video"`
+- **AND** ChatBubble 渲染 InlineVideoCard（含 URL 输入、描述输入、参数面板、生成按钮）
+- **AND** AI 回复引导文字
+
+### Requirement: InlineImageCard 参数选择
+
+InlineImageCard 在无生成结果时展示图片描述输入框和尺寸选择按钮，用户填写后点击生成。
+
+#### Scenario: 参数卡可编辑后生成
+- **WHEN** InlineImageCard 在待输入状态
+- **THEN** 展示 textarea 输入框
+- **AND** 展示尺寸选择按钮（1:1方图 / 16:9横图 / 9:16竖图）
+- **AND** "生成图片"按钮在描述为空时 disabled
+- **WHEN** 用户填写描述并点击生成
+- **THEN** 请求 POST /api/v1/image/generate 携带 prompt 和 size
+- **AND** 成功后显示生成的图片及操作按钮

@@ -89,9 +89,9 @@ export function ChatBubble({ message, onRetry, onGeneratePlan, onVideoResult, on
           />
         )}
         {/* InlineImageCard for image intents */}
-        {!isUser && isImageIntent && message.generationPrompt && message.generationPrompt.length > 3 && !isStreaming && (
+        {!isUser && isImageIntent && !isStreaming && (
           <InlineImageCard
-            prompt={message.generationPrompt}
+            prompt={message.generationPrompt ?? ''}
             messageId={message.id}
             existingResult={message.imageResult}
             onImageResult={onImageResult}
