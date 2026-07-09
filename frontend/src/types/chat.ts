@@ -35,6 +35,19 @@ export interface ChatMessage {
   imageUrls?: string[]
   videoPrompt?: string | null
   generationPrompt?: string | null
+  /** 视频生成结果（内嵌播放器用） */
+  videoResult?: {
+    task_id: string
+    video_url: string
+    usage?: { resolution?: number; ratio?: string; output_video_duration?: number }
+  }
+  /** 图片生成结果（内嵌展示用） */
+  imageResult?: {
+    image_url: string
+    prompt_used?: string
+    width?: number
+    height?: number
+  }
 }
 
 export type FieldKey = keyof BrandInput

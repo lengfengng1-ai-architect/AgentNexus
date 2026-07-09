@@ -154,16 +154,99 @@ async def call_qwen_image_api(
         )
 
     result = response.json()
-    try:
-        choice = result["output"]["choices"][0]
-        image_url = choice["message"]["content"][0]["image"]
-        usage = result.get("usage", {})
-        width = usage.get("width", 0)
-        height = usage.get("height", 0)
-    except (KeyError, IndexError) as e:
-        raise RuntimeError(f"Qwen-Image API 返回格式异常: {result}") from e
+
+    # DEBUG: log raw response structure for troubleshooting
+    output = result.get("output", {})
+    logger.debug("Qwen-Image API raw output keys: %s", list(output.keys()))
+
+    # 多格式解析：按优先级自动探测
+    image_url: str | None = None
+    width = 0
+    height = 0
+
+    # Format 1: choices[0].message.content[0].image (标准 DashScope 格式)
+    if image_url is None:
+        try:
+            choice = output["choices"][0]
+            content_list = choice.get("message", {}).get("content", [])
+            for item in content_list:
+                if item.get("image"):
+                    image_url = item["image"]
+                    break
+        except (KeyError, IndexError, TypeError):
+            pass
+
+    # Format 2: results[0].url (部分模型/版本)
+    if image_url is None:
+        try:
+            results = output.get("results", [])
+            if results and results[0].get("url"):
+                image_url = results[0]["url"]
+        except (IndexError, TypeError):
+            pass
+
+    # Format 3: 深度遍历 output 查找 http URL
+    if image_url is None:
+        image_url = _find_image_url_deep(output)
+
+    if not image_url:
+        logger.error("Qwen-Image API 返回无可用 image_url, raw=%s", result)
+        raise RuntimeError(f"Qwen-Image API 返回无可用 image_url: {result}")
+
+    # 尝试从 usage 提取宽高（非必须）
+    usage = result.get("usage", {})
+    width = usage.get("width", 0) or 0
+    height = usage.get("height", 0) or 0
 
     return {"image_url": image_url, "width": width, "height": height}
+
+
+def _find_image_url_deep(data: Any, depth: int = 0) -> str | None:
+    """递归遍历结构，查找第一个非空的 http(s) URL。
+
+    用于兜底：当标准格式和 results 格式都不匹配时，深度遍历查找。
+    """
+    if depth > 6:
+        return None
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key in ("image", "url") and isinstance(value, str) and value.startswith("http"):
+                return value
+            result = _find_image_url_deep(value, depth + 1)
+            if result:
+                return result
+    elif isinstance(data, list):
+        for item in data:
+            result = _find_image_url_deep(item, depth + 1)
+            if result:
+                return result
+    return None
+
+
+_IMAGE_PROMPT_KEYWORDS = {
+    "image prompt", "--ar", "aspect ratio",
+    "product photography", "commercial product photography",
+    "shot", "lighting", "cinematic lighting", "studio lighting",
+    "8k", "photorealistic", "shallow depth of field",
+    "chiaroscuro", "dramatic light", "rim light",
+    "macro", "close-up", "extreme detail",
+    "black background", "white background", "seamless",
+    "texture", "materials", "reflective",
+    "suede", "canvas", "leather", "rubber",
+    "color-block", "color block", "color palette",
+    "product render", "apple-style",
+}
+
+
+def _is_direct_image_prompt(text: str) -> bool:
+    """判断文本是否已经是可直接用于图像生成的 Prompt（无需 LLM 重写）。
+
+    识别特征：包含摄影/产品渲染术语、横纵比参数、或结构化 shot 描述。
+    """
+    text_lower = text.lower()
+    matches = sum(1 for kw in _IMAGE_PROMPT_KEYWORDS if kw in text_lower)
+    # 命中 2 个以上关键词即为直接 Prompt
+    return matches >= 2
 
 
 async def run_image_generation(state: dict[str, Any]) -> dict[str, Any]:
@@ -196,9 +279,14 @@ async def run_image_generation(state: dict[str, Any]) -> dict[str, Any]:
             "或 MYSELF_API_KEY。"
         )
 
-    # Step 1: LLM 生成 image prompt
-    image_prompt = await generate_image_prompt(plan_content, image_type)
-    logger.info("已生成 image prompt (type=%s, %d chars)", image_type, len(image_prompt))
+    # Step 1: 判断是否需要 LLM 重写 prompt
+    # 如果用户输入已经是详细的视觉描述（含摄影术语、镜头参数等），直接跳过 LLM 重写
+    if _is_direct_image_prompt(plan_content):
+        image_prompt = plan_content
+        logger.info("直接使用用户输入作为 image prompt (%d chars)", len(image_prompt))
+    else:
+        image_prompt = await generate_image_prompt(plan_content, image_type)
+        logger.info("已生成 image prompt (type=%s, %d chars)", image_type, len(image_prompt))
 
     # Step 2: 调用 Qwen-Image API
     api_result = await call_qwen_image_api(

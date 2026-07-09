@@ -1,0 +1,143 @@
+# Capability: inline-video-gen
+
+## Purpose
+
+在对话上下文中内嵌视频生成能力。用户无需离开聊天页面即可完成图片 URL 输入、参数调整、视频生成、进度追踪和视频播放。复用后端 SSE 流式接口，不改变后端逻辑。
+
+## Requirements
+
+### Requirement: ChatInput SHALL 支持 📎 按钮展开附件栏
+
+ChatInput 左侧 SHALL 提供 📎（或 🖼️）按钮，点击后展开 URL 附件输入栏，支持用户输入一个或多个图片 URL 作为视频生成的参考图片。
+
+#### Scenario: 点击 📎 按钮展开附件栏
+- **WHEN** 用户点击 ChatInput 左侧的 📎 按钮
+- **THEN** 输入框上方展开附件栏，显示空的 URL 输入行
+- **AND** 📎 按钮变为激活状态样式
+
+#### Scenario: 再次点击 📎 收起附件栏
+- **WHEN** 附件栏已展开，用户再次点击 📎 按钮
+- **THEN** 附件栏收起
+- **AND** 输入框中已输入的 URL 被清除
+
+### Requirement: URL 输入 SHALL 使用行级交互
+
+附件栏中 SHALL 使用独立的 URL 输入行替代多行 textarea，每行一个 input 元素。
+
+#### Scenario: 输入 URL 后自动追加空行
+- **WHEN** 用户在 URL 输入行中输入内容
+- **THEN** 自动在下方追加一个空的 URL 输入框
+- **AND** 最多支持 9 个输入行
+
+#### Scenario: 删除 URL 行
+- **WHEN** 用户点击某 URL 行的删除按钮
+- **THEN** 该行 SHALL 被移除
+- **AND** 对应的缩略图预览 SHALL 消失
+- **AND** 当只剩一行时，删除该行将清空内容而非移除
+
+#### Scenario: 批量粘贴多 URL
+- **WHEN** 用户在 URL 输入行中粘贴包含换行或逗号分隔的多个 URL
+- **THEN** 系统 SHALL 自动按分隔符拆分并填充到各输入行
+
+### Requirement: URL 行 SHALL 实时显示图片缩略图
+
+每个 URL 输入行右侧 SHALL 显示对应图片的缩略图，加载失败时显示占位符。
+
+#### Scenario: URL 有效时显示缩略图
+- **WHEN** 用户输入有效的图片 URL 并失焦（或按下 Tab/Enter）
+- **THEN** 输入行右侧显示 48x48 的缩略图预览
+- **AND** 缩略图使用 `loading="eager"` 确保加载
+
+#### Scenario: URL 无效时显示占位符
+- **WHEN** 图片加载失败
+- **THEN** 缩略图区域显示"加载失败"占位文本
+
+#### Scenario: 发送消息后附件栏自动收起
+- **WHEN** 用户点击发送按钮
+- **THEN** 附件栏自动收起
+- **AND** 所有 URL 输入行内容被清除
+
+### Requirement: InlineVideoCard SHALL 自包含视频生成生命周期
+
+ChatBubble 检测到 video intent 时 SHALL 渲染 InlineVideoCard，该 Card 独立管理从参数配置到生成到播放的全部状态。
+
+#### Scenario: 渲染 InlineVideoCard
+- **WHEN** ChatBubble 收到 INTENT_RECEIVED action，intent 为 `generate_video` 或 `text_to_video`
+- **THEN** 渲染 InlineVideoCard 在聊天气泡内
+- **AND** Card 显示图片缩略图（如有 image_urls）
+- **AND** 参数面板默认折叠，显示默认参数值
+- **AND** 显示 [生成视频] 按钮
+
+#### Scenario: 无 image_urls 时不显示图片编辑区
+- **WHEN** intent 为 `text_to_video` 且无 image_urls
+- **THEN** InlineVideoCard 不显示图片编辑/缩略图区域
+- **AND** 仅显示 prompt 预览 + 参数面板 + 生成按钮
+
+### Requirement: InlineVideoCard SHALL 支持 SSE 流式进度显示
+
+点击生成按钮后，InlineVideoCard SHALL 调用 `streamVideoGeneration()`，在生成过程中显示进度条、百分比和已等待时间。
+
+#### Scenario: 点击生成按钮启动 SSE
+- **WHEN** 用户点击 InlineVideoCard 中的 [生成视频] 按钮
+- **THEN** 按钮变为禁用状态，显示"生成中…"
+- **AND** 调用 `streamVideoGeneration(params)` SSE 流式接口
+- **AND** 显示单行状态：「正在生成视频… 已等 Xs」
+- **AND** 进度条实时更新（progress_pct 0-90% 估算法）
+
+#### Scenario: 用户发送新消息时取消生成
+- **WHEN** InlineVideoCard 正在生成中，用户发送新的聊天消息
+- **THEN** InlineVideoCard 通过 AbortController 取消进行中的 SSE 请求
+- **AND** Card 显示"已取消"状态
+
+#### Scenario: 生成完成显示播放器
+- **WHEN** SSE 流返回 result event
+- **THEN** 进度条达到 100%
+- **AND** 隐藏生成按钮和进度条
+- **AND** 显示视频播放器（内联）
+- **AND** videoResult 回写到 ChatMessage
+
+#### Scenario: 生成失败显示错误
+- **WHEN** SSE 流返回 error event 或请求异常
+- **THEN** InlineVideoCard 显示红色错误提示
+- **AND** [生成视频] 按钮恢复可用，允许重试
+- **AND** 错误信息包含具体原因
+
+### Requirement: 参数面板 SHALL 支持折叠
+
+InlineVideoCard 中的视频参数（分辨率、宽高比、时长等）SHALL 默认折叠。用户可按需展开调整。
+
+#### Scenario: 默认折叠参数
+- **WHEN** InlineVideoCard 首次渲染
+- **THEN** 参数区域显示折叠状态
+- **AND** 显示当前参数摘要文本（如 "720p · 16:9 · 5s"）
+- **AND** 显示展开箭头按钮
+
+#### Scenario: 展开调整参数
+- **WHEN** 用户点击参数区域展开按钮
+- **THEN** 显示完整参数控件（resolution/ratio/duration/seed）
+- **AND** 参数调整后立即生效（下次生成使用新参数）
+
+### Requirement: 视频播放器 SHALL 支持内联播放
+
+生成完成后 SHALL 显示内联视频播放器，支持播放/暂停和进度控制。
+
+#### Scenario: 内联播放视频
+- **WHEN** 视频生成完成，video_url 可用
+- **THEN** 显示内联视频播放器（宽度 100%，自动高度）
+- **AND** 显示播放/暂停按钮
+- **AND** 视频自动加载但不自动播放
+
+### Requirement: 全屏播放 SHALL 使用弹窗
+
+播放器中 SHALL 提供全屏切换按钮，点击后使用 React Portal 弹窗显示视频全屏播放。
+
+#### Scenario: 全屏播放
+- **WHEN** 用户点击播放器上的全屏按钮
+- **THEN** 弹窗覆盖整个视口，播放器居中
+- **AND** 弹窗背景为半透明黑色遮罩
+- **AND** 点击遮罩区域或关闭按钮退出全屏
+
+#### Scenario: 全屏中退出
+- **WHEN** 用户在全屏弹窗中点击关闭按钮或点击遮罩
+- **THEN** 弹窗关闭
+- **AND** 回到对话上下文中内联播放器状态
