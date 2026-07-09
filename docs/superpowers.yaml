@@ -65,6 +65,25 @@ capabilities:
       description: "Markdown → PDF/Word 导出"
       constraints: "主力格式保质量，备选格式基础可用即可"
 
+    - id: "product-research"
+      name: "产品调研"
+      description: "基于产品名称，通过 Web 搜索获取并提取结构化产品信息（identity / official_description / features / specifications / availability 五大模块），每个字段标注 method 和 sources 实现可追溯"
+      constraints: |
+        数据必须来自搜索或 mock，LLM 不可编造产品名称或数据数值。
+        支持 Hybrid 策略：批量搜索抓取 + ReAct 工具调用查漏补缺。
+        同一产品调研结果缓存到 mock_data/product_info/。
+        不编造不确定的字段，留空处理。
+
+    - id: "web-search-tool"
+      name: "Web 搜索工具"
+      description: "将 searxng_search 封装为 LangChain Tool，供所有 Agent 调用以搜索 Web 获取页面列表"
+      constraints: "输入 query + max_results，返回格式化文本（标题/URL/摘要）。跳过已拦截域名和非网页链接。"
+
+    - id: "web-fetch-tool"
+      name: "Web 抓取工具"
+      description: "将 httpx 抓取 + HTML 提取封装为 LangChain Tool，供所有 Agent 调用以读取网页内容"
+      constraints: "输入 URL，返回纯文本（最多 4000 字符）。非 HTML 内容或网络错误时返回提示文本，不抛异常。"
+
   out_scope:
     - id: "campaign-execution"
       name: "方案自动执行"

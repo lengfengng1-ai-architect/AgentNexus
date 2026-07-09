@@ -1,0 +1,334 @@
+# ──────────────────────────────────────────────
+# OpenSpec: 产品信息
+# in_scope id: product-research
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "产品信息"
+  description: "接收产品名称，通过 Web 搜索获取并提取结构化的产品基础信息。支持同步查询和 SSE 流式进度推送。"
+  version: "v0.1"
+  x-in-scope-ref: "product-research"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /product-info:
+    post:
+      operationId: "product_info_create"
+      summary: "同步产品信息调研"
+      description: |
+        接收产品名称，同步返回五大模块结构化产品信息（identity / official_description / features / specifications / availability）。
+        每个字段标注 sources URL 和 method（quoted=原文摘录 / extracted=AI综合提取）。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInfoRequest"
+      responses:
+        "200":
+          description: "成功返回结构化产品信息"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ProductInfoResponse"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /product-info/stream:
+    post:
+      operationId: "product_info_stream"
+      summary: "SSE 流式产品信息调研"
+      description: |
+        接收产品名称，以 Server-Sent Events 方式逐步推送调研进度，最后推送结果事件。
+        每个 progress 事件包含当前阶段描述，result 事件包含完整产品信息。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ProductInfoRequest"
+      responses:
+        "200":
+          description: "SSE 流式响应"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+                description: "SSE 事件流，包含 progress 和 result 事件"
+          headers:
+            Cache-Control:
+              schema:
+                type: string
+                example: "no-cache"
+            Connection:
+              schema:
+                type: string
+                example: "keep-alive"
+            X-Accel-Buffering:
+              schema:
+                type: string
+                example: "no"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    # ── 请求体 ──
+    ProductInfoRequest:
+      type: object
+      description: "产品信息调研请求"
+      required:
+        - product_name
+      properties:
+        product_name:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: "产品名称"
+          example: "iPhone 16"
+
+    # ── 响应体 ──
+    ProductInfoResponse:
+      type: object
+      description: "产品信息调研响应"
+      properties:
+        product_info:
+          $ref: "#/components/schemas/ProductResearchResult"
+        from_cache:
+          type: boolean
+          description: "是否来自缓存"
+          example: false
+      required:
+        - product_info
+        - from_cache
+
+    ProductResearchResult:
+      type: object
+      description: "产品调研的完整结果，按五大模块组织"
+      properties:
+        identity:
+          $ref: "#/components/schemas/Identity"
+        official_description:
+          $ref: "#/components/schemas/OfficialDescription"
+        features:
+          type: array
+          description: "产品功能列表"
+          items:
+            $ref: "#/components/schemas/Feature"
+        specifications:
+          $ref: "#/components/schemas/SourcedDict"
+        availability:
+          $ref: "#/components/schemas/Availability"
+      required:
+        - identity
+        - official_description
+        - features
+        - specifications
+        - availability
+
+    Identity:
+      type: object
+      description: "产品标识信息"
+      properties:
+        product_name:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "官方产品名称，须来自官网/包装/文档"
+        brand:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "产品品牌"
+        manufacturer:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "产品的生产公司"
+        industry:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "产品所属行业"
+        category:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "产品类别"
+
+    OfficialDescription:
+      type: object
+      description: "官方描述。优先从官网原文摘录（quoted）"
+      properties:
+        description:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "官网的介绍文本"
+        tagline:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "官方 slogan/标语"
+        statement:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "正式定义，来自 PR/whitepaper"
+
+    Feature:
+      type: object
+      description: "产品功能，每个功能独立标注来源"
+      properties:
+        name:
+          type: string
+          description: "产品功能名称"
+          example: "Camera Control"
+        category:
+          type: string
+          description: "功能类别"
+          nullable: true
+          example: "影像"
+        description:
+          type: string
+          description: "功能描述"
+          example: "相机控制按键"
+        evidence:
+          type: array
+          description: "信息来源 URL（每个功能独立标注）"
+          items:
+            type: string
+            format: uri
+      required:
+        - name
+
+    Availability:
+      type: object
+      description: "产品可获得性信息"
+      properties:
+        status:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "产品状态：在售/预售/停售/unknown"
+        pricing:
+          type: array
+          description: "结构化价格信息"
+          items:
+            $ref: "#/components/schemas/PriceItem"
+        available_regions:
+          $ref: "#/components/schemas/SourcedStrList"
+          description: "销售/服务地区"
+        access_model:
+          $ref: "#/components/schemas/SourcedStr"
+          description: "交付方式，如线下零售/线上直销"
+
+    PriceItem:
+      type: object
+      description: "结构化价格信息"
+      properties:
+        label:
+          type: string
+          description: "价格项标签，如 128GB 版"
+          nullable: true
+          example: "128GB"
+        price:
+          type: string
+          description: "价格数值，如 5999"
+          nullable: true
+          example: "5999"
+        currency:
+          type: string
+          description: "货币，如 CNY/USD"
+          nullable: true
+          example: "CNY"
+        source:
+          type: string
+          description: "该价格的信息来源 URL"
+          format: uri
+          nullable: true
+          example: "https://apple.com"
+
+    # ── 基础溯源类型 ──
+    SourcedStr:
+      type: object
+      description: "带溯源的字符串字段"
+      properties:
+        value:
+          type: string
+          description: "字段值"
+          nullable: true
+          example: "iPhone 16"
+        sources:
+          type: array
+          description: "信息来源 URL 列表"
+          items:
+            type: string
+            format: uri
+          example: ["https://apple.com"]
+        method:
+          type: string
+          description: "quoted=原文摘录 / extracted=AI综合提取"
+          enum:
+            - quoted   # 原文摘录
+            - extracted  # AI 综合提取
+          example: "extracted"
+        quote:
+          type: string
+          description: "原文引用片段（quoted 模式时填充）"
+          nullable: true
+          example: "iPhone 16 是 Apple 新一代智能手机"
+
+    SourcedStrList:
+      type: object
+      description: "带溯源的字符串列表字段"
+      properties:
+        value:
+          type: array
+          description: "字段值列表"
+          items:
+            type: string
+          example: ["中国大陆"]
+        sources:
+          type: array
+          description: "信息来源 URL 列表"
+          items:
+            type: string
+            format: uri
+          example: ["https://apple.com"]
+        method:
+          type: string
+          description: "quoted=原文摘录 / extracted=AI综合提取"
+          enum:
+            - quoted
+            - extracted
+          example: "extracted"
+
+    # ── 共享错误模型 ──
+    APIError:
+      type: object
+      description: "统一错误响应"
+      properties:
+        detail:
+          type: string
+          description: "人类可读的错误描述"
+        code:
+          type: string
+          description: "错误码（如 'llm_error', 'validation_error'）"
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              field:
+                type: string
+                description: "出错字段名"
+              message:
+                type: string
+                description: "字段级错误说明"
+      required:
+        - detail
+        - code
+
+  responses:
+    ValidationError:
+      description: "字段校验失败"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
+    InternalError:
+      description: "服务器内部错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"
