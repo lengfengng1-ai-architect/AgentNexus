@@ -200,3 +200,23 @@ async def test_status_internal_error_returns_500(
     monkeypatch.setattr(plan_router, "get_status", boom)
     response = await client.get("/api/v1/plan/runs/r1/status")
     assert response.status_code == 500
+
+
+async def test_media_status_returns_200(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/plan/runs/r1/media-status")
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["success"] is True
+    assert "promo_video" in payload["data"]
+    assert "poster" in payload["data"]
+
+
+async def test_media_status_internal_error_returns_500(
+    client: AsyncClient, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    async def boom(*args: Any, **kwargs: Any) -> dict[str, Any]:
+        raise RuntimeError("boom")
+
+    monkeypatch.setattr(plan_router, "get_media_status", boom)
+    response = await client.get("/api/v1/plan/runs/r1/media-status")
+    assert response.status_code == 500

@@ -182,7 +182,7 @@ async def plan_run_regenerate_poster(
 async def plan_run_media_status(run_id: str = Path(..., description="运行实例 ID")):
     """查询视频/海报媒体状态（轻量，不读 checkpoint）。"""
     try:
-        status = get_media_status(run_id)
+        status = await get_media_status(run_id)
     except Exception as exc:
         logger.exception("failed to get media status for run %s", run_id)
         return _error_response(

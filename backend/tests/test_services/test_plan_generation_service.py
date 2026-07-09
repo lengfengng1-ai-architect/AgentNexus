@@ -306,3 +306,62 @@ async def test_paused_emitted_only_when_parallel_predecessors_complete():
     }
     required = service._PARALLEL_PREDECESSORS.get("plan_data_query", [])
     assert all(state_values.get(p) for p in required)
+
+
+@pytest.mark.asyncio
+async def test_media_status_cache_hit_skips_db(monkeypatch):
+    """缓存命中时直接返回缓存值,不回查 DB。"""
+    monkeypatch.setitem(
+        service._promo_video_cache, "r-hit", {"status": "completed", "video_url": "http://cache/v.mp4"}
+    )
+    monkeypatch.setitem(
+        service._poster_cache, "r-hit", {"status": "completed", "image_url": "http://cache/p.jpg"}
+    )
+
+    async def boom(*args, **kwargs):
+        raise AssertionError("cache hit should not query DB")
+
+    monkeypatch.setattr(service, "_load_promo_video", boom)
+    monkeypatch.setattr(service, "_load_poster", boom)
+
+    result = await service.get_media_status("r-hit")
+    assert result["promo_video"]["video_url"] == "http://cache/v.mp4"
+    assert result["poster"]["image_url"] == "http://cache/p.jpg"
+
+
+@pytest.mark.asyncio
+async def test_media_status_cache_miss_falls_back_to_db(monkeypatch):
+    """缓存 miss 时回读 plan_records 表(进程重启/多进程场景)。"""
+    service._promo_video_cache.clear()
+    service._poster_cache.clear()
+
+    async def load_video(run_id):
+        assert run_id == "r-miss"
+        return {"status": "completed", "video_url": "http://db/v.mp4"}
+
+    async def load_poster(run_id):
+        assert run_id == "r-miss"
+        return {"status": "completed", "image_url": "http://db/p.jpg"}
+
+    monkeypatch.setattr(service, "_load_promo_video", load_video)
+    monkeypatch.setattr(service, "_load_poster", load_poster)
+
+    result = await service.get_media_status("r-miss")
+    assert result["promo_video"]["video_url"] == "http://db/v.mp4"
+    assert result["poster"]["image_url"] == "http://db/p.jpg"
+
+
+@pytest.mark.asyncio
+async def test_media_status_returns_none_when_cache_and_db_empty(monkeypatch):
+    """缓存和表都没有数据时,返回 None 而非抛错。"""
+    service._promo_video_cache.clear()
+    service._poster_cache.clear()
+
+    async def load_none(run_id):
+        return None
+
+    monkeypatch.setattr(service, "_load_promo_video", load_none)
+    monkeypatch.setattr(service, "_load_poster", load_none)
+
+    result = await service.get_media_status("r-empty")
+    assert result == {"promo_video": None, "poster": None}
