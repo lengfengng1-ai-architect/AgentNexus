@@ -1,4 +1,13 @@
-import { useCallback, useMemo, useRef, useState, useEffect, type KeyboardEvent } from 'react'
+import { useCallback, useRef, useState, useEffect, type KeyboardEvent } from 'react'
+
+interface Attachment {
+  id: string
+  file: File
+  preview: string
+  type: 'image' | 'file'
+  name: string
+  remoteUrl?: string
+}
 
 interface ChatInputProps {
   value: string
@@ -7,11 +16,17 @@ interface ChatInputProps {
   disabled?: boolean
 }
 
-/** Normalize a single URL row: keep as-is if empty, trim whitespace, validate http/https */
-function normalizeUrl(s: string): string {
-  const trimmed = s.trim()
-  if (!trimmed) return ''
-  return trimmed.startsWith('http://') || trimmed.startsWith('https://') ? trimmed : ''
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+const BACKEND_ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, '')
+
+function extractUrlsFromText(text: string): string[] {
+  const urlRegex = /https?:\/\/[^\s<>"']+/g
+  return text.match(urlRegex) || []
+}
+
+let _attachIdSeq = 0
+function genAttachId(): string {
+  return `att_${Date.now().toString(36)}_${++_attachIdSeq}`
 }
 
 /** Icon button inside the floating plus menu */
@@ -31,21 +46,20 @@ function MenuBtn({ icon, label, onClick }: { icon: string; label: string; onClic
 export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const [showAttach, setShowAttach] = useState(false)
-  const [urlRows, setUrlRows] = useState<string[]>([''])
   const [showMenu, setShowMenu] = useState(false)
   const [isListening, setIsListening] = useState(false)
   const [toast, setToast] = useState<string | null>(null)
+  const [attachments, setAttachments] = useState<Attachment[]>([])
+  const [sending, setSending] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const menuAreaRef = useRef<HTMLDivElement>(null)
   const toastTimerRef = useRef<ReturnType<typeof setTimeout>>()
   const valueRef = useRef(value)
-
-  const imageUrls = useMemo(() =>
-    urlRows.map(normalizeUrl).filter(Boolean),
-    [urlRows],
-  )
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const attachmentsRef = useRef(attachments)
 
   useEffect(() => { valueRef.current = value }, [value])
+  useEffect(() => { attachmentsRef.current = attachments }, [attachments])
 
   useEffect(() => {
     const el = textareaRef.current
@@ -71,6 +85,15 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
     return () => { recognitionRef.current?.stop() }
   }, [])
 
+  // ── Cleanup object URLs on unmount ────────────────────────────────
+  useEffect(() => {
+    return () => {
+      attachmentsRef.current.forEach(a => {
+        if (a.preview) URL.revokeObjectURL(a.preview)
+      })
+    }
+  }, [])
+
   // ── Toast helper ──────────────────────────────────────────────────
   const showToast = useCallback((msg: string) => {
     setToast(msg)
@@ -78,41 +101,49 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
     toastTimerRef.current = setTimeout(() => setToast(null), 2500)
   }, [])
 
-  // ── URL row handlers (unchanged) ────────────────────────────────
-  const handleUrlRowChange = useCallback((index: number, val: string) => {
-    setUrlRows(prev => {
-      const next = [...prev]
-      next[index] = val
-      if (index === next.length - 1 && normalizeUrl(val)) {
-        if (next.length < 9) next.push('')
-      }
-      return next
-    })
-  }, [])
+  // ── File handlers ─────────────────────────────────────────────────
+  function handleFileSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const files = e.target.files
+    if (!files || files.length === 0) return
+    const newAttachments: Attachment[] = Array.from(files).map(file => ({
+      id: genAttachId(),
+      file,
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
+      type: file.type.startsWith('image/') ? 'image' : 'file',
+      name: file.name,
+    }))
+    setAttachments(prev => [...prev, ...newAttachments])
+    // Reset so selecting the same files again triggers onChange
+    e.target.value = ''
+  }
 
-  const removeUrlRow = useCallback((index: number) => {
-    setUrlRows(prev => {
-      const next = prev.filter((_, i) => i !== index)
-      return next.length === 0 ? [''] : next
+  function removeAttachment(id: string) {
+    setAttachments(prev => {
+      const att = prev.find(a => a.id === id)
+      if (att?.preview) URL.revokeObjectURL(att.preview)
+      return prev.filter(a => a.id !== id)
     })
-  }, [])
+  }
 
-  const handleUrlRowPaste = useCallback((index: number, e: React.ClipboardEvent) => {
-    const text = e.clipboardData.getData('text')
-    if (!text.includes('\n') && !text.includes(',')) return
-    const urls = text
-      .split(/[\n,]+/)
-      .map(s => s.trim())
-      .filter(s => s.startsWith('http://') || s.startsWith('https://'))
-    if (urls.length <= 1) return
+  function handleDragOver(e: React.DragEvent) {
     e.preventDefault()
-    setUrlRows(prev => {
-      const next = [...prev]
-      next[index] = urls[0]
-      next.splice(index + 1, 0, ...urls.slice(1), '')
-      return next
-    })
-  }, [])
+    e.stopPropagation()
+  }
+
+  function handleDrop(e: React.DragEvent) {
+    e.preventDefault()
+    e.stopPropagation()
+    const files = e.dataTransfer.files
+    if (!files || files.length === 0) return
+    const newAttachments: Attachment[] = Array.from(files).map(file => ({
+      id: genAttachId(),
+      file,
+      preview: file.type.startsWith('image/') ? URL.createObjectURL(file) : '',
+      type: file.type.startsWith('image/') ? 'image' : 'file',
+      name: file.name,
+    }))
+    setAttachments(prev => [...prev, ...newAttachments])
+  }
 
   function handleKeyDown(event: KeyboardEvent<HTMLTextAreaElement>) {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -121,18 +152,68 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
     }
   }
 
-  function handleSend() {
-    const urls = imageUrls.length > 0 ? imageUrls : undefined
-    onSend(urls)
+  async function handleSend() {
+    if (disabled || sending) return
+    if (!value.trim() && attachments.length === 0) return
+
+    setSending(true)
+    try {
+      // 1. Upload pending attachments
+      const uploadedUrls: string[] = []
+      const pending = attachments.filter(a => !a.remoteUrl)
+      if (pending.length > 0) {
+        const formData = new FormData()
+        pending.forEach(a => formData.append('files', a.file))
+        const res = await fetch(`${API_BASE}/upload`, {
+          method: 'POST',
+          body: formData,
+        })
+        if (!res.ok) throw new Error('Upload failed')
+        const data = await res.json()
+        data.files.forEach((item: { url: string }, i: number) => {
+          const fullUrl = item.url.startsWith('http')
+            ? item.url
+            : `${BACKEND_ORIGIN}${item.url}`
+          uploadedUrls.push(fullUrl)
+          if (pending[i]) pending[i].remoteUrl = fullUrl
+        })
+      }
+
+      // 2. Collect any already-uploaded URLs (failsafe)
+      attachments.forEach(a => {
+        if (a.remoteUrl && !uploadedUrls.includes(a.remoteUrl)) {
+          uploadedUrls.push(a.remoteUrl)
+        }
+      })
+
+      // 3. Extract http/https URLs from textarea content
+      const textUrls = extractUrlsFromText(value)
+
+      // 4. Merge and send
+      const allUrls = [...uploadedUrls, ...textUrls]
+      onSend(allUrls.length > 0 ? allUrls : undefined)
+    } catch {
+      showToast('文件上传失败，请重试')
+      setSending(false)
+      return
+    }
+
+    // 5. Cleanup
     setShowAttach(false)
-    setUrlRows([''])
+    attachments.forEach(a => {
+      if (a.preview) URL.revokeObjectURL(a.preview)
+    })
+    setAttachments([])
+    setSending(false)
   }
 
   function toggleAttach() {
-    setShowAttach(prev => {
-      if (prev) setUrlRows([''])
-      return !prev
-    })
+    if (showAttach) {
+      const prev = [...attachments]
+      setAttachments([])
+      prev.forEach(a => { if (a.preview) URL.revokeObjectURL(a.preview) })
+    }
+    setShowAttach(prev => !prev)
   }
 
   // ── Plus button ───────────────────────────────────────────────
@@ -149,7 +230,7 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
   const handleAttachClick = useCallback(() => {
     toggleAttach()
     setShowMenu(false)
-  }, [])
+  }, [showAttach, attachments])
 
   // ── 📋方案 ─────────────────────────────────────────────────────
   const handlePrefillTemplate = useCallback(() => {
@@ -211,6 +292,8 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
     showToast('功能开发中，敬请期待')
   }, [showToast])
 
+  const hasContent = value.trim() || attachments.length > 0
+
   return (
     <div className="border-t border-line bg-white px-4 py-3 sm:px-6 sm:py-4">
       {/* Toast */}
@@ -222,145 +305,164 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
         </div>
       )}
 
-      {/* 附件栏（折叠） */}
-      {showAttach && (
-        <div className="mx-auto mb-2 max-w-3xl space-y-2">
-          {urlRows.map((row, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <div className="relative flex-1">
-                <input
-                  type="url"
-                  value={row}
-                  onChange={e => handleUrlRowChange(i, e.target.value)}
-                  onPaste={i === urlRows.length - 1 ? e => handleUrlRowPaste(i, e) : undefined}
-                  disabled={disabled}
-                  placeholder={i === urlRows.length - 1 ? `输入或粘贴图片 URL，自动拆分` : `图片 URL ${i + 1}`}
-                  className="w-full rounded-lg border border-line bg-mist px-3 py-2 pr-10 text-xs outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:opacity-50"
-                />
-                {normalizeUrl(row) && (
-                  <ThumbnailPreview url={normalizeUrl(row)} />
+      <div className="mx-auto max-w-3xl">
+        {/* 输入容器 */}
+        <div className="rounded-2xl border border-line focus-within:border-start focus-within:ring-1 focus-within:ring-start">
+          <div className="flex flex-col gap-0 bg-mist rounded-2xl p-2">
+            {/* 附件 chips — 在输入框内部，与文字同一背景 */}
+            {showAttach && (
+              <div
+                onDragOver={handleDragOver}
+                onDrop={handleDrop}
+                className="mb-1"
+              >
+                {attachments.length === 0 ? (
+                  <div className="flex items-center gap-1.5 px-1 py-1.5">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3.5 w-3.5 text-track/30">
+                      <path fillRule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H5.25a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
+                    </svg>
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="text-[11px] text-track/40 transition-colors hover:text-track/60"
+                    >
+                      点击选择文件，或拖拽文件到此处
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex flex-wrap items-center gap-1.5 px-1 pt-1 pb-1.5">
+                    {attachments.map(att => (
+                      <div key={att.id} className="group relative">
+                        {att.type === 'image' ? (
+                          <div className="relative">
+                            <img
+                              src={att.preview}
+                              alt={att.name}
+                              className="h-8 w-8 rounded object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={e => { e.stopPropagation(); removeAttachment(att.id) }}
+                              className="absolute -right-1 -top-1 flex h-3.5 w-3.5 items-center justify-center rounded-full border border-line bg-white text-[8px] text-track/50 shadow-sm opacity-0 transition-opacity group-hover:opacity-100 hover:border-red-300 hover:text-red-500"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1 rounded-md border border-line bg-white px-1.5 py-1 shadow-sm">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 shrink-0 text-track/50">
+                              <path d="M5.625 1.5c-1.036 0-1.875.84-1.875 1.875v17.25c0 1.035.84 1.875 1.875 1.875h12.75c1.035 0 1.875-.84 1.875-1.875V12.75A3.75 3.75 0 0 0 16.5 9h-1.875a1.875 1.875 0 0 1-1.875-1.875V5.25A3.75 3.75 0 0 0 9 1.5H5.625Z" />
+                              <path d="M12.971 1.816A5.23 5.23 0 0 1 14.25 5.25v1.875c0 .207.168.375.375.375h1.875a5.23 5.23 0 0 1 3.434 1.279 9.768 9.768 0 0 0-6.963-6.963Z" />
+                            </svg>
+                            <span className="max-w-[80px] truncate text-[10px] text-track/70">{att.name}</span>
+                            <button
+                              type="button"
+                              onClick={() => removeAttachment(att.id)}
+                              className="ml-0.5 text-[10px] text-track/30 hover:text-red-500"
+                            >
+                              ×
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => fileInputRef.current?.click()}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md border border-dashed border-line text-xs text-track/30 transition-colors hover:border-track/40 hover:text-track/50"
+                    >
+                      +
+                    </button>
+                  </div>
                 )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={handleFileSelect}
+                />
               </div>
-              {i < urlRows.length - 1 && (
-                <button
-                  type="button"
-                  onClick={() => removeUrlRow(i)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-sm text-track/50 transition-colors hover:border-red-300 hover:text-red-500"
-                >
-                  ×
-                </button>
+            )}
+
+            {/* 主输入行 */}
+            <div className="flex items-end gap-2">
+            {/* ➕ 聚合按钮 */}
+            <div className="relative" ref={menuAreaRef}>
+              <button
+                type="button"
+                onClick={handlePlusClick}
+                disabled={disabled}
+                aria-label={isListening ? '停止录音' : '菜单'}
+                className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start ${
+                  isListening
+                    ? 'animate-pulse bg-red-50 text-red-500'
+                    : showAttach
+                      ? 'bg-start/10 text-start'
+                      : showMenu
+                        ? 'bg-line text-track'
+                        : 'text-track/40 hover:bg-line hover:text-track/60'
+                } disabled:cursor-not-allowed disabled:opacity-40`}
+              >
+                {isListening ? (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                    <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
+                    <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
+                  </svg>
+                ) : (
+                  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+                    <path fillRule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H5.25a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
+                  </svg>
+                )}
+              </button>
+
+              {/* 浮层面板 */}
+              {showMenu && (
+                <div className="absolute bottom-full left-0 mb-2 z-50 min-w-[11rem] rounded-xl border border-line bg-white p-2 shadow-lg">
+                  <div className="grid grid-cols-3 gap-1">
+                    <MenuBtn icon="📎" label="附件" onClick={handleAttachClick} />
+                    <MenuBtn icon="🖼️" label="制图" onClick={showPlaceholderToast} />
+                    <MenuBtn icon="📋" label="方案" onClick={handlePrefillTemplate} />
+                    <MenuBtn icon="💬" label="语音" onClick={handleVoice} />
+                    <MenuBtn icon="📈" label="数据" onClick={showPlaceholderToast} />
+                  </div>
+                </div>
               )}
             </div>
-          ))}
-          {imageUrls.length > 0 && (
-            <p className="text-[10px] text-track/40">已识别 {imageUrls.length} 张图片（最多 9 张）</p>
-          )}
-        </div>
-      )}
 
-      <div className="mx-auto flex max-w-3xl items-end gap-2 rounded-2xl border border-line bg-mist p-2 focus-within:border-start focus-within:ring-1 focus-within:ring-start">
-        {/* ➕ 聚合按钮 */}
-        <div className="relative" ref={menuAreaRef}>
-          <button
-            type="button"
-            onClick={handlePlusClick}
-            disabled={disabled}
-            aria-label={isListening ? '停止录音' : '菜单'}
-            className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start ${
-              isListening
-                ? 'animate-pulse bg-red-50 text-red-500'
-                : showAttach
-                  ? 'bg-start/10 text-start'
-                  : showMenu
-                    ? 'bg-line/50 text-track/60'
-                    : 'text-track/40 hover:bg-line/50 hover:text-track/60'
-            } disabled:cursor-not-allowed disabled:opacity-40`}
-          >
-            {isListening ? (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                <path d="M8.25 4.5a3.75 3.75 0 1 1 7.5 0v8.25a3.75 3.75 0 1 1-7.5 0V4.5Z" />
-                <path d="M6 10.5a.75.75 0 0 1 .75.75v1.5a5.25 5.25 0 1 0 10.5 0v-1.5a.75.75 0 0 1 1.5 0v1.5a6.751 6.751 0 0 1-6 6.709v2.291h3a.75.75 0 0 1 0 1.5h-8.5a.75.75 0 0 1 0-1.5h3v-2.291a6.751 6.751 0 0 1-6-6.709v-1.5A.75.75 0 0 1 6 10.5Z" />
+            <textarea
+              ref={textareaRef}
+              rows={1}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={disabled}
+              placeholder="输入你的需求…"
+              className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-track/40 sm:text-base"
+            />
+            <button
+              type="button"
+              onClick={handleSend}
+              disabled={disabled || sending || !hasContent}
+              aria-label="发送"
+              className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-start text-white transition-colors hover:bg-start/90 disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
+            >
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                viewBox="0 0 24 24"
+                fill="currentColor"
+                className="h-5 w-5"
+              >
+                <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.941l18.444-7.5a.75.75 0 0 0 0-1.388L3.478 2.404Z" />
               </svg>
-            ) : (
-              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
-                <path fillRule="evenodd" d="M12 3.75a.75.75 0 0 1 .75.75v6.75h6.75a.75.75 0 0 1 0 1.5h-6.75v6.75a.75.75 0 0 1-1.5 0v-6.75H5.25a.75.75 0 0 1 0-1.5h6.75V4.5a.75.75 0 0 1 .75-.75Z" clipRule="evenodd" />
-              </svg>
-            )}
-          </button>
-
-          {/* 浮层面板 */}
-          {showMenu && (
-            <div className="absolute bottom-full left-0 mb-2 z-50 min-w-[11rem] rounded-xl border border-line bg-white p-2 shadow-lg">
-              <div className="grid grid-cols-3 gap-1">
-                <MenuBtn icon="📎" label="附件" onClick={handleAttachClick} />
-                <MenuBtn icon="🖼️" label="制图" onClick={showPlaceholderToast} />
-                <MenuBtn icon="📋" label="方案" onClick={handlePrefillTemplate} />
-                <MenuBtn icon="💬" label="语音" onClick={handleVoice} />
-                <MenuBtn icon="📈" label="数据" onClick={showPlaceholderToast} />
-              </div>
+            </button>
             </div>
-          )}
+          </div>
         </div>
-
-        <textarea
-          ref={textareaRef}
-          rows={1}
-          value={value}
-          onChange={(e) => onChange(e.target.value)}
-          onKeyDown={handleKeyDown}
-          disabled={disabled}
-          placeholder="输入你的需求…"
-          className="max-h-40 min-h-[44px] w-full resize-none bg-transparent px-3 py-2.5 text-sm outline-none placeholder:text-track/40 sm:text-base"
-        />
-        <button
-          type="button"
-          onClick={handleSend}
-          disabled={disabled || (!value.trim() && imageUrls.length === 0)}
-          aria-label="发送"
-          className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-start text-white transition-colors hover:bg-start/90 disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="h-5 w-5"
-          >
-            <path d="M3.478 2.404a.75.75 0 0 0-.926.941l2.432 7.905H13.5a.75.75 0 0 1 0 1.5H4.984l-2.432 7.905a.75.75 0 0 0 .926.941l18.444-7.5a.75.75 0 0 0 0-1.388L3.478 2.404Z" />
-          </svg>
-        </button>
       </div>
       <p className="mx-auto mt-2 max-w-3xl text-center text-[10px] text-track/40 sm:text-xs">
         Enter 发送，Shift + Enter 换行
       </p>
-    </div>
-  )
-}
-
-/** Small inline thumbnail for a single URL input row */
-function ThumbnailPreview({ url }: { url: string }) {
-  const [loaded, setLoaded] = useState(false)
-  const [failed, setFailed] = useState(false)
-
-  return (
-    <div className="absolute right-1.5 top-1/2 -translate-y-1/2">
-      {!loaded && !failed && (
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-mist">
-          <span className="text-[8px] text-track/30">…</span>
-        </div>
-      )}
-      {failed && (
-        <div className="flex h-7 w-7 items-center justify-center rounded bg-red-50">
-          <span className="text-[8px] text-red-400">×</span>
-        </div>
-      )}
-      <img
-        src={url}
-        alt=""
-        onLoad={() => setLoaded(true)}
-        onError={() => setFailed(true)}
-        className={`h-7 w-7 rounded object-cover ${loaded ? 'opacity-100' : 'hidden'}`}
-        loading="eager"
-      />
     </div>
   )
 }

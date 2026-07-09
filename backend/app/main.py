@@ -6,6 +6,8 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
+from fastapi.staticfiles import StaticFiles
+
 from app.config.settings import settings
 from app.routers import (
     audience_insight,
@@ -15,6 +17,7 @@ from app.routers import (
     market_analysis,
     plan,
     product_info,
+    upload,
     video,
 )
 from app.schemas.common import APIError, APIResponse, ErrorCode
@@ -86,6 +89,13 @@ def create_app() -> FastAPI:
     app.include_router(product_info.router, prefix="/api/v1")
     app.include_router(audience_insight.router, prefix="/api/v1")
     app.include_router(video.router, prefix="/api/v1")
+    app.include_router(upload.router, prefix="/api/v1")
+
+    # 挂载上传文件目录为静态资源
+    upload_dir = Path(settings.upload_dir)
+    upload_dir.mkdir(parents=True, exist_ok=True)
+    app.mount("/uploads", StaticFiles(directory=str(upload_dir)), name="uploads")
+
     return app
 
 
