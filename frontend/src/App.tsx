@@ -26,7 +26,6 @@ const pageFromPath = (pathname: string): Page => PATH_PAGE[pathname] ?? 'chat'
 const NAV: { key: Page; label: string; children?: { key: string; label: string }[] }[] = [
   { key: 'chat', label: '对话' },
   { key: 'plan', label: '工作台' },
-  { key: 'mobile', label: '移动端' },
   {
     key: 'intent',
     label: '测试',
@@ -37,6 +36,7 @@ const NAV: { key: Page; label: string; children?: { key: string; label: string }
       { key: 'xlsx', label: 'XLSX表格' },
     ],
   },
+  { key: 'mobile', label: '移动端' },
 ]
 
 function App() {
@@ -80,6 +80,7 @@ function App() {
                 cursor: 'pointer', border: 'none',
                 background: page === item.key ? '#1e40af' : 'transparent',
                 color: page === item.key ? '#fff' : '#475569',
+                marginLeft: item.key === 'mobile' ? 'auto' : undefined,
               }}
             >
               {item.label}

@@ -234,25 +234,46 @@
   bottom: 0;
   background: var(--bg);
   border-top: 1px solid var(--line);
-  padding: 8px 10px 14px;
+  padding: 8px 10px 10px;
+  display: flex;
+  flex-direction: column;
+  z-index: 15;
+}
+.mw .inputbar .quick-btns {
+  display: flex;
+  gap: 6px;
+  padding: 0 2px 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+.mw .inputbar .quick-btns::-webkit-scrollbar {
+  display: none;
+}
+.mw .inputbar .quick-btns .qb {
+  flex: none;
+  font-size: 11px;
+  padding: 4px 10px;
+  border-radius: 16px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--fg-soft);
+  cursor: pointer;
+  font-family: var(--ff);
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.mw .inputbar .quick-btns .qb:active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+.mw .inputbar-row {
   display: flex;
   gap: 8px;
   align-items: center;
-  z-index: 15;
 }
-.mw .inputbar .quick {
-  font-size: 11px;
-  padding: 7px 11px;
-  border-radius: 20px;
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-weight: 600;
-  cursor: pointer;
-  flex: none;
-  border: none;
-  font-family: var(--ff);
-}
-.mw .inputbar input {
+.mw .inputbar-row input {
   flex: 1;
   height: 38px;
   border: 1px solid var(--border);
@@ -262,7 +283,7 @@
   font-size: 13px;
   outline: none;
 }
-.mw .inputbar input:focus {
+.mw .inputbar-row input:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-softer);
 }
@@ -339,8 +360,8 @@
 
 .mw .dock {
   position: absolute; left: 0; right: 0; bottom: 0; background: var(--bg);
-  border-top: 1px solid var(--line); padding: 10px 16px 16px; display: flex; gap: 10px;
-  align-items: center; z-index: 15;
+  border-top: 1px solid var(--line); padding: 10px 16px 16px; display: flex;
+  justify-content: center; align-items: center; z-index: 15;
 }
 .mw .dock .gen {
   flex: 1; height: 42px; border: none; border-radius: var(--r-sm); background: var(--accent);
