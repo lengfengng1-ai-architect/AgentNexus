@@ -262,15 +262,20 @@ action_recommendations 节点 handler 返回后，系统 SHALL 自动读取当�
 - **THEN** 系统 SHALL 立即拼接 prompt 并创建后台 video generation task
 - **AND** plan_generator 节点 SHALL 继续执行，不受后台任务影响
 
-### Requirement: 视频 SHALL 通过 get_status 端点与 outputs 合并返回
+### Requirement: 视频/海报 SHALL 通过 media-status 端点轻量查询
 
-视频生成结果 SHALL 缓存于服务端内存（`_promo_video_cache`，key 为 run_id），通过 `GET /plan/runs/{run_id}/status` 端点与 outputs 合并返回。
+视频/海报生成结果 SHALL 缓存于服务端内存（`_promo_video_cache` / `_poster_cache`，key 为 run_id），通过 `GET /plan/runs/{run_id}/media-status` 端点返回。该端点不读 LangGraph checkpoint，不与 SSE 事件驱动的 pipeline 状态冲突。视频/海报状态也通过 `GET /plan/runs/{run_id}/status` 端点的 `outputs` 合并返回（向后兼容）。
 
-#### Scenario: get_status 包含 promo_video
-- **WHEN** 客户端调用 `GET /plan/runs/{run_id}/status`
-- **THEN** 响应中的 `outputs` SHALL 包含 `promo_video` 字段
-- **AND** promo_video 字段 SHALL 包含 `status`（generating / completed / failed）
-- **AND** status 为 completed 时 SHALL 包含 `video_url`
+#### Scenario: media-status 端点轻量查询
+- **WHEN** 客户端调用 `GET /plan/runs/{run_id}/media-status`
+- **THEN** 响应 SHALL 包含 `promo_video` 和 `poster` 两个字段
+- **AND** 各字段 SHALL 包含 `status`（generating / completed / failed）
+- **AND** status 为 completed 时 SHALL 包含 `video_url` / `image_url`
+
+#### Scenario: SSE 流结束后通过 media-status 轮询
+- **WHEN** plan_generator 节点通过 SSE 推送 workflow.complete
+- **AND** 视频/海报尚未完成（状态为 generating 或不存在）
+- **THEN** 前端每 5 秒调用 media-status 端点查询最新状态，不触发 RESTORE_STATUS
 
 ### Requirement: 并行 fan-in 节点 pause 前 SHALL 校验前置完成
 
