@@ -64,12 +64,12 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
     }
   }, [briefData, status, start])
 
-  // 运行完成后从 localStorage 清理 run_id
+  // 运行完成后保存 run_id，切 Tab 回来后还能恢复
   useEffect(() => {
-    if (status === 'completed') {
+    if (status === 'completed' && briefData) {
       try { localStorage.removeItem('allygo_mobile_plan_run_id') } catch { /* ignore */ }
     }
-  }, [status])
+  }, [status, briefData])
 
   // Auto-scroll log to bottom
   useEffect(() => {
