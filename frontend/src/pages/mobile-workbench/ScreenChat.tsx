@@ -1,53 +1,48 @@
-// ScreenChat — ① 对话入口屏
-// OpenSpec: openspec/changes/add-mobile-workbench-preview · tasks 4.1 / 4.2 / 4.3
-// 初始气泡与交互映射自设计稿 system-kit.mobile-workbench2.html
-import { useEffect, useRef, useState } from 'react'
+// ScreenChat — ① 对话入口屏（移动端）
+// OpenSpec: openspec/changes/mobile-chat-backend-integration
+// in_scope: brand-input, mobile-chat-session
+// 使用 useChat hook 对接后端 /chat/stream SSE 端点
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useChat } from '../../hooks/useChat'
+import { ChatBubble } from '../../components/ChatBubble'
+import { ErrorBar } from '../../components/ErrorBar'
 
 export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch'
 
-type Msg = { id: number; role: 'agent' | 'user'; text: string; card?: 'brief' }
+interface ScreenChatProps {
+  onNavigate: (s: MobileScreen) => void
+}
 
-let seq = 0
-const nextId = () => ++seq
+const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
+const BACKEND_ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, '')
 
-const INITIAL: Msg[] = [
-  {
-    id: nextId(),
-    role: 'agent',
-    text: '你好，我是营销方案助手。告诉我品牌、产品和目标，我帮你生成集群营销方案。',
-  },
-  {
-    id: nextId(),
-    role: 'user',
-    text: '娃哈哈魅力系列，三款果汁（蓝莓/石榴/荔枝），想用运动盟域做 3 个月集群营销',
-  },
-  {
-    id: nextId(),
-    role: 'agent',
-    text: '已理解。按 4M+1C 模型拆解：Motion 运动场景 · Member 会员 · Media 内容 · Merchant 商户 · Community 社群。先填一份简报确认细节：',
-    card: 'brief',
-  },
-  {
-    id: nextId(),
-    role: 'agent',
-    text: '预期 3 个月：曝光 ≥1亿 · 私域会员 ≥50万 · 达人 GMV ≥500万。',
-  },
-]
+export function ScreenChat({ onNavigate }: ScreenChatProps) {
+  const {
+    messages,
+    inputValue,
+    isLoading,
+    error,
+    sendMessage,
+    retryMessage,
+    setInputValue,
+    updateVideoResult,
+    updateImageResult,
+  } = useChat()
 
-const AGENT_REPLY = '收到，正在按 4M+1C 拆解，可点「填写简报」确认细节。'
-
-export function ScreenChat({ onNavigate }: { onNavigate: (s: MobileScreen) => void }) {
-  const [messages, setMessages] = useState<Msg[]>(() => INITIAL.map(m => ({ ...m })))
-  const [input, setInput] = useState('')
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
+  const inputValueRef = useRef<string>(inputValue)
+  useEffect(() => { inputValueRef.current = inputValue }, [inputValue])
+  const [uploading, setUploading] = useState(false)
+  const [uploadError, setUploadError] = useState<string | null>(null)
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
+  // ── 语音输入 ──────────────────────────────────────────────────────────
   const handleVoice = () => {
     const API: new () => SpeechRecognition =
       (window as unknown as { SpeechRecognition: new () => SpeechRecognition }).SpeechRecognition ??
@@ -63,7 +58,10 @@ export function ScreenChat({ onNavigate }: { onNavigate: (s: MobileScreen) => vo
       for (let i = event.resultIndex; i < event.results.length; i++) {
         if (event.results[i].isFinal) finalText += event.results[i][0].transcript
       }
-      if (finalText) setInput(prev => prev + (prev ? ' ' : '') + finalText)
+      if (finalText) {
+        const cur = inputValueRef.current
+        setInputValue(cur + (cur ? ' ' : '') + finalText)
+      }
     }
     recognition.onend = () => setIsListening(false)
     recognition.onerror = () => setIsListening(false)
@@ -72,53 +70,77 @@ export function ScreenChat({ onNavigate }: { onNavigate: (s: MobileScreen) => vo
     setIsListening(true)
   }
 
+  // ── 方案模板快速填充 ───────────────────────────────────────────────────
   const handlePrefillTemplate = () => {
-    setInput('我是 [品牌名]，属于 [品类]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
+    setInputValue('我是 [品牌名]，属于 [品类]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
   }
 
-  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // ── 文件上传 ───────────────────────────────────────────────────────────
+  const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
-    if (files && files.length > 0) {
-      console.log('Selected files:', Array.from(files).map(f => f.name).join(', '))
-    }
+    if (!files || files.length === 0) return
     e.target.value = ''
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      Array.from(files).forEach(f => formData.append('files', f))
+      const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData })
+      if (!res.ok) throw new Error('Upload failed')
+      const data = await res.json()
+      const urls: string[] = data.files.map((item: { url: string }) =>
+        item.url.startsWith('http') ? item.url : `${BACKEND_ORIGIN}${item.url}`
+      )
+      // 发送消息并带上上传的 URL
+      sendMessage(inputValue.trim(), urls)
+    } catch {
+      setUploadError('文件上传失败，请重试')
+    } finally {
+      setUploading(false)
+    }
+  }, [inputValue, sendMessage])
+
+  // ── 发送文字 ───────────────────────────────────────────────────────────
+  const handleSend = () => {
+    const v = inputValue.trim()
+    if (!v || isLoading || uploading) return
+    sendMessage(v)
   }
 
-  const send = () => {
-    const v = input.trim()
-    if (!v) return
-    setMessages(m => [...m, { id: nextId(), role: 'user', text: v }])
-    setInput('')
-    setTimeout(() => {
-      setMessages(m => [...m, { id: nextId(), role: 'agent', text: AGENT_REPLY }])
-    }, 400)
-  }
+  // ── ChatBubble 回调 ────────────────────────────────────────────────────
+  const handleRetry = useCallback((messageId: string) => {
+    retryMessage(messageId)
+  }, [retryMessage])
+
+  const handleGeneratePlan = useCallback(() => {
+    onNavigate('brief')
+  }, [onNavigate])
 
   return (
     <>
+      {/* 错误条 — 后端错误 */}
+      {error && <ErrorBar message={error} />}
+      {/* 错误条 — 上传错误 */}
+      {uploadError && (
+        <ErrorBar message={uploadError} onDismiss={() => setUploadError(null)} />
+      )}
+
+      {/* 消息列表 */}
       <div className="chat">
         {messages.map(m => (
-          <div key={m.id} className={`bubble ${m.role}`}>
-            {m.role === 'agent' && <div className="who">Agent</div>}
-            <div className="msg">{m.text}</div>
-            {m.card === 'brief' && (
-              <div
-                className="chat-card"
-                role="button"
-                onClick={() => onNavigate('brief')}
-              >
-                <div>
-                  <div className="cc-t">填写方案简报</div>
-                  <div className="cc-d">品牌 · 产品线 · 人群 · 周期</div>
-                </div>
-                <div className="cc-go">去填写 ›</div>
-              </div>
-            )}
-          </div>
+          <ChatBubble
+            key={m.id}
+            message={m}
+            onRetry={m.retryable ? handleRetry : undefined}
+            onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
+            onVideoResult={updateVideoResult}
+            onImageResult={updateImageResult}
+          />
         ))}
         <div ref={bottomRef} />
       </div>
 
+      {/* 隐藏的文件选择器 */}
       <input
         ref={fileInputRef}
         type="file"
@@ -127,6 +149,7 @@ export function ScreenChat({ onNavigate }: { onNavigate: (s: MobileScreen) => vo
         onChange={handleFileSelect}
       />
 
+      {/* 输入条 */}
       <div className="inputbar">
         <div className="quick-btns">
           <button className="qb" onClick={() => onNavigate('brief')}>填写简报</button>
@@ -138,16 +161,22 @@ export function ScreenChat({ onNavigate }: { onNavigate: (s: MobileScreen) => vo
           <input
             type="text"
             placeholder="给 Agent 发消息…"
-            value={input}
-            onChange={e => setInput(e.target.value)}
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
             onKeyDown={e => {
               if (e.key === 'Enter') {
                 e.preventDefault()
-                send()
+                handleSend()
               }
             }}
+            disabled={isLoading}
           />
-          <button className="send" aria-label="发送" onClick={send}>
+          <button
+            className="send"
+            aria-label="发送"
+            onClick={handleSend}
+            disabled={isLoading || uploading || !inputValue.trim()}
+          >
             ↑
           </button>
         </div>
