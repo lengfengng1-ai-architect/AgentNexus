@@ -45,7 +45,7 @@ interface ChatBubbleProps {
   message: ChatMessage
   variant?: 'mobile'
   onRetry?: (messageId: string) => void
-  onGeneratePlan?: () => void
+  onGeneratePlan?: (messageId: string) => void
   onVideoResult?: (messageId: string, result: NonNullable<ChatMessage['videoResult']>) => void
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
@@ -103,7 +103,7 @@ export function ChatBubble({ message, variant, onRetry, onGeneratePlan, onVideoR
         {!isUser && message.canGeneratePlan && onGeneratePlan && (
           <button
             type="button"
-            onClick={onGeneratePlan}
+            onClick={() => onGeneratePlan(message.id)}
             className={variant === 'mobile'
               ? 'mt-3 w-full rounded-[8px] bg-[#1677ff] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1677ff]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677ff]'
               : 'mt-3 rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start'}

@@ -1,9 +1,11 @@
 // ScreenBrief — ② 简报屏
 // OpenSpec: mobile-brief-connect-backend · specs/mobile-brief-connect/spec.md
 // 表单 controlled state + AI 策略优化 + AI 生成方案跳转
-import { useCallback, useState } from 'react'
+// 支持从 ChatBubble「生成方案」携带 initialInput / initialBrandData 预填
+import { useCallback, useMemo, useState } from 'react'
 import { optimizeStrategy } from '../../api/plan'
 import type { MobileScreen } from './ScreenChat'
+import type { BrandInput } from '../../types/chat'
 
 const CITIES = ['北京', '上海', '广州', '深圳', '成都']
 
@@ -20,17 +22,53 @@ export interface BriefFormData {
 
 interface ScreenBriefProps {
   onNavigate: (s: MobileScreen, data?: BriefFormData) => void
+  initialInput?: string
+  initialBrandData?: BrandInput
 }
 
-export function ScreenBrief({ onNavigate }: ScreenBriefProps) {
-  const [brand, setBrand] = useState('娃哈哈')
-  const [category, setCategory] = useState('果汁饮料')
-  const [productMatrix, setProductMatrix] = useState('魅力系列（蓝莓/石榴/荔枝）')
-  const [targetAudience, setTargetAudience] = useState('25-35岁 一线白领')
-  const [marketingGoal, setMarketingGoal] = useState('认知度 ≥60% · 私域会员 ≥50万')
-  const [period, setPeriod] = useState('3 个月（12 周）')
-  const [selectedCities, setSelectedCities] = useState<string[]>(['北京', '上海', '广州', '深圳'])
-  const [coreStrategy, setCoreStrategy] = useState('以「运动盟域」为载体，4M+1C 集群营销模型，构建产品-场景-人群三位一体闭环。')
+/** 从「方案模版」文本中正则提取字段：我是[品牌]，属于[品类]，产品线是[产品线]，目标人群[目标人群]，想在[城市]做活动，预算[金额]万，周期[时长]个月 */
+function parseBriefInput(text: string): Partial<BriefFormData> {
+  const r: Partial<BriefFormData> = {}
+  const mBrand = text.match(/我是(.+?)[，,]/)
+  if (mBrand) r.brand_name = mBrand[1].trim()
+  const mCat = text.match(/属于(.+?)[，,]/)
+  if (mCat) r.category = mCat[1].trim()
+  const mProd = text.match(/产品线是(.+?)[，,]/)
+  if (mProd) r.product_matrix = mProd[1].trim()
+  const mAud = text.match(/目标人群(.+?)[，,]/)
+  if (mAud) r.target_audience = mAud[1].trim()
+  const mCity = text.match(/想在(.+?)做活动/)
+  if (mCity) r.selected_cities = [mCity[1].trim()]
+  const mBudget = text.match(/预算(\d+)/)
+  if (mBudget) r.marketing_goal = `认知度 ≥80% · 预算 ${mBudget[1]}万`
+  const mPeriod = text.match(/周期(\d+)个?月/)
+  if (mPeriod) r.period = `${mPeriod[1]} 个月（${parseInt(mPeriod[1]) * 4} 周）`
+  return r
+}
+
+export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: ScreenBriefProps) {
+  const mergedDefaults = useMemo(() => {
+    const parsed = initialInput ? parseBriefInput(initialInput) : {}
+    return {
+      brand_name: initialBrandData?.brand_name ?? parsed.brand_name ?? '娃哈哈',
+      category: initialBrandData?.category ?? parsed.category ?? '果汁饮料',
+      product_matrix: parsed.product_matrix ?? '魅力系列（蓝莓/石榴/荔枝）',
+      target_audience: parsed.target_audience ?? '25-35岁 一线白领',
+      marketing_goal: initialBrandData?.budget != null ? `认知度 ≥80% · 预算 ${initialBrandData.budget}万` : parsed.marketing_goal ?? '认知度 ≥60% · 私域会员 ≥50万',
+      period: initialBrandData?.period != null ? `${initialBrandData.period} 个月（${initialBrandData.period * 4} 周）` : parsed.period ?? '3 个月（12 周）',
+      selected_cities: initialBrandData?.city ? [initialBrandData.city] : parsed.selected_cities ?? ['北京', '上海', '广州', '深圳'],
+      core_strategy: parsed.core_strategy ?? '以「运动盟域」为载体，4M+1C 集群营销模型，构建产品-场景-人群三位一体闭环。',
+    }
+  }, [initialInput, initialBrandData])
+
+  const [brand, setBrand] = useState(mergedDefaults.brand_name)
+  const [category, setCategory] = useState(mergedDefaults.category)
+  const [productMatrix, setProductMatrix] = useState(mergedDefaults.product_matrix)
+  const [targetAudience, setTargetAudience] = useState(mergedDefaults.target_audience)
+  const [marketingGoal, setMarketingGoal] = useState(mergedDefaults.marketing_goal)
+  const [period, setPeriod] = useState(mergedDefaults.period)
+  const [selectedCities, setSelectedCities] = useState<string[]>(mergedDefaults.selected_cities)
+  const [coreStrategy, setCoreStrategy] = useState(mergedDefaults.core_strategy)
   const [optimizing, setOptimizing] = useState(false)
   const [optError, setOptError] = useState<string | null>(null)
   const [genLoading, setGenLoading] = useState(false)
