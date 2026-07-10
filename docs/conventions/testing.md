@@ -166,8 +166,9 @@ uv run pytest -x -q tests/test_agents/test_<a>.py tests/test_services/test_<b>.p
 ## 运行命令
 
 ```bash
-# 全量运行
-cd backend && uv run pytest -v --cov=app --cov-report=term-missing
+# 全量运行（先激活 venv，再 uv run，避免 uv 额外创建环境）
+source .venv/bin/activate
+uv run pytest -v --cov=app --cov-report=term-missing
 
 # 单文件
 uv run pytest -v tests/test_routers/test_brands.py
@@ -176,7 +177,6 @@ uv run pytest -v tests/test_routers/test_brands.py
 uv run pytest -v -k "fitness"
 
 # 使用本地虚拟环境直接运行（跳过 uv run 的进程启动开销，快约 2-5 倍）
-# uv run 已激活的 venv 下不会重复下载依赖，但每次仍会启动 uv 进程做检查
-# .venv/bin/pytest 直接调用，适合频繁快速验证；CI 中仍用 uv run pytest
+# CI 中仍用 uv run pytest
 .venv/bin/pytest -x -q tests/test_agents/test_<name>.py
 ```
