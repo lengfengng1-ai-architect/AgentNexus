@@ -3,16 +3,17 @@
 // SSE 驱动 10 Agent 流水线 + 点击展开日志 + 方案卡片 + CTA + Checkpoint 审核面板
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import type { BriefFormData } from './ScreenBrief'
 import type { MobileScreen } from './ScreenChat'
+import type { MobilePlanRunAPI } from '../../hooks/useMobilePlanRun'
 
 interface ScreenGenerateProps {
   onNavigate: (s: MobileScreen) => void
   briefData: BriefFormData | null
+  planRun: MobilePlanRunAPI
 }
 
-export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
+export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerateProps) {
   const {
     status,
     steps,
@@ -27,13 +28,13 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
     reject,
     reset,
     restoreFromRunId,
-  } = useMobilePlanRun()
+  } = planRun
 
   // 日志默认不展开，只有手动点击才展示
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showRejectInput, setShowRejectInput] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-  const [autoMode, setAutoMode] = useState(false)
+  const [autoMode] = useState(false)
   const logEndRef = useRef<HTMLDivElement>(null)
 
   // 切回页面时从 localStorage 恢复运行记录，不清空已有数据

@@ -123,8 +123,6 @@ async def searxng_search(keyword: str, max_results: int = 10) -> list[dict[str, 
     return results
 
 
-_MAX_TOKENS = 16384
-
 
 def build_chat_model():
     """Initialize the configured chat model (cached by provider).
@@ -142,7 +140,6 @@ def build_chat_model():
             model_provider="openai",
             api_key=settings.agnes_api_key,
             base_url=settings.agnes_base_url,
-            max_tokens=_MAX_TOKENS,
         )
     elif provider == "myself":
         model = init_chat_model(
@@ -150,7 +147,6 @@ def build_chat_model():
             model_provider="openai",
             api_key=settings.myself_api_key,
             base_url=settings.myself_base_url,
-            max_tokens=_MAX_TOKENS,
         )
     else:
         model = init_chat_model(
@@ -158,7 +154,6 @@ def build_chat_model():
             model_provider="openai",
             api_key=settings.dashscope_api_key,
             base_url=settings.dashscope_base_url,
-            max_tokens=_MAX_TOKENS,
         )
     _model_cache[provider] = model
     return model

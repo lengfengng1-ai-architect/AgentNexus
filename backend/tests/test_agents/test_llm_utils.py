@@ -137,17 +137,6 @@ async def test_stream_chat_skips_empty():
     assert tokens == ["a", "b", "c"]
 
 
-# ── Task 2.3: max_tokens ──────────────────────────────────────────────
-
-
-def test_build_chat_model_passes_max_tokens():
-    """All providers pass max_tokens=16384."""
-    with patch("app.agents.llm_utils.settings.llm_provider", "dashscope"):
-        with patch("app.agents.llm_utils.init_chat_model") as mock_init:
-            build_chat_model()
-            kwargs = mock_init.call_args.kwargs
-            assert kwargs["max_tokens"] == 16384
-
 
 # ── Existing invoke_json tests (unchanged) ────────────────────────────
 
