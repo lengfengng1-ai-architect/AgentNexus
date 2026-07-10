@@ -75,6 +75,16 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     setInputValue('我是 [品牌名]，属于 [品类]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
   }
 
+  // ── 产品海报 prompt 模板 ──────────────────────────────────────────────
+  const handlePosterTemplate = () => {
+    setInputValue('帮我生成一张【产品名】的产品海报图片，颜色/材质为【颜色/材质】，背景为【背景】，光线为【光线】')
+  }
+
+  // ── 产品视频 prompt 模板 ──────────────────────────────────────────────
+  const handleVideoTemplate = () => {
+    setInputValue('帮我生成一条宣传视频，主体是【主体】，动作/状态是【动作/状态】，场景为【场景】，运镜为【运镜】')
+  }
+
   // ── 文件上传 ───────────────────────────────────────────────────────────
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files
@@ -147,10 +157,11 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
 
       <div className="inputbar">
         <div className="quick-btns">
-          <button className="qb" onClick={() => onNavigate('brief')}>填写简报</button>
-          <button className="qb" onClick={handleVoice}>语音输入</button>
-          <button className="qb" onClick={() => fileInputRef.current?.click()}>附件</button>
-          <button className="qb" onClick={handlePrefillTemplate}>方案模板</button>
+          <button className="qb" onClick={() => fileInputRef.current?.click()}>附件上传</button>
+          <button className="qb" onClick={handlePrefillTemplate}>方案模版</button>
+          <button className="qb" onClick={() => onNavigate('brief')}>方案生成</button>
+          <button className="qb" onClick={handlePosterTemplate}>产品海报</button>
+          <button className="qb" onClick={handleVideoTemplate}>产品视频</button>
         </div>
         <div className="inputbar-row">
           <input
@@ -166,6 +177,17 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
             }}
             disabled={isLoading}
           />
+          <button
+            className="mic-btn"
+            aria-label="语音输入"
+            onClick={handleVoice}
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+              <rect x="9" y="2" width="6" height="11" rx="3" ry="3" />
+              <path d="M5 10a7 7 0 0 0 14 0" />
+              <line x1="12" y1="19" x2="12" y2="22" />
+            </svg>
+          </button>
           <button
             className="send"
             aria-label="发送"
