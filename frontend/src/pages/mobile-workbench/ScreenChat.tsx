@@ -102,23 +102,15 @@ export function ScreenChat({ onNavigate }: { onNavigate: (s: MobileScreen) => vo
     <>
       <div className="chat">
         {messages.map(m => (
-          <div key={m.id} className={`bubble ${m.role}`}>
-            {m.role === 'agent' && <div className="who">Agent</div>}
-            <div className="msg">{m.text}</div>
-            {m.card === 'brief' && (
-              <div
-                className="chat-card"
-                role="button"
-                onClick={() => onNavigate('brief')}
-              >
-                <div>
-                  <div className="cc-t">填写方案简报</div>
-                  <div className="cc-d">品牌 · 产品线 · 人群 · 周期</div>
-                </div>
-                <div className="cc-go">去填写 ›</div>
-              </div>
-            )}
-          </div>
+          <ChatBubble
+            key={m.id}
+            message={m}
+            variant="mobile"
+            onRetry={m.retryable ? handleRetry : undefined}
+            onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
+            onVideoResult={updateVideoResult}
+            onImageResult={updateImageResult}
+          />
         ))}
         <div ref={bottomRef} />
       </div>

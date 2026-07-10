@@ -12,11 +12,13 @@ const IMAGE_SIZES = [
 interface InlineImageCardProps {
   prompt: string
   messageId: string
+  variant?: 'mobile'
   existingResult?: ChatMessage['imageResult']
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function InlineImageCard({ prompt: initialPrompt, messageId, existingResult, onImageResult }: InlineImageCardProps) {
+export function InlineImageCard({ prompt: initialPrompt, messageId, variant, existingResult, onImageResult }: InlineImageCardProps) {
+  const isMobile = variant === 'mobile'
   const [isLoading, setIsLoading] = useState(false)
   const [result, setResult] = useState<ChatMessage['imageResult']>(existingResult ?? undefined)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +64,7 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, existingResu
   if (result?.image_url) {
     return (
       <>
-        <div className="mt-3 space-y-2 rounded-xl border border-line bg-mist/50 p-3">
+        <div className={`mt-3 space-y-2 rounded-xl border ${isMobile ? 'border-[#d9dee7] bg-[#f7f8fa]' : 'border-line bg-mist/50'} p-3`}>
           <img
             src={result.image_url}
             alt="生成的图片"
@@ -73,22 +75,26 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, existingResu
           <div className="flex gap-2">
             <button
               type="button"
-              onClick={() => setShowFullscreen(true)}
-              className="rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90"
+                onClick={() => setShowFullscreen(true)}
+              className={
+                isMobile
+                  ? 'rounded-lg bg-[#1677ff] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#1677ff]/90'
+                  : 'rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90'
+              }
             >
               全屏查看
             </button>
             <button
               type="button"
               onClick={() => handleCopyUrl(result.image_url)}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-track transition-colors hover:bg-mist"
+              className={`rounded-lg border ${isMobile ? 'border-[#d9dee7] text-[#6b7280] hover:bg-[#f7f8fa]' : 'border-line text-track hover:bg-mist'} px-3 py-1.5 text-xs font-medium transition-colors`}
             >
               {copied ? '已复制' : '复制链接'}
             </button>
             <button
               type="button"
               onClick={() => { setResult(undefined); setError(null) }}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-track transition-colors hover:bg-mist"
+              className={`rounded-lg border ${isMobile ? 'border-[#d9dee7] text-[#6b7280] hover:bg-[#f7f8fa]' : 'border-line text-track hover:bg-mist'} px-3 py-1.5 text-xs font-medium transition-colors`}
             >
               重新生成
             </button>
@@ -125,10 +131,10 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, existingResu
   }
 
   return (
-    <div className="mt-3 space-y-3 rounded-xl border border-line bg-mist/50 p-3">
+    <div className={`mt-3 space-y-3 rounded-xl border ${isMobile ? 'border-[#d9dee7] bg-[#f7f8fa] p-2.5' : 'border-line bg-mist/50 p-3'}`}>
       {/* 提示词输入框 */}
       <div>
-        <label className="mb-1 block text-[10px] font-medium text-track/50">
+        <label className={`mb-1 block font-medium ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>
           图片描述
         </label>
         <textarea
@@ -137,13 +143,17 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, existingResu
           onChange={e => setPrompt(e.target.value)}
           disabled={isLoading}
           placeholder="请描述您希望生成的图片内容，例如场景、主题、风格等"
-          className="w-full resize-none rounded-lg border border-line bg-white p-2 text-xs outline-none placeholder:text-track/30 focus:border-start focus:ring-1 focus:ring-start disabled:bg-mist"
+          className={`w-full resize-none rounded-lg border bg-white p-2 outline-none placeholder:text-track/30 focus:ring-1 disabled:bg-mist ${
+            isMobile
+              ? 'border-[#d9dee7] text-[11px] focus:border-[#1677ff] focus:ring-[#1677ff]'
+              : 'border-line text-xs focus:border-start focus:ring-start'
+          }`}
         />
       </div>
 
       {/* 尺寸选择 */}
       <div>
-        <label className="mb-1 block text-[10px] font-medium text-track/50">
+        <label className={`mb-1 block font-medium ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>
           图片尺寸
         </label>
         <div className="flex flex-wrap gap-1.5">
@@ -155,8 +165,12 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, existingResu
               disabled={isLoading}
               className={`rounded-lg border px-3 py-1 text-[11px] transition-colors ${
                 size === s.value
-                  ? 'border-start bg-start/10 text-start font-medium'
-                  : 'border-line text-track/60 hover:border-track/30'
+                  ? isMobile
+                    ? 'border-[#1677ff] bg-[#1677ff]/10 text-[#1677ff] font-medium'
+                    : 'border-start bg-start/10 text-start font-medium'
+                  : isMobile
+                    ? 'border-[#d9dee7] text-[#6b7280] hover:border-[#6b7280]/30'
+                    : 'border-line text-track/60 hover:border-track/30'
               } disabled:opacity-50`}
             >
               {s.label}
@@ -171,7 +185,11 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, existingResu
           type="button"
           onClick={handleGenerate}
           disabled={!prompt.trim()}
-          className="w-full rounded-lg bg-start px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-start/90 disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40"
+          className={`w-full rounded-lg px-4 py-2 font-medium text-white transition-colors disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40 ${
+            isMobile
+              ? 'bg-[#1677ff] text-xs hover:bg-[#1677ff]/90'
+              : 'bg-start text-sm hover:bg-start/90'
+          }`}
         >
           生成图片
         </button>
@@ -179,22 +197,26 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, existingResu
 
       {/* Loading state */}
       {isLoading && (
-        <div className="flex items-center justify-center gap-2 rounded-lg bg-mist py-6">
+        <div className={`flex items-center justify-center gap-2 rounded-lg py-6 ${isMobile ? 'bg-[#f7f8fa]' : 'bg-mist'}`}>
           <div className="h-6 w-6 animate-spin rounded-full border-2 border-start border-t-transparent" />
-          <span className="text-sm text-track/50">正在生成图片，请稍候…</span>
+          <span className={`${isMobile ? 'text-[11px] text-[#6b7280]' : 'text-sm text-track/50'}`}>正在生成图片，请稍候…</span>
         </div>
       )}
 
       {/* Error */}
       {error && (
         <div className="space-y-2">
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <div className={`rounded-lg border border-red-200 bg-red-50 px-3 py-2 ${isMobile ? 'text-[11px] text-red-700' : 'text-xs text-red-700'}`}>
             {error}
           </div>
           <button
             type="button"
             onClick={() => { setError(null); handleGenerate() }}
-            className="w-full rounded-lg border border-line px-4 py-2 text-xs font-medium text-track transition-colors hover:bg-mist"
+            className={`w-full rounded-lg border px-4 py-2 font-medium transition-colors ${
+              isMobile
+                ? 'border-[#d9dee7] text-[#6b7280] text-xs hover:bg-[#f7f8fa]'
+                : 'border-line text-track text-xs hover:bg-mist'
+            }`}
           >
             重试
           </button>
