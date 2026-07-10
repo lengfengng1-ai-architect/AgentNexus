@@ -6,11 +6,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useChat } from '../../hooks/useChat'
 import { ChatBubble } from '../../components/ChatBubble'
 import { ErrorBar } from '../../components/ErrorBar'
+import type { BrandInput } from '../../types/chat'
 
 export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch'
 
 interface ScreenChatProps {
-  onNavigate: (s: MobileScreen) => void
+  onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => void
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -72,7 +73,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
 
   // ── 方案模板快速填充 ───────────────────────────────────────────────────
   const handlePrefillTemplate = () => {
-    setInputValue('我是 [品牌名]，属于 [品类]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
+    setInputValue('我是 [品牌名]，属于 [品类]，产品线是 [产品线]，目标人群 [目标人群]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
   }
 
   // ── 产品海报 prompt 模板 ──────────────────────────────────────────────
@@ -121,9 +122,17 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     retryMessage(messageId)
   }, [retryMessage])
 
-  const handleGeneratePlan = useCallback(() => {
-    onNavigate('brief')
-  }, [onNavigate])
+  const handleGeneratePlan = useCallback((msgId: string) => {
+    const aiIdx = messages.findIndex(m => m.id === msgId)
+    if (aiIdx === -1) { onNavigate('brief'); return }
+    const msg = messages[aiIdx]
+    // 取 AI 消息前面最近的一条用户消息内容，作为 parseBriefInput 的输入源
+    let userContent: string | undefined
+    for (let i = aiIdx - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') { userContent = messages[i].content; break }
+    }
+    onNavigate('brief', userContent || msg.content || undefined, msg.brandInput)
+  }, [messages, onNavigate])
 
   return (
     <>
