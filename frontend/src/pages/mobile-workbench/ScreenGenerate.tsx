@@ -60,16 +60,20 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
   useEffect(() => {
     if (briefData && status === 'idle' && !hasStartedRef.current) {
       hasStartedRef.current = true
+      const budgetMatch = briefData.period.match(/\d+/)
+      const budget = parseInt(briefData.marketing_goal.match(/\d+/)?.[0] || '0', 10)
+      const period = budgetMatch ? parseInt(budgetMatch[0], 10) : 3
       const brandInput: Record<string, unknown> = {
         brand_name: briefData.brand_name,
         category: briefData.category,
+        budget,
+        period,
         product_matrix: briefData.product_matrix,
         target_audience: briefData.target_audience,
         marketing_goal: briefData.marketing_goal,
         city: briefData.selected_cities?.[0] || '上海',
         selected_cities: briefData.selected_cities,
         core_strategy: briefData.core_strategy,
-        period: briefData.period,
       }
       start(brandInput)
     }
