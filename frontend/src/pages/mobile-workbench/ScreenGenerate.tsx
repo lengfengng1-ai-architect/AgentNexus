@@ -63,6 +63,10 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
   // 只在从简报页跳转过来（带 briefData）时才启动流水线
   const hasStartedRef = useRef(false)
   useEffect(() => {
+    if (status === 'idle') hasStartedRef.current = false
+  }, [status])
+
+  useEffect(() => {
     if (briefData && status === 'idle' && !hasStartedRef.current) {
       hasStartedRef.current = true
       const budgetMatch = briefData.period.match(/\d+/)
@@ -144,7 +148,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
     <>
       {status !== 'idle' && (
       <div className="sec">
-        <h3>Agent 生成流水线 {status === 'running' && isConnected && <span className="more" style={{color:'var(--accent)'}}>执行中…</span>}</h3>
+        <h3>智能方案生成引擎 {status === 'running' && isConnected && <span className="more" style={{color:'var(--accent)'}}>执行中…</span>}</h3>
       </div>
       )}
       <div className="pipe">

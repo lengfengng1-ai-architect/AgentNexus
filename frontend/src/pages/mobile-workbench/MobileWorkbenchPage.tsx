@@ -34,20 +34,23 @@ export function MobileWorkbenchPage() {
   const planRun = useMobilePlanRun()
   const { outputs, chapters, checkMediaStatus, status } = planRun
 
-  // 媒体轮询：完成方案后拉取视频/海报状态
+  // 媒体轮询：actions 屏时才查，海报/视频都齐了就不轮询了
   useEffect(() => {
-    if (status === 'completed') {
-      checkMediaStatus()
-      const interval = setInterval(checkMediaStatus, 5000)
-      return () => clearInterval(interval)
-    }
-  }, [status, checkMediaStatus])
+    if (status !== 'completed' || screen !== 'actions') return
+    if (outputs?.poster && outputs?.promo_video) return
+    checkMediaStatus()
+    const interval = setInterval(checkMediaStatus, 5000)
+    return () => clearInterval(interval)
+  }, [status, checkMediaStatus, screen, outputs?.poster, outputs?.promo_video])
 
   // ChatBubble 的「生成方案」携带的对话数据，预填简报字段
   const [pendingChatData, setPendingChatData] = useState<{ inputText?: string; brandInput?: BrandInput } | null>(null)
 
   const handleNavigate = (s: MobileScreen, data?: BriefFormData) => {
-    if (data) setBriefData(data)
+    if (data) {
+      planRun.reset()  // 重置上次流水线状态，确保新生成从 idle 开始
+      setBriefData(data)
+    }
     setScreen(s)
   }
 
@@ -106,22 +109,25 @@ export function MobileWorkbenchPage() {
       </div>
       <div style={{ position: 'relative' }}>
         <PhoneFrame topbar={topbar}>
-          {screen === 'chat' ? (
+          <div style={{ display: screen === 'chat' ? '' : 'none' }}>
             <ScreenChat onNavigate={handleChatNavigate} />
-          ) : screen === 'brief' ? (
+          </div>
+          <div style={{ display: screen === 'brief' ? '' : 'none' }}>
             <ScreenBrief onNavigate={handleNavigate} initialInput={pendingChatData?.inputText} initialBrandData={pendingChatData?.brandInput ?? undefined} />
-          ) : screen === 'generate' ? (
+          </div>
+          <div style={{ display: screen === 'generate' ? '' : 'none' }}>
             <ScreenGenerate
-              key={briefData ? 'active' : 'empty'}
               onNavigate={handleNavigate}
               briefData={briefData}
               planRun={planRun}
             />
-          ) : screen === 'actions' ? (
+          </div>
+          <div style={{ display: screen === 'actions' ? '' : 'none' }}>
             <ScreenActions onNavigate={handleNavigate} outputs={outputs} />
-          ) : (
+          </div>
+          <div style={{ display: screen === 'dispatch' ? '' : 'none' }}>
             <ScreenDispatch />
-          )}
+          </div>
         </PhoneFrame>
       </div>
     </div>

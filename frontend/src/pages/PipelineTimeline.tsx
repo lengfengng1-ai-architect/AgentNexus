@@ -189,7 +189,7 @@ export function PipelineTimeline({ nodes, failedNode, nodeLogs, pausedNode, auto
           <span className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-blue-50 text-sm text-[#1e40af]">
             {'\u{1F916}'}
           </span>
-          Agent 执行流水线
+          智能方案生成引擎
         </h2>
       </div>
 
