@@ -22,13 +22,20 @@ description: 移动端工作台①对话屏的对话会话能力，包含语音�
 
 ### Requirement: 快捷按钮行提供可横向滚动的工具栏入口
 
-系统 SHALL 在输入框上方提供可横向滚动的快捷按钮工具栏，当前按钮为「附件上传」「方案模版」「方案生成」「产品海报」「产品视频」，后续可继续增加。
+系统 SHALL 在输入框上方提供可横向滚动的快捷按钮工具栏，当前按钮为「附件上传」「方案模版」「产品海报」「产品视频」「方案生成」，后续可继续增加。
 
 #### Scenario: 工具栏按钮渲染和排序
 - **WHEN** ① 对话屏渲染
 - **THEN** 输入框上方 SHALL 显示一行可横向滚动的快捷按钮
 - **AND** 按钮行 SHALL 可横向滚动（`overflow-x: auto`）
-- **AND** 按钮顺序 SHALL 为「附件上传」「方案模版」「方案生成」「产品海报」「产品视频」
+
+### Requirement: "方案模版"按钮填入完整模板到输入框
+
+点击"方案模版"时，SHALL 将包含所有字段的模板填入输入框，模板包含品牌、品类、产品线、目标人群、城市、预算、周期等占位参数。
+
+#### Scenario: 点击方案模版填入完整模板
+- **WHEN** 用户点击"方案模版"按钮
+- **THEN** 输入框 SHALL 填入：`我是 [品牌名]，属于 [品类]，产品线是 [产品线]，目标人群 [目标人群]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月`
 
 ### Requirement: "方案生成"按钮 SHALL 纯跳转到②简报屏
 
@@ -67,3 +74,27 @@ description: 移动端工作台①对话屏的对话会话能力，包含语音�
 - **AND** `.inputbar-row` 中 input 与 ↑ 之间 SHALL 有一个圆形 mic 按钮
 - **AND** mic 按钮 SHALL：宽高 38px、圆形、背景透明（hover 时浅灰）、SVG path 简笔 mic 线条、图标色 `var(--muted)`
 - **AND** 点击 mic 按钮 SHALL 触发语音识别（与原先文字按钮行为一致）
+
+### Requirement: ChatBubble 的"生成方案"按钮 SHALL 携带 messageId 回调
+
+`ChatBubble` 组件的 `onGeneratePlan` 回调签名 SHALL 为 `(messageId: string) => void`，点击按钮时将当前消息的 `id` 作为参数传递。
+
+#### Scenario: 点击生成方案按钮触发带 messageId 的回调
+- **WHEN** 用户点击 `message.canGeneratePlan` 为 true 的 AI 消息中的"生成方案"按钮
+- **THEN** `onGeneratePlan` SHALL 被调用
+- **AND** 参数 SHALL 为该消息的 `id`
+
+### Requirement: ScreenChat 根据 messageId 提取 brandInput 和 content 并传递
+
+`ScreenChat` 的 `handleGeneratePlan` 函数 SHALL 根据接收到的 messageId 在 `messages` 数组中查找对应消息，提取其 `brandInput` 和 `content`，并通过 `onNavigate` 传递给 `MobileWorkbenchPage`。
+
+#### Scenario: 找到消息时传递数据
+- **GIVEN** `messages` 中存在 id 为 `'msg-1'` 的消息，其 `brandInput` = `{ brand_name: "可口可乐", ... }`，`content` = "我是可口可乐..."
+- **WHEN** 用户点击该消息的"生成方案"按钮
+- **THEN** `onNavigate('brief', content, brandInput)` SHALL 被调用
+- **AND** MobileWorkbenchPage SHALL 暂存该数据并传递给 ScreenBrief
+
+#### Scenario: 消息不存在时退化到纯跳转
+- **WHEN** `handleGeneratePlan` 在 `messages` 中找不到对应的 messageId
+- **THEN** `onNavigate('brief')` SHALL 被调用（不携带数据）
+- **AND** ScreenBrief SHALL 使用默认 mock 数据
