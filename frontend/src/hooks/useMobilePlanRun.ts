@@ -283,7 +283,22 @@ export function useMobilePlanRun() {
           case 'workflow.complete': {
             const output = (event.data?.output || event.data) as Record<string, unknown>
             const chapters: PlanChapter[] = (output as PlanOutputs)?.plan_generator?.chapters || []
-            dispatch({ type: 'WORKFLOW_COMPLETE', outputs: output as PlanOutputs, chapters })
+            // 从 outputs 中提取各节点数据，供前端展示提炼卡片
+            const strategyOutput = (output as PlanOutputs)?.strategy_generation as Record<string, unknown> | undefined
+            const executionOutput = (output as PlanOutputs)?.execution_planning as Record<string, unknown> | undefined
+            const budgetOutput = (output as PlanOutputs)?.budget_kpi as Record<string, unknown> | undefined
+            const actionOutput = (output as PlanOutputs)?.action_recommendations as Record<string, unknown> | undefined
+            dispatch({
+              type: 'WORKFLOW_COMPLETE',
+              outputs: {
+                ...(output as PlanOutputs),
+                _strategy: strategyOutput,
+                _execution: executionOutput,
+                _budget: budgetOutput,
+                _actions: actionOutput,
+              },
+              chapters,
+            })
             break
           }
           case 'chapter.start':
@@ -306,6 +321,7 @@ export function useMobilePlanRun() {
     dispatch({ type: 'RESET' })
     try {
       const { runId, stream } = await startPlanRun(brandInput)
+      try { localStorage.setItem('allygo_mobile_plan_run_id', runId) } catch { /* ignore */ }
       dispatch({ type: 'SET_RUN_ID', runId })
       dispatch({ type: 'SET_CONNECTED', connected: true })
       // 并行启动前三个节点
@@ -358,8 +374,19 @@ export function useMobilePlanRun() {
       const result = await getPlanRunStatus(runId)
       if (runIdRef.current !== runId) return
       if (result.status === 'completed') {
-        const chapters: PlanChapter[] = (result.outputs as PlanOutputs)?.plan_generator?.chapters || []
-        dispatch({ type: 'WORKFLOW_COMPLETE', outputs: result.outputs as PlanOutputs, chapters })
+        const outputs = result.outputs as PlanOutputs
+        const chapters: PlanChapter[] = outputs?.plan_generator?.chapters || []
+        dispatch({
+          type: 'WORKFLOW_COMPLETE',
+          outputs: {
+            ...outputs,
+            _strategy: outputs?.strategy_generation as Record<string, unknown> | undefined,
+            _execution: outputs?.execution_planning as Record<string, unknown> | undefined,
+            _budget: outputs?.budget_kpi as Record<string, unknown> | undefined,
+            _actions: outputs?.action_recommendations as Record<string, unknown> | undefined,
+          },
+          chapters,
+        })
       } else if (result.status === 'paused' && result.paused_snapshot) {
         dispatch({ type: 'WORKFLOW_PAUSED', snapshot: result.paused_snapshot as MobilePausedSnapshot })
       } else if (result.status === 'failed') {

@@ -197,3 +197,15 @@ export async function optimizeStrategy(input: OptimizeStrategyInput): Promise<st
   const body = await response.json()
   return body.data?.strategy ?? ''
 }
+
+export async function listPlanRuns(limit: number = 5): Promise<{ run_id: string; status: string; created_at: string }[]> {
+  const response = await fetch(`${API_BASE_URL}/plan/runs?limit=${limit}`)
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '查询批次列表失败')
+    throw new Error(text)
+  }
+
+  const body = await response.json()
+  return (body.data || []) as { run_id: string; status: string; created_at: string }[]
+}

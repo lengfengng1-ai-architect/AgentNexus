@@ -1,0 +1,1 @@
+- [后端测试前激活 venv](backend-test-activate-venv.md) — source .venv/bin/activate 再 uv run pytest

@@ -339,16 +339,29 @@ async def finalize_node(state: ProductResearchState) -> dict:
         write_log("product_research", "⚠️ 没有有效页面内容可供分析")
         return {"output": ProductResearchResult()}
 
-    try:
-        llm = _build_model().with_structured_output(ProductResearchResult)
-        result: ProductResearchResult = await llm.ainvoke(list(state.messages))
-    except ValueError:
-        logger.warning("product_research finalize_node: streaming parse failed, retrying non-streaming")
-        write_log("product_research", "⚠️ 结构化输出解析失败，正在重试…")
-        # 降级为非流式调用：用 agenerate 代替流式 ainvoke
-        model = _build_model()
-        structured = model.with_structured_output(ProductResearchResult, method="json_mode")
-        result = await structured.ainvoke(list(state.messages))
+    for attempt in (1, 2):
+        try:
+            llm = _build_model()
+            if attempt == 1:
+                structured = llm.with_structured_output(ProductResearchResult)
+                msgs = list(state.messages)
+            else:
+                # json_mode 要求 messages 中出现 "json" 关键词
+                from langchain_core.messages import SystemMessage
+                msgs = list(state.messages)
+                msgs.append(SystemMessage(content="请严格按照 JSON 格式输出结构化结果。"))
+                structured = llm.with_structured_output(ProductResearchResult, method="json_mode")
+
+            result: ProductResearchResult = await structured.ainvoke(msgs)
+        except (ValueError, Exception):
+            if attempt == 1:
+                logger.warning("product_research finalize_node: streaming parse failed, retrying non-streaming")
+                write_log("product_research", "⚠️ 结构化输出解析失败，正在重试…")
+                continue
+            # 第二次也失败，返回空结果避免整个 pipeline 卡死
+            logger.exception("product_research finalize_node: both attempts failed")
+            write_log("product_research", "⚠️ 结构化输出解析两次均失败，返回空结果")
+            return {"output": ProductResearchResult()}
 
     # 溯源：批量页面 + ReAct 中 web_fetch 抓取的新 URL
     all_urls = [p.url for p in state.initial_pages if p.fetched and p.content]

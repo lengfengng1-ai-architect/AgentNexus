@@ -17,6 +17,7 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
     status,
     steps,
     chapters,
+    outputs,
     pausedSnapshot,
     error,
     isLoading,
@@ -25,6 +26,7 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
     approve,
     reject,
     reset,
+    restoreFromRunId,
   } = useMobilePlanRun()
 
   // 日志默认不展开，只有手动点击才展示
@@ -34,8 +36,24 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
   const [autoMode, setAutoMode] = useState(false)
   const logEndRef = useRef<HTMLDivElement>(null)
 
-  // 组件卸载时重置状态（用户切到其他 Tab 再回来时显示空态）
-  useEffect(() => () => reset(), [reset])
+  // 切回页面时从 localStorage 恢复运行记录，不清空已有数据
+  useEffect(() => {
+    const savedRunId = localStorage.getItem('allygo_mobile_plan_run_id')
+    if (!briefData && status === 'idle' && savedRunId && savedRunId !== 'null') {
+      restoreFromRunId(savedRunId)
+    } else if (!briefData && status === 'idle' && (!savedRunId || savedRunId === 'null')) {
+      // 没有存过的 run_id，用后端最新的已完成 run
+      import('../../api/plan').then(({ listPlanRuns }) => {
+        listPlanRuns(3).then(runs => {
+          const completed = runs.find(r => r.status === 'completed')
+          if (completed) {
+            localStorage.setItem('allygo_mobile_plan_run_id', completed.run_id)
+            restoreFromRunId(completed.run_id)
+          }
+        }).catch(() => {})
+      })
+    }
+  }, [briefData, status, restoreFromRunId])
 
   // 只在从简报页跳转过来（带 briefData）时才启动流水线
   const hasStartedRef = useRef(false)
@@ -56,6 +74,11 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
       start(brandInput)
     }
   }, [briefData, status, start])
+
+  // 运行完成后保存 run_id，切 Tab 回来后还能恢复
+  useEffect(() => {
+    // 只清理回调带来的 briefData 模式，不清理 Tab 切换后的恢复模式
+  }, [])
 
   // Auto-scroll log to bottom
   useEffect(() => {
@@ -152,20 +175,99 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
         </div>
       )}
 
-      {chapters.length > 0 && (
+      {chapters.length > 0 && status === 'completed' && (
         <>
           <div className="sec"><h3>生成结果</h3></div>
-          {chapters.slice(0, 3).map((ch, i) => (
-            <div key={i} className="plancard">
-              <div className="ph">{ch.title} <span className="tag">已生成</span></div>
+
+          {/* 策略定位 */}
+          {outputs?._strategy && (
+            <div className="plancard">
+              <div className="ph">策略定位 <span className="tag">已生成</span></div>
               <div className="pb">
-                <p>{ch.subtitle}</p>
-                <p style={{ marginTop: 4, fontSize: 12, color: 'var(--fg-soft)' }}>
-                  {ch.content.replace(/[#*\n]/g, ' ').slice(0, 120)}
-                </p>
+                <p>{(outputs._strategy as Record<string,unknown>)?.positioning as string || ''}</p>
+                {(outputs._strategy as Record<string,unknown>)?.key_messages && (
+                  <div className="model" style={{marginTop:8}}>
+                    {((outputs._strategy as Record<string,unknown>).key_messages as string[])?.map((m: string, i: number) => (
+                      <span key={i}>{m}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* 执行规划 */}
+          {outputs?._execution && (() => {
+            const exec = outputs._execution as Record<string,unknown>
+            const plans = ['leagues_plan','events_plan','influencer_plan','content_plan','store_plan']
+            const items = plans.filter(p => exec[p]).slice(0,3)
+            if (!items.length) return null
+            return (
+              <div className="plancard">
+                <div className="ph">执行规划 <span className="tag">已生成</span></div>
+                <div className="pb">
+                  {items.map((key) => (
+                    <p key={key} style={{marginBottom:4}}><b>{({leagues_plan:'盟域',events_plan:'赛事',influencer_plan:'达人',content_plan:'内容',store_plan:'渠道'})[key] || key}：</b>{(exec[key] as string)?.slice(0,60)}…</p>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* 核心 KPI */}
+          {outputs?._budget && (() => {
+            const b = outputs._budget as Record<string,unknown>
+            const kpis = b.kpis as Record<string,string> || {}
+            const entries = Object.entries(kpis).slice(0,5)
+            if (!entries.length) return null
+            return (
+              <div className="plancard">
+                <div className="ph">核心 KPI <span className="tag">目标</span></div>
+                <div className="pb">
+                  <div className="kpi-row">
+                    {entries.map(([key, val], i) => (
+                      <div key={i} className="k">
+                        <div className="n">{val}</div>
+                        <div className="l">{key}</div>
+                      </div>
+                    ))}
+                  </div>
+                  {/* 预算分配进度条 */}
+                  {Array.isArray(b.allocations) && (b.allocations as {category:string;percentage:number}[]).length > 0 && (
+                    <div style={{marginTop:12}}>
+                      <div style={{fontSize:10,fontWeight:600,color:'var(--muted)',marginBottom:6}}>预算分配</div>
+                      {(b.allocations as {category:string;percentage:number}[]).map((a, i) => (
+                        <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                          <span style={{fontSize:10,color:'var(--muted)',width:48,flexShrink:0}}>{a.category}</span>
+                          <div style={{flex:1,height:8,borderRadius:4,background:'var(--surface)',overflow:'hidden'}}>
+                            <div style={{width:`${a.percentage}%`,height:'100%',borderRadius:4,background:'var(--accent)'}} />
+                          </div>
+                          <span style={{fontSize:10,fontWeight:600,color:'var(--accent)',width:28,textAlign:'right'}}>{a.percentage}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* 行动建议摘要 */}
+          {outputs?._actions && (() => {
+            const acts = (outputs._actions as Record<string,unknown>).actions as {title:string;description:string}[] || []
+            const top = acts.slice(0,3)
+            if (!top.length) return null
+            return (
+              <div className="plancard">
+                <div className="ph">行动建议 <span className="tag">{acts.length}项</span></div>
+                <div className="pb">
+                  {top.map((a, i) => (
+                    <p key={i} style={{marginBottom:3, fontSize:12}}>• {a.title}：{a.description?.slice(0,50)}</p>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </>
       )}
 
