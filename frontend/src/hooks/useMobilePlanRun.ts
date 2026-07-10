@@ -321,6 +321,7 @@ export function useMobilePlanRun() {
     dispatch({ type: 'RESET' })
     try {
       const { runId, stream } = await startPlanRun(brandInput)
+      try { localStorage.setItem('allygo_mobile_plan_run_id', runId) } catch { /* ignore */ }
       dispatch({ type: 'SET_RUN_ID', runId })
       dispatch({ type: 'SET_CONNECTED', connected: true })
       // 并行启动前三个节点

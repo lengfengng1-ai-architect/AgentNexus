@@ -26,6 +26,7 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
     approve,
     reject,
     reset,
+    restoreFromRunId,
   } = useMobilePlanRun()
 
   // 日志默认不展开，只有手动点击才展示
@@ -35,8 +36,13 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
   const [autoMode, setAutoMode] = useState(false)
   const logEndRef = useRef<HTMLDivElement>(null)
 
-  // 组件卸载时重置状态（用户切到其他 Tab 再回来时显示空态）
-  useEffect(() => () => reset(), [reset])
+  // 切回页面时从 localStorage 恢复运行记录，不清空已有数据
+  useEffect(() => {
+    const savedRunId = localStorage.getItem('allygo_mobile_plan_run_id')
+    if (!briefData && status === 'idle' && savedRunId && savedRunId !== 'null') {
+      restoreFromRunId(savedRunId)
+    }
+  }, [briefData, status, restoreFromRunId])
 
   // 只在从简报页跳转过来（带 briefData）时才启动流水线
   const hasStartedRef = useRef(false)
@@ -57,6 +63,13 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
       start(brandInput)
     }
   }, [briefData, status, start])
+
+  // 运行完成后从 localStorage 清理 run_id
+  useEffect(() => {
+    if (status === 'completed') {
+      try { localStorage.removeItem('allygo_mobile_plan_run_id') } catch { /* ignore */ }
+    }
+  }, [status])
 
   // Auto-scroll log to bottom
   useEffect(() => {
