@@ -195,21 +195,36 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
           {/* 核心 KPI */}
           {outputs?._budget && (() => {
             const b = outputs._budget as Record<string,unknown>
-            const kpis = Array.isArray(b.kpis) ? (b.kpis as Record<string,unknown>[]) : []
-            const top = kpis.slice(0,3)
-            if (!top.length) return null
+            const kpis = b.kpis as Record<string,string> || {}
+            const entries = Object.entries(kpis).slice(0,5)
+            if (!entries.length) return null
             return (
               <div className="plancard">
-                <div className="ph">核心 KPI <span className="tag">{(b.period_months || '') + '个月'}</span></div>
+                <div className="ph">核心 KPI <span className="tag">目标</span></div>
                 <div className="pb">
                   <div className="kpi-row">
-                    {top.map((k, i) => (
+                    {entries.map(([key, val], i) => (
                       <div key={i} className="k">
-                        <div className="n">{String(k.target || k.metric || '')}</div>
-                        <div className="l">{String(k.metric || k.dim || '')}</div>
+                        <div className="n">{val}</div>
+                        <div className="l">{key}</div>
                       </div>
                     ))}
                   </div>
+                  {/* 预算分配进度条 */}
+                  {Array.isArray(b.allocations) && (b.allocations as {category:string;percentage:number}[]).length > 0 && (
+                    <div style={{marginTop:12}}>
+                      <div style={{fontSize:10,fontWeight:600,color:'var(--muted)',marginBottom:6}}>预算分配</div>
+                      {(b.allocations as {category:string;percentage:number}[]).map((a, i) => (
+                        <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                          <span style={{fontSize:10,color:'var(--muted)',width:48,flexShrink:0}}>{a.category}</span>
+                          <div style={{flex:1,height:8,borderRadius:4,background:'var(--surface)',overflow:'hidden'}}>
+                            <div style={{width:`${a.percentage}%`,height:'100%',borderRadius:4,background:'var(--accent)'}} />
+                          </div>
+                          <span style={{fontSize:10,fontWeight:600,color:'var(--accent)',width:28,textAlign:'right'}}>{a.percentage}%</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
             )
