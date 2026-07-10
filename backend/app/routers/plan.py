@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from app.schemas.common import APIError, APIResponse, ErrorCode
 from app.schemas.xlsx_generation import XlsxData, BrandInfo, BudgetOverviewSheet, BudgetOverviewRow, BudgetDetailSheet, BudgetDetailItem, TimelineSheet, TimelineItem, GanttItem, KPISheet, KPIRow, ROIRow, ROIChartPoint, RadarScore
 from app.schemas.plan_run import ApproveRequest, PlanRunRequest, RejectRequest, StrategyOptimizeRequest, StrategyOptimizeResponse
+from app.schemas.plan_summary import PlanSummaryRequest
 from app.services.plan_generation_service import (
     approve_run,
     delete_run,
@@ -27,6 +28,7 @@ from app.services.plan_generation_service import (
     run_exists,
     start_run,
 )
+from app.services.plan_summary_service import generate_plan_summary
 
 router = APIRouter(tags=["plan"])
 logger = logging.getLogger(__name__)
@@ -263,6 +265,19 @@ async def plan_strategy_optimize(body: StrategyOptimizeRequest):
             f"策略优化失败：{exc}",
             ErrorCode.INTERNAL_ERROR,
         )
+
+
+@router.post("/plan/summary")
+async def plan_summary(body: PlanSummaryRequest):
+    """获取方案摘要：读取 checkpoints 中已完成 agent 的输出，用 LLM 提炼为固定卡片结构。"""
+    try:
+        summary = await generate_plan_summary(body.run_id)
+        return APIResponse(success=True, data=summary.model_dump())
+    except ValueError as exc:
+        return _error_response(404, str(exc), ErrorCode.NOT_FOUND)
+    except Exception as exc:
+        logger.exception("plan summary failed for run %s", body.run_id)
+        return _error_response(500, f"方案摘要生成失败：{exc}", ErrorCode.INTERNAL_ERROR)
 
 
 from app.agents.tools.generate_xlsx import generate_plan_xlsx

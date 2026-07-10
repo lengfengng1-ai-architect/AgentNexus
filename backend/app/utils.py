@@ -30,12 +30,16 @@ def parse_budget(value: Any) -> int:
 
 
 def parse_period(value: Any) -> int:
-    """Extract integer period from string like '3个月' or number."""
+    """Extract integer period from string like '3个月' or number.
+
+    匹配规则：取文本中第一个数字作为周期月数（不拼接多个数字）。
+    """
     if isinstance(value, int | float):
         return int(value)
     if isinstance(value, str):
-        digits = "".join(c for c in value if c.isdigit())
-        return int(digits) if digits else 3
+        # 取文本中第一个遇到的数字
+        match = re.search(r"\d+", value)
+        return int(match.group()) if match else 3
     return 3
 
 

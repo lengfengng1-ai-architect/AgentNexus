@@ -80,6 +80,34 @@ paths:
         "500":
           $ref: "#/components/responses/InternalError"
 
+  /plan/summary:
+    post:
+      operationId: "plan_summary"
+      summary: "获取方案摘要（结构化提炼）"
+      description: |
+        接收 run_id，从 checkpoint 读取已完成 agent 的输出，
+        用 LLM with_structured_output 归一化为固定卡片结构（策略定位/KPI/预算分配/执行规划/行动建议）。
+        适用于前端方案完成页的卡片展示。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlanSummaryRequest"
+      responses:
+        "200":
+          description: "方案摘要"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PlanSummaryResponse"
+        "404":
+          $ref: "#/components/responses/NotFound"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /plan/runs/{run_id}/approve:
     post:
       operationId: "plan_run_approve"
@@ -315,6 +343,86 @@ components:
             strategy:
               type: string
               description: "LLM 生成的核心策略文案"
+
+    PlanSummaryRequest:
+      type: object
+      description: "方案摘要请求"
+      required:
+        - run_id
+      properties:
+        run_id:
+          type: string
+          description: "运行实例 ID"
+
+    PlanSummaryResponse:
+      type: object
+      description: "方案摘要响应"
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          properties:
+            strategy:
+              type: object
+              description: "策略定位卡片"
+              properties:
+                positioning:
+                  type: string
+                key_messages:
+                  type: array
+                  items:
+                    type: string
+            kpis:
+              type: array
+              description: "KPI 列表"
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                    description: "KPI 名称"
+                  target:
+                    type: string
+                    description: "KPI 目标值"
+                  unit:
+                    type: string
+                    description: "单位"
+            allocations:
+              type: array
+              description: "预算分配"
+              items:
+                type: object
+                properties:
+                  category:
+                    type: string
+                  percentage:
+                    type: number
+                  amount:
+                    type: integer
+            execution:
+              type: array
+              description: "执行规划摘要"
+              items:
+                type: object
+                properties:
+                  label:
+                    type: string
+                  description:
+                    type: string
+            actions:
+              type: array
+              description: "行动建议"
+              items:
+                type: object
+                properties:
+                  title:
+                    type: string
+                  description:
+                    type: string
 
     ApproveRequest:
       type: object
