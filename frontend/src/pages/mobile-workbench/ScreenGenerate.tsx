@@ -195,7 +195,7 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
           {/* 核心 KPI */}
           {outputs?._budget && (() => {
             const b = outputs._budget as Record<string,unknown>
-            const kpis = (b.kpis as Record<string,unknown>[]) || []
+            const kpis = Array.isArray(b.kpis) ? (b.kpis as Record<string,unknown>[]) : []
             const top = kpis.slice(0,3)
             if (!top.length) return null
             return (
