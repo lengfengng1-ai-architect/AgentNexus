@@ -1,13 +1,14 @@
 // MobileWorkbenchPage — 移动端工作台展示页（页壳 + Tab 切换）
 // OpenSpec: mobile-brief-connect-backend · specs/mobile-brief-connect/spec.md
 // ② 简报 → ③ 方案生成打通，传递 briefFormData
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { PhoneFrame } from './PhoneFrame'
 import { ScreenChat, type MobileScreen } from './ScreenChat'
 import { ScreenBrief, type BriefFormData } from './ScreenBrief'
 import { ScreenGenerate } from './ScreenGenerate'
 import { ScreenActions } from './ScreenActions'
 import { ScreenDispatch } from './ScreenDispatch'
+import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import type { BrandInput } from '../../types/chat'
 import './mobile-workbench.css'
 
@@ -30,6 +31,18 @@ const DEFAULT_TOPBAR: Record<MobileScreen, { t: string; sub: string }> = {
 export function MobileWorkbenchPage() {
   const [screen, setScreen] = useState<MobileScreen>('chat')
   const [briefData, setBriefData] = useState<BriefFormData | null>(null)
+  const planRun = useMobilePlanRun()
+  const { outputs, chapters, checkMediaStatus, status } = planRun
+
+  // 媒体轮询：完成方案后拉取视频/海报状态
+  useEffect(() => {
+    if (status === 'completed') {
+      checkMediaStatus()
+      const interval = setInterval(checkMediaStatus, 5000)
+      return () => clearInterval(interval)
+    }
+  }, [status, checkMediaStatus])
+
   // ChatBubble 的「生成方案」携带的对话数据，预填简报字段
   const [pendingChatData, setPendingChatData] = useState<{ inputText?: string; brandInput?: BrandInput } | null>(null)
 
@@ -55,11 +68,12 @@ export function MobileWorkbenchPage() {
   // 根据实际表单数据动态更新 topbar sub 文本
   const brandLabel = briefData ? briefData.brand_name : '娃哈哈'
   const productLabel = briefData ? briefData.product_matrix?.split(/[（(]/)[0] || briefData.product_matrix : '魅力系列'
+  const itemCount = outputs?.action_recommendations?.actions?.length ?? 6
   const topbarText: Record<MobileScreen, { t: string; sub: string }> = {
     ...DEFAULT_TOPBAR,
     brief: { t: '营销方案工作台', sub: `${brandLabel} · ${productLabel}` },
     generate: { t: '方案生成', sub: `${productLabel} · 运动盟域` },
-    actions: { t: '下一步行动建议', sub: `${productLabel} · 共 6 项` },
+    actions: { t: '下一步行动建议', sub: `${productLabel} · 共 ${itemCount + 6} 项` },
     dispatch: { t: '下发与转发达成', sub: `${brandLabel} · 跨盟下发` },
   }
   const meta = topbarText[screen]
@@ -101,9 +115,10 @@ export function MobileWorkbenchPage() {
               key={briefData ? 'active' : 'empty'}
               onNavigate={handleNavigate}
               briefData={briefData}
+              planRun={planRun}
             />
           ) : screen === 'actions' ? (
-            <ScreenActions onNavigate={handleNavigate} />
+            <ScreenActions onNavigate={handleNavigate} outputs={outputs} />
           ) : (
             <ScreenDispatch />
           )}

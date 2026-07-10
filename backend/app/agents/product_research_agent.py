@@ -362,6 +362,7 @@ async def finalize_node(state: ProductResearchState) -> dict:
             logger.exception("product_research finalize_node: both attempts failed")
             write_log("product_research", "⚠️ 结构化输出解析两次均失败，返回空结果")
             return {"output": ProductResearchResult()}
+            return {"output": ProductResearchResult()}
 
     # 溯源：批量页面 + ReAct 中 web_fetch 抓取的新 URL
     all_urls = [p.url for p in state.initial_pages if p.fetched and p.content]
