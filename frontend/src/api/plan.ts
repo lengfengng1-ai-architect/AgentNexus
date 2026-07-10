@@ -173,3 +173,27 @@ export async function getPlanMediaStatus(runId: string): Promise<MediaStatus> {
   const body = await response.json()
   return body.data as MediaStatus
 }
+
+export interface OptimizeStrategyInput {
+  brand_name: string
+  category?: string
+  product_matrix?: string
+  target_audience?: string
+  marketing_goal?: string
+}
+
+export async function optimizeStrategy(input: OptimizeStrategyInput): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/plan/strategy-optimize`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(input),
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '策略优化失败')
+    throw new Error(text)
+  }
+
+  const body = await response.json()
+  return body.data?.strategy ?? ''
+}

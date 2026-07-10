@@ -17,6 +17,33 @@ servers:
     description: "本地开发"
 
 paths:
+  /plan/strategy-optimize:
+    post:
+      operationId: "plan_strategy_optimize"
+      summary: "AI 优化核心策略文案"
+      description: |
+        接收品牌/品类/目标等表单数据，调用 LLM 生成核心策略文案。
+        轻量端点，不走完整 pipeline，快速返回到前端填充 textarea。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StrategyOptimizeRequest"
+      responses:
+        "200":
+          description: "优化成功，返回策略文案"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StrategyOptimizeResponse"
+        "400":
+          $ref: "#/components/responses/BadRequest"
+        "422":
+          $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
   /plan/run:
     post:
       operationId: "plan_run"
@@ -209,8 +236,85 @@ components:
       properties:
         brand_input:
           type: object
-          description: "品牌输入字段集合，来自意图识别累积的结果"
+          description: "品牌输入字段集合，来自意图识别累积的结果。扩展字段见 BrandInputFields"
           additionalProperties: true
+
+    BrandInputFields:
+      type: object
+      description: "品牌输入字段定义。核心字段为 brand_name / category / city / budget / period，扩展字段均为 optional"
+      properties:
+        brand_name:
+          type: string
+          description: "品牌名称"
+        category:
+          type: string
+          description: "品类"
+        city:
+          type: string
+          description: "核心城市"
+        budget:
+          type: number
+          description: "预算（万元）"
+        period:
+          type: integer
+          description: "周期（月数）"
+        product_matrix:
+          type: string
+          description: "产品矩阵，如'魅力系列（蓝莓/石榴/荔枝）'"
+        target_audience:
+          type: string
+          description: "目标人群，如'25-35岁 一线白领'"
+        marketing_goal:
+          type: string
+          description: "营销目标，如'认知度 ≥60% · 私域会员 ≥50万'"
+        core_strategy:
+          type: string
+          description: "核心策略文本"
+        selected_cities:
+          type: array
+          items:
+            type: string
+          description: "首批城市列表，如['北京','上海','广州']"
+
+    StrategyOptimizeRequest:
+      type: object
+      description: "AI 策略优化请求"
+      required:
+        - brand_name
+      properties:
+        brand_name:
+          type: string
+          description: "品牌名称"
+        category:
+          type: string
+          description: "品类"
+        product_matrix:
+          type: string
+          description: "产品矩阵"
+        target_audience:
+          type: string
+          description: "目标人群"
+        marketing_goal:
+          type: string
+          description: "营销目标"
+
+    StrategyOptimizeResponse:
+      type: object
+      description: "AI 策略优化响应"
+      required:
+        - success
+        - data
+      properties:
+        success:
+          type: boolean
+        data:
+          type: object
+          required:
+            - strategy
+          properties:
+            strategy:
+              type: string
+              description: "LLM 生成的核心策略文案"
 
     ApproveRequest:
       type: object

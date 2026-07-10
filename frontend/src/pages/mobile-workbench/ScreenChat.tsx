@@ -91,7 +91,6 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
       const urls: string[] = data.files.map((item: { url: string }) =>
         item.url.startsWith('http') ? item.url : `${BACKEND_ORIGIN}${item.url}`
       )
-      // 发送消息并带上上传的 URL
       sendMessage(inputValue.trim(), urls)
     } catch {
       setUploadError('文件上传失败，请重试')
@@ -118,14 +117,11 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
 
   return (
     <>
-      {/* 错误条 — 后端错误 */}
       {error && <ErrorBar message={error} />}
-      {/* 错误条 — 上传错误 */}
       {uploadError && (
         <ErrorBar message={uploadError} onDismiss={() => setUploadError(null)} />
       )}
 
-      {/* 消息列表 */}
       <div className="chat">
         {messages.map(m => (
           <ChatBubble
@@ -141,7 +137,6 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
         <div ref={bottomRef} />
       </div>
 
-      {/* 隐藏的文件选择器 */}
       <input
         ref={fileInputRef}
         type="file"
@@ -150,7 +145,6 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
         onChange={handleFileSelect}
       />
 
-      {/* 输入条 */}
       <div className="inputbar">
         <div className="quick-btns">
           <button className="qb" onClick={() => onNavigate('brief')}>填写简报</button>

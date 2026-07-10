@@ -101,13 +101,13 @@ description: /mobile 移动端工作台展示页，纯白背景居中手机框 +
 
 ### Requirement: ② 简报屏展示方案头与品牌需求表单
 
-系统 SHALL 在 ② 简报屏展示方案渐变头部 + 品牌需求表单（品牌/产品线/目标人群/营销目标/投放周期/首批城市/核心策略），表单字段预填自设计稿 mock 数据。
+系统 SHALL 在 ② 简报屏展示方案渐变头部 + 品牌需求表单（品牌/品类/产品线/目标人群/营销目标/投放周期/首批城市/核心策略），表单字段预填自设计稿 mock 数据，且所有字段为 controlled state。
 
 #### Scenario: ② 简报屏的视觉布局
 - **WHEN** Tab 切换到 ② 简报
 - **THEN** 手机框架内 SHALL 渲染渐变方案头（品牌、产品名、产品矩阵标签、规格/价位/周期元数据）
 - **AND** 方案头下方 SHALL 显示"方案简报"标题
-- **AND** 简报表单 SHALL 显示 7 个字段（品牌/产品线/目标人群/营销目标/投放周期/首批城市/核心策略），每个字段预填设计稿的 mock 数据
+- **AND** 简报表单 SHALL 显示 8 个字段（品牌/品类/产品线/目标人群/营销目标/投放周期/首批城市/核心策略），每个字段预填设计稿的 mock 数据
 - **AND** 吸底显示"✦ AI 生成方案"按钮
 
 #### Scenario: 城市 chips 可点击多选
@@ -117,17 +117,49 @@ description: /mobile 移动端工作台展示页，纯白背景居中手机框 +
 - **WHEN** 用户再次点击已选城市 chip
 - **THEN** chip SHALL 取消选中态
 
+#### Scenario: 用户点击 AI 生成方案按钮
+- **WHEN** 用户点击吸底"✦ AI 生成方案"按钮
+- **THEN** 系统 SHALL 校验品牌字段非空
+- **AND** 构造 brand_input（含所有表单字段）
+- **AND** Tab 切换器 SHALL 切换到 ③ 方案生成
+- **AND** 系统 SHALL 调用 POST /plan/run 启动流水线
+
 ### Requirement: ③ 方案生成屏展示 Agent 流水线与方案结果
 
-系统 SHALL 在 ③ 方案生成屏展示 5 步 Agent 流水线状态 + 方案结果卡（策略定位、三级赛事体系、核心 KPI） + 下一步 CTA。
+系统 SHALL 在 ③ 方案生成屏展示 10 步 Agent 流水线状态（含描述短句）+ 可点击展开的操作日志 + 方案内容 + 底部 CTA。
 
 #### Scenario: ③ 方案生成屏的视觉布局
 - **WHEN** Tab 切换到 ③ 方案生成
-- **THEN** 手机框架内 SHALL 渲染"Agent 生成流水线"（5 步：理解需求✓ / 拆解策略✓ / 生成方案◉ / 优化 / 下发盟域）
-- **AND** 流水线下方 SHALL 渲染"策略定位"方案 card（含 4M+1C 模型标签）
-- **AND** 渲染"三级赛事体系"方案 card（主题赛事 / 联盟赛事 / 跨界活动）
-- **AND** 渲染"核心 KPI" row（≥1亿 短视频曝光 / ≥50万 私域会员 / ≥500万 达人 GMV）
-- **AND** 底部渲染蓝色渐变 CTA「下一步行动建议」
+- **THEN** 手机框架内 SHALL 渲染"方案生成"标题
+- **AND** 流水线区域 SHALL 显示 10 个 Agent 节点（产品调研、市场调研、人群洞察、数据查询、适配度分析、策略生成、执行规划、预算 KPI、行动建议、方案生成）
+- **AND** 每个节点标题下方 SHALL 显示一行描述短句（空闲态为静态文案如"搜索并分析品牌产品信息与市场定位"）
+- **AND** 每个节点 SHALL 初始显示 pending 态（灰色）
+- **AND** 底部无 CTA（流水线完成前关闭）
+- **WHEN** 流水线完成且方案内容可用
+- **THEN** 节点区域下方 SHALL 渲染方案内容卡片
+- **AND** 底部 SHALL 显示蓝色渐变 CTA「下一步行动建议」
+
+#### Scenario: 点击节点展开/收起操作日志
+- **WHEN** 用户点击某个 Agent 节点
+- **THEN** 该节点下方 SHALL 滑出操作日志卡片
+- **AND** 连接竖线 SHALL 自动跟随高度变化
+- **WHEN** 用户再次点击同一节点
+- **THEN** 日志卡片 SHALL 收回，竖线恢复原高度
+- **WHEN** 当前节点处于 running 态
+- **THEN** 该节点 SHALL 自动展开日志卡片
+
+#### Scenario: 描述短句随节点状态变化
+- **WHEN** 节点为 pending 态
+- **THEN** 描述短句 SHALL 显示静态文案（如"搜索并分析品牌产品信息与市场定位"）
+- **WHEN** 节点变为 running 态
+- **THEN** 描述短句 SHALL 替换为最新一条操作日志摘要（如"正在用4个关键词并行搜索…"）
+- **WHEN** 节点变为 completed 态
+- **THEN** 描述短句 SHALL 固定为总结性描述（如"搜索完成，获得12条相关结果"）
+
+#### Scenario: 流水线暂停时显示审核面板
+- **WHEN** SSE 收到 workflow.paused 事件
+- **THEN** 对应节点 SHALL 显示"等待确认"状态
+- **AND** 底部 SHALL 弹出审核弹窗（居中卡片，显示即将执行节点名 + 确认继续/驳回重跑按钮）
 
 ### Requirement: ④ 行动建议屏展示筛选互斥与行动采纳
 
@@ -164,3 +196,44 @@ description: /mobile 移动端工作台展示页，纯白背景居中手机框 +
 #### Scenario: 转发状态可点击切换
 - **WHEN** 用户点击某行的转发 pill
 - **THEN** pill SHALL 在「已转发」（蓝底白字）和「未转发」（灰底灰字）间切换
+
+### Requirement: ② 简报屏表单为 controlled state 并支持数据提交
+
+系统 SHALL 使 ScreenBrief 中的所有表单字段从 uncontrolled defaultValue 变更为 controlled useState 管理。
+
+#### Scenario: 用户修改表单字段后 state 同步更新
+- **WHEN** 用户修改任一表单字段的值
+- **THEN** 对应 state SHALL 同步更新
+- **AND** 字段的 input/select/textarea SHALL 显示最新值
+
+### Requirement: 核心策略字段支持 AI 优化填写
+
+系统 SHALL 在 ScreenBrief 的核心策略 textarea 旁提供一个 AI 生成图标按钮，点击后调用后端 `POST /plan/strategy-optimize` 端点。
+
+#### Scenario: 用户点击 AI 优化策略按钮
+- **WHEN** 用户在简报屏点击核心策略字段旁的 AI 图标按钮
+- **THEN** 按钮 SHALL 显示 loading 态
+- **AND** 系统 SHALL 调用 `POST /plan/strategy-optimize`
+- **AND** 成功后 SHALL 将返回的策略文案填充到核心策略 textarea
+- **AND** 失败时 SHALL 显示错误提示
+
+### Requirement: ③ 方案生成屏通过 SSE 事件驱动流水线状态
+
+系统 SHALL 在 ③ 方案生成屏通过 `useMobilePlanRun` hook 消费 SSE 流，动态更新 Agent 节点状态。
+
+#### Scenario: 流水线启动后节点状态逐步更新
+- **WHEN** SSE 收到 `node.start` 事件
+- **THEN** 对应节点 SHALL 显示 running 态
+- **WHEN** SSE 收到 `node.complete` 事件
+- **THEN** 对应节点 SHALL 显示 completed 态
+- **WHEN** SSE 收到 `node.failed` 事件
+- **THEN** 对应节点 SHALL 显示 failed 态，流水线停止
+
+### Requirement: 方案生成完成后展示方案内容
+
+系统 SHALL 在流水线完成后，将 plan_generator 输出的 chapters 渲染为方案内容卡片。
+
+#### Scenario: 方案内容渲染
+- **WHEN** SSE 收到 `workflow.complete` 事件且 outputs 包含 plan_generator.chapters
+- **THEN** 流水线步骤下方 SHALL 渲染方案内容区域
+- **AND** 底部 SHALL 显示渐变 CTA「下一步行动建议」跳转到 ④ 屏
