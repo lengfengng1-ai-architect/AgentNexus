@@ -174,31 +174,29 @@
   flex-direction: column;
   gap: 10px;
 }
-.mw .bubble {
+/* ChatBubble 移动端样式覆盖 — 不改 ChatBubble 源码 */
+.mw .chat > .flex.justify-start > div:last-child {
   max-width: 84%;
   font-size: 13px;
-  line-height: 1.5;
-}
-.mw .bubble.agent {
-  align-self: flex-start;
-  background: var(--surface);
+  background: var(--surface) !important;
   border: 1px solid var(--border);
-  border-radius: 14px 14px 14px 4px;
-  padding: 9px 12px;
-  color: var(--fg);
+  border-radius: 14px 14px 14px 4px !important;
+  padding: 9px 12px !important;
+  color: var(--fg) !important;
 }
-.mw .bubble.user {
-  align-self: flex-end;
-  background: var(--accent);
-  color: #ffffff;
-  border-radius: 14px 14px 4px 14px;
-  padding: 9px 12px;
+.mw .chat > .flex.justify-end > div:last-child {
+  max-width: 84%;
+  font-size: 13px;
+  background: var(--accent) !important;
+  border-radius: 14px 14px 4px 14px !important;
+  padding: 9px 12px !important;
+  color: #ffffff !important;
 }
-.mw .bubble.agent .who {
-  font-size: 10px;
-  font-weight: 700;
-  color: var(--accent);
-  margin-bottom: 3px;
+.mw .chat > .flex.justify-start > div:last-child .whitespace-pre-wrap {
+  font-size: 13px !important;
+}
+.mw .chat > .flex.justify-end > div:last-child .whitespace-pre-wrap {
+  font-size: 13px !important;
 }
 .mw .chat-card {
   margin-top: 8px;
