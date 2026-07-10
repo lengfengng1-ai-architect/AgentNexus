@@ -38,18 +38,18 @@ describe('MobileWorkbenchPage', () => {
     expect(document.querySelectorAll('.bubble').length).toBe(before)
   })
 
-  test('点击快捷「填写简报」切到 ② 占位', () => {
+  test('点击快捷「填写简报」切到 ② 简报', () => {
     render(<MobileWorkbenchPage />)
     fireEvent.click(screen.getByText('填写简报'))
-    expect(screen.getByText(/开发中/)).toBeDefined()
+    expect(screen.getByText('方案简报')).toBeDefined()
     expect(screen.getByText('② 简报').className).toContain('on')
     expect(screen.queryByPlaceholderText('给 Agent 发消息…')).toBeNull()
   })
 
-  test('点击 chat-card「去填写」也切到 ② 占位', () => {
+  test('点击 chat-card「去填写」也切到 ② 简报', () => {
     render(<MobileWorkbenchPage />)
     fireEvent.click(screen.getByText('去填写 ›'))
-    expect(screen.getByText(/开发中/)).toBeDefined()
+    expect(screen.getByText('方案简报')).toBeDefined()
     expect(screen.getByText('② 简报').className).toContain('on')
   })
 })

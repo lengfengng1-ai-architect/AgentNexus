@@ -16,6 +16,23 @@ class PlanRunRequest(BaseModel):
     brand_input: dict = Field(..., description="品牌输入字段集合")
 
 
+class StrategyOptimizeRequest(BaseModel):
+    """AI 核心策略优化请求。"""
+
+    brand_name: str = Field(..., description="品牌名称")
+    category: str | None = Field(None, description="品类")
+    product_matrix: str | None = Field(None, description="产品矩阵")
+    target_audience: str | None = Field(None, description="目标人群")
+    marketing_goal: str | None = Field(None, description="营销目标")
+
+
+class StrategyOptimizeResponse(BaseModel):
+    """AI 核心策略优化响应。"""
+
+    success: bool = Field(default=True)
+    data: dict = Field(..., description="优化结果，包含 strategy 字段")
+
+
 class ApproveRequest(BaseModel):
     """通过审核检查点请求。"""
 

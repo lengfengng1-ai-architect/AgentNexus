@@ -5,6 +5,10 @@ import { useEffect, useRef, useState } from 'react'
 
 export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch'
 
+export interface ScreenNavigate {
+  (s: MobileScreen, data?: Record<string, unknown>): void
+}
+
 type Msg = { id: number; role: 'agent' | 'user'; text: string; card?: 'brief' }
 
 let seq = 0

@@ -4,6 +4,7 @@ Corresponding OpenSpec: docs/api/paths/plan.yaml
 Corresponding in_scope ID: plan-generation
 """
 
+import json
 import logging
 import uuid
 
@@ -13,7 +14,7 @@ from pydantic import BaseModel, Field
 
 from app.schemas.common import APIError, APIResponse, ErrorCode
 from app.schemas.xlsx_generation import XlsxData, BrandInfo, BudgetOverviewSheet, BudgetOverviewRow, BudgetDetailSheet, BudgetDetailItem, TimelineSheet, TimelineItem, GanttItem, KPISheet, KPIRow, ROIRow, ROIChartPoint, RadarScore
-from app.schemas.plan_run import ApproveRequest, PlanRunRequest, RejectRequest
+from app.schemas.plan_run import ApproveRequest, PlanRunRequest, RejectRequest, StrategyOptimizeRequest, StrategyOptimizeResponse
 from app.services.plan_generation_service import (
     approve_run,
     delete_run,
@@ -206,6 +207,61 @@ async def plan_list_runs(limit: int = 20):
             500,
             f"Failed to list runs: {exc}",
             ErrorCode.WORKFLOW_LIST_ERROR,
+        )
+
+
+@router.post("/plan/strategy-optimize")
+async def plan_strategy_optimize(body: StrategyOptimizeRequest):
+    """AI 优化核心策略文案：接收品牌/品类/目标数据，返回 LLM 生成的核心策略。"""
+    try:
+        from app.agents.llm_utils import invoke_json
+
+        # Build prompt context from request fields
+        parts = [f"品牌名称：{body.brand_name}"]
+        if body.category:
+            parts.append(f"品类：{body.category}")
+        if body.product_matrix:
+            parts.append(f"产品矩阵：{body.product_matrix}")
+        if body.target_audience:
+            parts.append(f"目标人群：{body.target_audience}")
+        if body.marketing_goal:
+            parts.append(f"营销目标：{body.marketing_goal}")
+        context = "\n".join(parts)
+
+        system = (
+            "你是一个专业的营销策划专家。根据品牌信息生成一段核心营销策略文案。"
+            "要求：包含核心定位、传播主题、差异化卖点；紧扣运动场景×品牌营销方向；"
+            "语言精炼有力，300字以内。输出JSON格式：{\"strategy\": \"...\"}"
+        )
+        result = await invoke_json(system, context)
+        strategy = result.get("strategy", "").strip()
+        if not strategy:
+            # fallback: use system prompt with template
+            from jinja2 import Environment, FileSystemLoader
+            env = Environment(loader=FileSystemLoader("app/prompt_templates"))
+            template = env.get_template("strategy_optimize.md.j2")
+            prompt = template.render(
+                brand_name=body.brand_name,
+                category=body.category or "",
+                product_matrix=body.product_matrix or "",
+                target_audience=body.target_audience or "",
+                marketing_goal=body.marketing_goal or "",
+            )
+            from langchain_core.messages import HumanMessage, SystemMessage
+            from app.agents.llm_utils import build_chat_model
+            msg = await build_chat_model().ainvoke([
+                SystemMessage(content=prompt),
+                HumanMessage(content=f"请为品牌「{body.brand_name}」生成核心策略文案。"),
+            ])
+            strategy = (msg.content or "").strip()
+
+        return APIResponse(success=True, data={"strategy": strategy})
+    except Exception as exc:
+        logger.exception("strategy optimization failed")
+        return _error_response(
+            500,
+            f"策略优化失败：{exc}",
+            ErrorCode.INTERNAL_ERROR,
         )
 
 
