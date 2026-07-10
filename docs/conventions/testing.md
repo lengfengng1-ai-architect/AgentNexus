@@ -174,4 +174,10 @@ uv run pytest -v tests/test_routers/test_brands.py
 
 # 按关键字
 uv run pytest -v -k "fitness"
+
+# 使用虚拟环境直接运行（避免 uv 依赖解析开销，适合频繁快速验证）
+# .venv/bin/pytest 跳过 uv 的 lock 解析和环境准备，比 uv run 快 10-20 倍
+# 注意：仅适合少量文件的快速验证，全量跑或 CI 中仍用 uv run pytest
+.venv/bin/pytest -x -q tests/test_agents/test_<name>.py
+.venv/bin/pytest -x -q -k "not (test_agent_node_increments_count_on_tool_message or test_agent_node_no_increment_on_non_tool_message)"
 ```
