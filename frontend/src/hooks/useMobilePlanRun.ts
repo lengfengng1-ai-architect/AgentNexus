@@ -374,8 +374,19 @@ export function useMobilePlanRun() {
       const result = await getPlanRunStatus(runId)
       if (runIdRef.current !== runId) return
       if (result.status === 'completed') {
-        const chapters: PlanChapter[] = (result.outputs as PlanOutputs)?.plan_generator?.chapters || []
-        dispatch({ type: 'WORKFLOW_COMPLETE', outputs: result.outputs as PlanOutputs, chapters })
+        const outputs = result.outputs as PlanOutputs
+        const chapters: PlanChapter[] = outputs?.plan_generator?.chapters || []
+        dispatch({
+          type: 'WORKFLOW_COMPLETE',
+          outputs: {
+            ...outputs,
+            _strategy: outputs?.strategy_generation as Record<string, unknown> | undefined,
+            _execution: outputs?.execution_planning as Record<string, unknown> | undefined,
+            _budget: outputs?.budget_kpi as Record<string, unknown> | undefined,
+            _actions: outputs?.action_recommendations as Record<string, unknown> | undefined,
+          },
+          chapters,
+        })
       } else if (result.status === 'paused' && result.paused_snapshot) {
         dispatch({ type: 'WORKFLOW_PAUSED', snapshot: result.paused_snapshot as MobilePausedSnapshot })
       } else if (result.status === 'failed') {
