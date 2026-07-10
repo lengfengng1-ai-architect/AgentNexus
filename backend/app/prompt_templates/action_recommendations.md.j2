@@ -19,9 +19,50 @@
 - 预算：{{ budget }} 万元
 - 执行周期：{{ period }} 个月
 - 关键 KPI：{{ kpis }}
+{% if city_data %}
+- 城市达人数据：达人总数 {{ city_data.influencers.count }}，达人分层（至尊/大师 {{ city_data.influencers.tiers.supreme }} 人、明星/精英 {{ city_data.influencers.tiers.star }} 人、健将 {{ city_data.influencers.tiers.elite }} 人、达人 {{ city_data.influencers.tiers.influencer }} 人），平均报价 {{ city_data.influencers.avg_quote }}
+- 盟域总数：{{ city_data.leagues.count }}，头部盟域：{{ city_data.leagues.top_leagues | join('、') }}
+- 赛事活动：月均 {{ city_data.events.monthly }} 场，活动类型包括 {{ city_data.events.categories | join('、') }}
+{% if city_data.tournament and city_data.tournament.available_tournaments %}
+- 可选赛事：{% for t in city_data.tournament.available_tournaments %}{{ t.name }}（{{ t.sport_type }}，{{ t.scale }}，{{ t.frequency }}）{% if not loop.last %}、{% endif %}{% endfor %}
+{% endif %}
+{% if city_data.trophy and city_data.trophy.trophy_types %}
+- 奖杯定制：支持{{ city_data.trophy.trophy_types | join('、') }}，提前{{ city_data.trophy.avg_lead_time_days }}天预订
+{% endif %}
+{% if city_data.cooperation_center and city_data.cooperation_center.recruitments %}
+- 合作中心招募：{% for r in city_data.cooperation_center.recruitments %}{{ r.title }}（目标{{ r.target_count }}个）{% if not loop.last %}、{% endif %}{% endfor %}
+{% endif %}
+{% if city_data.leaderboard %}
+- 排行榜类型：{{ city_data.leaderboard.leaderboard_types | join('、') }}
+- 排行奖励：{{ city_data.leaderboard.reward_mechanism }}
+{% endif %}
+{% if city_data.group_buy and city_data.group_buy.available_types %}
+- 拼团工具：{% for p in city_data.group_buy.available_types %}{{ p.type }}（{{ p.description }}，{{ p.min_participants }}人成团）{% if not loop.last %}、{% endif %}{% endfor %}
+{% endif %}
+{% if city_data.sale and city_data.sale.available_types %}
+- 促销工具：{% for p in city_data.sale.available_types %}{{ p.type }}（{{ p.description }}）{% if not loop.last %}、{% endif %}{% endfor %}
+- 平台佣金：{{ city_data.sale.platform_commission_rate }}，结算周期：{{ city_data.sale.settlement_cycle }}
+{% endif %}
+{% endif %}
+
+AllyGo 平台可用能力：
+1. **赛事活动与奖杯定制**：可在平台发起"与你争锋"系列赛事（羽毛球、网球等），定制赛事奖杯、冠名权益、补给站赞助。新品推广可结合赛事场景做品鉴派发。
+2. **合作中心与排行榜**：在合作中心发布代理商/达人招募，设置经营号排行榜，通过流量争夺激励商家参与，形成良性竞争生态。
+3. **拼团与促销**：方案中可包含拼团价、限时折扣等促销手段，所有交易闭环在平台内完成。
+{% if city_data and city_data.get('influencers') %}
+4. **达人合作矩阵**：基于城市达人数据库筛选合作对象，可按分层匹配不同的合作权益：
+   - 至尊/大师级（{{ city_data.influencers.tiers.supreme }} 人）：品牌大使签约、重大赛事站台、年度合作
+   - 明星/精英级（{{ city_data.influencers.tiers.star }} 人）：月度内容共创、直播带货、社群带练
+   - 健将级（{{ city_data.influencers.tiers.elite }} 人）：产品体验官、短视频种草、线下活动参与
+   - 达人级（{{ city_data.influencers.tiers.influencer }} 人）：UGC 内容生产、口碑传播、社群裂变
+   - 参考报价区间：{{ city_data.influencers.avg_quote }}
+{% else %}
+4. **达人合作矩阵**：达人分层合作——头部品牌大使、腰部内容共创、KOC 产品体验官、素人 UGC 口碑裂变。
+{% endif %}
 
 要求：
-- 输出 5-8 条行动建议
-- 每条建议需包含具体动作、负责方（建议）、时间节点
+- 输出 **6-10 条**行动建议
+- 每条建议需包含具体动作、**明确引用 AllyGo 平台能力**、负责方、时间节点
 - 按优先级从高到低排序
 - 建议要可直接进入项目管理工具拆解
+- 充分结合平台能力让建议可落地执行，避免空泛

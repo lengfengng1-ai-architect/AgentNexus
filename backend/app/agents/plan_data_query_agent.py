@@ -9,11 +9,21 @@ from typing import Any
 from app.agents.registry import register
 from app.schemas.plan_generation import (
     CityDataOutput,
+    CooperationCenterData,
+    CooperationCenterItem,
     EventData,
+    GroupBuyData,
+    GroupBuyItem,
     InfluencerData,
     InfluencerTiers,
+    LeaderboardData,
     LeagueData,
+    SaleData,
+    SaleItem,
     StoreData,
+    TournamentData,
+    TournamentItem,
+    TrophyData,
     VenueData,
 )
 from app.services.data_provider import get_data_provider
@@ -26,6 +36,12 @@ def _build_output(city: str, data: dict[str, Any]) -> CityDataOutput:
     tiers = influencers.get("tiers", {})
     stores = data.get("stores", {})
     venues = data.get("venues", {})
+    tournament_raw = data.get("tournament", {})
+    trophy_raw = data.get("trophy", {})
+    cooperation_raw = data.get("cooperation_center", {})
+    leaderboard_raw = data.get("leaderboard", {})
+    group_buy_raw = data.get("group_buy", {})
+    sale_raw = data.get("sale", {})
 
     return CityDataOutput(
         city=city,
@@ -62,6 +78,87 @@ def _build_output(city: str, data: dict[str, Any]) -> CityDataOutput:
             types=venues.get("types", []),
             capacity=venues.get("capacity", ""),
         ),
+        tournament=_build_tournament(tournament_raw),
+        trophy=_build_trophy(trophy_raw),
+        cooperation_center=_build_cooperation(cooperation_raw),
+        leaderboard=_build_leaderboard(leaderboard_raw),
+        group_buy=_build_group_buy(group_buy_raw),
+        sale=_build_sale(sale_raw),
+    )
+
+
+def _build_tournament(raw: dict[str, Any]) -> TournamentData:
+    return TournamentData(
+        available_tournaments=[
+            TournamentItem(
+                name=i.get("name", ""),
+                sport_type=i.get("sport_type", ""),
+                scale=i.get("scale", ""),
+                frequency=i.get("frequency", ""),
+                available_cities=i.get("available_cities", []),
+                trophy_customization=i.get("trophy_customization", False),
+                sponsorship_options=i.get("sponsorship_options", []),
+            )
+            for i in raw.get("available_tournaments", [])
+        ],
+    )
+
+
+def _build_trophy(raw: dict[str, Any]) -> TrophyData:
+    return TrophyData(
+        trophy_types=raw.get("trophy_types", []),
+        avg_lead_time_days=raw.get("avg_lead_time_days", 15),
+    )
+
+
+def _build_cooperation(raw: dict[str, Any]) -> CooperationCenterData:
+    return CooperationCenterData(
+        recruitments=[
+            CooperationCenterItem(
+                title=r.get("title", ""),
+                type=r.get("type", ""),
+                target_count=r.get("target_count", 0),
+                requirements=r.get("requirements", []),
+            )
+            for r in raw.get("recruitments", [])
+        ],
+    )
+
+
+def _build_leaderboard(raw: dict[str, Any]) -> LeaderboardData:
+    return LeaderboardData(
+        available=raw.get("available", True),
+        leaderboard_types=raw.get("leaderboard_types", []),
+        reward_mechanism=raw.get("reward_mechanism", ""),
+    )
+
+
+def _build_group_buy(raw: dict[str, Any]) -> GroupBuyData:
+    return GroupBuyData(
+        available_types=[
+            GroupBuyItem(
+                type=p.get("type", ""),
+                description=p.get("description", ""),
+                min_participants=p.get("min_participants", 2),
+                platform_close=p.get("platform_close", True),
+            )
+            for p in raw.get("available_types", [])
+        ],
+    )
+
+
+def _build_sale(raw: dict[str, Any]) -> SaleData:
+    return SaleData(
+        available_types=[
+            SaleItem(
+                type=p.get("type", ""),
+                description=p.get("description", ""),
+                platform_close=p.get("platform_close", True),
+            )
+            for p in raw.get("available_types", [])
+        ],
+        platform_commission_rate=raw.get("platform_commission_rate", ""),
+        settlement_cycle=raw.get("settlement_cycle", ""),
     )
 
 
