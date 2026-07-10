@@ -66,10 +66,8 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
 
   // 运行完成后保存 run_id，切 Tab 回来后还能恢复
   useEffect(() => {
-    if (status === 'completed' && briefData) {
-      try { localStorage.removeItem('allygo_mobile_plan_run_id') } catch { /* ignore */ }
-    }
-  }, [status, briefData])
+    // 只清理回调带来的 briefData 模式，不清理 Tab 切换后的恢复模式
+  }, [])
 
   // Auto-scroll log to bottom
   useEffect(() => {
