@@ -35,6 +35,9 @@ async def run_action_recommendations(state: dict[str, Any]) -> dict[str, Any]:
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
+    # 城市达人/盟域/赛事数据（兜底空 dict，模板中用 if 判断）
+    city_data = state.get("plan_data_query") or {}
+
     write_log("action_recommendations", f"📊 正在为 {brand_name} 生成行动建议…")
     result = await invoke_json(
         _render(
@@ -48,6 +51,7 @@ async def run_action_recommendations(state: dict[str, Any]) -> dict[str, Any]:
             budget=parse_budget(brand_input.get("budget")),
             period=parse_period(brand_input.get("period")),
             kpis=budget_kpi.get("kpis", {}),
+            city_data=city_data,
         ),
         f"请为 {brand_name} 生成行动建议。",
     )

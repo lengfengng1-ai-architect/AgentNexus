@@ -71,23 +71,3 @@ export interface PlanOutputs {
   /** 后端 plan_node_status 表,供前端轮询驱动节点显示 */
   node_statuses?: { node_id: string; status: string; started_at?: string; completed_at?: string }[]
 }
-
-export interface PlanSession {
-  id: string
-  brandInput: BrandInput
-  summary?: string
-}
-
-export interface WorkflowSSEState {
-  runId: string | null
-  status: 'idle' | 'running' | 'failed' | 'completed'
-  nodes: PlanNode[]
-  logs: PlanLogEvent[]
-  outputs: PlanOutputs
-  failedNode: string | null
-  error: string | null
-  isConnected: boolean
-  lastEventId: number | null
-}
-
-export type WorkflowControlAction = 'retry' | 'skip' | 'abort'

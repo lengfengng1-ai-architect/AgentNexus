@@ -170,7 +170,138 @@ export function PlanPage() {
     type: 'normal' as const,
   })) ?? []
 
-  // "下一步建议"区域:plan_generator 有输出就展示,视频和海报各自轮询
+  // 平台操作模块（按方案内容定制，引导去app操作）
+  const cityData = outputs?.plan_data_query as Record<string, unknown> | undefined
+  const strategy = outputs?.strategy_generation as Record<string, unknown> | undefined
+  const fitness = outputs?.fitness_analysis as Record<string, unknown> | undefined
+  const execution = outputs?.execution_planning as Record<string, unknown> | undefined
+  const planChapters = displayedChapters
+  const platformModules: { title: string; description: string; buttonLabel: string }[] = []
+
+  const primarySport = (fitness?.primary_sport as string) || ''
+  const secondarySport = (fitness?.secondary_sport as string) || ''
+  const eventsPlan = (execution?.events_plan as string) || ''
+  const category = (outputs?.brand_input as Record<string, unknown> | undefined)?.category as string || ''
+  const kpis = (outputs?.budget_kpi as Record<string, unknown> | undefined)?.kpis as Record<string, unknown> | undefined
+  const budget = (outputs?.budget_kpi as Record<string, unknown> | undefined)?.total_budget as number | undefined
+  const contentPlan = (execution?.content_plan as string) || ''
+  const influencerPlan = (execution?.influencer_plan as string) || ''
+  const leaguesPlan = (execution?.leagues_plan as string) || ''
+  const brandName = (outputs?.brand_input as Record<string, unknown> | undefined)?.brand_name as string || ''
+  const positioning = strategy?.positioning as string || ''
+  const marketGoal = strategy?.marketing_goal as string || ''
+
+  // 赛事活动模块 — 引用方案的运动类型和赛事计划
+  const tournaments = (cityData?.tournament as Record<string, unknown> | undefined)?.available_tournaments as unknown[] | undefined
+  if (tournaments && tournaments.length > 0 && primarySport) {
+    const matched = tournaments.filter((t: Record<string, unknown>) =>
+      (t.sport_type as string).includes(primarySport) || (t.name as string).includes(primarySport)
+    ).slice(0, 2)
+    const names = matched.length > 0
+      ? matched.map((t: Record<string, unknown>) => t.name as string).join('、')
+      : tournaments.slice(0, 2).map((t: Record<string, unknown>) => t.name as string).join('、')
+    platformModules.push({
+      title: `🏆 发起"${names}"${primarySport}活动`,
+      description: `方案规划${primarySport}活动${eventsPlan.slice(0, 60)}，建议在平台发起"${names}"等赛事。进入赛事管理创建赛事、配置冠名/赞助权益。`,
+      buttonLabel: '创建赛事',
+    })
+  } else if (tournaments && tournaments.length > 0) {
+    const names = tournaments.slice(0, 2).map((t: Record<string, unknown>) => t.name as string).join('、')
+    platformModules.push({
+      title: `🏆 发起"${names}"赛事活动`,
+      description: `方案涉及赛事推广，可在平台发起"${names}"等活动。进入赛事管理创建赛事即可发布。`,
+      buttonLabel: '创建赛事',
+    })
+  }
+
+  // 合作中心模块 — 引用品类/盟域计划
+  const recruitments = (cityData?.cooperation_center as Record<string, unknown> | undefined)?.recruitments as unknown[] | undefined
+  if (recruitments && recruitments.length > 0 && (category || leaguesPlan)) {
+    const matched = recruitments.filter((r: Record<string, unknown>) => r.type === '达人招募' || r.type === '代理商招募')
+    platformModules.push({
+      title: `🤝 招募${category || ''}合作伙伴`,
+      description: `方案聚焦${category}${leaguesPlan.slice(0, 40)}，建议在合作中心发布${matched.map((r: Record<string, unknown>) => r.type).join('、')}，目标招募${matched.map((r: Record<string, unknown>) => `${r.title}${r.target_count}个`).join('、')}。`,
+      buttonLabel: '发布招募',
+    })
+  }
+
+  // 排行榜模块 — 引用KPI目标
+  const leaderboard = cityData?.leaderboard as Record<string, unknown> | undefined
+  if (leaderboard && kpis) {
+    const kpiText = Object.entries(kpis).slice(0, 2).map(([k, v]) => `${k}${v}`).join('、')
+    const lbTypes = (leaderboard.leaderboard_types as string[]) || []
+    platformModules.push({
+      title: `📊 冲榜：${kpiText}`,
+      description: `围绕KPI目标（${kpiText}），参与${lbTypes.slice(0, 2).join('、')}争夺流量和现金奖励加速达成。进入数据中心查看实时排名。`,
+      buttonLabel: '查看排行',
+    })
+  }
+
+  // 奖杯定制模块 — 引用赛事计划
+  const trophy = cityData?.trophy as Record<string, unknown> | undefined
+  if (trophy && (trophy.trophy_types as string[] | undefined)?.length && primarySport) {
+    const types = (trophy.trophy_types as string[]).slice(0, 2).join('、')
+    platformModules.push({
+      title: `🏅 定制${primarySport}赛事奖杯`,
+      description: `针对方案中的${primarySport}赛事，可定制${types}，提前${trophy.avg_lead_time_days || 15}天预订。进入赛事管理选择款式并上传logo。`,
+      buttonLabel: '定制奖杯',
+    })
+  }
+
+  // 促销模块 — 引用预算
+  const saleTypes = (cityData?.sale as Record<string, unknown> | undefined)?.available_types as unknown[] | undefined
+  if (saleTypes) {
+    const names = (saleTypes as Record<string, unknown>[]).map(s => s.type as string).join('、')
+    const saleData = cityData?.sale as Record<string, unknown> | undefined
+    platformModules.push({
+      title: `🛒 ${budget ? budget + '万预算' : ''}促销方案`,
+      description: `预算${budget ? `${budget}万元` : '已定'}，支持${names}等方式配合营销节奏${saleData?.platform_commission_rate ? `（佣金${saleData.platform_commission_rate}）` : ''}。进入营销中心设置规则即可生效。`,
+      buttonLabel: '创建促销',
+    })
+  }
+
+  // 达人合作模块 — 引用达人矩阵内容
+  const influencers = cityData?.influencers as Record<string, unknown> | undefined
+  if (influencers) {
+    const tiers = influencers.tiers as Record<string, unknown> | undefined
+    platformModules.push({
+      title: `⭐ ${brandName}达人合作计划`,
+      description: `方案${influencerPlan.slice(0, 40)}，需筛选${influencers.count}位达人分层合作（至尊/大师${tiers?.supreme || 0}人、明星/精英${tiers?.star || 0}人、健将${tiers?.elite || 0}人、达人${tiers?.influencer || 0}人）。进入合作中心按条件筛选后发起邀约。`,
+      buttonLabel: '筛选达人',
+    })
+  }
+
+  // 外部平台推广模块
+  const externalModules: { title: string; description: string; buttonLabel: string }[] = []
+
+  if (brandName && positioning) {
+    const chapterForContent = planChapters.find(c => c.title.includes('创意内容'))?.content || ''
+    const chapterForChannel = planChapters.find(c => c.title.includes('达人') || c.title.includes('合作'))?.content || ''
+    const sportStr = primarySport || '运动'
+
+    externalModules.push({
+      title: `📱 小红书"#${brandName}${sportStr}"话题营销`,
+      description: `基于方案"${positioning}"定位，建议在小红书发起"#${brandName}${sportStr}挑战"话题，发布${sportStr}穿搭/测评/赛事Vlog等种草内容。参考内容方向：${chapterForContent.slice(0, 80)}。使用平台数据工具跟踪曝光和互动数据。`,
+      buttonLabel: '查看内容策略',
+    })
+    externalModules.push({
+      title: `🎬 抖音#${brandName}品牌挑战赛`,
+      description: `围绕方案${marketGoal}目标，在抖音发起品牌挑战赛+达人带货直播。内容方向：${sportStr}场景短视频、产品开箱测评、赛事现场花絮。${chapterForContent.slice(0, 60)}。配合Dou+投流放大曝光。`,
+      buttonLabel: '查看视频策略',
+    })
+    externalModules.push({
+      title: '📺 视频号/公众号运营',
+      description: `利用微信生态传播方案内容：视频号发布赛事精彩集锦和品牌故事，公众号发布深度营销复盘文章，微信社群做用户裂变和私域转化。结合${sportStr}场景触达目标人群。`,
+      buttonLabel: '查看社媒策略',
+    })
+    externalModules.push({
+      title: '🤳 得物/垂直社区种草',
+      description: `在得物等运动潮流社区发布"${brandName}"装备评测和穿搭推荐，联合${chapterForChannel.slice(0, 60)}合作达人产出真实体验内容，引导用户到平台完成转化闭环。`,
+      buttonLabel: '查看种草策略',
+    })
+  }
+
+  // 合并：app平台模块 + 外部推广模块 + LLM行动建议
   const planGeneratorDone = Array.isArray(outputs?.plan_generator?.chapters) && outputs!.plan_generator!.chapters.length > 0
   const actionItems = !planGeneratorDone
     ? undefined
@@ -189,7 +320,8 @@ export function PlanPage() {
           sizeOptions: POSTER_SIZE_OPTIONS,
           onSizeChange: handleSizeChange,
         },
-        ...actionItemsBase,
+        ...platformModules,
+        ...externalModules,
       ]
 
   const [autoMode, setAutoMode] = useState(false)

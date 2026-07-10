@@ -35,26 +35,26 @@ async def web_fetch(url: str) -> str:
     if any(path_part.endswith(ext) for ext in SKIP_EXTENSIONS):
         return "跳过：非 HTML 文件链接"
 
-    write_log("product_research", f"📄 web_fetch：{url}")
+    write_log("web_fetch", f"📄 web_fetch：{url}")
     try:
         async with AsyncClient(timeout=FETCH_TIMEOUT) as client:
             resp = await client.get(url, headers={"User-Agent": USER_AGENT}, follow_redirects=True)
             resp.raise_for_status()
             content_type = resp.headers.get("content-type", "")
             if "text/html" not in content_type and "application/xhtml" not in content_type:
-                write_log("product_research", f"⚠️ {url} 非 HTML 内容，跳过")
+                write_log("web_fetch", f"⚠️ {url} 非 HTML 内容，跳过")
                 return "跳过：非 HTML 内容"
             text = extract_text_from_html(resp.text) or ""
             if len(text) > MAX_PAGE_CHARS:
                 text = text[:MAX_PAGE_CHARS] + "\n...[内容截断]"
-            write_log("product_research", f"✓ web_fetch 成功（{len(text)} 字符）")
+            write_log("web_fetch", f"✓ web_fetch 成功（{len(text)} 字符）")
             return text or "页面内容为空"
     except TimeoutException:
-        write_log("product_research", f"⏱️ {url} 请求超时，跳过")
+        write_log("web_fetch", f"⏱️ {url} 请求超时，跳过")
         return "抓取失败：请求超时"
     except HTTPError as exc:
-        write_log("product_research", f"⚠️ {url} HTTP 错误，跳过")
+        write_log("web_fetch", f"⚠️ {url} HTTP 错误，跳过")
         return f"抓取失败：HTTP 错误 {exc}"
     except Exception as exc:
-        write_log("product_research", f"⚠️ {url} 读取失败，跳过")
+        write_log("web_fetch", f"⚠️ {url} 读取失败，跳过")
         return f"抓取失败：{exc}"

@@ -89,6 +89,85 @@ class VenueData(BaseModel):
     capacity: str = Field(..., description="平均容量")
 
 
+class TournamentItem(BaseModel):
+    """赛事/活动条目（与你争锋系列）。"""
+
+    name: str = Field(..., description="赛事名称")
+    sport_type: str = Field(..., description="运动类型，如羽毛球/网球/篮球")
+    scale: str = Field(..., description="规模，如'100人/场'")
+    frequency: str = Field(..., description="频率，如'月度'/'季度'")
+    available_cities: list[str] = Field(default_factory=list, description="可落地城市")
+    trophy_customization: bool = Field(default=False, description="是否支持奖杯定制")
+    sponsorship_options: list[str] = Field(default_factory=list, description="赞助权益选项")
+
+
+class TournamentData(BaseModel):
+    """赛事数据。"""
+
+    available_tournaments: list[TournamentItem] = Field(default_factory=list, description="可用赛事列表")
+
+
+class TrophyData(BaseModel):
+    """奖杯定制数据。"""
+
+    trophy_types: list[str] = Field(default_factory=list, description="奖杯定制类型，如水晶奖杯/金属纪念奖杯")
+    avg_lead_time_days: int = Field(default=15, description="奖杯定制提前期（天）")
+
+
+class CooperationCenterItem(BaseModel):
+    """合作中心条目。"""
+
+    title: str = Field(..., description="招募/合作标题")
+    type: str = Field(..., description="类型，如'代理商招募'/'达人招募'/'联盟合作'")
+    target_count: int = Field(default=0, description="目标招募数量")
+    requirements: list[str] = Field(default_factory=list, description="招募要求列表")
+
+
+class CooperationCenterData(BaseModel):
+    """合作中心数据。"""
+
+    recruitments: list[CooperationCenterItem] = Field(default_factory=list, description="招募合作列表")
+
+
+class LeaderboardData(BaseModel):
+    """排行榜数据。"""
+
+    available: bool = Field(default=True, description="排行榜功能是否可用")
+    leaderboard_types: list[str] = Field(default_factory=list, description="排行榜类型，如'经营号排行'/'达人带货榜'/'联盟活跃榜'")
+    reward_mechanism: str = Field(default="", description="激励机制描述")
+
+
+class GroupBuyItem(BaseModel):
+    """拼团条目。"""
+
+    type: str = Field(..., description="促销类型")
+    description: str = Field(..., description="促销描述")
+    min_participants: int = Field(default=2, description="拼团最少人数")
+    platform_close: bool = Field(default=True, description="是否在平台内闭环")
+
+
+class GroupBuyData(BaseModel):
+    """拼团数据。"""
+
+    available_types: list[GroupBuyItem] = Field(default_factory=list, description="可用拼团类型")
+
+
+class SaleItem(BaseModel):
+    """促销条目。"""
+
+    type: str = Field(..., description="促销类型，如'限时折扣'/'满减'/'秒杀'")
+    description: str = Field(..., description="促销描述")
+    platform_close: bool = Field(default=True, description="是否在平台内闭环")
+
+
+class SaleData(BaseModel):
+    """促销数据。"""
+
+    available_types: list[SaleItem] = Field(default_factory=list, description="可用促销类型")
+    platform_commission_rate: str = Field(default="", description="平台佣金比例")
+    settlement_cycle: str = Field(default="", description="结算周期")
+
+
 class CityDataOutput(BaseModel):
     """数据查询节点输出。"""
 
@@ -102,6 +181,30 @@ class CityDataOutput(BaseModel):
     influencers: InfluencerData = Field(..., description="达人数据")
     stores: StoreData = Field(..., description="经营社数据")
     venues: VenueData = Field(..., description="场馆数据")
+    tournament: TournamentData = Field(
+        default_factory=lambda: TournamentData(),
+        description="赛事数据",
+    )
+    trophy: TrophyData = Field(
+        default_factory=lambda: TrophyData(),
+        description="奖杯定制数据",
+    )
+    cooperation_center: CooperationCenterData = Field(
+        default_factory=lambda: CooperationCenterData(),
+        description="合作中心数据",
+    )
+    leaderboard: LeaderboardData = Field(
+        default_factory=lambda: LeaderboardData(),
+        description="排行榜数据",
+    )
+    group_buy: GroupBuyData = Field(
+        default_factory=lambda: GroupBuyData(),
+        description="拼团数据",
+    )
+    sale: SaleData = Field(
+        default_factory=lambda: SaleData(),
+        description="促销数据",
+    )
 
 
 class SportFitnessScore(BaseModel):

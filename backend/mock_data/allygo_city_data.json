@@ -2,186 +2,1552 @@
   "上海": {
     "population": "2487万",
     "sport_index": 92,
-    "top_sports": ["跑步", "瑜伽", "篮球", "骑行", "健身"],
+    "top_sports": [
+      "跑步",
+      "瑜伽",
+      "篮球",
+      "骑行",
+      "健身"
+    ],
     "consumption": "高",
     "weekend_active": "68%",
     "leagues": {
       "count": 342,
-      "top_leagues": ["沪跑团", "上海瑜伽联盟", "魔都骑行社", "外滩篮球盟"],
+      "top_leagues": [
+        "沪跑团",
+        "上海瑜伽联盟",
+        "魔都骑行社",
+        "外滩篮球盟"
+      ],
       "avg_members": 1280
     },
     "events": {
       "monthly": 156,
       "avg_participants": 86,
-      "categories": ["城市马拉松", "趣味跑", "瑜伽节", "篮球赛", "骑行活动"]
+      "categories": [
+        "城市马拉松",
+        "趣味跑",
+        "瑜伽节",
+        "篮球赛",
+        "骑行活动"
+      ]
     },
     "influencers": {
       "count": 568,
-      "tiers": { "至尊/大师": 12, "明星/精英": 48, "健将": 156, "达人": 352 },
+      "tiers": {
+        "至尊/大师": 12,
+        "明星/精英": 48,
+        "健将": 156,
+        "达人": 352
+      },
       "avg_quote": "1.2万/条"
     },
     "stores": {
       "count": 89,
-      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+      "categories": [
+        "运动装备",
+        "健康食品",
+        "健身课程",
+        "运动康复",
+        "潮流服饰",
+        "户外用品"
+      ]
     },
     "venues": {
       "count": 234,
-      "types": ["综合体育馆", "跑步公园", "瑜伽馆", "篮球场", "骑行绿道"],
+      "types": [
+        "综合体育馆",
+        "跑步公园",
+        "瑜伽馆",
+        "篮球场",
+        "骑行绿道"
+      ],
       "capacity": "平均420人/场"
     },
     "personas": {
       "age": "18-40岁占71%",
       "gender": "女性54%",
-      "traits": ["注重健康", "社交活跃", "周末运动", "品质消费"],
+      "traits": [
+        "注重健康",
+        "社交活跃",
+        "周末运动",
+        "品质消费"
+      ],
       "peak": "周末 8:00-10:00, 18:00-21:00"
+    },
+    "tournament": {
+      "available_tournaments": [
+        {
+          "name": "与你争锋·羽毛球公开赛",
+          "sport_type": "羽毛球",
+          "scale": "200人/场",
+          "frequency": "月度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "广州",
+            "成都",
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（30万/场）",
+            "赛场围栏广告位（5万/场）",
+            "补给站赞助（3万/场）",
+            "奖杯品牌露出（2万/场）",
+            "选手号码牌广告（1万/场）"
+          ]
+        },
+        {
+          "name": "与你争锋·网球挑战赛",
+          "sport_type": "网球",
+          "scale": "120人/场",
+          "frequency": "季度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（50万/赛季）",
+            "赛事指定饮品（10万/赛季）",
+            "奖杯冠名（5万/赛季）",
+            "球员服装赞助（8万/赛季）",
+            "决赛直播贴片（3万/场）"
+          ]
+        },
+        {
+          "name": "城市趣味跑嘉年华",
+          "sport_type": "跑步",
+          "scale": "500人/场",
+          "frequency": "月度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "广州",
+            "成都",
+            "杭州"
+          ],
+          "trophy_customization": false,
+          "sponsorship_options": [
+            "补给站赞助（2万/场）",
+            "完赛包赞助（5万/场）",
+            "赛道广告牌（3万/场）",
+            "拍照打卡点冠名（1万/场）",
+            "参赛服品牌露出（4万/场）"
+          ]
+        },
+        {
+          "name": "黄浦江夜骑挑战",
+          "sport_type": "骑行",
+          "scale": "300人/场",
+          "frequency": "双月",
+          "available_cities": [
+            "上海"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "领骑员服装赞助（2万/场）",
+            "骑行补给站（1.5万/场）",
+            "终点品牌展区（3万/场）",
+            "完赛奖牌定制（4万/场）"
+          ]
+        },
+        {
+          "name": "瑜伽星空嘉年华",
+          "sport_type": "瑜伽",
+          "scale": "150人/场",
+          "frequency": "季度",
+          "available_cities": [
+            "上海",
+            "杭州"
+          ],
+          "trophy_customization": false,
+          "sponsorship_options": [
+            "瑜伽垫品牌合作（3万/场）",
+            "饮品赞助（1.5万/场）",
+            "摄影摄像赞助（2万/场）",
+            "伴手礼赞助（2.5万/场）"
+          ]
+        }
+      ]
+    },
+    "trophy": {
+      "trophy_types": [
+        "水晶钻石奖杯（2000元/座）",
+        "金属镀金奖杯（800元/座）",
+        "定制完赛奖牌（15元/枚）",
+        "联名纪念品套装（50元/套）",
+        "品牌定制奖杯（3000元/座起）"
+      ],
+      "avg_lead_time_days": 12
+    },
+    "cooperation_center": {
+      "recruitments": [
+        {
+          "title": "运动盟域代理商招募（上海）",
+          "type": "代理商招募",
+          "target_count": 30,
+          "requirements": [
+            "有运动场馆或社群资源",
+            "具备本地运营团队（>=3人）",
+            "认同品牌理念",
+            "首批进货>=20万"
+          ]
+        },
+        {
+          "title": "运动达人合作招募（上海）",
+          "type": "达人招募",
+          "target_count": 80,
+          "requirements": [
+            "运动领域KOL/KOC",
+            "粉丝>=3000（任一平台）",
+            "月均内容产出>=8条",
+            "愿意参与线下活动"
+          ]
+        },
+        {
+          "title": "运动联盟合作招募",
+          "type": "联盟合作",
+          "target_count": 15,
+          "requirements": [
+            "跑步/骑行/瑜伽/篮球垂直联盟",
+            "成员>=150人",
+            "月均组织>=2场活动",
+            "有固定活动场地"
+          ]
+        },
+        {
+          "title": "品牌体验官招募",
+          "type": "体验官招募",
+          "target_count": 200,
+          "requirements": [
+            "热爱运动",
+            "社交平台活跃",
+            "愿意分享使用体验",
+            "每月至少发布2条内容"
+          ]
+        }
+      ]
+    },
+    "leaderboard": {
+      "available": true,
+      "leaderboard_types": [
+        "经营号活跃榜（周榜）",
+        "达人带货榜（月榜）",
+        "联盟积分榜（季度）",
+        "门店人气榜（月榜）"
+      ],
+      "reward_mechanism": "月榜Top10获5万流量券+首页推荐位3天+现金奖励（第1名1万，第2-3名5000，第4-10名1000）"
+    },
+    "group_buy": {
+      "available_types": [
+        {
+          "type": "拼团",
+          "description": "2人成团享8折，团长额外获赠品",
+          "min_participants": 2,
+          "platform_close": true
+        },
+        {
+          "type": "拼团",
+          "description": "3人成团享7折，团长免单",
+          "min_participants": 3,
+          "platform_close": true
+        },
+        {
+          "type": "拼团",
+          "description": "5人超级团享6折，团长免单+赠品",
+          "min_participants": 5,
+          "platform_close": true
+        }
+      ]
+    },
+    "sale": {
+      "available_types": [
+        {
+          "type": "限时折扣",
+          "description": "新品首发72小时限时8折",
+          "platform_close": true
+        },
+        {
+          "type": "限时折扣",
+          "description": "赛事期间48小时特价7折",
+          "platform_close": true
+        },
+        {
+          "type": "满减",
+          "description": "满200减30、满500减80、满1000减200",
+          "platform_close": true
+        },
+        {
+          "type": "秒杀",
+          "description": "每日10点/20点限量秒杀，单品3折起",
+          "platform_close": true
+        },
+        {
+          "type": "满赠",
+          "description": "满300赠品牌定制周边，满800赠运动装备",
+          "platform_close": true
+        }
+      ],
+      "platform_commission_rate": "6%",
+      "settlement_cycle": "T+3"
     }
   },
   "北京": {
     "population": "2184万",
     "sport_index": 89,
-    "top_sports": ["跑步", "篮球", "羽毛球", "骑行", "滑雪"],
+    "top_sports": [
+      "跑步",
+      "篮球",
+      "羽毛球",
+      "骑行",
+      "滑雪"
+    ],
     "consumption": "高",
     "weekend_active": "65%",
     "leagues": {
       "count": 318,
-      "top_leagues": ["北京跑者俱乐部", "京北篮球联盟", "奥森骑行团"],
+      "top_leagues": [
+        "北京跑者俱乐部",
+        "京北篮球联盟",
+        "奥森骑行团"
+      ],
       "avg_members": 1150
     },
     "events": {
       "monthly": 142,
       "avg_participants": 92,
-      "categories": ["奥森长跑", "社区篮球赛", "羽毛球公开赛", "滑雪体验"]
+      "categories": [
+        "奥森长跑",
+        "社区篮球赛",
+        "羽毛球公开赛",
+        "滑雪体验"
+      ]
     },
     "influencers": {
       "count": 524,
-      "tiers": { "至尊/大师": 10, "明星/精英": 42, "健将": 138, "达人": 334 },
+      "tiers": {
+        "至尊/大师": 10,
+        "明星/精英": 42,
+        "健将": 138,
+        "达人": 334
+      },
       "avg_quote": "1.1万/条"
     },
     "stores": {
       "count": 76,
-      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+      "categories": [
+        "运动装备",
+        "健康食品",
+        "健身课程",
+        "运动康复",
+        "潮流服饰",
+        "户外用品"
+      ]
     },
     "venues": {
       "count": 218,
-      "types": ["综合体育馆", "跑步公园", "羽毛球馆", "滑雪场", "篮球场"],
+      "types": [
+        "综合体育馆",
+        "跑步公园",
+        "羽毛球馆",
+        "滑雪场",
+        "篮球场"
+      ],
       "capacity": "平均450人/场"
     },
     "personas": {
       "age": "22-42岁占68%",
       "gender": "男性51%",
-      "traits": ["户外运动", "竞技偏好", "社群归属", "理性消费"],
+      "traits": [
+        "户外运动",
+        "竞技偏好",
+        "社群归属",
+        "理性消费"
+      ],
       "peak": "周末 7:00-10:00, 19:00-22:00"
+    },
+    "tournament": {
+      "available_tournaments": [
+        {
+          "name": "与你争锋·羽毛球公开赛",
+          "sport_type": "羽毛球",
+          "scale": "180人/场",
+          "frequency": "月度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "广州",
+            "成都",
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（25万/场）",
+            "赛场围栏广告位（4万/场）",
+            "补给站赞助（2.5万/场）",
+            "奖杯品牌露出（1.5万/场）"
+          ]
+        },
+        {
+          "name": "奥森越野跑挑战赛",
+          "sport_type": "跑步",
+          "scale": "600人/场",
+          "frequency": "季度",
+          "available_cities": [
+            "北京"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（40万/场）",
+            "赛道广告牌（3万/场）",
+            "补给站赞助（3万/场）",
+            "完赛奖牌定制（5万/场）",
+            "参赛包赞助（6万/场）"
+          ]
+        },
+        {
+          "name": "社区篮球3v3联赛",
+          "sport_type": "篮球",
+          "scale": "48队/赛季",
+          "frequency": "月度",
+          "available_cities": [
+            "北京",
+            "广州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（20万/赛季）",
+            "场地广告牌（2万/场）",
+            "球员服装赞助（4万/赛季）",
+            "MVP奖杯冠名（1万/场）"
+          ]
+        },
+        {
+          "name": "京北滑雪体验营",
+          "sport_type": "滑雪",
+          "scale": "80人/场",
+          "frequency": "冬季月度",
+          "available_cities": [
+            "北京"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "装备赞助（5万/场）",
+            "品牌体验区（3万/场）",
+            "教学课程冠名（2万/场）",
+            "摄影赞助（1.5万/场）"
+          ]
+        }
+      ]
+    },
+    "trophy": {
+      "trophy_types": [
+        "水晶钻石奖杯（1800元/座）",
+        "金属镀金奖杯（700元/座）",
+        "定制完赛奖牌（12元/枚）",
+        "联名纪念品套装（45元/套）"
+      ],
+      "avg_lead_time_days": 14
+    },
+    "cooperation_center": {
+      "recruitments": [
+        {
+          "title": "运动盟域代理商招募（北京）",
+          "type": "代理商招募",
+          "target_count": 25,
+          "requirements": [
+            "有运动资源或场地资源",
+            "具备北京本地运营能力",
+            "认可品牌理念",
+            "首批进货>=15万"
+          ]
+        },
+        {
+          "title": "运动达人合作招募（北京）",
+          "type": "达人招募",
+          "target_count": 60,
+          "requirements": [
+            "运动领域KOL/KOC",
+            "粉丝>=5000（任一平台）",
+            "月均内容产出>=6条"
+          ]
+        },
+        {
+          "title": "运动联盟合作招募",
+          "type": "联盟合作",
+          "target_count": 12,
+          "requirements": [
+            "滑雪/跑步/篮球垂直联盟",
+            "成员>=200人",
+            "月均组织>=2场活动"
+          ]
+        }
+      ]
+    },
+    "leaderboard": {
+      "available": true,
+      "leaderboard_types": [
+        "经营号活跃榜（周榜）",
+        "达人带货榜（月榜）",
+        "联盟积分榜（季度）"
+      ],
+      "reward_mechanism": "月榜Top10获3万流量券+首页推荐位2天+现金奖励（第1名8000，第2-3名4000，第4-10名800）"
+    },
+    "group_buy": {
+      "available_types": [
+        {
+          "type": "拼团",
+          "description": "2人成团享85折，团长额外获优惠券",
+          "min_participants": 2,
+          "platform_close": true
+        },
+        {
+          "type": "拼团",
+          "description": "3人成团享75折",
+          "min_participants": 3,
+          "platform_close": true
+        }
+      ]
+    },
+    "sale": {
+      "available_types": [
+        {
+          "type": "限时折扣",
+          "description": "新品首发72小时限时85折",
+          "platform_close": true
+        },
+        {
+          "type": "满减",
+          "description": "满200减25、满500减70、满1000减150",
+          "platform_close": true
+        },
+        {
+          "type": "秒杀",
+          "description": "每日12点/18点限量秒杀",
+          "platform_close": true
+        }
+      ],
+      "platform_commission_rate": "5%",
+      "settlement_cycle": "T+7"
     }
   },
   "成都": {
     "population": "2126万",
     "sport_index": 85,
-    "top_sports": ["跑步", "篮球", "羽毛球", "乒乓球", "健身"],
+    "top_sports": [
+      "跑步",
+      "篮球",
+      "羽毛球",
+      "乒乓球",
+      "健身"
+    ],
     "consumption": "中高",
     "weekend_active": "70%",
     "leagues": {
       "count": 286,
-      "top_leagues": ["蓉城跑团", "天府篮球盟", "锦里瑜伽社"],
+      "top_leagues": [
+        "蓉城跑团",
+        "天府篮球盟",
+        "锦里瑜伽社"
+      ],
       "avg_members": 980
     },
     "events": {
       "monthly": 128,
       "avg_participants": 78,
-      "categories": ["绿道骑行", "社区篮球赛", "跑步活动", "乒乓球赛"]
+      "categories": [
+        "绿道骑行",
+        "社区篮球赛",
+        "跑步活动",
+        "乒乓球赛"
+      ]
     },
     "influencers": {
       "count": 412,
-      "tiers": { "至尊/大师": 6, "明星/精英": 28, "健将": 98, "达人": 280 },
+      "tiers": {
+        "至尊/大师": 6,
+        "明星/精英": 28,
+        "健将": 98,
+        "达人": 280
+      },
       "avg_quote": "0.7万/条"
     },
     "stores": {
       "count": 62,
-      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+      "categories": [
+        "运动装备",
+        "健康食品",
+        "健身课程",
+        "运动康复",
+        "潮流服饰",
+        "户外用品"
+      ]
     },
     "venues": {
       "count": 186,
-      "types": ["社区运动场", "跑步公园", "篮球馆", "乒乓球馆", "健身房"],
+      "types": [
+        "社区运动场",
+        "跑步公园",
+        "篮球馆",
+        "乒乓球馆",
+        "健身房"
+      ],
       "capacity": "平均380人/场"
     },
     "personas": {
       "age": "18-38岁占74%",
       "gender": "女性56%",
-      "traits": ["休闲社交", "尝试新鲜", "晚间活跃", "性价比敏感"],
+      "traits": [
+        "休闲社交",
+        "尝试新鲜",
+        "晚间活跃",
+        "性价比敏感"
+      ],
       "peak": "周末 9:00-11:00, 20:00-22:00"
+    },
+    "tournament": {
+      "available_tournaments": [
+        {
+          "name": "与你争锋·羽毛球公开赛",
+          "sport_type": "羽毛球",
+          "scale": "150人/场",
+          "frequency": "月度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "广州",
+            "成都",
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（18万/场）",
+            "赛场广告位（3万/场）",
+            "补给站赞助（2万/场）",
+            "奖杯品牌露出（1万/场）"
+          ]
+        },
+        {
+          "name": "绿道骑行嘉年华",
+          "sport_type": "骑行",
+          "scale": "400人/场",
+          "frequency": "双月",
+          "available_cities": [
+            "成都"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（28万/场）",
+            "骑行服赞助（5万/场）",
+            "补给站赞助（2万/场）",
+            "终点品牌展区（3万/场）",
+            "完赛奖牌定制（3.5万/场）"
+          ]
+        },
+        {
+          "name": "社区乒乓球友谊赛",
+          "sport_type": "乒乓球",
+          "scale": "100人/场",
+          "frequency": "月度",
+          "available_cities": [
+            "成都"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（8万/场）",
+            "球台广告（1万/场）",
+            "奖品赞助（2万/场）",
+            "场地横幅（0.5万/场）"
+          ]
+        },
+        {
+          "name": "锦里瑜伽节",
+          "sport_type": "瑜伽",
+          "scale": "200人/场",
+          "frequency": "季度",
+          "available_cities": [
+            "成都"
+          ],
+          "trophy_customization": false,
+          "sponsorship_options": [
+            "品牌展位（2万/场）",
+            "体验课赞助（1万/场）",
+            "伴手礼赞助（1.5万/场）"
+          ]
+        }
+      ]
+    },
+    "trophy": {
+      "trophy_types": [
+        "水晶奖杯（1500元/座）",
+        "金属纪念奖杯（600元/座）",
+        "定制奖牌（10元/枚）",
+        "联名纪念品（40元/套）",
+        "竹编工艺奖杯（2000元/座）"
+      ],
+      "avg_lead_time_days": 18
+    },
+    "cooperation_center": {
+      "recruitments": [
+        {
+          "title": "运动盟域代理商招募（成都）",
+          "type": "代理商招募",
+          "target_count": 20,
+          "requirements": [
+            "有运动资源或场地资源",
+            "具备成都本地社群运营能力",
+            "首批进货>=10万"
+          ]
+        },
+        {
+          "title": "运动达人合作招募（成都）",
+          "type": "达人招募",
+          "target_count": 50,
+          "requirements": [
+            "运动领域KOL/KOC",
+            "粉丝>=2000（任一平台）",
+            "月均内容产出>=5条"
+          ]
+        },
+        {
+          "title": "运动联盟合作招募",
+          "type": "联盟合作",
+          "target_count": 10,
+          "requirements": [
+            "骑行/乒乓球/瑜伽垂直联盟",
+            "成员>=100人",
+            "有固定活动场地"
+          ]
+        }
+      ]
+    },
+    "leaderboard": {
+      "available": true,
+      "leaderboard_types": [
+        "经营号活跃榜（周榜）",
+        "达人带货榜（月榜）",
+        "联盟积分榜（季度）"
+      ],
+      "reward_mechanism": "月榜Top10获2万流量券+推荐位2天+现金奖励（第1名5000，第2-3名3000，第4-10名500）"
+    },
+    "group_buy": {
+      "available_types": [
+        {
+          "type": "拼团",
+          "description": "2人成团享88折",
+          "min_participants": 2,
+          "platform_close": true
+        },
+        {
+          "type": "拼团",
+          "description": "4人成团享65折，团长免单",
+          "min_participants": 4,
+          "platform_close": true
+        }
+      ]
+    },
+    "sale": {
+      "available_types": [
+        {
+          "type": "限时折扣",
+          "description": "首发72小时限时8折",
+          "platform_close": true
+        },
+        {
+          "type": "满减",
+          "description": "满150减20、满400减60、满800减120",
+          "platform_close": true
+        },
+        {
+          "type": "满赠",
+          "description": "满200赠川味运动周边",
+          "platform_close": true
+        }
+      ],
+      "platform_commission_rate": "5%",
+      "settlement_cycle": "T+5"
     }
   },
   "杭州": {
     "population": "1237万",
     "sport_index": 88,
-    "top_sports": ["跑步", "骑行", "瑜伽", "网球", "健身"],
+    "top_sports": [
+      "跑步",
+      "骑行",
+      "瑜伽",
+      "网球",
+      "健身"
+    ],
     "consumption": "高",
     "weekend_active": "72%",
     "leagues": {
       "count": 198,
-      "top_leagues": ["西湖跑团", "杭城骑行盟", "钱塘瑜伽社"],
+      "top_leagues": [
+        "西湖跑团",
+        "杭城骑行盟",
+        "钱塘瑜伽社"
+      ],
       "avg_members": 890
     },
     "events": {
       "monthly": 118,
       "avg_participants": 82,
-      "categories": ["西湖晨跑", "骑行挑战赛", "瑜伽公开课", "网球体验"]
+      "categories": [
+        "西湖晨跑",
+        "骑行挑战赛",
+        "瑜伽公开课",
+        "网球体验"
+      ]
     },
     "influencers": {
       "count": 356,
-      "tiers": { "至尊/大师": 5, "明星/精英": 24, "健将": 86, "达人": 241 },
+      "tiers": {
+        "至尊/大师": 5,
+        "明星/精英": 24,
+        "健将": 86,
+        "达人": 241
+      },
       "avg_quote": "0.8万/条"
     },
     "stores": {
       "count": 54,
-      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+      "categories": [
+        "运动装备",
+        "健康食品",
+        "健身课程",
+        "运动康复",
+        "潮流服饰",
+        "户外用品"
+      ]
     },
     "venues": {
       "count": 164,
-      "types": ["西湖沿线跑道", "瑜伽馆", "网球场", "骑行绿道", "健身房"],
+      "types": [
+        "西湖沿线跑道",
+        "瑜伽馆",
+        "网球场",
+        "骑行绿道",
+        "健身房"
+      ],
       "capacity": "平均350人/场"
     },
     "personas": {
       "age": "20-40岁占69%",
       "gender": "女性52%",
-      "traits": ["精致生活", "骑行热爱", "健康管理", "品牌意识"],
+      "traits": [
+        "精致生活",
+        "骑行热爱",
+        "健康管理",
+        "品牌意识"
+      ],
       "peak": "周末 7:30-9:30, 18:30-20:30"
+    },
+    "tournament": {
+      "available_tournaments": [
+        {
+          "name": "与你争锋·网球挑战赛",
+          "sport_type": "网球",
+          "scale": "100人/场",
+          "frequency": "季度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（35万/赛季）",
+            "指定饮品（8万/赛季）",
+            "奖杯冠名（4万/赛季）",
+            "球员服装赞助（6万/赛季）"
+          ]
+        },
+        {
+          "name": "西湖晨跑节",
+          "sport_type": "跑步",
+          "scale": "800人/场",
+          "frequency": "季度",
+          "available_cities": [
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（45万/场）",
+            "赛道广告牌（4万/场）",
+            "补给站赞助（3万/场）",
+            "完赛奖牌定制（6万/场）",
+            "参赛服赞助（5万/场）"
+          ]
+        },
+        {
+          "name": "钱塘江骑行挑战",
+          "sport_type": "骑行",
+          "scale": "350人/场",
+          "frequency": "双月",
+          "available_cities": [
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（25万/场）",
+            "骑行装备赞助（4万/场）",
+            "补给站赞助（2万/场）",
+            "完赛奖牌定制（3万/场）"
+          ]
+        },
+        {
+          "name": "瑜伽星空公开课",
+          "sport_type": "瑜伽",
+          "scale": "120人/场",
+          "frequency": "月度",
+          "available_cities": [
+            "杭州",
+            "上海"
+          ],
+          "trophy_customization": false,
+          "sponsorship_options": [
+            "瑜伽垫合作（2万/场）",
+            "饮品赞助（1万/场）",
+            "摄影赞助（1.5万/场）"
+          ]
+        }
+      ]
+    },
+    "trophy": {
+      "trophy_types": [
+        "水晶钻石奖杯（2200元/座）",
+        "金属镀金奖杯（900元/座）",
+        "定制完赛奖牌（18元/枚）",
+        "丝绸纪念品套装（80元/套）"
+      ],
+      "avg_lead_time_days": 10
+    },
+    "cooperation_center": {
+      "recruitments": [
+        {
+          "title": "运动盟域代理商招募（杭州）",
+          "type": "代理商招募",
+          "target_count": 18,
+          "requirements": [
+            "有运动资源或场地资源",
+            "具备杭州本地运营能力",
+            "首批进货>=12万"
+          ]
+        },
+        {
+          "title": "运动达人合作招募（杭州）",
+          "type": "达人招募",
+          "target_count": 45,
+          "requirements": [
+            "运动领域KOL/KOC",
+            "粉丝>=3000（任一平台）",
+            "内容风格偏精致生活"
+          ]
+        },
+        {
+          "title": "运动联盟合作招募",
+          "type": "联盟合作",
+          "target_count": 8,
+          "requirements": [
+            "骑行/瑜伽/跑步垂直联盟",
+            "成员>=150人",
+            "月均组织>=2场活动"
+          ]
+        }
+      ]
+    },
+    "leaderboard": {
+      "available": true,
+      "leaderboard_types": [
+        "经营号活跃榜（周榜）",
+        "达人带货榜（月榜）",
+        "联盟积分榜（季度）",
+        "内容创作榜（月榜）"
+      ],
+      "reward_mechanism": "月榜Top10获4万流量券+首页推荐位3天+现金奖励（第1名8000，第2-3名4000，第4-10名800）+品牌合作优先权"
+    },
+    "group_buy": {
+      "available_types": [
+        {
+          "type": "拼团",
+          "description": "2人成团享8折，团长加赠积分",
+          "min_participants": 2,
+          "platform_close": true
+        },
+        {
+          "type": "拼团",
+          "description": "3人成团享7折，团长免单",
+          "min_participants": 3,
+          "platform_close": true
+        }
+      ]
+    },
+    "sale": {
+      "available_types": [
+        {
+          "type": "限时折扣",
+          "description": "新品首发48小时限时75折",
+          "platform_close": true
+        },
+        {
+          "type": "限时折扣",
+          "description": "赛事专场24小时特价7折",
+          "platform_close": true
+        },
+        {
+          "type": "满减",
+          "description": "满300减40、满600减100、满1200减250",
+          "platform_close": true
+        },
+        {
+          "type": "秒杀",
+          "description": "每日10点限量秒杀",
+          "platform_close": true
+        },
+        {
+          "type": "满赠",
+          "description": "满500赠定制丝绸运动巾",
+          "platform_close": true
+        }
+      ],
+      "platform_commission_rate": "6%",
+      "settlement_cycle": "T+3"
     }
   },
   "广州": {
     "population": "1882万",
     "sport_index": 86,
-    "top_sports": ["篮球", "跑步", "羽毛球", "足球", "健身"],
+    "top_sports": [
+      "篮球",
+      "跑步",
+      "羽毛球",
+      "足球",
+      "健身"
+    ],
     "consumption": "中高",
     "weekend_active": "69%",
     "leagues": {
       "count": 267,
-      "top_leagues": ["羊城篮球盟", "珠江跑团", "广州羽毛球联盟"],
+      "top_leagues": [
+        "羊城篮球盟",
+        "珠江跑团",
+        "广州羽毛球联盟"
+      ],
       "avg_members": 1050
     },
     "events": {
       "monthly": 134,
       "avg_participants": 88,
-      "categories": ["珠江夜跑", "篮球邀请赛", "羽毛球联赛", "足球友谊赛"]
+      "categories": [
+        "珠江夜跑",
+        "篮球邀请赛",
+        "羽毛球联赛",
+        "足球友谊赛"
+      ]
     },
     "influencers": {
       "count": 438,
-      "tiers": { "至尊/大师": 7, "明星/精英": 30, "健将": 108, "达人": 293 },
+      "tiers": {
+        "至尊/大师": 7,
+        "明星/精英": 30,
+        "健将": 108,
+        "达人": 293
+      },
       "avg_quote": "0.75万/条"
     },
     "stores": {
       "count": 68,
-      "categories": ["运动装备", "健康食品", "健身课程", "运动康复", "潮流服饰", "户外用品"]
+      "categories": [
+        "运动装备",
+        "健康食品",
+        "健身课程",
+        "运动康复",
+        "潮流服饰",
+        "户外用品"
+      ]
     },
     "venues": {
       "count": 198,
-      "types": ["社区篮球场", "珠江跑道", "羽毛球馆", "足球场", "健身房"],
+      "types": [
+        "社区篮球场",
+        "珠江跑道",
+        "羽毛球馆",
+        "足球场",
+        "健身房"
+      ],
       "capacity": "平均400人/场"
     },
     "personas": {
       "age": "18-42岁占72%",
       "gender": "男性53%",
-      "traits": ["篮球文化", "团队运动", "夜跑习惯", "社交消费"],
+      "traits": [
+        "篮球文化",
+        "团队运动",
+        "夜跑习惯",
+        "社交消费"
+      ],
       "peak": "周末 8:00-10:00, 19:30-22:00"
+    },
+    "tournament": {
+      "available_tournaments": [
+        {
+          "name": "与你争锋·羽毛球公开赛",
+          "sport_type": "羽毛球",
+          "scale": "220人/场",
+          "frequency": "月度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "广州",
+            "成都",
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（22万/场）",
+            "赛场广告位（3.5万/场）",
+            "补给站赞助（2.5万/场）",
+            "奖杯品牌露出（1.5万/场）"
+          ]
+        },
+        {
+          "name": "珠江夜跑系列赛",
+          "sport_type": "跑步",
+          "scale": "450人/场",
+          "frequency": "双月",
+          "available_cities": [
+            "广州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（30万/场）",
+            "赛道广告牌（3万/场）",
+            "补给站赞助（2万/场）",
+            "完赛奖牌定制（4万/场）",
+            "荧光装备赞助（3万/场）"
+          ]
+        },
+        {
+          "name": "社区篮球3v3联赛",
+          "sport_type": "篮球",
+          "scale": "32队/赛季",
+          "frequency": "月度",
+          "available_cities": [
+            "北京",
+            "广州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（15万/赛季）",
+            "场地广告牌（1.5万/场）",
+            "球员服装赞助（3万/赛季）",
+            "MVP奖杯冠名（0.8万/场）"
+          ]
+        },
+        {
+          "name": "足球友谊邀请赛",
+          "sport_type": "足球",
+          "scale": "8队/场",
+          "frequency": "月度",
+          "available_cities": [
+            "广州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（12万/场）",
+            "场地广告牌（2万/场）",
+            "球员服装赞助（3万/场）",
+            "赛事指定饮品（1.5万/场）"
+          ]
+        }
+      ]
+    },
+    "trophy": {
+      "trophy_types": [
+        "水晶奖杯（1600元/座）",
+        "金属纪念奖杯（650元/座）",
+        "定制奖牌（12元/枚）",
+        "联名纪念品（45元/套）"
+      ],
+      "avg_lead_time_days": 15
+    },
+    "cooperation_center": {
+      "recruitments": [
+        {
+          "title": "运动盟域代理商招募（广州）",
+          "type": "代理商招募",
+          "target_count": 22,
+          "requirements": [
+            "有运动资源或场地资源",
+            "具备广州本地运营能力",
+            "首批进货>=12万"
+          ]
+        },
+        {
+          "title": "运动达人合作招募（广州）",
+          "type": "达人招募",
+          "target_count": 55,
+          "requirements": [
+            "运动领域KOL/KOC",
+            "粉丝>=3000（任一平台）",
+            "内容风格偏向篮球/跑步"
+          ]
+        },
+        {
+          "title": "运动联盟合作招募",
+          "type": "联盟合作",
+          "target_count": 10,
+          "requirements": [
+            "篮球/跑步/足球垂直联盟",
+            "成员>=150人",
+            "有固定活动场地"
+          ]
+        }
+      ]
+    },
+    "leaderboard": {
+      "available": true,
+      "leaderboard_types": [
+        "经营号活跃榜（周榜）",
+        "达人带货榜（月榜）",
+        "联盟积分榜（季度）",
+        "赛事积分榜（赛季）"
+      ],
+      "reward_mechanism": "月榜Top10获3万流量券+推荐位2天+现金奖励（第1名6000，第2-3名3000，第4-10名600）"
+    },
+    "group_buy": {
+      "available_types": [
+        {
+          "type": "拼团",
+          "description": "2人成团享82折",
+          "min_participants": 2,
+          "platform_close": true
+        },
+        {
+          "type": "拼团",
+          "description": "3人成团享72折，团长获赠品",
+          "min_participants": 3,
+          "platform_close": true
+        }
+      ]
+    },
+    "sale": {
+      "available_types": [
+        {
+          "type": "限时折扣",
+          "description": "首发72小时限时82折",
+          "platform_close": true
+        },
+        {
+          "type": "满减",
+          "description": "满200减28、满500减75、满1000减180",
+          "platform_close": true
+        },
+        {
+          "type": "秒杀",
+          "description": "每日15点/21点限量秒杀",
+          "platform_close": true
+        }
+      ],
+      "platform_commission_rate": "5%",
+      "settlement_cycle": "T+5"
+    }
+  },
+  "深圳": {
+    "population": "1768万",
+    "sport_index": 90,
+    "top_sports": [
+      "篮球",
+      "跑步",
+      "羽毛球",
+      "足球",
+      "健身"
+    ],
+    "consumption": "高",
+    "weekend_active": "70%",
+    "leagues": {
+      "count": 312,
+      "top_leagues": [
+        "深圳湾跑团",
+        "鹏城篮球盟",
+        "南山羽毛球联盟"
+      ],
+      "avg_members": 1100
+    },
+    "events": {
+      "monthly": 148,
+      "avg_participants": 90,
+      "categories": [
+        "深圳湾夜跑",
+        "篮球邀请赛",
+        "羽毛球公开赛",
+        "足球联赛"
+      ]
+    },
+    "influencers": {
+      "count": 482,
+      "tiers": {
+        "至尊/大师": 8,
+        "明星/精英": 35,
+        "健将": 120,
+        "达人": 319
+      },
+      "avg_quote": "0.9万/条"
+    },
+    "stores": {
+      "count": 72,
+      "categories": [
+        "运动装备",
+        "健康食品",
+        "健身课程",
+        "运动康复",
+        "潮流服饰",
+        "户外用品"
+      ]
+    },
+    "venues": {
+      "count": 210,
+      "types": [
+        "体育中心",
+        "深圳湾公园",
+        "羽毛球馆",
+        "篮球场",
+        "足球场"
+      ],
+      "capacity": "平均430人/场"
+    },
+    "personas": {
+      "age": "18-40岁占73%",
+      "gender": "男性52%",
+      "traits": [
+        "快节奏",
+        "科技感",
+        "夜间活跃",
+        "社交消费"
+      ],
+      "peak": "周末 8:00-10:00, 19:00-22:00"
+    },
+    "tournament": {
+      "available_tournaments": [
+        {
+          "name": "与你争锋·羽毛球公开赛",
+          "sport_type": "羽毛球",
+          "scale": "200人/场",
+          "frequency": "月度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "广州",
+            "成都",
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（30万/场）",
+            "赛场围栏广告位（5万/场）",
+            "补给站赞助（3万/场）",
+            "奖杯品牌露出（2万/场）",
+            "选手号码牌广告（1万/场）"
+          ]
+        },
+        {
+          "name": "与你争锋·网球挑战赛",
+          "sport_type": "网球",
+          "scale": "120人/场",
+          "frequency": "季度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "杭州"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "冠名权（50万/赛季）",
+            "赛事指定饮品（10万/赛季）",
+            "奖杯冠名（5万/赛季）",
+            "球员服装赞助（8万/赛季）",
+            "决赛直播贴片（3万/场）"
+          ]
+        },
+        {
+          "name": "城市趣味跑嘉年华",
+          "sport_type": "跑步",
+          "scale": "500人/场",
+          "frequency": "月度",
+          "available_cities": [
+            "上海",
+            "北京",
+            "广州",
+            "成都",
+            "杭州"
+          ],
+          "trophy_customization": false,
+          "sponsorship_options": [
+            "补给站赞助（2万/场）",
+            "完赛包赞助（5万/场）",
+            "赛道广告牌（3万/场）",
+            "拍照打卡点冠名（1万/场）",
+            "参赛服品牌露出（4万/场）"
+          ]
+        },
+        {
+          "name": "黄浦江夜骑挑战",
+          "sport_type": "骑行",
+          "scale": "300人/场",
+          "frequency": "双月",
+          "available_cities": [
+            "上海"
+          ],
+          "trophy_customization": true,
+          "sponsorship_options": [
+            "领骑员服装赞助（2万/场）",
+            "骑行补给站（1.5万/场）",
+            "终点品牌展区（3万/场）",
+            "完赛奖牌定制（4万/场）"
+          ]
+        },
+        {
+          "name": "瑜伽星空嘉年华",
+          "sport_type": "瑜伽",
+          "scale": "150人/场",
+          "frequency": "季度",
+          "available_cities": [
+            "上海",
+            "杭州"
+          ],
+          "trophy_customization": false,
+          "sponsorship_options": [
+            "瑜伽垫品牌合作（3万/场）",
+            "饮品赞助（1.5万/场）",
+            "摄影摄像赞助（2万/场）",
+            "伴手礼赞助（2.5万/场）"
+          ]
+        }
+      ]
+    },
+    "trophy": {
+      "trophy_types": [
+        "水晶钻石奖杯（2000元/座）",
+        "金属镀金奖杯（800元/座）",
+        "定制完赛奖牌（15元/枚）",
+        "联名纪念品套装（50元/套）",
+        "品牌定制奖杯（3000元/座起）"
+      ],
+      "avg_lead_time_days": 12
+    },
+    "cooperation_center": {
+      "recruitments": [
+        {
+          "title": "运动盟域代理商招募（上海）",
+          "type": "代理商招募",
+          "target_count": 30,
+          "requirements": [
+            "有运动场馆或社群资源",
+            "具备本地运营团队（>=3人）",
+            "认同品牌理念",
+            "首批进货>=20万"
+          ]
+        },
+        {
+          "title": "运动达人合作招募（上海）",
+          "type": "达人招募",
+          "target_count": 80,
+          "requirements": [
+            "运动领域KOL/KOC",
+            "粉丝>=3000（任一平台）",
+            "月均内容产出>=8条",
+            "愿意参与线下活动"
+          ]
+        },
+        {
+          "title": "运动联盟合作招募",
+          "type": "联盟合作",
+          "target_count": 15,
+          "requirements": [
+            "跑步/骑行/瑜伽/篮球垂直联盟",
+            "成员>=150人",
+            "月均组织>=2场活动",
+            "有固定活动场地"
+          ]
+        },
+        {
+          "title": "品牌体验官招募",
+          "type": "体验官招募",
+          "target_count": 200,
+          "requirements": [
+            "热爱运动",
+            "社交平台活跃",
+            "愿意分享使用体验",
+            "每月至少发布2条内容"
+          ]
+        }
+      ]
+    },
+    "leaderboard": {
+      "available": true,
+      "leaderboard_types": [
+        "经营号活跃榜（周榜）",
+        "达人带货榜（月榜）",
+        "联盟积分榜（季度）",
+        "门店人气榜（月榜）"
+      ],
+      "reward_mechanism": "月榜Top10获5万流量券+首页推荐位3天+现金奖励（第1名1万，第2-3名5000，第4-10名1000）"
+    },
+    "group_buy": {
+      "available_types": [
+        {
+          "type": "拼团",
+          "description": "2人成团享8折，团长额外获赠品",
+          "min_participants": 2,
+          "platform_close": true
+        },
+        {
+          "type": "拼团",
+          "description": "3人成团享7折，团长免单",
+          "min_participants": 3,
+          "platform_close": true
+        },
+        {
+          "type": "拼团",
+          "description": "5人超级团享6折，团长免单+赠品",
+          "min_participants": 5,
+          "platform_close": true
+        }
+      ]
+    },
+    "sale": {
+      "available_types": [
+        {
+          "type": "限时折扣",
+          "description": "新品首发72小时限时8折",
+          "platform_close": true
+        },
+        {
+          "type": "限时折扣",
+          "description": "赛事期间48小时特价7折",
+          "platform_close": true
+        },
+        {
+          "type": "满减",
+          "description": "满200减30、满500减80、满1000减200",
+          "platform_close": true
+        },
+        {
+          "type": "秒杀",
+          "description": "每日10点/20点限量秒杀，单品3折起",
+          "platform_close": true
+        },
+        {
+          "type": "满赠",
+          "description": "满300赠品牌定制周边，满800赠运动装备",
+          "platform_close": true
+        }
+      ],
+      "platform_commission_rate": "6%",
+      "settlement_cycle": "T+3"
     }
   }
 }

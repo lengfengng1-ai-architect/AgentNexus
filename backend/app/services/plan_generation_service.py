@@ -722,6 +722,13 @@ async def _stream_events(
         for nid in _PARALLEL_NODES:
             if state_values.get(nid):
                 started.add(nid)
+        # 对所有已有输出（非空 dict）的节点加入 started，防止 resume replay 重复发 node.start。
+        # ponytail: state_values 可能存 {}（节点失败返回空），用 truthy 检查会漏掉。
+        # 判断标准：值存在且不是初始值 {}（不是空 dict 或 None）
+        for _nid in _NODE_ORDER:
+            val = state_values.get(_nid)
+            if val and isinstance(val, dict) and len(val) > 0:
+                started.add(_nid)
     except Exception:
         pass
 
