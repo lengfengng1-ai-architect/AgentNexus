@@ -17,6 +17,7 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
     status,
     steps,
     chapters,
+    outputs,
     pausedSnapshot,
     error,
     isLoading,
@@ -152,20 +153,84 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
         </div>
       )}
 
-      {chapters.length > 0 && (
+      {chapters.length > 0 && status === 'completed' && (
         <>
           <div className="sec"><h3>生成结果</h3></div>
-          {chapters.slice(0, 3).map((ch, i) => (
-            <div key={i} className="plancard">
-              <div className="ph">{ch.title} <span className="tag">已生成</span></div>
+
+          {/* 策略定位 */}
+          {outputs?._strategy && (
+            <div className="plancard">
+              <div className="ph">策略定位 <span className="tag">已生成</span></div>
               <div className="pb">
-                <p>{ch.subtitle}</p>
-                <p style={{ marginTop: 4, fontSize: 12, color: 'var(--fg-soft)' }}>
-                  {ch.content.replace(/[#*\n]/g, ' ').slice(0, 120)}
-                </p>
+                <p>{(outputs._strategy as Record<string,unknown>)?.positioning as string || ''}</p>
+                {(outputs._strategy as Record<string,unknown>)?.key_messages && (
+                  <div className="model" style={{marginTop:8}}>
+                    {((outputs._strategy as Record<string,unknown>).key_messages as string[])?.map((m: string, i: number) => (
+                      <span key={i}>{m}</span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* 执行规划 */}
+          {outputs?._execution && (() => {
+            const exec = outputs._execution as Record<string,unknown>
+            const plans = ['leagues_plan','events_plan','influencer_plan','content_plan','store_plan']
+            const items = plans.filter(p => exec[p]).slice(0,3)
+            if (!items.length) return null
+            return (
+              <div className="plancard">
+                <div className="ph">执行规划 <span className="tag">已生成</span></div>
+                <div className="pb">
+                  {items.map((key) => (
+                    <p key={key} style={{marginBottom:4}}><b>{({leagues_plan:'盟域',events_plan:'赛事',influencer_plan:'达人',content_plan:'内容',store_plan:'渠道'})[key] || key}：</b>{(exec[key] as string)?.slice(0,60)}…</p>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* 核心 KPI */}
+          {outputs?._budget && (() => {
+            const b = outputs._budget as Record<string,unknown>
+            const kpis = (b.kpis as Record<string,unknown>[]) || []
+            const top = kpis.slice(0,3)
+            if (!top.length) return null
+            return (
+              <div className="plancard">
+                <div className="ph">核心 KPI <span className="tag">{(b.period_months || '') + '个月'}</span></div>
+                <div className="pb">
+                  <div className="kpi-row">
+                    {top.map((k, i) => (
+                      <div key={i} className="k">
+                        <div className="n">{String(k.target || k.metric || '')}</div>
+                        <div className="l">{String(k.metric || k.dim || '')}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )
+          })()}
+
+          {/* 行动建议摘要 */}
+          {outputs?._actions && (() => {
+            const acts = (outputs._actions as Record<string,unknown>).actions as {title:string;description:string}[] || []
+            const top = acts.slice(0,3)
+            if (!top.length) return null
+            return (
+              <div className="plancard">
+                <div className="ph">行动建议 <span className="tag">{acts.length}项</span></div>
+                <div className="pb">
+                  {top.map((a, i) => (
+                    <p key={i} style={{marginBottom:3, fontSize:12}}>• {a.title}：{a.description?.slice(0,50)}</p>
+                  ))}
+                </div>
+              </div>
+            )
+          })()}
         </>
       )}
 

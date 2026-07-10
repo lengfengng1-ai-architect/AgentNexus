@@ -283,7 +283,22 @@ export function useMobilePlanRun() {
           case 'workflow.complete': {
             const output = (event.data?.output || event.data) as Record<string, unknown>
             const chapters: PlanChapter[] = (output as PlanOutputs)?.plan_generator?.chapters || []
-            dispatch({ type: 'WORKFLOW_COMPLETE', outputs: output as PlanOutputs, chapters })
+            // 从 outputs 中提取各节点数据，供前端展示提炼卡片
+            const strategyOutput = (output as PlanOutputs)?.strategy_generation as Record<string, unknown> | undefined
+            const executionOutput = (output as PlanOutputs)?.execution_planning as Record<string, unknown> | undefined
+            const budgetOutput = (output as PlanOutputs)?.budget_kpi as Record<string, unknown> | undefined
+            const actionOutput = (output as PlanOutputs)?.action_recommendations as Record<string, unknown> | undefined
+            dispatch({
+              type: 'WORKFLOW_COMPLETE',
+              outputs: {
+                ...(output as PlanOutputs),
+                _strategy: strategyOutput,
+                _execution: executionOutput,
+                _budget: budgetOutput,
+                _actions: actionOutput,
+              },
+              chapters,
+            })
             break
           }
           case 'chapter.start':
