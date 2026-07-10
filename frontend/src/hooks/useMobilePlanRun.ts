@@ -3,7 +3,7 @@
 // 与 PC 端 usePlanRun 独立实现，不关心 checkpoint 暂停审批细节，
 // 只关注节点状态、日志和最终结果
 import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { startPlanRun, approvePlanRun, rejectPlanRun, getPlanRunStatus } from '../api/plan'
+import { startPlanRun, approvePlanRun, rejectPlanRun, getPlanRunStatus, getPlanMediaStatus } from '../api/plan'
 import type { PlanChapter, PlanLogEvent, PlanNodeStatus, PlanOutputs } from '../types/plan'
 
 const PIPELINE_NODES: { id: string; label: string; desc: string }[] = [
@@ -60,6 +60,7 @@ type Action =
   | { type: 'NODE_FAILED'; nodeId: string; message: string }
   | { type: 'WORKFLOW_PAUSED'; snapshot: MobilePausedSnapshot }
   | { type: 'WORKFLOW_COMPLETE'; outputs: PlanOutputs; chapters: PlanChapter[] }
+  | { type: 'UPDATE_MEDIA'; promoVideo: Record<string, unknown> | null | undefined; poster: Record<string, unknown> | null | undefined }
   | { type: 'SET_ERROR'; error: string }
 
 function buildInitialSteps(): MobileStep[] {
@@ -160,6 +161,14 @@ function reducer(state: MobilePlanRunState, action: Action): MobilePlanRunState 
         isLoading: false,
         pausedSnapshot: null,
       }
+    }
+    case 'UPDATE_MEDIA': {
+      const nextOutputs: Record<string, unknown> = { ...state.outputs }
+      if (action.promoVideo) nextOutputs.promo_video = action.promoVideo
+      else delete nextOutputs.promo_video
+      if (action.poster) nextOutputs.poster = action.poster
+      else delete nextOutputs.poster
+      return { ...state, outputs: nextOutputs as unknown as PlanOutputs }
     }
     case 'SET_ERROR':
       return { ...state, error: action.error, isConnected: false, isLoading: false }
@@ -402,6 +411,17 @@ export function useMobilePlanRun() {
     dispatch({ type: 'RESET' })
   }, [])
 
+  const checkMediaStatus = useCallback(async () => {
+    const rid = runIdRef.current
+    if (!rid) return
+    try {
+      const result = await getPlanMediaStatus(rid)
+      dispatch({ type: 'UPDATE_MEDIA', promoVideo: result.promo_video, poster: result.poster })
+    } catch {
+      // 媒体状态查询失败不影响流水线
+    }
+  }, [])
+
   return {
     ...state,
     start,
@@ -409,7 +429,24 @@ export function useMobilePlanRun() {
     reject,
     reset,
     restoreFromRunId,
+    checkMediaStatus,
   }
+}
+
+export interface MobilePlanRunAPI {
+  status: MobileRunStatus
+  steps: MobileStep[]
+  outputs: PlanOutputs
+  chapters: PlanChapter[]
+  pausedSnapshot: MobilePausedSnapshot | null
+  error: string | null
+  isConnected: boolean
+  isLoading: boolean
+  start: (brandInput: Record<string, unknown>) => Promise<void>
+  approve: () => Promise<void>
+  reject: (reason: string) => Promise<void>
+  reset: () => void
+  restoreFromRunId: (runId: string) => Promise<void>
 }
 
 export { PIPELINE_NODES }

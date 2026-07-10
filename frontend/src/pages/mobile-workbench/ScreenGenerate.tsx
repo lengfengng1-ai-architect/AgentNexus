@@ -4,17 +4,18 @@
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getPlanSummary } from '../../api/plan'
-import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import type { PlanSummary } from '../../api/plan'
 import type { BriefFormData } from './ScreenBrief'
 import type { MobileScreen } from './ScreenChat'
+import type { MobilePlanRunAPI } from '../../hooks/useMobilePlanRun'
 
 interface ScreenGenerateProps {
   onNavigate: (s: MobileScreen) => void
   briefData: BriefFormData | null
+  planRun: MobilePlanRunAPI
 }
 
-export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
+export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerateProps) {
   const {
     status,
     steps,
@@ -29,7 +30,7 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
     reject,
     reset,
     restoreFromRunId,
-  } = useMobilePlanRun()
+  } = planRun
 
   // 日志默认不展开，只有手动点击才展示
   const [expandedId, setExpandedId] = useState<string | null>(null)

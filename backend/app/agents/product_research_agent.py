@@ -346,16 +346,41 @@ async def finalize_node(state: ProductResearchState) -> dict:
                 structured = llm.with_structured_output(ProductResearchResult)
                 msgs = list(state.messages)
             else:
-                # json_mode 要求 messages 中出现 "json" 关键词
-                from langchain_core.messages import SystemMessage
-                msgs = list(state.messages)
-                msgs.append(SystemMessage(content="请严格按照 JSON 格式输出结构化结果。"))
-                structured = llm.with_structured_output(ProductResearchResult, method="json_mode")
+                # 尝试2：不依赖 json_mode，用普通 invoke + 显式 JSON 指令
+                from langchain_core.messages import SystemMessage, HumanMessage
 
-            result: ProductResearchResult = await structured.ainvoke(msgs)
+                # 把原 messages 内容拼成一段提示，要求输出 JSON
+                prompt_parts = []
+                for m in state.messages:
+                    if hasattr(m, "content") and m.content:
+                        prompt_parts.append(str(m.content))
+                prompt_text = "\n".join(prompt_parts)
+
+                prompt_text += (
+                    '\n\n请根据以上信息，输出严格的 JSON 格式（不要 markdown 代码块），'
+                    '格式如下：\n'
+                    '{"identity":{"name":"...","brand":"...","category":"..."},'
+                    '"official_description":"...",'
+                    '"features":[{"title":"...","description":"..."}],'
+                    '"specifications":{"key":"value"},'
+                    '"availability":[{"channel":"...","price":"..."}]}'
+                )
+                result_raw = await llm.ainvoke([
+                    SystemMessage(content="你是一个产品信息提取专家。请只输出 JSON，不要包含其他文字。"),
+                    HumanMessage(content=prompt_text),
+                ])
+                raw_text = (result_raw.content or "").strip()
+                if raw_text.startswith("```"):
+                    raw_text = raw_text.split("\n", 1)[1]
+                    if raw_text.endswith("```"):
+                        raw_text = raw_text[:-3]
+                    raw_text = raw_text.strip()
+                import json as _json
+                parsed = _json.loads(raw_text)
+                result = ProductResearchResult.model_validate(parsed)
         except (ValueError, Exception):
             if attempt == 1:
-                logger.warning("product_research finalize_node: streaming parse failed, retrying non-streaming")
+                logger.warning("product_research finalize_node: streaming parse failed, retrying raw text")
                 write_log("product_research", "⚠️ 结构化输出解析失败，正在重试…")
                 continue
             # 第二次也失败，返回空结果避免整个 pipeline 卡死
