@@ -175,8 +175,8 @@ uv run pytest -v tests/test_routers/test_brands.py
 # 按关键字
 uv run pytest -v -k "fitness"
 
-# 使用本地虚拟环境直接运行（跳过 uv 依赖解析，快 10-20 倍）
-# uv run pytest 每次都会解析 lock 文件激活 venv，.venv/bin/pytest 直接使用已有的 venv
-# 适合频繁快速验证；全量跑或 CI 中仍用 uv run pytest
+# 使用本地虚拟环境直接运行（跳过 uv run 的进程启动开销，快约 2-5 倍）
+# uv run 已激活的 venv 下不会重复下载依赖，但每次仍会启动 uv 进程做检查
+# .venv/bin/pytest 直接调用，适合频繁快速验证；CI 中仍用 uv run pytest
 .venv/bin/pytest -x -q tests/test_agents/test_<name>.py
 ```
