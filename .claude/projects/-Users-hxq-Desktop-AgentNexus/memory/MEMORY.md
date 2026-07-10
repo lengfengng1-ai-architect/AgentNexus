@@ -1,1 +1,2 @@
 - [后端测试前激活 venv](backend-test-activate-venv.md) — source .venv/bin/activate 再 uv run pytest
+- [解决冲突后停止输出](git-conflict-resolution-complete.md) — 提交推送完就结束，不继续执行验证命令
