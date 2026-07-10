@@ -3,7 +3,9 @@
 // SSE 驱动 10 Agent 流水线 + 点击展开日志 + 方案卡片 + CTA + Checkpoint 审核面板
 import { createPortal } from 'react-dom'
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { getPlanSummary } from '../../api/plan'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
+import type { PlanSummary } from '../../api/plan'
 import type { BriefFormData } from './ScreenBrief'
 import type { MobileScreen } from './ScreenChat'
 
@@ -34,6 +36,8 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
   const [showRejectInput, setShowRejectInput] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [autoMode, setAutoMode] = useState(false)
+  const [summary, setSummary] = useState<PlanSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
   const logEndRef = useRef<HTMLDivElement>(null)
 
   // 切回页面时从 localStorage 恢复运行记录，不清空已有数据
@@ -79,10 +83,20 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
     }
   }, [briefData, status, start])
 
-  // 运行完成后保存 run_id，切 Tab 回来后还能恢复
+  // 方案完成时调用摘要端点
   useEffect(() => {
-    // 只清理回调带来的 briefData 模式，不清理 Tab 切换后的恢复模式
-  }, [])
+    if (status !== 'completed') return
+    const rid = (() => { try { return localStorage.getItem('allygo_mobile_plan_run_id') } catch { return null } })()
+    if (rid && !summary && !summaryLoading) {
+      setSummaryLoading(true)
+      getPlanSummary(rid).then(s => {
+        setSummary(s)
+        setSummaryLoading(false)
+      }).catch(() => {
+        setSummaryLoading(false)
+      })
+    }
+  }, [status, summary, summaryLoading])
 
   // Auto-scroll log to bottom
   useEffect(() => {
@@ -183,93 +197,92 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
         <>
           <div className="sec"><h3>生成结果</h3></div>
 
-          {/* 策略定位 */}
-          {outputs?._strategy && (
+          {summaryLoading && (
             <div className="plancard">
-              <div className="ph">策略定位 <span className="tag">已生成</span></div>
-              <div className="pb">
-                <p>{(outputs._strategy as Record<string,unknown>)?.positioning as string || ''}</p>
-                {(outputs._strategy as Record<string,unknown>)?.key_messages && (
-                  <div className="model" style={{marginTop:8}}>
-                    {((outputs._strategy as Record<string,unknown>).key_messages as string[])?.map((m: string, i: number) => (
-                      <span key={i}>{m}</span>
-                    ))}
-                  </div>
-                )}
+              <div className="pb" style={{textAlign:'center',fontSize:12,color:'var(--muted)',padding:'16px 0'}}>
+                ⏳ 正在提炼方案摘要…
               </div>
             </div>
           )}
 
-          {/* 执行规划 */}
-          {outputs?._execution && (() => {
-            const exec = outputs._execution as Record<string,unknown>
-            const plans = ['leagues_plan','events_plan','influencer_plan','content_plan','store_plan']
-            const items = plans.filter(p => exec[p]).slice(0,3)
-            if (!items.length) return null
+          {/* summary 模式：用 LLM 归一化后的数据渲染 */}
+          {!summaryLoading && summary && (() => {
+            const s = summary
             return (
-              <div className="plancard">
-                <div className="ph">执行规划 <span className="tag">已生成</span></div>
-                <div className="pb">
-                  {items.map((key) => (
-                    <p key={key} style={{marginBottom:4}}><b>{({leagues_plan:'盟域',events_plan:'赛事',influencer_plan:'达人',content_plan:'内容',store_plan:'渠道'})[key] || key}：</b>{(exec[key] as string)?.slice(0,60)}…</p>
-                  ))}
-                </div>
-              </div>
-            )
-          })()}
-
-          {/* 核心 KPI */}
-          {outputs?._budget && (() => {
-            const b = outputs._budget as Record<string,unknown>
-            const kpis = b.kpis as Record<string,string> || {}
-            const entries = Object.entries(kpis).slice(0,5)
-            if (!entries.length) return null
-            return (
-              <div className="plancard">
-                <div className="ph">核心 KPI <span className="tag">目标</span></div>
-                <div className="pb">
-                  <div className="kpi-row">
-                    {entries.map(([key, val], i) => (
-                      <div key={i} className="k">
-                        <div className="n">{val}</div>
-                        <div className="l">{key}</div>
-                      </div>
-                    ))}
-                  </div>
-                  {/* 预算分配进度条 */}
-                  {Array.isArray(b.allocations) && (b.allocations as {category:string;percentage:number}[]).length > 0 && (
-                    <div style={{marginTop:12}}>
-                      <div style={{fontSize:10,fontWeight:600,color:'var(--muted)',marginBottom:6}}>预算分配</div>
-                      {(b.allocations as {category:string;percentage:number}[]).map((a, i) => (
-                        <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
-                          <span style={{fontSize:10,color:'var(--muted)',width:48,flexShrink:0}}>{a.category}</span>
-                          <div style={{flex:1,height:8,borderRadius:4,background:'var(--surface)',overflow:'hidden'}}>
-                            <div style={{width:`${a.percentage}%`,height:'100%',borderRadius:4,background:'var(--accent)'}} />
-                          </div>
-                          <span style={{fontSize:10,fontWeight:600,color:'var(--accent)',width:28,textAlign:'right'}}>{a.percentage}%</span>
+              <>
+                {/* 策略定位 */}
+                {s.strategy?.positioning && (
+                  <div className="plancard">
+                    <div className="ph">策略定位 <span className="tag">已生成</span></div>
+                    <div className="pb">
+                      <p>{s.strategy.positioning}</p>
+                      {s.strategy.key_messages?.length > 0 && (
+                        <div className="model" style={{marginTop:8}}>
+                          {s.strategy.key_messages.map((m, i) => (
+                            <span key={i}>{m}</span>
+                          ))}
                         </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 执行规划 */}
+                {s.execution?.length > 0 && (
+                  <div className="plancard">
+                    <div className="ph">执行规划 <span className="tag">已生成</span></div>
+                    <div className="pb">
+                      {s.execution.slice(0,4).map((item, i) => (
+                        <p key={i} style={{marginBottom:4}}><b>{item.label}：</b>{item.description}</p>
                       ))}
                     </div>
-                  )}
-                </div>
-              </div>
-            )
-          })()}
+                  </div>
+                )}
 
-          {/* 行动建议摘要 */}
-          {outputs?._actions && (() => {
-            const acts = (outputs._actions as Record<string,unknown>).actions as {title:string;description:string}[] || []
-            const top = acts.slice(0,3)
-            if (!top.length) return null
-            return (
-              <div className="plancard">
-                <div className="ph">行动建议 <span className="tag">{acts.length}项</span></div>
-                <div className="pb">
-                  {top.map((a, i) => (
-                    <p key={i} style={{marginBottom:3, fontSize:12}}>• {a.title}：{a.description?.slice(0,50)}</p>
-                  ))}
-                </div>
-              </div>
+                {/* 核心 KPI */}
+                {s.kpis?.length > 0 && (
+                  <div className="plancard">
+                    <div className="ph">核心 KPI <span className="tag">目标</span></div>
+                    <div className="pb">
+                      <div className="kpi-row" style={{gridTemplateColumns:s.kpis.length <= 3 ? '1fr 1fr 1fr' : '1fr 1fr'}}>
+                        {s.kpis.map((k, i) => (
+                          <div key={i} className="k">
+                            <div className="n">{k.target}</div>
+                            <div className="l">{k.name}{k.unit ? `（${k.unit}）` : ''}</div>
+                          </div>
+                        ))}
+                      </div>
+                      {/* 预算分配 */}
+                      {s.allocations?.length > 0 && (
+                        <div style={{marginTop:12}}>
+                          <div style={{fontSize:10,fontWeight:600,color:'var(--muted)',marginBottom:6}}>预算分配</div>
+                          {s.allocations.map((a, i) => (
+                            <div key={i} style={{display:'flex',alignItems:'center',gap:6,marginBottom:4}}>
+                              <span style={{fontSize:10,color:'var(--muted)',width:48,flexShrink:0}}>{a.category}</span>
+                              <div style={{flex:1,height:8,borderRadius:4,background:'var(--surface)',overflow:'hidden'}}>
+                                <div style={{width:`${a.percentage}%`,height:'100%',borderRadius:4,background:'var(--accent)'}} />
+                              </div>
+                              <span style={{fontSize:10,fontWeight:600,color:'var(--accent)',width:40,textAlign:'right'}}>{a.percentage}%</span>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* 行动建议 */}
+                {s.actions?.length > 0 && (
+                  <div className="plancard">
+                    <div className="ph">行动建议 <span className="tag">{s.actions.length}项</span></div>
+                    <div className="pb">
+                      {s.actions.slice(0,4).map((a, i) => (
+                        <p key={i} style={{marginBottom:3,fontSize:12}}>• {a.title}：{a.description?.slice(0,60)}</p>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
             )
           })()}
         </>

@@ -209,3 +209,27 @@ export async function listPlanRuns(limit: number = 5): Promise<{ run_id: string;
   const body = await response.json()
   return (body.data || []) as { run_id: string; status: string; created_at: string }[]
 }
+
+export interface PlanSummary {
+  strategy: { positioning: string; key_messages: string[] }
+  kpis: { name: string; target: string; unit: string }[]
+  allocations: { category: string; percentage: number; amount: number }[]
+  execution: { label: string; description: string }[]
+  actions: { title: string; description: string }[]
+}
+
+export async function getPlanSummary(runId: string): Promise<PlanSummary> {
+  const response = await fetch(`${API_BASE_URL}/plan/summary`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ run_id: runId }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '获取方案摘要失败')
+    throw new Error(text)
+  }
+
+  const body = await response.json()
+  return body.data as PlanSummary
+}
