@@ -61,7 +61,7 @@ type PlanRunAction =
   | { type: 'SET_LOADING'; loading: boolean }
   | { type: 'RESTORE_STATUS'; status: PlanRunStatus; outputs: PlanOutputs; failedNode: string | null; error: string | null; completedNodes: string[]; pausedNode: string | null; pausedSnapshot: PlanRunState['pausedSnapshot'] }
   | { type: 'SYNC_NODE_STATUSES'; nodeStatuses: { node_id: string; status: string; started_at?: string; completed_at?: string }[] }
-  | { type: 'UPDATE_MEDIA'; promoVideo: Record<string, unknown> | null; poster: Record<string, unknown> | null }
+  | { type: 'UPDATE_MEDIA'; promoVideo: Record<string, unknown> | null | undefined; poster: Record<string, unknown> | null | undefined }
 
 function buildInitialNodes(): PlanNode[] {
   return PIPELINE_NODES.map((node) => ({
@@ -133,7 +133,7 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
         ),
       }
     case 'WORKFLOW_COMPLETE':
-      // 方案完成时清理暂停态,避免 plan_generator 残留「等待确认」徽章/按钮
+      // 方案完成时清理暂停态,并将所有未完成节点标记为 complete
       return {
         ...state,
         status: 'completed',
@@ -142,6 +142,11 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
         isLoading: false,
         pausedNode: null,
         pausedSnapshot: null,
+        nodes: state.nodes.map(n =>
+          n.status === 'running' || n.status === 'waiting' || n.status === 'pending'
+            ? { ...n, status: 'complete', completedAt: Date.now() }
+            : n,
+        ),
       }
     case 'WORKFLOW_CANCELED':
       return { ...state, status: 'idle', runId: null, isConnected: false, isLoading: false, pausedNode: null, pausedSnapshot: null }
@@ -221,12 +226,12 @@ function planRunReducer(state: PlanRunState, action: PlanRunAction): PlanRunStat
       }
     }
     case 'UPDATE_MEDIA': {
-      const nextOutputs = { ...state.outputs }
+      const nextOutputs: Record<string, unknown> = { ...state.outputs }
       if (action.promoVideo) nextOutputs.promo_video = action.promoVideo
       else delete nextOutputs.promo_video
       if (action.poster) nextOutputs.poster = action.poster
       else delete nextOutputs.poster
-      return { ...state, outputs: nextOutputs }
+      return { ...state, outputs: nextOutputs as unknown as PlanOutputs }
     }
     default:
       return state
@@ -449,23 +454,10 @@ export function usePlanRun() {
     async (editedInput?: Record<string, unknown>) => {
       const rid = runIdRef.current
       if (!rid) return
-      // 立即将暂停中的节点标记为 running，不等 SSE 响应
       dispatch({ type: 'SET_LOADING', loading: true })
-      if (statusRef.current === 'paused') {
-        dispatch({ type: 'SET_CONNECTED', connected: true })
-        const pn = state.pausedNode
-        if (pn) dispatch({ type: 'NODE_START', nodeId: pn })
-      }
+      dispatch({ type: 'SET_CONNECTED', connected: true })
       try {
-        if (statusRef.current !== 'paused') {
-          const result = await getPlanRunStatus(rid)
-          if (result.status !== 'paused') {
-            dispatch({ type: 'SET_LOADING', loading: false })
-            return
-          }
-        }
         const stream = await approvePlanRun(rid, editedInput ? { edited_input: editedInput } : undefined)
-        dispatch({ type: 'SET_CONNECTED', connected: true })
         await consumeStream(stream)
       } catch (error) {
         const message = error instanceof Error ? error.message : '审批通过失败'
@@ -474,7 +466,7 @@ export function usePlanRun() {
         dispatch({ type: 'SET_LOADING', loading: false })
       }
     },
-    [consumeStream, state.pausedNode],
+    [consumeStream],
   )
 
   const reject = useCallback(

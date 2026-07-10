@@ -28,7 +28,7 @@ class WebSearchInput(BaseModel):
 @tool(args_schema=WebSearchInput)
 async def web_search(query: str, max_results: int = 8) -> str:
     """搜索 Web，返回与关键词相关的页面列表。每条包含标题、URL、摘要。无结果或失败时返回提示文本，不抛异常。"""
-    write_log("product_research", f"🔎 web_search：{query}（max={max_results}）")
+    write_log("web_search", f"🔎 web_search：{query}（max={max_results}）")
     try:
         raw = await searxng_search(query, max_results=max_results)
     except Exception as exc:
