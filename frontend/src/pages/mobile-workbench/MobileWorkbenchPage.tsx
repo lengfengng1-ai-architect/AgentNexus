@@ -8,6 +8,7 @@ import { ScreenBrief, type BriefFormData } from './ScreenBrief'
 import { ScreenGenerate } from './ScreenGenerate'
 import { ScreenActions } from './ScreenActions'
 import { ScreenDispatch } from './ScreenDispatch'
+import type { BrandInput } from '../../types/chat'
 import './mobile-workbench.css'
 
 const TABS: { key: MobileScreen; label: string }[] = [
@@ -29,15 +30,25 @@ const DEFAULT_TOPBAR: Record<MobileScreen, { t: string; sub: string }> = {
 export function MobileWorkbenchPage() {
   const [screen, setScreen] = useState<MobileScreen>('chat')
   const [briefData, setBriefData] = useState<BriefFormData | null>(null)
+  // ChatBubble 的「生成方案」携带的对话数据，预填简报字段
+  const [pendingChatData, setPendingChatData] = useState<{ inputText?: string; brandInput?: BrandInput } | null>(null)
 
   const handleNavigate = (s: MobileScreen, data?: BriefFormData) => {
     if (data) setBriefData(data)
     setScreen(s)
   }
 
-  // 直接点击 Tab 时清除 briefData，只有从 handleNavigate 跳转才携带数据
+  // 从 ScreenChat / ChatBubble 接收携带数据的跳转
+  const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => {
+    if (inputText || brandInput) setPendingChatData({ inputText, brandInput })
+    else setPendingChatData(null)
+    setScreen(s)
+  }
+
+  // 直接点击 Tab 时清除 pendingChatData 和 briefData，只有从 handleNavigate/handleChatNavigate 跳转才携带数据
   const handleTabClick = (key: MobileScreen) => {
     setBriefData(null)
+    setPendingChatData(null)
     setScreen(key)
   }
 
@@ -82,9 +93,9 @@ export function MobileWorkbenchPage() {
       <div style={{ position: 'relative' }}>
         <PhoneFrame topbar={topbar}>
           {screen === 'chat' ? (
-            <ScreenChat onNavigate={handleNavigate} />
+            <ScreenChat onNavigate={handleChatNavigate} />
           ) : screen === 'brief' ? (
-            <ScreenBrief onNavigate={handleNavigate} />
+            <ScreenBrief onNavigate={handleNavigate} initialInput={pendingChatData?.inputText} initialBrandData={pendingChatData?.brandInput ?? undefined} />
           ) : screen === 'generate' ? (
             <ScreenGenerate
               key={briefData ? 'active' : 'empty'}
