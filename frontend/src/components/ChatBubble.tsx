@@ -43,13 +43,14 @@ function TypingReasoning({ text }: { text: string }) {
 
 interface ChatBubbleProps {
   message: ChatMessage
+  variant?: 'mobile'
   onRetry?: (messageId: string) => void
   onGeneratePlan?: () => void
   onVideoResult?: (messageId: string, result: NonNullable<ChatMessage['videoResult']>) => void
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function ChatBubble({ message, onRetry, onGeneratePlan, onVideoResult, onImageResult }: ChatBubbleProps) {
+export function ChatBubble({ message, variant, onRetry, onGeneratePlan, onVideoResult, onImageResult }: ChatBubbleProps) {
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
   const isVideoIntent = message.intent === 'generate_video' || message.intent === 'text_to_video'
@@ -81,6 +82,7 @@ export function ChatBubble({ message, onRetry, onGeneratePlan, onVideoResult, on
         {/* InlineVideoCard for video intents */}
         {!isUser && isVideoIntent && !isStreaming && (
           <InlineVideoCard
+            variant={variant}
             prompt={videoPrompt}
             imageUrls={message.imageUrls ?? []}
             messageId={message.id}
@@ -91,6 +93,7 @@ export function ChatBubble({ message, onRetry, onGeneratePlan, onVideoResult, on
         {/* InlineImageCard for image intents */}
         {!isUser && isImageIntent && !isStreaming && (
           <InlineImageCard
+            variant={variant}
             prompt={message.generationPrompt ?? ''}
             messageId={message.id}
             existingResult={message.imageResult}

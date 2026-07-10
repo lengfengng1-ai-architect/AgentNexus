@@ -131,6 +131,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
           <ChatBubble
             key={m.id}
             message={m}
+            variant="mobile"
             onRetry={m.retryable ? handleRetry : undefined}
             onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
             onVideoResult={updateVideoResult}

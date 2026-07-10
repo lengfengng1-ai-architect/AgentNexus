@@ -7,6 +7,7 @@ interface InlineVideoCardProps {
   prompt?: string | null
   imageUrls: string[]
   messageId: string
+  variant?: 'mobile'
   existingResult?: ChatMessage['videoResult']
   onVideoResult?: (messageId: string, result: NonNullable<ChatMessage['videoResult']>) => void
 }
@@ -22,7 +23,8 @@ interface ProgressData {
 
 const RATIOS = ['16:9', '9:16', '1:1', '4:3', '3:4', '4:5', '5:4', '9:21', '21:9']
 
-export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, onVideoResult }: InlineVideoCardProps) {
+export function InlineVideoCard({ prompt, imageUrls, messageId, variant, existingResult, onVideoResult }: InlineVideoCardProps) {
+  const isMobile = variant === 'mobile'
   // Generation params
   const [resolution, setResolution] = useState('720P')
   const [ratio, setRatio] = useState('16:9')
@@ -155,7 +157,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
   if (result?.video_url) {
     return (
       <>
-        <div className="mt-3 space-y-2 rounded-xl border border-line bg-mist/50 p-3">
+        <div className={`mt-3 space-y-2 rounded-xl border ${isMobile ? 'border-[#d9dee7] bg-[#f7f8fa] p-2.5' : 'border-line bg-mist/50 p-3'}`}>
           <video
             src={result.video_url}
             controls
@@ -165,7 +167,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
             您的浏览器不支持视频播放
           </video>
           {(result.usage?.resolution || result.usage?.ratio || result.usage?.output_video_duration != null) && (
-            <div className="flex flex-wrap gap-2 text-[10px] text-track/50">
+            <div className={`flex flex-wrap gap-2 ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>
               {result.usage?.resolution && <span>{result.usage.resolution}P</span>}
               {result.usage?.ratio && <span>{result.usage.ratio}</span>}
               {result.usage?.output_video_duration != null && <span>{result.usage.output_video_duration}s</span>}
@@ -175,7 +177,11 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
             <button
               type="button"
               onClick={() => setShowFullscreen(true)}
-              className="rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90"
+              className={
+              isMobile
+                ? 'rounded-lg bg-[#1677ff] px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-[#1677ff]/90'
+                : 'rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90'
+            }
             >
               全屏播放
             </button>
@@ -186,7 +192,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
                 setProgress([])
                 setCurrentStatus(null)
               }}
-              className="rounded-lg border border-line px-3 py-1.5 text-xs font-medium text-track transition-colors hover:bg-mist"
+              className={`rounded-lg border ${isMobile ? 'border-[#d9dee7] text-[#6b7280] hover:bg-[#f7f8fa] text-xs' : 'border-line text-track hover:bg-mist text-xs'} font-medium transition-colors px-3 py-1.5`}
             >
               重新生成
             </button>
@@ -226,7 +232,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
   }
 
   return (
-    <div className="mt-3 space-y-3 rounded-xl border border-line bg-mist/50 p-3">
+    <div className={`mt-3 space-y-3 rounded-xl border ${isMobile ? 'border-[#d9dee7] bg-[#f7f8fa] p-2.5' : 'border-line bg-mist/50 p-3'}`}>
       {/* Image thumbnails (from prop) or URL input (when empty) */}
       {imageUrls.length > 0 ? (
         <div className="flex flex-wrap gap-2">
@@ -251,14 +257,18 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
                 onPaste={i === urlRows.length - 1 ? e => handleUrlRowPaste(i, e) : undefined}
                 disabled={isLoading}
                 placeholder={i === urlRows.length - 1 ? '输入图片 URL（可选）' : `图片 URL ${i + 1}`}
-                className="w-full rounded-lg border border-line bg-white px-3 py-2 pr-10 text-xs outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:opacity-50"
+                className={`w-full rounded-lg border bg-white px-3 py-2 pr-10 outline-none placeholder:text-track/40 disabled:opacity-50 ${
+                  isMobile
+                    ? 'border-[#d9dee7] text-[11px] focus:border-[#1677ff] focus:ring-1 focus:ring-[#1677ff]'
+                    : 'border-line text-xs focus:border-start focus:ring-1 focus:ring-start'
+                }`}
               />
               {normalizeUrl(row) && <ThumbnailPreview url={normalizeUrl(row)} />}
               {i < urlRows.length - 1 && (
                 <button
                   type="button"
                   onClick={() => removeUrlRow(i)}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-line text-sm text-track/50 transition-colors hover:border-red-300 hover:text-red-500"
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border ${isMobile ? 'border-[#d9dee7] text-[#6b7280]' : 'border-line text-track/50'} text-sm transition-colors hover:border-red-300 hover:text-red-500`}
                 >
                   ×
                 </button>
@@ -270,7 +280,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
 
       {/* Prompt preview (from prop) or description input (when empty) */}
       {prompt ? (
-        <p className="line-clamp-2 text-xs text-track/70">{prompt}</p>
+        <p className={`line-clamp-2 ${isMobile ? 'text-[11px] text-[#6b7280]' : 'text-xs text-track/70'}`}>{prompt}</p>
       ) : (
         <textarea
           value={descriptionText}
@@ -278,7 +288,11 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
           disabled={isLoading}
           placeholder="描述希望生成的视频内容…（可选）"
           rows={2}
-          className="w-full resize-none rounded-lg border border-line bg-white px-3 py-2 text-xs outline-none placeholder:text-track/40 focus:border-start focus:ring-1 focus:ring-start disabled:opacity-50"
+          className={`w-full resize-none rounded-lg border bg-white px-3 py-2 outline-none placeholder:text-track/40 disabled:opacity-50 ${
+            isMobile
+              ? 'border-[#d9dee7] text-[11px] focus:border-[#1677ff] focus:ring-1 focus:ring-[#1677ff]'
+              : 'border-line text-xs focus:border-start focus:ring-1 focus:ring-start'
+          }`}
           style={{ maxHeight: 120 }}
         />
       )}
@@ -288,7 +302,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
         <button
           type="button"
           onClick={() => setShowParams(p => !p)}
-          className="flex w-full items-center justify-between text-xs text-track/50 hover:text-track/70"
+          className={`flex w-full items-center justify-between ${isMobile ? 'text-[11px] text-[#6b7280] hover:text-[#6b7280]' : 'text-xs text-track/50 hover:text-track/70'}`}
         >
           <span>参数：{resolution} · {ratio} · {duration}s{seed ? ` · seed:${seed}` : ''}</span>
           <span className="ml-1">{showParams ? '▲' : '▼'}</span>
@@ -296,24 +310,32 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
         {showParams && (
           <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
             <div>
-              <label className="mb-0.5 block text-[10px] text-track/50">分辨率</label>
+              <label className={`mb-0.5 block ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>分辨率</label>
               <select
                 value={resolution}
                 onChange={e => setResolution(e.target.value)}
                 disabled={isLoading}
-                className="w-full rounded-lg border border-line bg-white px-2 py-1.5 text-xs outline-none focus:border-start"
+                className={`w-full rounded-lg border bg-white px-2 py-1.5 outline-none ${
+                  isMobile
+                    ? 'border-[#d9dee7] text-[11px] focus:border-[#1677ff]'
+                    : 'border-line text-xs focus:border-start'
+                }`}
               >
                 <option value="720P">720P</option>
                 <option value="1080P">1080P</option>
               </select>
             </div>
             <div>
-              <label className="mb-0.5 block text-[10px] text-track/50">宽高比</label>
+              <label className={`mb-0.5 block ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>宽高比</label>
               <select
                 value={ratio}
                 onChange={e => setRatio(e.target.value)}
                 disabled={isLoading}
-                className="w-full rounded-lg border border-line bg-white px-2 py-1.5 text-xs outline-none focus:border-start"
+                className={`w-full rounded-lg border bg-white px-2 py-1.5 outline-none ${
+                  isMobile
+                    ? 'border-[#d9dee7] text-[11px] focus:border-[#1677ff]'
+                    : 'border-line text-xs focus:border-start'
+                }`}
               >
                 {RATIOS.map(r => (
                   <option key={r} value={r}>{r}</option>
@@ -321,7 +343,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
               </select>
             </div>
             <div>
-              <label className="mb-0.5 block text-[10px] text-track/50">时长</label>
+              <label className={`mb-0.5 block ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>时长</label>
               <input
                 type="number"
                 min={3}
@@ -329,11 +351,15 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
                 value={duration}
                 onChange={e => setDuration(Number(e.target.value))}
                 disabled={isLoading}
-                className="w-full rounded-lg border border-line bg-white px-2 py-1.5 text-xs outline-none focus:border-start"
+                className={`w-full rounded-lg border bg-white px-2 py-1.5 outline-none ${
+                  isMobile
+                    ? 'border-[#d9dee7] text-[11px] focus:border-[#1677ff]'
+                    : 'border-line text-xs focus:border-start'
+                }`}
               />
             </div>
             <div>
-              <label className="mb-0.5 block text-[10px] text-track/50">种子</label>
+              <label className={`mb-0.5 block ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>种子</label>
               <input
                 type="number"
                 min={0}
@@ -342,7 +368,11 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
                 onChange={e => setSeed(e.target.value)}
                 disabled={isLoading}
                 placeholder="随机"
-                className="w-full rounded-lg border border-line bg-white px-2 py-1.5 text-xs outline-none placeholder:text-track/30 focus:border-start"
+                className={`w-full rounded-lg border bg-white px-2 py-1.5 outline-none placeholder:text-track/30 ${
+                  isMobile
+                    ? 'border-[#d9dee7] text-[11px] focus:border-[#1677ff]'
+                    : 'border-line text-xs focus:border-start'
+                }`}
               />
             </div>
           </div>
@@ -354,7 +384,11 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
         <button
           type="button"
           onClick={handleGenerate}
-          className="w-full rounded-lg bg-start px-4 py-2 text-sm font-medium text-white transition-colors hover:bg-start/90"
+          className={`w-full rounded-lg font-medium text-white transition-colors disabled:cursor-not-allowed disabled:bg-line disabled:text-track/40 ${
+            isMobile
+              ? 'bg-[#1677ff] px-4 py-2 text-xs hover:bg-[#1677ff]/90'
+              : 'bg-start px-4 py-2 text-sm hover:bg-start/90'
+          }`}
         >
           生成视频
         </button>
@@ -365,32 +399,32 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-xs">
             <span className="inline-block h-2 w-2 animate-pulse rounded-full bg-amber-400" />
-            <span className="text-track/80">{currentStatus?.message || '正在生成视频…'}</span>
+            <span className={`${isMobile ? 'text-[11px] text-[#6b7280]' : 'text-xs text-track/80'}`}>{currentStatus?.message || '正在生成视频…'}</span>
             {currentStatus?.elapsed != null && (
-              <span className="ml-auto whitespace-nowrap font-mono text-[10px] text-track/40">
+              <span className={`ml-auto whitespace-nowrap font-mono ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/40'}`}>
                 已等 {currentStatus.elapsed}s
               </span>
             )}
           </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-mist">
+          <div className={`h-1.5 w-full overflow-hidden rounded-full ${isMobile ? 'bg-[#d9dee7]' : 'bg-mist'}`}>
             <div
-              className="h-full rounded-full bg-start transition-all duration-500 ease-out"
+              className={`h-full rounded-full transition-all duration-500 ease-out ${isMobile ? 'bg-[#1677ff]' : 'bg-start'}`}
               style={{ width: `${currentStatus?.progress_pct ?? 0}%` }}
             />
           </div>
-          <p className="text-right text-[10px] text-track/40">
+          <p className={`text-right ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/40'}`}>
             约 {currentStatus?.progress_pct ?? 0}%
           </p>
 
           {/* Collapsible detailed log */}
           {progress.length > 1 && (
             <details className="group">
-              <summary className="cursor-pointer text-[10px] font-medium text-track/40 transition-colors hover:text-track/60">
+              <summary className={`cursor-pointer font-medium transition-colors ${isMobile ? 'text-[9px] text-[#6b7280] hover:text-[#6b7280]' : 'text-[10px] text-track/40 hover:text-track/60'}`}>
                 详细日志 ({progress.length - 1} 次轮询)
               </summary>
-              <div className="mt-1 max-h-[120px] space-y-0.5 overflow-y-auto rounded-lg bg-white/50 p-2">
+              <div className={`mt-1 max-h-[120px] space-y-0.5 overflow-y-auto rounded-lg ${isMobile ? 'bg-[#f7f8fa]' : 'bg-white/50'} p-2`}>
                 {progress.map((p, i) => (
-                  <div key={i} className="flex items-center gap-1.5 text-[10px] text-track/50">
+                  <div key={i} className={`flex items-center gap-1.5 ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>
                     <span className={`inline-block h-1 w-1 shrink-0 rounded-full ${
                       p.status === 'SUCCEEDED' ? 'bg-green-500'
                       : p.status === 'FAILED' ? 'bg-red-500'
@@ -398,7 +432,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
                     }`} />
                     <span className="flex-1 truncate">{p.message}</span>
                     {p.progress_pct != null && (
-                      <span className="shrink-0 font-mono text-[9px] text-track/30">{p.progress_pct}%</span>
+                      <span className={`shrink-0 font-mono ${isMobile ? 'text-[8px] text-[#6b7280]' : 'text-[9px] text-track/30'}`}>{p.progress_pct}%</span>
                     )}
                   </div>
                 ))}
@@ -411,13 +445,17 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, existingResult, 
       {/* Error state */}
       {error && (
         <div className="space-y-2">
-          <div className="rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-700">
+          <div className={`rounded-lg border border-red-200 bg-red-50 px-3 py-2 ${isMobile ? 'text-[11px] text-red-700' : 'text-xs text-red-700'}`}>
             {error}
           </div>
           <button
             type="button"
             onClick={() => { setError(null); handleGenerate() }}
-            className="w-full rounded-lg border border-line px-4 py-2 text-xs font-medium text-track transition-colors hover:bg-mist"
+            className={`w-full rounded-lg border px-4 py-2 font-medium transition-colors ${
+              isMobile
+                ? 'border-[#d9dee7] text-[#6b7280] text-xs hover:bg-[#f7f8fa]'
+                : 'border-line text-track text-xs hover:bg-mist'
+            }`}
           >
             重试
           </button>
