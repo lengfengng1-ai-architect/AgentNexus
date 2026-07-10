@@ -1,0 +1,70 @@
+{
+  "result": {
+    "market_name": "Test",
+    "market_type": "消费市场",
+    "industry": "饮料",
+    "category": "饮料",
+    "description": "",
+    "geo_scope": "中国大陆",
+    "time_scope_start": 2021,
+    "time_scope_end": 2026,
+    "focus_period": "近3年",
+    "research_purpose": "市场进入评估",
+    "research_depth": "standard_report",
+    "market_definition": {
+      "included_scope": [],
+      "excluded_scope": [],
+      "upstream": [],
+      "downstream": [],
+      "substitute_solutions": [],
+      "definition_notes": ""
+    },
+    "market_size": {
+      "tam": {
+        "value": null,
+        "unit": "亿元人民币",
+        "year": null,
+        "calculation_method": "",
+        "confidence_level": "medium",
+        "evidence_ids": []
+      },
+      "sam": {
+        "value": null,
+        "unit": "亿元人民币",
+        "year": null,
+        "calculation_method": "",
+        "confidence_level": "medium",
+        "evidence_ids": []
+      },
+      "som": {
+        "value": null,
+        "unit": "亿元人民币",
+        "year": null,
+        "calculation_method": "",
+        "confidence_level": "medium",
+        "evidence_ids": []
+      },
+      "cagr": null,
+      "cagr_period": "",
+      "cagr_confidence": "medium",
+      "cagr_evidence_ids": [],
+      "conflict_notes": ""
+    },
+    "trend_signals": [],
+    "target_users": [],
+    "competitors": [],
+    "opportunity_assessment": {
+      "market_attractiveness": "medium",
+      "competition_intensity": "medium",
+      "entry_difficulty": "medium",
+      "data_confidence": "medium",
+      "key_opportunities": [],
+      "key_risks": [],
+      "recommended_actions": [],
+      "unknowns_to_verify": []
+    },
+    "evidence": [],
+    "full_report": ""
+  },
+  "confidence": "medium"
+}
