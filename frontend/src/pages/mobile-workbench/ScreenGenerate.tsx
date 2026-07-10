@@ -41,6 +41,17 @@ export function ScreenGenerate({ onNavigate, briefData }: ScreenGenerateProps) {
     const savedRunId = localStorage.getItem('allygo_mobile_plan_run_id')
     if (!briefData && status === 'idle' && savedRunId && savedRunId !== 'null') {
       restoreFromRunId(savedRunId)
+    } else if (!briefData && status === 'idle' && (!savedRunId || savedRunId === 'null')) {
+      // 没有存过的 run_id，用后端最新的已完成 run
+      import('../../api/plan').then(({ listPlanRuns }) => {
+        listPlanRuns(3).then(runs => {
+          const completed = runs.find(r => r.status === 'completed')
+          if (completed) {
+            localStorage.setItem('allygo_mobile_plan_run_id', completed.run_id)
+            restoreFromRunId(completed.run_id)
+          }
+        }).catch(() => {})
+      })
     }
   }, [briefData, status, restoreFromRunId])
 
