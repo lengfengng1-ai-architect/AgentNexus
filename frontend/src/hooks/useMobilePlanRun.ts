@@ -7,16 +7,16 @@ import { startPlanRun, approvePlanRun, rejectPlanRun, getPlanRunStatus, getPlanM
 import type { PlanChapter, PlanLogEvent, PlanNodeStatus, PlanOutputs } from '../types/plan'
 
 const PIPELINE_NODES: { id: string; label: string; desc: string }[] = [
-  { id: 'product_research', label: '产品调研 Agent', desc: '搜索并分析品牌产品信息与市场定位' },
-  { id: 'market_research', label: '市场调研 Agent', desc: '收集行业趋势、竞品格局、消费洞察' },
-  { id: 'audience_insight', label: '人群洞察 Agent', desc: '分析目标城市运动人群画像' },
-  { id: 'plan_data_query', label: '数据查询 Agent', desc: '调取 AllyGo 盟域/赛事/达人/场馆/经营社数据' },
-  { id: 'fitness_analysis', label: '适配度分析 Agent', desc: '计算品牌品类 × 运动场景适配度' },
-  { id: 'strategy_generation', label: '策略生成 Agent', desc: '制定营销策略、核心定位、4M+1C框架' },
-  { id: 'execution_planning', label: '执行规划 Agent', desc: '规划赛事/盟域/达人/内容/运营落地方案' },
-  { id: 'budget_kpi', label: '预算与 KPI Agent', desc: '测算预算分配、KPI预测、时间表' },
-  { id: 'action_recommendations', label: '行动建议 Agent', desc: '生成可执行的系统操作指导' },
-  { id: 'plan_generator', label: '方案生成 Agent', desc: '汇总上游输出为 9 章 Markdown 方案' },
+  { id: 'product_research', label: '产品调研', desc: '搜索并分析品牌产品信息与市场定位' },
+  { id: 'market_research', label: '市场调研', desc: '收集行业趋势、竞品格局、消费洞察' },
+  { id: 'audience_insight', label: '人群洞察', desc: '分析目标城市运动人群画像' },
+  { id: 'plan_data_query', label: '数据查询', desc: '调取 AllyGo 盟域/赛事/达人/场馆/经营社数据' },
+  { id: 'fitness_analysis', label: '适配度分析', desc: '计算品牌品类 × 运动场景适配度' },
+  { id: 'strategy_generation', label: '策略生成', desc: '制定营销策略、核心定位、4M+1C框架' },
+  { id: 'execution_planning', label: '执行规划', desc: '规划赛事/盟域/达人/内容/运营落地方案' },
+  { id: 'budget_kpi', label: '预算与 KPI', desc: '测算预算分配、KPI预测、时间表' },
+  { id: 'action_recommendations', label: '行动建议', desc: '生成可执行的系统操作指导' },
+  { id: 'plan_generator', label: '方案生成', desc: '汇总上游输出为 9 章 Markdown 方案' },
 ]
 
 export type MobileRunStatus = 'idle' | 'running' | 'paused' | 'failed' | 'completed'

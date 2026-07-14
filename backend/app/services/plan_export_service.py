@@ -1,9 +1,10 @@
 """方案导出 Service — 生成 XLSX/PDF 文件并返回下载 URL。
 
-Corresponding OpenSpec: (in_scope id: document-export)
+对应 OpenSpec: (in_scope id: document-export)
 """
 
 import logging
+import re
 from datetime import date
 from pathlib import Path
 
@@ -42,47 +43,32 @@ async def export_plan_xlsx(run_id: str) -> str:
 
 
 async def export_plan_pdf(run_id: str) -> str:
-    """生成方案 PDF，返回文件的绝对路径。"""
+    """生成方案 PDF，返回文件的绝对路径。
+
+    以 9 章完整 Markdown 方案内容为核心，渲染为专业文档格式。
+    """
     state = await _checkpoint_state(run_id)
     if state is None:
         raise ValueError(f"Run {run_id} not found")
 
-    brand_input = state.get("brand_input") or {}
-    strategy_gen = state.get("strategy_generation") or {}
-    exec_plan = state.get("execution_planning") or {}
-    budget_kpi = state.get("budget_kpi") or {}
-    action_rec = state.get("action_recommendations") or {}
+    chapters = (state.get("plan_generator") or {}).get("chapters") or []
+    if not chapters:
+        raise ValueError(f"Run {run_id} 没有方案章节数据（pipeline 未完成？）")
 
+    brand_input = state.get("brand_input") or {}
     brand_name = brand_input.get("brand_name", "营销方案")
-    positioning = strategy_gen.get("positioning", "")
-    key_messages = strategy_gen.get("key_messages") or []
     marketing_goal = brand_input.get("marketing_goal", "")
     category = brand_input.get("category", "")
     budget = brand_input.get("budget", 0)
     period = brand_input.get("period", 3)
 
-    exec_items: list[tuple[str, str]] = []
-    for field, label in [
-        ("leagues_plan", "盟域共建"),
-        ("events_plan", "赛事活动"),
-        ("influencer_plan", "达人合作"),
-        ("content_plan", "内容运营"),
-        ("store_plan", "经营社联动"),
-    ]:
-        val = exec_plan.get(field, "")
-        if val:
-            exec_items.append((label, str(val)[:200]))
-
-    allocations = budget_kpi.get("budget_allocation") or budget_kpi.get("allocations") or []
-    actions = action_rec.get("actions") or []
-
     # ── ReportLab PDF ──
     from reportlab.lib import colors
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm, mm
-    from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+    from reportlab.lib.styles import ParagraphStyle
     from reportlab.platypus import (
-        PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
+        PageBreak, Paragraph, SimpleDocTemplate, Spacer,
     )
 
     # Chinese font registration
@@ -109,96 +95,123 @@ async def export_plan_pdf(run_id: str) -> str:
     filename = f"{brand_name}_{today}_营销方案.pdf"
     filepath = _OUTPUT_DIR / filename
 
-    styles = getSampleStyleSheet()
-    t_h1 = ParagraphStyle('PdfH1', fontName=_FONT_NAME, fontSize=22, leading=28,
-                          spaceAfter=10, textColor=colors.HexColor('#1F4E79'))
-    t_h2 = ParagraphStyle('PdfH2', fontName=_FONT_NAME, fontSize=14, leading=18,
-                          spaceBefore=12, spaceAfter=6, textColor=colors.HexColor('#1F4E79'))
-    t_body = ParagraphStyle('PdfBody', fontName=_FONT_NAME, fontSize=10, leading=15,
-                            spaceAfter=6)
-    t_meta = ParagraphStyle('PdfMeta', fontName=_FONT_NAME, fontSize=10, leading=14,
-                            spaceAfter=4, textColor=colors.HexColor('#4A5568'))
-    t_bullet = ParagraphStyle('PdfBullet', fontName=_FONT_NAME, fontSize=10, leading=14,
-                              spaceAfter=3, leftIndent=12)
+    styles = {}
+    styles['cover_title'] = ParagraphStyle(
+        'CoverTitle', fontName=_FONT_NAME, fontSize=22, leading=28,
+        spaceAfter=10, textColor=colors.HexColor('#1F4E79'),
+    )
+    styles['cover_meta'] = ParagraphStyle(
+        'CoverMeta', fontName=_FONT_NAME, fontSize=10, leading=14,
+        spaceAfter=4, textColor=colors.HexColor('#4A5568'),
+    )
+    styles['ch_title'] = ParagraphStyle(
+        'ChTitle', fontName=_FONT_NAME, fontSize=15, leading=20,
+        spaceBefore=18, spaceAfter=2, textColor=colors.HexColor('#1F4E79'),
+    )
+    styles['ch_subtitle'] = ParagraphStyle(
+        'ChSubtitle', fontName=_FONT_NAME, fontSize=10, leading=13,
+        spaceAfter=10, textColor=colors.HexColor('#718096'),
+    )
+    styles['h2'] = ParagraphStyle(
+        'ChH2', fontName=_FONT_NAME, fontSize=12, leading=16,
+        spaceBefore=10, spaceAfter=4, textColor=colors.HexColor('#1A202C'),
+    )
+    styles['h3'] = ParagraphStyle(
+        'ChH3', fontName=_FONT_NAME, fontSize=11, leading=15,
+        spaceBefore=8, spaceAfter=3, textColor=colors.HexColor('#2D3748'),
+    )
+    styles['bold_lead'] = ParagraphStyle(
+        'ChBoldLead', fontName=_FONT_NAME, fontSize=9.5, leading=14.5,
+        spaceBefore=6, spaceAfter=4,
+    )
+    styles['body'] = ParagraphStyle(
+        'ChBody', fontName=_FONT_NAME, fontSize=9.5, leading=14.5,
+        spaceAfter=4,
+    )
+    styles['bullet'] = ParagraphStyle(
+        'ChBullet', fontName=_FONT_NAME, fontSize=9.5, leading=14,
+        spaceAfter=2,
+    )
+    styles['sep'] = ParagraphStyle(
+        'ChSep', fontName=_FONT_NAME, fontSize=6, leading=8,
+        spaceAfter=2, textColor=colors.HexColor('#CBD5E0'),
+    )
 
-    story: list = []
+    def _render_md(text: str) -> list:
+        """将一段 Markdown 文本转为 PDF story 元素列表。"""
+        elements = []
+        for line in text.split('\n'):
+            line = line.strip()
+            if not line:
+                continue
+            # escape XML
+            safe = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+            safe = safe.replace('"', '&quot;').replace("'", '&#39;')
+            # ATX headings
+            m = re.match(r'^(#{1,6})\s+(.+)$', safe)
+            if m:
+                level = len(m.group(1))
+                content = m.group(2)
+                if level <= 2:
+                    elements.append(Paragraph(content, styles['h2']))
+                else:
+                    elements.append(Paragraph(content, styles['h3']))
+                continue
+            # bullet lists
+            if re.match(r'^[\-\*]\s+', safe):
+                text_bullet = re.sub(r'^[\-\*]\s+', '', safe)
+                elements.append(Paragraph(f"• {text_bullet}", styles['bullet']))
+                continue
+            # numbered lists
+            if re.match(r'^\d+[\.\)]\s+', safe):
+                text_num = re.sub(r'^\d+[\.\)]\s+', '', safe)
+                elements.append(Paragraph(f"• {text_num}", styles['bullet']))
+                continue
+            # horizontal rule
+            if re.match(r'^[-]{3,}$', safe) or re.match(r'^[*]{3,}$', safe):
+                elements.append(Paragraph('—' * 20, styles['sep']))
+                continue
+            # bold / italic
+            safe = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', safe)
+            safe = re.sub(r'\*(.+?)\*', r'<i>\1</i>', safe)
+            # inline code
+            safe = re.sub(r'`(.+?)`', r'<font face="Courier" size="8">\1</font>', safe)
+            # 行首粗体 → 加上方间距
+            style = styles['bold_lead'] if safe.startswith('<b>') else styles['body']
+            elements.append(Paragraph(safe, style))
+        return elements
 
-    # Cover page
+    story = []
+
+    # ── Cover page ──
     story.append(Spacer(1, 50 * mm))
-    story.append(Paragraph("营销方案报告", t_h1))
+    story.append(Paragraph("营销方案报告", styles['cover_title']))
     story.append(Spacer(1, 15 * mm))
-    story.append(Paragraph(f"品牌名称：{brand_name}", t_meta))
+    story.append(Paragraph(f"品牌名称：{brand_name}", styles['cover_meta']))
     if category:
-        story.append(Paragraph(f"所属品类：{category}", t_meta))
-    story.append(Paragraph(f"预算规模：{budget} 万元", t_meta))
-    story.append(Paragraph(f"执行周期：{period} 个月", t_meta))
+        story.append(Paragraph(f"所属品类：{category}", styles['cover_meta']))
+    story.append(Paragraph(f"预算规模：{budget} 万元", styles['cover_meta']))
+    story.append(Paragraph(f"执行周期：{period} 个月", styles['cover_meta']))
     if marketing_goal:
-        story.append(Paragraph(f"营销目标：{marketing_goal}", t_meta))
+        story.append(Paragraph(f"营销目标：{marketing_goal}", styles['cover_meta']))
     story.append(Spacer(1, 10 * mm))
-    story.append(Paragraph(f"生成日期：{date.today().strftime('%Y年%m月%d日')}", t_meta))
+    story.append(Paragraph(f"生成日期：{date.today().strftime('%Y年%m月%d日')}", styles['cover_meta']))
     story.append(PageBreak())
 
-    # 1. Strategy
-    story.append(Paragraph("一、策略定位", t_h2))
-    if positioning:
-        story.append(Paragraph(positioning, t_body))
-    if key_messages:
-        story.append(Spacer(1, 3 * mm))
-        story.append(Paragraph("核心传播信息：", t_body))
-        for msg in key_messages[:6]:
-            story.append(Paragraph(f"• {msg}", t_bullet))
-    story.append(Spacer(1, 6 * mm))
-
-    # 2. Execution
-    if exec_items:
-        story.append(Paragraph("二、执行规划", t_h2))
-        for label, desc in exec_items:
-            safe_desc = desc.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            story.append(Paragraph(f"<b>{label}：</b>{safe_desc}", t_body))
-        story.append(Spacer(1, 6 * mm))
-
-    # 3. Budget
-    if allocations:
-        story.append(Paragraph("三、预算分配", t_h2))
-        table_data = [["费用项目", "金额(万元)", "占比"]]
-        for a in allocations:
-            cat = str(a.get("category", ""))
-            amt = a.get("amount", 0)
-            pct = f'{a.get("percentage", 0)}%'
-            try:
-                table_data.append([cat, str(amt) if amt else "0", pct])
-            except Exception:
-                pass
-        if len(table_data) > 1:
-            col_w = [130, 80, 60]
-            t = Table(table_data, colWidths=col_w)
-            t.setStyle(TableStyle([
-                ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2D3748')),
-                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
-                ('FONTSIZE', (0, 0), (-1, -1), 9),
-                ('ALIGN', (1, 0), (-1, -1), 'CENTER'),
-                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#BFBFBF')),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#F7F8FA')]),
-                ('TOPPADDING', (0, 0), (-1, -1), 6),
-                ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-            ]))
-            story.append(t)
-        story.append(Spacer(1, 6 * mm))
-
-    # 4. Actions
-    if actions:
-        story.append(Paragraph("四、行动建议", t_h2))
-        for a in actions[:6]:
-            title = str(a.get("title", ""))
-            desc = str(a.get("description", ""))[:120]
-            safe = desc.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            story.append(Paragraph(f"<b>{title}</b>：{safe}", t_body))
+    # ── Chapter pages (连续排版，不分页) ──
+    for idx, chapter in enumerate(chapters):
+        if idx > 0:
+            story.append(Spacer(1, 4 * mm))
+        story.append(Paragraph(f"第{idx+1}章 {chapter['title']}", styles['ch_title']))
+        if chapter.get('subtitle'):
+            story.append(Paragraph(chapter['subtitle'], styles['ch_subtitle']))
+        story.append(Spacer(1, 2 * mm))
+        story.extend(_render_md(chapter.get('content', '')))
 
     doc = SimpleDocTemplate(
         str(filepath), pagesize=A4,
         topMargin=2 * cm, bottomMargin=2 * cm,
-        leftMargin=2.5 * cm, rightMargin=2.5 * cm,
+        leftMargin=0.5 * cm, rightMargin=0.5 * cm,
     )
     doc.build(story)
     logger.info("PDF exported to %s", filepath)
