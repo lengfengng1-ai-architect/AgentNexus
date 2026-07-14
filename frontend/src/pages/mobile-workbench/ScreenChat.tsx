@@ -28,6 +28,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     setInputValue,
     updateVideoResult,
     updateImageResult,
+    addVirtualMessage,
   } = useChat()
 
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -76,14 +77,14 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     setInputValue('我是 [品牌名]，属于 [品类]，产品线是 [产品线]，目标人群 [目标人群]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
   }
 
-  // ── 产品海报 prompt 模板 ──────────────────────────────────────────────
+  // ── 产品海报 virtual message ─────────────────────────────────────────
   const handlePosterTemplate = () => {
-    setInputValue('帮我生成一张【产品名】的产品海报图片，颜色/材质为【颜色/材质】，背景为【背景】，光线为【光线】')
+    addVirtualMessage('text_to_image', '帮我生成一张产品海报图片')
   }
 
-  // ── 产品视频 prompt 模板 ──────────────────────────────────────────────
+  // ── 产品视频 virtual message ──────────────────────────────────────────
   const handleVideoTemplate = () => {
-    setInputValue('帮我生成一条宣传视频，主体是【主体】，动作/状态是【动作/状态】，场景为【场景】，运镜为【运镜】')
+    addVirtualMessage('generate_video', '帮我生成一条宣传视频')
   }
 
   // ── 文件上传 ───────────────────────────────────────────────────────────

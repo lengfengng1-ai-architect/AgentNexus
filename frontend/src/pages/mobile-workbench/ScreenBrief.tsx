@@ -53,7 +53,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
       brand_name: initialBrandData?.brand_name ?? parsed.brand_name ?? '娃哈哈',
       category: initialBrandData?.category ?? parsed.category ?? '果汁饮料',
       product_matrix: parsed.product_matrix ?? '魅力系列（蓝莓/石榴/荔枝）',
-      target_audience: parsed.target_audience ?? '25-35岁 一线白领',
+      target_audience: parsed.target_audience ?? '25-35岁',
       marketing_goal: initialBrandData?.budget != null ? `认知度 ≥80% · 预算 ${initialBrandData.budget}万` : parsed.marketing_goal ?? '认知度 ≥60% · 私域会员 ≥50万',
       period: initialBrandData?.period != null ? `${initialBrandData.period} 个月（${initialBrandData.period * 4} 周）` : parsed.period ?? '3 个月（12 周）',
       selected_cities: initialBrandData?.city ? [initialBrandData.city] : parsed.selected_cities ?? ['北京', '上海', '广州', '深圳'],
@@ -118,17 +118,17 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
   return (
     <>
       <div className="wk-head">
-        <div className="brand">{brand}新产品 · 集群营销全功能方案</div>
-        <div className="name">{productMatrix} · 运动盟域跨界整合</div>
+        <div className="brand">{brand} · {category}</div>
+        <div className="name">{productMatrix}</div>
         <div className="matrix">
           {productMatrix.split(/[（(、，,）)]/).filter(s => s.length <= 10 && s.length > 0).slice(0, 3).map((s, i) => (
             <span key={i}>{s}</span>
           ))}
         </div>
         <div className="meta">
-          <div><b>150ml</b> 规格</div>
-          <div><b>¥20</b> 中高端</div>
-          <div><b>{period.replace(/[0-9]+/, (m) => m)}</b> {period.includes('周') ? '' : period}</div>
+          <div><b>{category}</b></div>
+          <div>{marketingGoal}</div>
+          <div>{period}</div>
         </div>
       </div>
       <div className="sec"><h3>方案简报 <span className="more">存草稿</span></h3></div>
@@ -148,7 +148,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
         <div className="field">
           <label>目标人群</label>
           <select value={targetAudience} onChange={e => setTargetAudience(e.target.value)}>
-            <option>25-35岁 一线白领</option>
+            <option>25-35岁</option>
             <option>运动健身爱好者</option>
             <option>新中产人群</option>
             <option>Z 世代</option>

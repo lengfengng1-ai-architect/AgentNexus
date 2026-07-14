@@ -48,21 +48,28 @@ description: 移动端工作台①对话屏的对话会话能力，包含语音�
 - **AND** SHALL 不传递 brandData
 - **AND** ScreenBrief SHALL 使用默认 mock 数据
 
-### Requirement: "产品海报"按钮填入海报 prompt 模板到输入框
+### Requirement: "产品海报"按钮 SHALL 直接注入虚拟 AI 消息
 
-点击"产品海报"时，SHALL 将海报 prompt 模板填入输入框，模板包含产品名、颜色/材质、背景、光线等占位参数。
+点击"产品海报"时，SHALL 不再填入输入框模板，而是直接注入虚拟 AI 消息，在对话流中展开 InlineImageCard。
 
-#### Scenario: 点击产品海报填入模板
+#### Scenario: 点击产品海报注入虚拟消息
 - **WHEN** 用户点击"产品海报"按钮
-- **THEN** 输入框 SHALL 填入：`帮我生成一张【产品名】的产品海报图片，颜色/材质为【颜色/材质】，背景为【背景】，光线为【光线】`
+- **THEN** 对话流 SHALL 追加一条用户消息，内容为 `"帮我生成一张产品海报图片"`
+- **AND** 对话流 SHALL 追加一条 AI 消息，携带 intent `text_to_image` 和空的 generationPrompt
+- **AND** 输入框 SHALL 保持不变（不被填充）
+- **AND** ChatBubble SHALL 在 AI 消息气泡内渲染 InlineImageCard
 
-### Requirement: "产品视频"按钮填入视频 prompt 模板到输入框
+### Requirement: "产品视频"按钮 SHALL 直接注入虚拟 AI 消息
 
-点击"产品视频"时，SHALL 将视频 prompt 模板填入输入框，模板包含主体、动作/状态、场景、运镜等占位参数。
+点击"产品视频"时，SHALL 不再填入输入框模板，而是直接注入虚拟 AI 消息，在对话流中展开 InlineVideoCard。
 
-#### Scenario: 点击产品视频填入模板
+#### Scenario: 点击产品视频注入虚拟消息
 - **WHEN** 用户点击"产品视频"按钮
-- **THEN** 输入框 SHALL 填入：`帮我生成一条宣传视频，主体是【主体】，动作/状态是【动作/状态】，场景为【场景】，运镜为【运镜】`
+- **THEN** 对话流 SHALL 追加一条用户消息，内容为 `"帮我生成一条宣传视频"`
+- **AND** 对话流 SHALL 追加一条 AI 消息，携带 intent `generate_video` 和空的 videoPrompt/imageUrls
+- **AND** 输入框 SHALL 保持不变（不被填充）
+- **AND** ChatBubble SHALL 在 AI 消息气泡内渲染 InlineVideoCard
+- **AND** InlineVideoCard SHALL 显示 URL 输入框和视频描述输入框供用户补充
 
 ### Requirement: 输入语音按钮 SHALL 从快捷按钮行移至输入框行内
 

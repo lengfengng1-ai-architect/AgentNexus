@@ -39,6 +39,7 @@ type ChatAction =
   | { type: 'LOAD_HISTORY'; messages: ChatMessage[] }
   | { type: 'VIDEO_RESULT'; messageId: string; videoResult: VideoResultData }
   | { type: 'IMAGE_RESULT'; messageId: string; imageResult: ImageResultData }
+  | { type: 'ADD_VIRTUAL_MESSAGE'; intent: ChatMessage['intent']; userContent?: string }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
   return {
@@ -160,6 +161,24 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, messages: next }
     }
 
+    case 'ADD_VIRTUAL_MESSAGE': {
+      const userMsg: ChatMessage = {
+        id: `virtual-user-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        role: 'user',
+        content: action.userContent ?? '',
+      }
+      const aiMsg: ChatMessage = {
+        id: `virtual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        role: 'ai',
+        content: '',
+        intent: action.intent,
+        imageUrls: action.intent === 'generate_video' || action.intent === 'text_to_video' ? [] : undefined,
+        videoPrompt: action.intent === 'generate_video' || action.intent === 'text_to_video' ? null : undefined,
+        generationPrompt: action.intent === 'text_to_image' ? '' : undefined,
+      }
+      return { ...state, messages: [...state.messages, userMsg, aiMsg] }
+    }
+
     default:
       return state
   }
@@ -182,7 +201,10 @@ export function useChat() {
   }, [])
 
   useEffect(() => {
-    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state.messages)) } catch { /* ignore */ }
+    try {
+      const persistable = state.messages.filter(m => !m.id.startsWith('virtual-'))
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(persistable))
+    } catch { /* ignore */ }
   }, [state.messages])
 
   const setInputValue = useCallback((value: string) => { dispatch({ type: 'SET_INPUT', value }) }, [])
@@ -197,7 +219,7 @@ export function useChat() {
     // Build full context: conversation history + merged brand_input
     const lastBrand = getLatestBrandInput(messagesRef.current)
     const conversationHistory = messagesRef.current
-      .filter(m => !m.id.startsWith('stream-'))
+      .filter(m => !m.id.startsWith('stream-') && !m.id.startsWith('virtual-'))
       .map(m => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`)
       .slice(-10) // keep last 10 exchanges
     const context: Record<string, unknown> = { conversation_history: conversationHistory }
@@ -289,6 +311,10 @@ export function useChat() {
     dispatch({ type: 'IMAGE_RESULT', messageId, imageResult })
   }, [])
 
+  const addVirtualMessage = useCallback((intent: ChatMessage['intent'], userContent?: string) => {
+    dispatch({ type: 'ADD_VIRTUAL_MESSAGE', intent, userContent })
+  }, [])
+
   const latestBrandInput = getLatestBrandInput(state.messages)
   return {
     messages: state.messages,
@@ -302,6 +328,7 @@ export function useChat() {
     setInputValue,
     updateVideoResult,
     updateImageResult,
+    addVirtualMessage,
   }
 }
 
