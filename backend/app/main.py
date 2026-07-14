@@ -17,6 +17,7 @@ from app.routers import (
     market_analysis,
     plan,
     product_info,
+    prompt_optimizer,
     upload,
     video,
 )
@@ -47,7 +48,7 @@ def _configure_logging() -> None:
     root.addHandler(file_handler)
 
     # 压制第三方库的 DEBUG 噪音，让 app 自身日志可读
-    for noisy in ("aiosqlite", "httpx", "httpcore", "openai", "urllib3"):
+    for noisy in ("aiosqlite", "httpx", "httpcore", "openai", "urllib3", "watchfiles.main"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(audience_insight.router, prefix="/api/v1")
     app.include_router(video.router, prefix="/api/v1")
     app.include_router(upload.router, prefix="/api/v1")
+    app.include_router(prompt_optimizer.router, prefix="/api/v1")
 
     # 挂载上传文件目录为静态资源
     upload_dir = Path(settings.upload_dir)
@@ -110,4 +112,4 @@ app = create_app()
 if __name__ == "__main__":
     import uvicorn
 
-    uvicorn.run("app.main:app", host=settings.host, port=settings.port, reload=settings.debug)
+    uvicorn.run("app.main:app", host=settings.host, port=settings.port, reload=settings.debug, reload_excludes=["*.log", "logs/*"])

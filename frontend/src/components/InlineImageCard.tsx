@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from 'react'
+import { optimizePrompt } from '../api/promptOptimizer'
 import type { ChatMessage } from '../types/chat'
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -20,6 +21,7 @@ interface InlineImageCardProps {
 export function InlineImageCard({ prompt: initialPrompt, messageId, variant, existingResult, onImageResult }: InlineImageCardProps) {
   const isMobile = variant === 'mobile'
   const [isLoading, setIsLoading] = useState(false)
+  const [optimizing, setOptimizing] = useState(false)
   const [result, setResult] = useState<ChatMessage['imageResult']>(existingResult ?? undefined)
   const [error, setError] = useState<string | null>(null)
   const [showFullscreen, setShowFullscreen] = useState(false)
@@ -35,6 +37,20 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, variant, exi
       setTimeout(() => { if (mountedRef.current) setCopied(false) }, 800)
     } catch { /* ignore clipboard errors */ }
   }, [])
+
+  // AI 优化提示词
+  const handleOptimize = useCallback(async () => {
+    if (!prompt.trim() || optimizing) return
+    setOptimizing(true)
+    try {
+      const result = await optimizePrompt(prompt, 'image')
+      setPrompt(result.optimized)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '优化失败')
+    } finally {
+      setOptimizing(false)
+    }
+  }, [prompt, optimizing])
 
   const handleGenerate = useCallback(async () => {
     if (isLoading || !prompt.trim()) return
@@ -134,9 +150,30 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, variant, exi
     <div className={`mt-3 space-y-3 rounded-xl border ${isMobile ? 'border-[#d9dee7] bg-[#f7f8fa] p-2.5' : 'border-line bg-mist/50 p-3'}`}>
       {/* 提示词输入框 */}
       <div>
-        <label className={`mb-1 block font-medium ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>
-          图片描述
-        </label>
+        <div className="flex items-center justify-between mb-1">
+          <label className={`block font-medium ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>
+            图片描述
+          </label>
+          <button
+            type="button"
+            onClick={handleOptimize}
+            disabled={optimizing || isLoading || !prompt.trim()}
+            className={`flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-40 ${
+              isMobile
+                ? 'border-[#d9dee7] text-[#6b7280] hover:bg-[#f7f8fa]'
+                : 'border-line text-track/60 hover:bg-mist'
+            }`}
+          >
+            {optimizing ? (
+              <>
+                <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent" />
+                优化中
+              </>
+            ) : (
+              <>✨ AI 优化</>
+            )}
+          </button>
+        </div>
         <textarea
           rows={3}
           value={prompt}

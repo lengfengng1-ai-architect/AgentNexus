@@ -172,12 +172,21 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
           <input type="text" value={marketingGoal} onChange={e => setMarketingGoal(e.target.value)} />
         </div>
         <div className="field">
-          <label>投放周期</label>
-          <select value={period} onChange={e => setPeriod(e.target.value)}>
-            <option>3 个月（12 周）</option>
-            <option>1 个月</option>
-            <option>6 个月</option>
-          </select>
+          <label>投放周期（月）</label>
+          <input
+            type="number"
+            min={0.5}
+            max={36}
+            step={0.5}
+            value={period.match(/[\d.]+/)?.[0] || ''}
+            onChange={e => {
+              const v = e.target.value
+              if (v === '' || /^\d*\.?\d*$/.test(v)) {
+                setPeriod(v ? `${v} 个月` : '')
+              }
+            }}
+            placeholder="例如 1.5"
+          />
         </div>
         <div className="field">
           <label>首批城市</label>

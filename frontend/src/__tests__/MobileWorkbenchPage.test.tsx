@@ -41,7 +41,7 @@ describe('MobileWorkbenchPage', () => {
 
   test('点击快捷「方案生成」切到 ② 简报屏', () => {
     render(<MobileWorkbenchPage />)
-    fireEvent.click(screen.getByText('方案生成'))
+    fireEvent.click(screen.getByRole('button', { name: '方案生成' }))
     // ScreenBrief 渲染表单而非占位
     expect(screen.getByText('方案简报')).toBeDefined()
     expect(screen.getByText('② 简报').className).toContain('on')
