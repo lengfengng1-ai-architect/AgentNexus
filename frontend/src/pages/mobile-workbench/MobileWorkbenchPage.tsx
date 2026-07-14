@@ -68,6 +68,19 @@ export function MobileWorkbenchPage() {
     setScreen(key)
   }
 
+  // 返回上一屏（不回退数据）
+  const handleBack = () => {
+    const prev: Record<MobileScreen, MobileScreen | null> = {
+      chat: null,
+      brief: 'chat',
+      generate: 'brief',
+      actions: 'generate',
+      dispatch: 'actions',
+    }
+    const target = prev[screen]
+    if (target) setScreen(target)
+  }
+
   // 根据实际表单数据动态更新 topbar sub 文本
   const brandLabel = briefData ? briefData.brand_name : '娃哈哈'
   const productLabel = briefData ? briefData.product_matrix?.split(/[（(]/)[0] || briefData.product_matrix : '魅力系列'
@@ -83,7 +96,10 @@ export function MobileWorkbenchPage() {
 
   const topbar = (
     <div className="topbar">
-      <span className="ico">‹</span>
+      {screen !== 'chat' && (
+        <span className="ico" onClick={handleBack} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); handleBack() } }} role="button" tabIndex={0} aria-label="返回">‹</span>
+      )}
+      {screen === 'chat' && <span style={{ width: 18 }} />}
       <span className="t">
         {meta.t}
         <small>{meta.sub}</small>
