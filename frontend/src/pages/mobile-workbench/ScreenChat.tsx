@@ -29,10 +29,12 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     updateVideoResult,
     updateImageResult,
     addVirtualMessage,
+    updateMessageContent,
   } = useChat()
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
   const [isListening, setIsListening] = useState(false)
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const inputValueRef = useRef<string>(inputValue)
@@ -135,6 +137,98 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     onNavigate('brief', userContent || msg.content || undefined, msg.brandInput)
   }, [messages, onNavigate])
 
+  // ── 市场分析 ───────────────────────────────────────────────────────────
+  const handleStartMarketResearch = useCallback(async (msgId: string) => {
+    const msg = messages.find(m => m.id === msgId)
+    if (!msg?.marketName) return
+
+    // 追加"分析中…"状态消息
+    updateMessageContent(msgId, '🔍 正在启动市场分析…')
+
+    // Abort 上一个请求（如果有）
+    abortRef.current?.abort()
+    const controller = new AbortController()
+    abortRef.current = controller
+
+    try {
+      const resp = await fetch(`${API_BASE}/market-analysis/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ market_name: msg.marketName, category: msg.brandInput?.category || '' }),
+        signal: controller.signal,
+      })
+      if (!resp.ok) throw new Error('市场分析请求失败')
+      if (!resp.body) throw new Error('响应体为空')
+
+      const reader = resp.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let progressLines: string[] = []
+
+      while (true) {
+        const { done: streamDone, value } = await reader.read()
+        if (streamDone) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const parts = buffer.split('\n\n')
+        buffer = parts.pop() || ''
+
+        for (const part of parts) {
+          if (!part.trim()) continue
+          let event = '', data = ''
+          for (const line of part.split('\n')) {
+            const s = line.trim()
+            if (s.startsWith('event:')) event = s.slice(6).trim()
+            else if (s.startsWith('data:')) data = s.slice(5).trim()
+          }
+
+          if (event === 'progress' && data) {
+            try {
+              const p = JSON.parse(data)
+              const label = p.stage || p.node || ''
+              if (!progressLines.includes(label)) {
+                progressLines.push(label)
+                updateMessageContent(msgId, progressLines.join('\n'))
+              }
+            } catch { /* ignore parse errors */ }
+          }
+
+          if (event === 'node_end' && data) {
+            try {
+              const p = JSON.parse(data)
+              if (p.status === 'completed') {
+                // Replace the last progress line with a completed version
+                const lastIdx = progressLines.length - 1
+                if (lastIdx >= 0 && !progressLines[lastIdx].includes('✓')) {
+                  progressLines[lastIdx] = progressLines[lastIdx] + '  ✓'
+                  updateMessageContent(msgId, progressLines.join('\n'))
+                }
+              }
+            } catch { /* ignore */ }
+          }
+
+          if (event === 'result' && data) {
+            try {
+              const r = JSON.parse(data)
+              const report = r.result?.full_report || r.full_report || ''
+              if (report) {
+                updateMessageContent(msgId, report)
+              }
+            } catch { /* ignore */ }
+          }
+        }
+      }
+    } catch (err) {
+      if (err instanceof DOMException && err.name === 'AbortError') return
+      updateMessageContent(msgId, `❌ 市场分析失败：${err instanceof Error ? err.message : '未知错误'}`)
+    }
+  }, [messages, updateMessageContent])
+
+  // ── 组件卸载时 abort 流 ─────────────────────────────────────────────────
+  useEffect(() => {
+    return () => { abortRef.current?.abort() }
+  }, [])
+
   return (
     <>
       {error && <ErrorBar message={error} />}
@@ -150,6 +244,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
             variant="mobile"
             onRetry={m.retryable ? handleRetry : undefined}
             onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
+            onStartMarketResearch={m.canStartMarketResearch ? handleStartMarketResearch : undefined}
             onVideoResult={updateVideoResult}
             onImageResult={updateImageResult}
           />

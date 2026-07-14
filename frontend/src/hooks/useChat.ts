@@ -32,7 +32,7 @@ type ChatAction =
   | { type: 'SEND_MESSAGE'; content: string }
   | { type: 'STREAM_START' }
   | { type: 'STREAM_REASONING'; text: string }
-  | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null; imageUrls?: string[]; videoPrompt?: string | null; generationPrompt?: string | null; messageId?: string }
+  | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null; imageUrls?: string[]; videoPrompt?: string | null; generationPrompt?: string | null; messageId?: string; marketName?: string | null }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RETRY_MESSAGE'; messageId: string }
@@ -40,6 +40,7 @@ type ChatAction =
   | { type: 'VIDEO_RESULT'; messageId: string; videoResult: VideoResultData }
   | { type: 'IMAGE_RESULT'; messageId: string; imageResult: ImageResultData }
   | { type: 'ADD_VIRTUAL_MESSAGE'; intent: ChatMessage['intent']; userContent?: string }
+  | { type: 'UPDATE_MESSAGE_CONTENT'; messageId: string; content: string }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
   return {
@@ -108,6 +109,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'INTENT_RECEIVED': {
       const msgs = state.messages.filter(m => !m.id.startsWith('stream-'))
       const canGeneratePlan = action.intent === 'generate_plan' && action.missingFields.length === 0
+      const canStartMarketResearch = action.intent === 'market_research' && action.missingFields.length === 0
       const msgId = action.messageId || `ai-${Date.now()}`
       const aiMessage: ChatMessage = {
         id: msgId,
@@ -117,6 +119,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         brandInput: action.brandInput,
         intent: action.intent as ChatMessage['intent'],
         canGeneratePlan,
+        canStartMarketResearch,
+        marketName: action.marketName ?? undefined,
         missingFields: action.missingFields.length > 0 ? action.missingFields : undefined,
         gate: action.gate,
         imageUrls: action.imageUrls,
@@ -179,6 +183,13 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, messages: [...state.messages, userMsg, aiMsg] }
     }
 
+    case 'UPDATE_MESSAGE_CONTENT': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId ? { ...m, content: action.content } : m,
+      )
+      return { ...state, messages: next }
+    }
+
     default:
       return state
   }
@@ -226,6 +237,12 @@ export function useChat() {
     if (lastBrand) context.brand_input = lastBrand
     if (imageUrls && imageUrls.length > 0) context.image_urls = imageUrls
 
+    // Pass latest market_name for market_research context
+    const lastMsgWithMarket = messagesRef.current.slice().reverse().find(m => m.marketName)
+    if (lastMsgWithMarket?.marketName) {
+      context.market_name = lastMsgWithMarket.marketName
+    }
+
     try {
       let intentReceived = false
       let reasoningBuffer = ''
@@ -248,6 +265,7 @@ export function useChat() {
             imageUrls: chunk.intent.image_urls,
             videoPrompt: chunk.intent.video_prompt,
             generationPrompt: chunk.intent.generation_prompt,
+            marketName: chunk.intent.market_name,
           })
         }
       }
@@ -292,6 +310,7 @@ export function useChat() {
             imageUrls: chunk.intent.image_urls,
             videoPrompt: chunk.intent.video_prompt,
             generationPrompt: chunk.intent.generation_prompt,
+            marketName: chunk.intent.market_name,
           })
         }
       }
@@ -315,6 +334,10 @@ export function useChat() {
     dispatch({ type: 'ADD_VIRTUAL_MESSAGE', intent, userContent })
   }, [])
 
+  const updateMessageContent = useCallback((messageId: string, content: string) => {
+    dispatch({ type: 'UPDATE_MESSAGE_CONTENT', messageId, content })
+  }, [])
+
   const latestBrandInput = getLatestBrandInput(state.messages)
   return {
     messages: state.messages,
@@ -329,6 +352,8 @@ export function useChat() {
     updateVideoResult,
     updateImageResult,
     addVirtualMessage,
+    updateMessageContent,
+    updateMessageContent,
   }
 }
 

@@ -14,6 +14,44 @@ async def _fake_intent(state: dict) -> dict:
     if not state.get("message"):
         raise ValueError("Missing required input: message")
     message = state.get("message", "")
+    # market_research must be checked before generate_plan since "分析" can co-occur with brand fields
+    if "分析" in message or "调研" in message or "竞品" in message:
+        if "竞品" in message and "饮料" in message:
+            return {
+                "intent": "market_research",
+                "confidence": 0.9,
+                "brand_input": {"category": "饮料"},
+                "missing_fields": [],
+                "market_name": "娃哈哈",
+                "reply": "好的！我已了解研究目标：娃哈哈（饮料）。请点击「开始分析」按钮进行市场分析。",
+            }
+        if "调研" in message:
+            return {
+                "intent": "market_research",
+                "confidence": 0.85,
+                "brand_input": {},
+                "missing_fields": ["market_name", "category"],
+                "market_name": None,
+                "reply": "好的，我来帮您做市场分析。请问您想分析哪个品牌或赛道？以及属于什么品类？",
+            }
+        if "电解质" in message:
+            return {
+                "intent": "market_research",
+                "confidence": 0.88,
+                "brand_input": {"category": "饮料"},
+                "missing_fields": ["market_name"],
+                "market_name": None,
+                "reply": "请问您想分析哪个品牌或赛道？",
+            }
+        if "行业" in message or "赛道" in message:
+            return {
+                "intent": "market_research",
+                "confidence": 0.85,
+                "brand_input": {},
+                "missing_fields": ["market_name", "category"],
+                "market_name": None,
+                "reply": "好的，我来帮您做市场分析。请问您想分析哪个品牌或赛道？以及属于什么品类？",
+            }
     if "娃哈哈" in message and "上海" in message:
         return {
             "intent": "generate_plan",
@@ -116,6 +154,55 @@ async def _fake_intent(state: dict) -> dict:
             "missing_fields": [],
             "reply": "好的，正在为您跳转到图片生成页面。",
             "generation_prompt": message,
+        }
+    if "分析" in message or "调研" in message or "竞品" in message:
+        if "竞品" in message and "饮料" in message:
+            return {
+                "intent": "market_research",
+                "confidence": 0.9,
+                "brand_input": {"category": "饮料"},
+                "missing_fields": [],
+                "market_name": "娃哈哈",
+                "reply": "好的！我已了解研究目标：娃哈哈（饮料）。请点击「开始分析」按钮进行市场分析。",
+            }
+        if "调研" in message:
+            return {
+                "intent": "market_research",
+                "confidence": 0.85,
+                "brand_input": {},
+                "missing_fields": ["market_name", "category"],
+                "market_name": None,
+                "reply": "好的，我来帮您做市场分析。请问您想分析哪个品牌或赛道？以及属于什么品类？",
+            }
+        if "电解质" in message:
+            return {
+                "intent": "market_research",
+                "confidence": 0.88,
+                "brand_input": {"category": "饮料"},
+                "missing_fields": ["market_name"],
+                "market_name": None,
+                "reply": "请问您想分析哪个品牌或赛道？",
+            }
+        if "行业" in message or "赛道" in message:
+            return {
+                "intent": "market_research",
+                "confidence": 0.85,
+                "brand_input": {},
+                "missing_fields": ["market_name", "category"],
+                "market_name": None,
+                "reply": "好的，我来帮您做市场分析。请问您想分析哪个品牌或赛道？以及属于什么品类？",
+            }
+    if "开始分析" in message:
+        # 字段齐全的 market_research
+        ctx = state.get("context", {}) if isinstance(state.get("context"), dict) else {}
+        mn = ctx.get("market_name") if isinstance(ctx, dict) else None
+        return {
+            "intent": "market_research",
+            "confidence": 0.95,
+            "brand_input": {"category": "饮料"},
+            "missing_fields": [],
+            "market_name": mn or "娃哈哈",
+            "reply": "",
         }
     return {
         "intent": "chat",
@@ -277,3 +364,71 @@ async def test_intent__text_to_video__no_description_returns_chat():
 async def test_intent__missing_message__raises_value_error():
     with pytest.raises(ValueError, match="Missing required input: message"):
         await intent_recognition_agent.run_intent_recognition({})
+
+
+# ── market_research ─────────────────────────────────────────────────────
+
+
+@pytest.mark.asyncio
+async def test_intent__market_research__with_full_fields__returns_market_research():
+    result = await intent_recognition_agent.run_intent_recognition({
+        "message": "帮我分析一下娃哈哈竞品，饮料",
+    })
+    output = IntentRecognitionOutput.model_validate(result)
+
+    assert output.intent == "market_research"
+    assert output.market_name == "娃哈哈"
+    assert output.brand_input.category == "饮料"
+    assert output.missing_fields == []
+    assert "开始分析" in output.reply
+
+
+@pytest.mark.asyncio
+async def test_intent__market_research__missing_both__asks_questions():
+    result = await intent_recognition_agent.run_intent_recognition({
+        "message": "帮我做个市场调研",
+    })
+    output = IntentRecognitionOutput.model_validate(result)
+
+    assert output.intent == "market_research"
+    assert output.market_name is None
+    assert "market_name" in output.missing_fields
+    assert "category" in output.missing_fields
+    assert "品类" in output.reply
+
+
+@pytest.mark.asyncio
+async def test_intent__market_research__missing_market_name__asks_market_name():
+    result = await intent_recognition_agent.run_intent_recognition({
+        "message": "帮我分析电解质饮料的市场",
+    })
+    output = IntentRecognitionOutput.model_validate(result)
+
+    assert output.intent == "market_research"
+    assert output.market_name is None
+    assert "market_name" in output.missing_fields
+    assert "category" not in output.missing_fields
+
+
+@pytest.mark.asyncio
+async def test_intent__market_research__not_overridden_by_generate_plan():
+    """market_research should NOT be overridden to generate_plan even when brand fields are fully filled."""
+    result = await intent_recognition_agent.run_intent_recognition({
+        "message": "分析一下娃哈哈竞品，饮料，目标上海，预算100万，周期3个月",
+    })
+    output = IntentRecognitionOutput.model_validate(result)
+
+    # Even though brand fields are filled, "分析" keyword should keep it as market_research
+    assert output.intent == "market_research"
+
+
+@pytest.mark.asyncio
+async def test_intent__market_research__fills_market_name_from_context():
+    result = await intent_recognition_agent.run_intent_recognition({
+        "message": "开始分析",
+        "context": {"market_name": "娃哈哈"},
+    })
+    output = IntentRecognitionOutput.model_validate(result)
+
+    assert output.intent == "market_research"
+    assert output.market_name == "娃哈哈"
