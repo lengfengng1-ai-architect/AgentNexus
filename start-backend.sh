@@ -11,4 +11,4 @@ if [ -n "$LSOF_OUT" ]; then
 fi
 
 cd "$(dirname "$0")/backend"
-LOG_LEVEL=${LOG_LEVEL:-DEBUG} uv run uvicorn app.main:app --port "$PORT" --reload
+LOG_LEVEL=${LOG_LEVEL:-DEBUG} uv run uvicorn app.main:app --port "$PORT" --reload --reload-exclude 'logs/*' --reload-exclude '*.log~'

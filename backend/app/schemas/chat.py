@@ -5,8 +5,8 @@ class BrandInput(BaseModel):
     brand_name: str | None = Field(None, description="品牌名称")
     category: str | None = Field(None, description="品牌品类，英文 snake_case")
     city: str | None = Field(None, description="目标城市")
-    budget: int | None = Field(None, ge=1, description="预算，单位万元")
-    period: int | None = Field(None, ge=1, description="周期，单位月")
+    budget: float | None = Field(None, ge=1, description="预算，单位万元")
+    period: float | None = Field(None, ge=1, description="周期，单位月")
 
 
 class ChatRequest(BaseModel):
