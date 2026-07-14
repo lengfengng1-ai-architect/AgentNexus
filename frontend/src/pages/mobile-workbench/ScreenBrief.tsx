@@ -24,6 +24,8 @@ interface ScreenBriefProps {
   onNavigate: (s: MobileScreen, data?: BriefFormData) => void
   initialInput?: string
   initialBrandData?: BrandInput
+  /** 父级方案生成状态：running / paused 时禁用按钮并显示生成中 */
+  isGenerating?: boolean
 }
 
 /** 从「方案模版」文本中正则提取字段：我是[品牌]，属于[品类]，产品线是[产品线]，目标人群[目标人群]，想在[城市]做活动，预算[金额]万，周期[时长]个月 */
@@ -46,7 +48,7 @@ function parseBriefInput(text: string): Partial<BriefFormData> {
   return r
 }
 
-export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: ScreenBriefProps) {
+export function ScreenBrief({ onNavigate, initialInput, initialBrandData, isGenerating }: ScreenBriefProps) {
   const mergedDefaults = useMemo(() => {
     const parsed = initialInput ? parseBriefInput(initialInput) : {}
     return {
@@ -71,7 +73,9 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
   const [coreStrategy, setCoreStrategy] = useState(mergedDefaults.core_strategy)
   const [optimizing, setOptimizing] = useState(false)
   const [optError, setOptError] = useState<string | null>(null)
-  const [genLoading, setGenLoading] = useState(false)
+  // ponytail: 不自己维护本地 genLoading，统一由父级 planRun 的 running/paused 状态驱动，
+  // 避免组件被 display:none 隐藏时本地状态卡死在 true。升级路径：若未来支持乐观取消可引入本地状态。
+  const genBusy = isGenerating ?? false
 
   const syncFormState = useCallback(() => {
     setBrand(mergedDefaults.brand_name)
@@ -114,7 +118,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
       setOptError('请填写品牌名称')
       return
     }
-    setGenLoading(true)
+    if (genBusy) return
     const data: BriefFormData = {
       brand_name: brand,
       category,
@@ -126,7 +130,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
       core_strategy: coreStrategy,
     }
     onNavigate('generate', data)
-  }, [brand, category, productMatrix, targetAudience, marketingGoal, period, selectedCities, coreStrategy, onNavigate])
+  }, [brand, category, productMatrix, targetAudience, marketingGoal, period, selectedCities, coreStrategy, onNavigate, genBusy])
 
   return (
     <>
@@ -227,8 +231,8 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
         </div>
       </div>
       <div className="dock">
-        <button className="gen" onClick={handleGenerate} disabled={genLoading}>
-          {genLoading ? '⏳ 生成中…' : '✦ AI 生成方案'}
+        <button className="gen" onClick={handleGenerate} disabled={genBusy}>
+          {genBusy ? '⏳ 生成中…' : '✦ AI 生成方案'}
         </button>
       </div>
     </>

@@ -153,6 +153,9 @@ export function MobileWorkbenchPage() {
   const meta = topbarText[screen]
   const isExportReady = (screen === 'generate' || screen === 'preview') && status === 'completed'
 
+  // 方案生成活跃状态：running / paused 时简报页按钮应显示生成中并禁用
+  const isPlanGenerating = status === 'running' || status === 'paused'
+
   const topbar = (
     <div className="topbar">
       {screen !== 'chat' && (
@@ -229,7 +232,7 @@ export function MobileWorkbenchPage() {
             <ScreenChat onNavigate={handleChatNavigate} />
           </div>
           <div style={{ display: screen === 'brief' ? '' : 'none' }}>
-            <ScreenBrief onNavigate={handleNavigate} initialInput={pendingChatData?.inputText} initialBrandData={pendingChatData?.brandInput ?? undefined} />
+            <ScreenBrief onNavigate={handleNavigate} initialInput={pendingChatData?.inputText} initialBrandData={pendingChatData?.brandInput ?? undefined} isGenerating={isPlanGenerating} />
           </div>
           <div style={{ display: screen === 'generate' ? '' : 'none' }}>
             <ScreenGenerate
