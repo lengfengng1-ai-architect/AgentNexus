@@ -27,6 +27,9 @@
 - 目标城市：{{ context.brand_input.city if context.get('brand_input', {}).get('city') else '（待确认）' }}
 - 预算（万元）：{{ context.brand_input.budget if context.get('brand_input', {}).get('budget') else '（待确认）' }}
 - 周期（月）：{{ context.brand_input.period if context.get('brand_input', {}).get('period') else '（待确认）' }}
+{% if context.get('market_name') %}
+- 当前研究目标：{{ context.market_name }}
+{% endif %}
 {% if context.get('image_url') %}
 附件图片 URL：{{ context.image_url }}
 {% endif %}
@@ -37,32 +40,44 @@
 1. 先检查用户输入（结合以上已确认信息）能否提取出 brand_name/category/city/budget/period 中的值。
    即使输入只有数字（如"10万""300""6个月"），也要与上下文中的字段对应。
    示例："10万 10个月" = budget=10, period=10。
-2. generate_video → 用户想用图片生成视频。
+2. market_research → 用户想进行竞品分析、市场调研、行业分析等。关键词包含"分析""调研""竞品""行业"等。
+   - 需要提取两个字段：market_name（研究目标/市场/赛道名）和 category（品类）。
+   - market_name 提取来源：用户输入的品牌名、赛道名、行业名等。例如"分析娃哈哈"→ market_name="娃哈哈"；"电解质饮料的市场调研"→ market_name="电解质饮料"。
+   - 注意：market_name 与 brand_name（方案流水线中的品牌名）不同。market_name 是调研目标，brand_name 是方案品牌。
+   - 如果关键词含"分析"/"调研"/"竞品"等，即使 brand_input 5 个字段齐全也应优先返回 market_research。
+   - market_research 不要求 brand_input 的 5 个字段齐全。
+   - market_research 需要 market_name 和 category 两个字段才能执行。
+   - 缺 market_name + category → reply 反问「请问您想分析哪个品牌或赛道？以及属于什么品类？」
+   - 缺 market_name（有 category）→ reply 反问「请问您想分析哪个品牌或赛道？」
+   - 缺 category（有 market_name）→ reply 反问「请问它属于什么品类？例如：饮料、运动服饰等」
+   - 字段齐全时 reply 设为「好的！我已了解研究目标：{market_name}（{category}）。请点击"开始分析"按钮进行市场分析。」
+3. generate_video → 用户想用图片生成视频。
    - 如果上下文中包含 image_url，则 image_url 赋值为该 URL，同时从用户输入提取视频描述（如有）作为 video_prompt。
    - 如果上下文中没有 image_url，则 image_url 设为 null，在 missing_fields 中添加 "image_url"。
    - 注：generate_video 是独立意图，与营销方案品牌字段无关，不要求品牌字段齐全。
-3. text_to_video → 用户想用文字描述生成视频/宣传片/宣传视频/广告片/短片。
+4. text_to_video → 用户想用文字描述生成视频/宣传片/宣传视频/广告片/短片。
    - 关键词包括：宣传片、宣传视频、广告片、视频、短片、短视频、动画片等视频相关词。
    - **generation_prompt 始终设为用户输入的完整内容**（作为初始视频描述），即使看起来不够详细也没关系，用户稍后可以编辑。
    - 如果用户输入中有具体的描述性内容（场景、风格、动作等），保留在 generation_prompt 中。
    - 不涉及 image_url 检查。
    - 注：与 generate_video 的区别是用户没有上传图片。
    - 即使没有具体内容描述（如只说"生成视频""帮我生成一段视频""我要生成宣传片""我想做个XX的宣传片""帮我做个XX的宣传视频"），也归为 text_to_video，reply 设为「好的！请描述一下您希望生成的视频内容，例如场景、主题风格等，同时可以选择以下参数。」（前端会展示参数选择卡供用户填写）。
-4. text_to_image → 用户想生成图片/海报/宣传图。
+5. text_to_image → 用户想生成图片/海报/宣传图。
    - 从用户输入提取图片描述作为 generation_prompt（如有）。
    - 不涉及品牌字段，不要求字段齐全。
    - 即使没有具体内容描述（如只说"生成图片""我要生成图片""帮我生成一张图片""我要生成宣传图"），也归为 text_to_image，reply 设为「好的！请描述一下您希望生成的图片内容，例如场景、主题风格等，同时可以选择以下参数。」（前端会展示参数选择卡供用户填写）。
-5. generate_plan → 5 个品牌字段全部有值（来自当前输入 + 以上已确认信息），**且**用户意图不是做视频/图片。这是最高优先级，只要字段齐全且非视频/图片意图就返回 generate_plan。
-6. update_context → 用户明确在修改之前已确认的信息。
-7. clarify → 方向是生成方案，但 5 个字段还缺至少一项。缺什么写什么到 missing_fields。
-8. query_data → 用户想查询数据。
-9. chat → 以上都不匹配时，才是闲聊/打招呼。
+6. generate_plan → 5 个品牌字段全部有值（来自当前输入 + 以上已确认信息），**且**用户意图不是做视频/图片/市场分析。这是最高优先级，只要字段齐全且非视频/图片/市场分析意图就返回 generate_plan。
+7. update_context → 用户明确在修改之前已确认的信息。
+8. clarify → 方向是生成方案，但 5 个字段还缺至少一项。缺什么写什么到 missing_fields。
+9. query_data → 用户想查询数据。
+10. chat → 以上都不匹配时，才是闲聊/打招呼。
 
 输出 JSON 格式：
 {
-  "intent": "generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image",
+  "intent": "generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research",
   "confidence": 0.0-1.0,
   "reply": "给用户的回复",
+  "market_name": null or "研究目标（品牌名/赛道名）",
   "brand_input": {
     "brand_name": null or "值",
     "category": null or "值",

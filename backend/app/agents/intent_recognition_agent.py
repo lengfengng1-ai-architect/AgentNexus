@@ -30,6 +30,10 @@ def _load_system_prompt(message: str, context: dict[str, Any]) -> str:
     if isinstance(context.get("conversation_history"), list):
         clean_ctx["conversation_history"] = context["conversation_history"]
 
+    # Pass through market_name for market_research intent
+    if context.get("market_name"):
+        clean_ctx["market_name"] = context["market_name"]
+
     # Clean brand_input null values for template rendering
     bi = context.get("brand_input", {}) or {}
     if isinstance(bi, dict):
@@ -108,9 +112,9 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
         if getattr(output.brand_input, field) is None
     ]
 
-    INDEPENDENT = ("clarify", "update_context", "generate_video", "text_to_video", "text_to_image")
+    INDEPENDENT = ("clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research")
 
-    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image"):
+    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image", "market_research"):
         output.intent = "generate_plan"
         output.confidence = max(output.confidence, 0.95)
         if not output.reply:
@@ -119,6 +123,28 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
         output.intent = "clarify"
         if not output.reply:
             output.reply = f"为了生成营销方案，我还需要了解：{', '.join(missing)}"
+
+    # market_research: check market_name + category
+    if output.intent == "market_research":
+        mr_missing = []
+        if not output.market_name:
+            mr_missing.append("market_name")
+        if not output.brand_input.category:
+            mr_missing.append("category")
+
+        if mr_missing:
+            output.missing_fields = mr_missing
+            if not output.reply:
+                if "market_name" in mr_missing and "category" in mr_missing:
+                    output.reply = "好的，我来帮您做市场分析。请问您想分析哪个品牌或赛道？以及属于什么品类？"
+                elif "market_name" in mr_missing:
+                    output.reply = "请问您想分析哪个品牌或赛道？"
+                else:
+                    output.reply = "请问它属于什么品类？例如：饮料、运动服饰等"
+        else:
+            output.missing_fields = []
+            if not output.reply:
+                output.reply = f"好的！我已了解研究目标：{output.market_name}（{output.brand_input.category}）。请点击「开始分析」按钮进行市场分析。"
 
     # generate_video: image_url 检查
     if output.intent == "generate_video" and not output.image_url:
@@ -185,6 +211,11 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
             for key, value in result.brand_input.model_dump(exclude_none=True).items()
             if getattr(original, key) != value
         }
+
+    # Fill market_name from context for market_research intent
+    if result.intent == "market_research" and not result.market_name:
+        if context.get("market_name"):
+            result.market_name = context["market_name"]
 
     result = _normalize_intent_output(result)
 
@@ -273,6 +304,11 @@ async def stream_intent_recognition(
                 val = getattr(ctx_bi, key, None)
                 if val is not None:
                     setattr(result.brand_input, key, val)
+
+    # Fill market_name from context for market_research intent
+    if result.intent == "market_research" and not result.market_name:
+        if context.get("market_name"):
+            result.market_name = context["market_name"]
 
     result = _normalize_intent_output(result)
 

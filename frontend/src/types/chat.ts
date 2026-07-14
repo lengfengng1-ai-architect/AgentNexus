@@ -21,7 +21,7 @@ export interface ChatMessage {
   role: 'user' | 'ai'
   content: string
   brandInput?: BrandInput
-  intent?: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context' | 'generate_video' | 'text_to_video' | 'text_to_image'
+  intent?: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context' | 'generate_video' | 'text_to_video' | 'text_to_image' | 'market_research'
   isComplete?: boolean
   isError?: boolean
   isLoading?: boolean
@@ -48,6 +48,10 @@ export interface ChatMessage {
     width?: number
     height?: number
   }
+  /** 市场调研：字段齐全时可开始分析 */
+  canStartMarketResearch?: boolean
+  /** 市场调研目标名称（品牌名/赛道名） */
+  marketName?: string
 }
 
 export type FieldKey = keyof BrandInput
