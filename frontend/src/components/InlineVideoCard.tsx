@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState, type ClipboardEvent } from 'react'
 import { streamVideoGeneration } from '../api/video'
+import { optimizePrompt } from '../api/promptOptimizer'
 import type { VideoParams } from '../types/video'
 import type { ChatMessage } from '../types/chat'
 
@@ -38,6 +39,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, variant, existin
 
   // SSE lifecycle
   const [isLoading, setIsLoading] = useState(false)
+  const [optimizing, setOptimizing] = useState(false)
   const [progress, setProgress] = useState<ProgressData[]>([])
   const [currentStatus, setCurrentStatus] = useState<ProgressData | null>(null)
   const [result, setResult] = useState<NonNullable<ChatMessage['videoResult']> | null>(existingResult ?? null)
@@ -45,9 +47,19 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, variant, existin
   const abortRef = useRef<AbortController | null>(null)
   const mountedRef = useRef(true)
 
-  // Effective values: prop > input
+  // Prompt input state: initialize from prop, editable thereafter
+  const initialPromptInited = useRef(false)
+  const [editablePrompt, setEditablePrompt] = useState(prompt ?? '')
+
+  useEffect(() => {
+    if (prompt && !initialPromptInited.current) {
+      initialPromptInited.current = true
+      setEditablePrompt(prompt)
+    }
+  }, [prompt])
+
   const effectiveImageUrls = imageUrls.length > 0 ? imageUrls : urlRows.map(normalizeUrl).filter(Boolean)
-  const effectivePrompt = prompt ? prompt : descriptionText || null
+  const effectivePrompt = (prompt ? editablePrompt : descriptionText) || null
 
   // URL input handlers
   const handleUrlRowChange = useCallback((index: number, val: string) => {
@@ -95,6 +107,22 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, variant, existin
       abortRef.current?.abort()
     }
   }, [])
+
+  // AI 优化提示词
+  const handleOptimize = useCallback(async () => {
+    const text = prompt ? editablePrompt : descriptionText
+    if (!text?.trim() || optimizing) return
+    setOptimizing(true)
+    try {
+      const result = await optimizePrompt(text, 'video')
+      if (prompt) setEditablePrompt(result.optimized)
+      else setDescriptionText(result.optimized)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '优化失败')
+    } finally {
+      setOptimizing(false)
+    }
+  }, [prompt, editablePrompt, descriptionText, optimizing])
 
   const handleGenerate = useCallback(async () => {
     if (isLoading) return
@@ -278,13 +306,38 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, variant, existin
         </div>
       )}
 
-      {/* Prompt preview (from prop) or description input (when empty) */}
-      {prompt ? (
-        <p className={`line-clamp-2 ${isMobile ? 'text-[11px] text-[#6b7280]' : 'text-xs text-track/70'}`}>{prompt}</p>
-      ) : (
+      {/* Prompt textarea: pre-filled from prop when available, editable by user */}
+      <div>
+        <div className="flex items-center justify-between mb-1">
+          <label className={`block font-medium ${isMobile ? 'text-[9px] text-[#6b7280]' : 'text-[10px] text-track/50'}`}>
+            视频描述
+          </label>
+          <button
+            type="button"
+            onClick={handleOptimize}
+            disabled={optimizing || isLoading || (!prompt ? !descriptionText.trim() : !editablePrompt.trim())}
+            className={`flex items-center gap-1 rounded-md border px-2 py-0.5 text-[10px] font-medium transition-colors disabled:opacity-40 ${
+              isMobile
+                ? 'border-[#d9dee7] text-[#6b7280] hover:bg-[#f7f8fa]'
+                : 'border-line text-track/60 hover:bg-mist'
+            }`}
+          >
+            {optimizing ? (
+              <>
+                <span className="inline-block h-2.5 w-2.5 animate-spin rounded-full border border-current border-t-transparent" />
+                优化中
+              </>
+            ) : (
+              <>✨ AI 优化</>
+            )}
+          </button>
+        </div>
         <textarea
-          value={descriptionText}
-          onChange={e => setDescriptionText(e.target.value)}
+          value={prompt ? editablePrompt : descriptionText}
+          onChange={e => {
+            if (prompt) setEditablePrompt(e.target.value)
+            else setDescriptionText(e.target.value)
+          }}
           disabled={isLoading}
           placeholder="描述希望生成的视频内容…（可选）"
           rows={2}
@@ -295,7 +348,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, variant, existin
           }`}
           style={{ maxHeight: 120 }}
         />
-      )}
+      </div>
 
       {/* Parameter panel (collapsed by default) */}
       <div>

@@ -110,7 +110,7 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
 
     INDEPENDENT = ("clarify", "update_context", "generate_video", "text_to_video", "text_to_image")
 
-    if not missing and output.intent != "generate_plan":
+    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image"):
         output.intent = "generate_plan"
         output.confidence = max(output.confidence, 0.95)
         if not output.reply:

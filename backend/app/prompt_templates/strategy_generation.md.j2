@@ -17,8 +17,11 @@
 - 市场摘要：{{ market_summary }}
 - 人群特征：{{ persona_summary }}
 - 适配度评分：{{ fitness_scores }}
+{% if core_strategy %}
+- 人工策略方向：{{ core_strategy }}
+{% endif %}
 
 要求：
+- 基于以上输入信息，生成对应的营销策略
 - 核心传播主张要具体、有记忆点，避免空泛口号
-- 4M+1C 框架需覆盖 Mission（使命/目标）、Message（信息）、Media（媒介）、Moment（时机）、Consumer（消费者）
 - 核心传播信息不超过 5 条

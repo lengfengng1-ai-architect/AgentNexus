@@ -54,6 +54,7 @@ async def run_strategy_generation(state: dict[str, Any]) -> dict[str, Any]:
             market_summary=market.get("market_summary", ""),
             persona_summary=audience.get("persona_summary", ""),
             fitness_scores=_fitness_scores_text(fitness),
+            core_strategy=brand_input.get("core_strategy", ""),
         ),
         f"请为 {brand_name} 生成营销策略。",
     )

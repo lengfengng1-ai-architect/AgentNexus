@@ -17,6 +17,7 @@ from app.routers import (
     market_analysis,
     plan,
     product_info,
+    prompt_optimizer,
     upload,
     video,
 )
@@ -90,6 +91,7 @@ def create_app() -> FastAPI:
     app.include_router(audience_insight.router, prefix="/api/v1")
     app.include_router(video.router, prefix="/api/v1")
     app.include_router(upload.router, prefix="/api/v1")
+    app.include_router(prompt_optimizer.router, prefix="/api/v1")
 
     # 挂载上传文件目录为静态资源
     upload_dir = Path(settings.upload_dir)
