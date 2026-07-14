@@ -2,7 +2,7 @@
 // OpenSpec: mobile-brief-connect-backend · specs/mobile-brief-connect/spec.md
 // 表单 controlled state + AI 策略优化 + AI 生成方案跳转
 // 支持从 ChatBubble「生成方案」携带 initialInput / initialBrandData 预填
-import { useCallback, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { optimizeStrategy } from '../../api/plan'
 import type { MobileScreen } from './ScreenChat'
 import type { BrandInput } from '../../types/chat'
@@ -50,14 +50,14 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
   const mergedDefaults = useMemo(() => {
     const parsed = initialInput ? parseBriefInput(initialInput) : {}
     return {
-      brand_name: initialBrandData?.brand_name ?? parsed.brand_name ?? '娃哈哈',
-      category: initialBrandData?.category ?? parsed.category ?? '果汁饮料',
-      product_matrix: parsed.product_matrix ?? '魅力系列（蓝莓/石榴/荔枝）',
-      target_audience: parsed.target_audience ?? '25-35岁',
-      marketing_goal: initialBrandData?.budget != null ? `认知度 ≥80% · 预算 ${initialBrandData.budget}万` : parsed.marketing_goal ?? '认知度 ≥60% · 私域会员 ≥50万',
-      period: initialBrandData?.period != null ? `${initialBrandData.period} 个月（${initialBrandData.period * 4} 周）` : parsed.period ?? '3 个月（12 周）',
-      selected_cities: initialBrandData?.city ? [initialBrandData.city] : parsed.selected_cities ?? ['北京', '上海', '广州', '深圳'],
-      core_strategy: parsed.core_strategy ?? '以「运动盟域」为载体，4M+1C 集群营销模型，构建产品-场景-人群三位一体闭环。',
+      brand_name: initialBrandData?.brand_name ?? parsed.brand_name ?? '',
+      category: initialBrandData?.category ?? parsed.category ?? '',
+      product_matrix: parsed.product_matrix ?? '',
+      target_audience: parsed.target_audience ?? '',
+      marketing_goal: initialBrandData?.budget != null ? `认知度 ≥80% · 预算 ${initialBrandData.budget}万` : parsed.marketing_goal ?? '',
+      period: initialBrandData?.period != null ? `${initialBrandData.period} 个月（${initialBrandData.period * 4} 周）` : parsed.period ?? '',
+      selected_cities: initialBrandData?.city ? [initialBrandData.city] : parsed.selected_cities ?? [],
+      core_strategy: parsed.core_strategy ?? '',
     }
   }, [initialInput, initialBrandData])
 
@@ -72,6 +72,19 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData }: Scre
   const [optimizing, setOptimizing] = useState(false)
   const [optError, setOptError] = useState<string | null>(null)
   const [genLoading, setGenLoading] = useState(false)
+
+  const syncFormState = useCallback(() => {
+    setBrand(mergedDefaults.brand_name)
+    setCategory(mergedDefaults.category)
+    setProductMatrix(mergedDefaults.product_matrix)
+    setTargetAudience(mergedDefaults.target_audience)
+    setMarketingGoal(mergedDefaults.marketing_goal)
+    setPeriod(mergedDefaults.period)
+    setSelectedCities(mergedDefaults.selected_cities)
+    setCoreStrategy(mergedDefaults.core_strategy)
+  }, [mergedDefaults])
+
+  useEffect(() => { syncFormState() }, [syncFormState])
 
   const toggleCity = (c: string) => {
     setSelectedCities(prev => (prev.includes(c) ? prev.filter(x => x !== c) : [...prev, c]))
