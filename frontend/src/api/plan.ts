@@ -233,3 +233,36 @@ export async function getPlanSummary(runId: string): Promise<PlanSummary> {
   const body = await response.json()
   return body.data as PlanSummary
 }
+
+export interface ExportResult {
+  download_url: string
+  file_path: string
+}
+
+export async function exportPlanXlsx(runId: string): Promise<ExportResult> {
+  const response = await fetch(`${API_BASE_URL}/plan/runs/${runId}/export-xlsx`, {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '导出 XLSX 失败')
+    throw new Error(text)
+  }
+
+  const body = await response.json()
+  return body.data as ExportResult
+}
+
+export async function exportPlanPdf(runId: string): Promise<ExportResult> {
+  const response = await fetch(`${API_BASE_URL}/plan/runs/${runId}/export-pdf`, {
+    method: 'POST',
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '导出 PDF 失败')
+    throw new Error(text)
+  }
+
+  const body = await response.json()
+  return body.data as ExportResult
+}

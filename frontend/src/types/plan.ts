@@ -70,4 +70,9 @@ export interface PlanOutputs {
   poster?: PosterStatus
   /** 后端 plan_node_status 表,供前端轮询驱动节点显示 */
   node_statuses?: { node_id: string; status: string; started_at?: string; completed_at?: string }[]
+  /** 前端合成展示字段（来自 useMobilePlanRun 的 _ 前缀字段） */
+  _strategy?: Record<string, unknown>
+  _execution?: Record<string, unknown>
+  _budget?: Record<string, unknown>
+  _actions?: Record<string, unknown>
 }
