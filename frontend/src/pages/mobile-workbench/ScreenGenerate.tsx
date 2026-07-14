@@ -41,6 +41,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
   const logEndRef = useRef<HTMLDivElement>(null)
 
   // 切回页面时从 localStorage 恢复运行记录，不清空已有数据
+  // 从 localStorage 恢复历史流水线（仅当没有 briefData 即非从简报跳转时）
   useEffect(() => {
     const savedRunId = localStorage.getItem('allygo_mobile_plan_run_id')
     if (!briefData && status === 'idle' && savedRunId && savedRunId !== 'null') {
@@ -89,7 +90,14 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
     }
   }, [briefData, status, start])
 
-  // 方案完成时调用摘要端点
+  // 方案完成时调用摘要端点（briefData 变化时应清空旧摘要）
+  useEffect(() => {
+    if (briefData) {
+      setSummary(null)
+      setSummaryLoading(false)
+    }
+  }, [briefData])
+
   useEffect(() => {
     if (status !== 'completed') return
     const rid = (() => { try { return localStorage.getItem('allygo_mobile_plan_run_id') } catch { return null } })()
