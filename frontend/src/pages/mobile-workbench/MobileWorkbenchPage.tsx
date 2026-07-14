@@ -29,6 +29,14 @@ const DEFAULT_TOPBAR: Record<MobileScreen, { t: string; sub: string }> = {
   dispatch: { t: '下发与转发达成', sub: '统一发声 · 跨盟下发' },
 }
 
+// 从 pendingChatData 的 inputText 中提取 product_label 用于 topbar
+function parseProductLabel(inputText?: string): string {
+  if (!inputText) return ''
+  const m = inputText.match(/产品线是(.+?)[，,]/)
+  if (!m) return ''
+  return m[1].trim().split(/[（(]/)[0] || m[1].trim()
+}
+
 export function MobileWorkbenchPage() {
   const [screen, setScreen] = useState<MobileScreen>('chat')
   const [briefData, setBriefData] = useState<BriefFormData | null>(null)
@@ -95,10 +103,13 @@ export function MobileWorkbenchPage() {
     setScreen(s)
   }
 
-  // 从 ScreenChat / ChatBubble 接收携带数据的跳转
+  // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
   const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => {
-    if (inputText || brandInput) setPendingChatData({ inputText, brandInput })
-    else setPendingChatData(null)
+    if (inputText || brandInput) {
+      setPendingChatData({ inputText, brandInput })
+    } else {
+      setPendingChatData(null)
+    }
     setScreen(s)
   }
 
@@ -123,8 +134,8 @@ export function MobileWorkbenchPage() {
   }
 
   // 根据实际表单数据动态更新 topbar sub 文本
-  const brandLabel = briefData ? briefData.brand_name : '娃哈哈'
-  const productLabel = briefData ? briefData.product_matrix?.split(/[（(]/)[0] || briefData.product_matrix : '魅力系列'
+  const brandLabel = briefData?.brand_name ?? pendingChatData?.brandInput?.brand_name ?? ''
+  const productLabel = briefData?.product_matrix?.split(/[（(]/)[0] || briefData?.product_matrix || parseProductLabel(pendingChatData?.inputText) || ''
   const itemCount = outputs?.action_recommendations?.actions?.length ?? 6
   const topbarText: Record<MobileScreen, { t: string; sub: string }> = {
     ...DEFAULT_TOPBAR,

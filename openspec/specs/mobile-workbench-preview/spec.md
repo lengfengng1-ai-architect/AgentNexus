@@ -66,12 +66,28 @@ description: /mobile 移动端工作台展示页，纯白背景居中手机框 +
 
 ### Requirement: 对话入口屏支持跳转到简报屏
 
-系统 SHALL 在 ① 对话入口屏的「填写简报」入口（卡片或快捷按钮）被点击时，切换到 ② 简报屏。
+系统 SHALL 在 ① 对话入口屏的「方案生成」入口（气泡框「生成方案」按钮、顶部快捷按钮「方案生成」）被点击时，仅切换到 ② 简报屏，不触发流水线执行。② 简报屏的「✦ AI 生成方案」按钮为唯一触发流水线的入口。
 
-#### Scenario: 用户点击填写简报入口
-- **WHEN** 用户点击 ① 屏中的「填写简报」入口
+#### Scenario: ChatBubble「生成方案」跳转简报不触发流水线
+- **WHEN** AI 回复中包含「生成方案」按钮
+- **AND** 用户点击「生成方案」按钮
 - **THEN** Tab 切换器 SHALL 切换到 ② 简报激活态
-- **AND** 手机框架内 SHALL 切换到 ② 屏内容（P1 为占位）
+- **AND** 手机框架内 SHALL 切换到 ② 简报屏内容
+- **AND** 简报表单 SHALL 根据对话内容预填字段
+- **AND** ③ 方案生成屏 SHALL 保持 idle 态，不启动流水线
+
+#### Scenario: Tab「方案生成」跳转简报不触发流水线
+- **WHEN** 用户在 ① 对话入口屏点击顶部快捷按钮「方案生成」
+- **THEN** Tab 切换器 SHALL 切换到 ② 简报激活态
+- **AND** ③ 方案生成屏 SHALL 保持 idle 态，不启动流水线
+- **AND** 简报表单 SHALL 为空（无预填数据）
+
+#### Scenario: 简报「✦ AI 生成方案」按钮触发流水线
+- **WHEN** 用户在 ② 简报屏完成表单编辑
+- **AND** 用户点击吸底「✦ AI 生成方案」按钮
+- **THEN** 系统 SHALL 校验品牌字段非空
+- **AND** Tab 切换器 SHALL 切换到 ③ 方案生成
+- **AND** ③ 方案生成屏 SHALL 在切换到该屏后启动流水线
 
 ### Requirement: 移动端展示页样式与 PC 端隔离
 
@@ -101,7 +117,7 @@ description: /mobile 移动端工作台展示页，纯白背景居中手机框 +
 
 ### Requirement: ② 简报屏展示方案头与品牌需求表单
 
-系统 SHALL 在 ② 简报屏展示方案渐变头部 + 品牌需求表单（品牌/品类/产品线/目标人群/营销目标/投放周期/首批城市/核心策略），表单字段预填自设计稿 mock 数据，且所有字段为 controlled state。wk-head 的文案 SHALL 使用表单 state 驱动，不使用固定字符串。
+系统 SHALL 在 ② 简报屏展示方案渐变头部 + 品牌需求表单（品牌/品类/产品线/目标人群/营销目标/投放周期/首批城市/核心策略），表单字段预填自外部传入的对话数据（initialInput / initialBrandData），且所有字段为 controlled state。当无外部数据传入时，表单字段使用空字符串默认值。表单字段 state 在外部 props 变化时自动同步更新。
 
 #### Scenario: ② 简报屏的视觉布局
 - **WHEN** Tab 切换到 ② 简报
@@ -113,6 +129,32 @@ description: /mobile 移动端工作台展示页，纯白背景居中手机框 +
 - **AND** 方案头下方 SHALL 显示"方案简报"标题
 - **AND** 简报表单 SHALL 显示 8 个字段（品牌/品类/产品线/目标人群/营销目标/投放周期/首批城市/核心策略），每个字段预填设计稿的 mock 数据
 - **AND** 吸底显示"✦ AI 生成方案"按钮
+
+#### Scenario: 从 ChatBubble「生成方案」跳转时自动填充
+- **GIVEN** 用户发送消息内容为"我是 阿嬷手作，属于 新中式茶饮，产品线是 现煮手作茶与在地文化联名系列，目标人群 25-35岁注重情绪价值与文化认同的都市女性，想在 成都 做活动，预算 80 万，周期 2 个月"
+- **AND** 后端返回的 brandInput 包含 `{ brand_name: "阿嬷手作", category: "新中式茶饮", city: "成都", budget: 80, period: 2 }`
+- **WHEN** 用户点击 ChatBubble 的「生成方案」按钮跳转到 ② 简报屏
+- **THEN** 品牌字段 SHALL 显示"阿嬷手作"
+- **AND** 品类字段 SHALL 显示"新中式茶饮"
+- **AND** 产品线字段 SHALL 显示"现煮手作茶与在地文化联名系列"
+- **AND** 目标人群字段 SHALL 显示"25-35岁注重情绪价值与文化认同的都市女性"
+- **AND** 营销目标字段 SHALL 显示"认知度 ≥80% · 预算 80万"
+- **AND** 投放周期字段 SHALL 显示"2 个月（8 周）"
+- **AND** 首批城市 chips SHALL 选中"成都"
+- **AND** 蓝色头部区域 SHALL 显示"阿嬷手作 · 新中式茶饮" / "现煮手作茶与在地文化联名系列" / "新中式茶饮 · 认知度 ≥80% · 预算 80万 · 2 个月（8 周）"
+
+#### Scenario: 点击 Tab「方案生成」跳转时字段为空
+- **WHEN** 用户在对话入口屏点击 Tab「方案生成」从对话入口跳转到 ② 简报
+- **THEN** 品牌字段 SHALL 为空字符串
+- **AND** 品类字段 SHALL 为空字符串
+- **AND** 所有表单字段 SHALL 为空
+- **AND** 蓝色头部区域 SHALL 显示空值
+
+#### Scenario: 多次从不同对话消息的「生成方案」跳转后自动更新
+- **GIVEN** 第一次通过"我是 阿嬷手作..."跳转 → 简报显示"阿嬷手作"各字段
+- **WHEN** 回到对话入口发送"我是 可口可乐，属于 碳酸饮料..."，再次点击「生成方案」
+- **THEN** 简报字段 SHALL 自动更新为"可口可乐" / "碳酸饮料"等新值
+- **AND** 蓝色头部区域 SHALL 同步更新
 
 #### Scenario: 城市 chips 可点击多选
 - **WHEN** 用户点击城市 chip（如"成都"）
@@ -201,14 +243,19 @@ description: /mobile 移动端工作台展示页，纯白背景居中手机框 +
 - **WHEN** 用户点击某行的转发 pill
 - **THEN** pill SHALL 在「已转发」（蓝底白字）和「未转发」（灰底灰字）间切换
 
-### Requirement: ② 简报屏表单为 controlled state 并支持数据提交
+### Requirement: ② 简报屏表单为 controlled state 并支持数据提交（修改）
 
-系统 SHALL 使 ScreenBrief 中的所有表单字段从 uncontrolled defaultValue 变更为 controlled useState 管理。
+系统 SHALL 使 ScreenBrief 中的所有表单字段为 controlled useState 管理，且当组件因 props 变化重新计算 mergedDefaults 时，自动同步到 useState。
 
 #### Scenario: 用户修改表单字段后 state 同步更新
 - **WHEN** 用户修改任一表单字段的值
 - **THEN** 对应 state SHALL 同步更新
 - **AND** 字段的 input/select/textarea SHALL 显示最新值
+
+#### Scenario: 外部 props 变化后表单同步更新
+- **WHEN** ScreenBrief 的 initialInput 或 initialBrandData props 变化
+- **THEN** mergedDefaults SHALL 重新计算
+- **AND** 所有表单 useState SHALL 同步更新为 mergedDefaults 的新值
 
 ### Requirement: 核心策略字段支持 AI 优化填写
 
@@ -261,7 +308,7 @@ description: /mobile 移动端工作台展示页，纯白背景居中手机框 +
 
 `ScreenBrief` SHALL 接收可选的 `initialInput`（消息内容文本）和 `initialBrandData`（结构化品牌数据）props，挂载时按以下优先级合并后初始化表单字段：
 
-**优先级：** `initialBrandData` 的具体字段 > `parseBriefInput(initialInput)` 正则提取结果 > mock 默认值
+**优先级：** `initialBrandData` 的具体字段 > `parseBriefInput(initialInput)` 正则提取结果 > 空字符串默认值
 
 `parseBriefInput` SHALL 支持以下正则提取规则：
 - `我是(.+?)[，,]` → `brand_name`
@@ -282,6 +329,6 @@ description: /mobile 移动端工作台展示页，纯白背景居中手机框 +
 - **AND** 营销目标 SHALL 为"认知度 ≥80% · 预算 200万"
 - **AND** 投放周期 SHALL 为"6 个月（24 周）"
 
-#### Scenario: 无 props 时使用默认 mock 数据
+#### Scenario: 无 props 时表单字段为空字符串
 - **WHEN** `initialInput` 和 `initialBrandData` 都为 undefined
-- **THEN** 所有表单字段 SHALL 使用默认 mock 数据
+- **THEN** 所有表单字段 SHALL 为空字符串
