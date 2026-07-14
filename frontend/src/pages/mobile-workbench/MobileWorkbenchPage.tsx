@@ -83,14 +83,16 @@ export function MobileWorkbenchPage() {
     }
   }
 
-  // 媒体轮询：actions 屏时才查，海报/视频都齐了就不轮询了
+  // 媒体轮询：actions 屏时才查，海报/视频都到终态（completed/failed）就不轮询了
   useEffect(() => {
     if (status !== 'completed' || screen !== 'actions') return
-    if (outputs?.poster && outputs?.promo_video) return
+    const posterDone = outputs?.poster?.status === 'completed' || outputs?.poster?.status === 'failed'
+    const videoDone = outputs?.promo_video?.status === 'completed' || outputs?.promo_video?.status === 'failed'
+    if (posterDone && videoDone) return
     checkMediaStatus()
     const interval = setInterval(checkMediaStatus, 5000)
     return () => clearInterval(interval)
-  }, [status, checkMediaStatus, screen, outputs?.poster, outputs?.promo_video])
+  }, [status, checkMediaStatus, screen, outputs?.poster?.status, outputs?.promo_video?.status])
 
   // ChatBubble 的「生成方案」携带的对话数据，预填简报字段
   const [pendingChatData, setPendingChatData] = useState<{ inputText?: string; brandInput?: BrandInput } | null>(null)
