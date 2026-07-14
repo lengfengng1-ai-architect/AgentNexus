@@ -8,7 +8,7 @@ import { ChatBubble } from '../../components/ChatBubble'
 import { ErrorBar } from '../../components/ErrorBar'
 import type { BrandInput } from '../../types/chat'
 
-export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch'
+export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview'
 
 interface ScreenChatProps {
   onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => void

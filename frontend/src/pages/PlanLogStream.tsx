@@ -6,16 +6,16 @@ interface PlanLogStreamProps {
 }
 
 const AGENT_NAMES: Record<string, string> = {
-  product_research: '产品调研 Agent',
-  market_research: '市场调研 Agent',
-  audience_insight: '人群洞察 Agent',
-  plan_data_query: '数据查询 Agent',
-  fitness_analysis: '适配度分析 Agent',
-  strategy_generation: '策略生成 Agent',
-  execution_planning: '执行规划 Agent',
-  budget_kpi: '预算与 KPI Agent',
-  action_recommendations: '行动建议 Agent',
-  plan_generator: '方案生成 Agent',
+  product_research: '产品调研',
+  market_research: '市场调研',
+  audience_insight: '人群洞察',
+  plan_data_query: '数据查询',
+  fitness_analysis: '适配度分析',
+  strategy_generation: '策略生成',
+  execution_planning: '执行规划',
+  budget_kpi: '预算与 KPI',
+  action_recommendations: '行动建议',
+  plan_generator: '方案生成',
 }
 
 function agentLabel(nodeId: string): string {

@@ -37,23 +37,26 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
   const [autoMode] = useState(false)
   const [summary, setSummary] = useState<PlanSummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
+  const [restoring, setRestoring] = useState(false) // 恢复中不显示 idle 占位
   const logEndRef = useRef<HTMLDivElement>(null)
 
   // 切回页面时从 localStorage 恢复运行记录，不清空已有数据
   useEffect(() => {
     const savedRunId = localStorage.getItem('allygo_mobile_plan_run_id')
     if (!briefData && status === 'idle' && savedRunId && savedRunId !== 'null') {
-      restoreFromRunId(savedRunId)
+      setRestoring(true)
+      restoreFromRunId(savedRunId).finally(() => setRestoring(false))
     } else if (!briefData && status === 'idle' && (!savedRunId || savedRunId === 'null')) {
       // 没有存过的 run_id，用后端最新的已完成 run
+      setRestoring(true)
       import('../../api/plan').then(({ listPlanRuns }) => {
         listPlanRuns(3).then(runs => {
           const completed = runs.find(r => r.status === 'completed')
           if (completed) {
             localStorage.setItem('allygo_mobile_plan_run_id', completed.run_id)
-            restoreFromRunId(completed.run_id)
+            return restoreFromRunId(completed.run_id)
           }
-        }).catch(() => {})
+        }).catch(() => {}).finally(() => setRestoring(false))
       })
     }
   }, [briefData, status, restoreFromRunId])
@@ -133,7 +136,8 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
 
   const isIdle = status === 'idle'
 
-  if (isIdle && !briefData) {
+  // 恢复中不显示 idle 占位，等拿到结果后直接展示 pipeline
+  if (isIdle && !briefData && !restoring) {
     return (
       <div className="mw-placeholder">
         <div className="ph-title">📋 方案生成</div>
@@ -168,7 +172,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
               <div className="dot">{dotContent}</div>
               <div className="body" style={{ cursor: s.logs.length > 0 ? 'pointer' : 'default' }} onClick={() => s.logs.length > 0 && toggleExpand(s.id)}>
                 <div className="st">{s.label}</div>
-                <div className="sd">{s.summary}</div>
+                <div className="sd">{s.id === 'action_recommendations' && s.status === 'running' ? '行动建议执行中…' : s.id === 'action_recommendations' && s.status === 'complete' ? '行动建议执行完毕' : s.summary}</div>
                 {isExpanded && s.logs.length > 0 && (
                   <div className="log-card" style={{
                     marginTop: 8, padding: 8, borderRadius: 'var(--r-sm)',
@@ -198,7 +202,17 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
 
       {chapters.length > 0 && status === 'completed' && (
         <>
-          <div className="sec"><h3>生成结果</h3></div>
+          <div className="sec">
+            <h3>
+              生成结果
+              <span
+                className="more"
+                onClick={() => onNavigate('preview')}
+                style={{ cursor: 'pointer', color: 'var(--accent)', fontWeight: 600 }}
+                title="查看完整方案"
+              >查看完整方案</span>
+            </h3>
+          </div>
 
           {summaryLoading && (
             <div className="plancard">

@@ -22,16 +22,16 @@ interface AgentMeta {
 }
 
 const agents: AgentMeta[] = [
-  { id: 'product_research', name: '产品调研 Agent', desc: '搜索并分析品牌产品信息与市场定位', icon: '\u{1F50E}' },
-  { id: 'market_research', name: '市场调研 Agent', desc: '收集行业趋势、竞品格局、消费洞察', icon: '\u{1F4CA}' },
-  { id: 'audience_insight', name: '人群洞察 Agent', desc: '分析目标城市运动人群画像', icon: '\u{1F465}' },
-  { id: 'plan_data_query', name: '数据查询 Agent', desc: '调取 AllyGo 盟域/赛事/达人/场馆/经营社数据', icon: '\u{1F50D}' },
-  { id: 'fitness_analysis', name: '适配度分析 Agent', desc: '计算品牌品类 × 运动场景适配度', icon: '\u{1F3AF}' },
-  { id: 'strategy_generation', name: '策略生成 Agent', desc: '制定营销策略、核心定位、4M+1C框架', icon: '\u{1F4A1}' },
-  { id: 'execution_planning', name: '执行规划 Agent', desc: '规划赛事/盟域/达人/内容/运营落地方案', icon: '\u{1F680}' },
-  { id: 'budget_kpi', name: '预算与 KPI Agent', desc: '测算预算分配、KPI预测、时间表', icon: '\u{1F4B0}' },
-  { id: 'action_recommendations', name: '行动建议 Agent', desc: '生成可执行的系统操作指导', icon: '\u{1F3AF}' },
-  { id: 'plan_generator', name: '方案生成 Agent', desc: '汇总上游输出为 9 章 Markdown 方案', icon: '\u{1F4CB}' },
+  { id: 'product_research', name: '产品调研', desc: '搜索并分析品牌产品信息与市场定位', icon: '\u{1F50E}' },
+  { id: 'market_research', name: '市场调研', desc: '收集行业趋势、竞品格局、消费洞察', icon: '\u{1F4CA}' },
+  { id: 'audience_insight', name: '人群洞察', desc: '分析目标城市运动人群画像', icon: '\u{1F465}' },
+  { id: 'plan_data_query', name: '数据查询', desc: '调取 AllyGo 盟域/赛事/达人/场馆/经营社数据', icon: '\u{1F50D}' },
+  { id: 'fitness_analysis', name: '适配度分析', desc: '计算品牌品类 × 运动场景适配度', icon: '\u{1F3AF}' },
+  { id: 'strategy_generation', name: '策略生成', desc: '制定营销策略、核心定位、4M+1C框架', icon: '\u{1F4A1}' },
+  { id: 'execution_planning', name: '执行规划', desc: '规划赛事/盟域/达人/内容/运营落地方案', icon: '\u{1F680}' },
+  { id: 'budget_kpi', name: '预算与 KPI', desc: '测算预算分配、KPI预测、时间表', icon: '\u{1F4B0}' },
+  { id: 'action_recommendations', name: '行动建议', desc: '生成可执行的系统操作指导', icon: '\u{1F3AF}' },
+  { id: 'plan_generator', name: '方案生成', desc: '汇总上游输出为 9 章 Markdown 方案', icon: '\u{1F4CB}' },
 ]
 
 function statusLabel(status: PlanNode['status']): string {
