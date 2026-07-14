@@ -6,6 +6,7 @@ import { PhoneFrame } from './PhoneFrame'
 import { ScreenChat, type MobileScreen } from './ScreenChat'
 import { ScreenBrief, type BriefFormData } from './ScreenBrief'
 import { ScreenGenerate } from './ScreenGenerate'
+import { ScreenPreview } from './ScreenPreview'
 import { ScreenActions } from './ScreenActions'
 import { ScreenDispatch } from './ScreenDispatch'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
@@ -25,6 +26,7 @@ const DEFAULT_TOPBAR: Record<MobileScreen, { t: string; sub: string }> = {
   chat: { t: '营销方案助手', sub: 'AllyGo Agent · 4M+1C 模型' },
   brief: { t: '营销方案工作台', sub: '娃哈哈 · 魅力系列' },
   generate: { t: '方案生成', sub: '魅力系列 · 运动盟域' },
+  preview: { t: '方案预览', sub: '完整展示' },
   actions: { t: '下一步行动建议', sub: '魅力系列 · 共 6 项' },
   dispatch: { t: '下发与转发达成', sub: '统一发声 · 跨盟下发' },
 }
@@ -128,6 +130,7 @@ export function MobileWorkbenchPage() {
       chat: null,
       brief: 'chat',
       generate: 'brief',
+      preview: 'generate',
       actions: 'generate',
       dispatch: 'actions',
     }
@@ -143,11 +146,12 @@ export function MobileWorkbenchPage() {
     ...DEFAULT_TOPBAR,
     brief: { t: '营销方案工作台', sub: `${brandLabel} · ${productLabel}` },
     generate: { t: '方案生成', sub: `${productLabel} · 运动盟域` },
+    preview: { t: '方案预览', sub: `${productLabel} · 完整展示` },
     actions: { t: '下一步行动建议', sub: `${productLabel} · 共 ${itemCount + 6} 项` },
     dispatch: { t: '下发与转发达成', sub: `${brandLabel} · 跨盟下发` },
   }
   const meta = topbarText[screen]
-  const isExportReady = screen === 'generate' && status === 'completed'
+  const isExportReady = (screen === 'generate' || screen === 'preview') && status === 'completed'
 
   const topbar = (
     <div className="topbar">
@@ -232,6 +236,12 @@ export function MobileWorkbenchPage() {
               onNavigate={handleNavigate}
               briefData={briefData}
               planRun={planRun}
+            />
+          </div>
+          <div style={{ display: screen === 'preview' ? '' : 'none' }}>
+            <ScreenPreview
+              onNavigate={handleNavigate}
+              chapters={planRun.chapters}
             />
           </div>
           <div style={{ display: screen === 'actions' ? '' : 'none' }}>

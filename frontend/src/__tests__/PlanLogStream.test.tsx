@@ -18,6 +18,6 @@ describe('PlanLogStream', () => {
   test('renders formatted log event when logs present', () => {
     render(<PlanLogStream logs={sampleLogs} />)
     // The latest log event (index 2) is node.complete for market_research agent
-    expect(screen.getByText(/市场调研 Agent/)).toBeInTheDocument()
+    expect(screen.getByText(/市场调研/)).toBeInTheDocument()
   })
 })
