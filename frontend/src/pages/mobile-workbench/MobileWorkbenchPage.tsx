@@ -248,7 +248,7 @@ export function MobileWorkbenchPage() {
             <ScreenActions onNavigate={handleNavigate} outputs={outputs} />
           </div>
           <div style={{ display: screen === 'dispatch' ? '' : 'none' }}>
-            <ScreenDispatch />
+            <ScreenDispatch outputs={outputs} briefData={briefData} />
           </div>
         </PhoneFrame>
       </div>
