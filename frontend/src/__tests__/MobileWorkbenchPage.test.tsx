@@ -45,6 +45,7 @@ describe('MobileWorkbenchPage', () => {
     // ScreenBrief 渲染表单而非占位
     expect(screen.getByText('方案简报')).toBeDefined()
     expect(screen.getByText('② 简报').className).toContain('on')
-    expect(screen.queryByPlaceholderText('给 Agent 发消息…')).toBeNull()
+    // ScreenChat 仅 display:none 隐藏，不 unmount，所以输入框 DOM 仍存在
+    expect(screen.getByPlaceholderText('给 Agent 发消息…')).not.toBeVisible()
   })
 })
