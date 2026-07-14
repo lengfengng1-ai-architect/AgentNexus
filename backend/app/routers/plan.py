@@ -397,3 +397,47 @@ async def plan_test_xlsx():
     except Exception as exc:
         logger.exception("test xlsx generation failed")
         return _error_response(500, f"XLSX 生成失败: {exc}", ErrorCode.INTERNAL_ERROR)
+
+
+@router.post("/plan/runs/{run_id}/export-xlsx")
+async def plan_export_xlsx(
+    run_id: str = Path(..., description="运行实例 ID"),
+):
+    """导出方案为 XLSX 表格，返回下载 URL。"""
+    if not_found := await _require_run(run_id):
+        return not_found
+    try:
+        from app.services.plan_export_service import export_plan_xlsx
+
+        abs_path = await export_plan_xlsx(run_id)
+        url_path = abs_path.replace("\\", "/")
+        filename = url_path.split("/")[-1]
+        download_url = f"/xlsx/{filename}"
+        return APIResponse(success=True, data={"download_url": download_url, "file_path": abs_path})
+    except ValueError as exc:
+        return _error_response(404, str(exc), ErrorCode.NOT_FOUND)
+    except Exception as exc:
+        logger.exception("plan xlsx export failed for run %s", run_id)
+        return _error_response(500, f"XLSX 导出失败: {exc}", ErrorCode.INTERNAL_ERROR)
+
+
+@router.post("/plan/runs/{run_id}/export-pdf")
+async def plan_export_pdf(
+    run_id: str = Path(..., description="运行实例 ID"),
+):
+    """导出方案为 PDF 文档，返回下载 URL。"""
+    if not_found := await _require_run(run_id):
+        return not_found
+    try:
+        from app.services.plan_export_service import export_plan_pdf
+
+        abs_path = await export_plan_pdf(run_id)
+        url_path = abs_path.replace("\\", "/")
+        filename = url_path.split("/")[-1]
+        download_url = f"/xlsx/{filename}"  # reuse same /xlsx mount
+        return APIResponse(success=True, data={"download_url": download_url, "file_path": abs_path})
+    except ValueError as exc:
+        return _error_response(404, str(exc), ErrorCode.NOT_FOUND)
+    except Exception as exc:
+        logger.exception("plan pdf export failed for run %s", run_id)
+        return _error_response(500, f"PDF 导出失败: {exc}", ErrorCode.INTERNAL_ERROR)

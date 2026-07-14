@@ -20,7 +20,6 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
     status,
     steps,
     chapters,
-    outputs,
     pausedSnapshot,
     error,
     isLoading,
@@ -28,7 +27,6 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
     start,
     approve,
     reject,
-    reset,
     restoreFromRunId,
   } = planRun
 
@@ -36,7 +34,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [showRejectInput, setShowRejectInput] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
-  const [autoMode, setAutoMode] = useState(false)
+  const [autoMode] = useState(false)
   const [summary, setSummary] = useState<PlanSummary | null>(null)
   const [summaryLoading, setSummaryLoading] = useState(false)
   const logEndRef = useRef<HTMLDivElement>(null)

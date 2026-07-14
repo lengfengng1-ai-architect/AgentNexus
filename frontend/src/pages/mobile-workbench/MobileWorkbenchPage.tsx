@@ -1,7 +1,7 @@
 // MobileWorkbenchPage — 移动端工作台展示页（页壳 + Tab 切换）
 // OpenSpec: mobile-brief-connect-backend · specs/mobile-brief-connect/spec.md
 // ② 简报 → ③ 方案生成打通，传递 briefFormData
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { PhoneFrame } from './PhoneFrame'
 import { ScreenChat, type MobileScreen } from './ScreenChat'
 import { ScreenBrief, type BriefFormData } from './ScreenBrief'
@@ -9,6 +9,7 @@ import { ScreenGenerate } from './ScreenGenerate'
 import { ScreenActions } from './ScreenActions'
 import { ScreenDispatch } from './ScreenDispatch'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
+import { exportPlanPdf, exportPlanXlsx } from '../../api/plan'
 import type { BrandInput } from '../../types/chat'
 import './mobile-workbench.css'
 
@@ -32,7 +33,47 @@ export function MobileWorkbenchPage() {
   const [screen, setScreen] = useState<MobileScreen>('chat')
   const [briefData, setBriefData] = useState<BriefFormData | null>(null)
   const planRun = useMobilePlanRun()
-  const { outputs, chapters, checkMediaStatus, status } = planRun
+  const { outputs, checkMediaStatus, status } = planRun
+
+  // 三点导出菜单状态
+  const [showExportMenu, setShowExportMenu] = useState(false)
+  const [exporting, setExporting] = useState<'pdf' | 'xlsx' | null>(null)
+  const exportRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (exportRef.current && !exportRef.current.contains(e.target as Node)) {
+        setShowExportMenu(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const handleExport = async (fmt: 'pdf' | 'xlsx') => {
+    setExporting(fmt)
+    setShowExportMenu(false)
+    try {
+      const rid = (() => { try { return localStorage.getItem('allygo_mobile_plan_run_id') } catch { return null } })()
+      if (!rid) throw new Error('未找到运行记录')
+      const result = fmt === 'pdf' ? await exportPlanPdf(rid) : await exportPlanXlsx(rid)
+      // determine backend origin from API_BASE_URL
+      const apiOrigin = typeof import.meta.env.VITE_API_BASE_URL === 'string'
+        ? new URL(import.meta.env.VITE_API_BASE_URL).origin
+        : 'http://localhost:8000'
+      // trigger download via hidden link — use full URL so it hits backend, not Vite dev server
+      const a = document.createElement('a')
+      a.href = new URL(result.download_url, apiOrigin).toString()
+      a.download = ''
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+    } catch (err) {
+      alert(`导出 ${fmt.toUpperCase()} 失败: ${err instanceof Error ? err.message : '未知错误'}`)
+    } finally {
+      setExporting(null)
+    }
+  }
 
   // 媒体轮询：actions 屏时才查，海报/视频都齐了就不轮询了
   useEffect(() => {
@@ -93,6 +134,7 @@ export function MobileWorkbenchPage() {
     dispatch: { t: '下发与转发达成', sub: `${brandLabel} · 跨盟下发` },
   }
   const meta = topbarText[screen]
+  const isExportReady = screen === 'generate' && status === 'completed'
 
   const topbar = (
     <div className="topbar">
@@ -104,7 +146,48 @@ export function MobileWorkbenchPage() {
         {meta.t}
         <small>{meta.sub}</small>
       </span>
-      <span className="ico">⋯</span>
+      <div ref={exportRef} style={{ position: 'relative' }}>
+        <span
+          className="ico"
+          onClick={() => isExportReady && setShowExportMenu(v => !v)}
+          style={{ opacity: isExportReady ? 1 : 0.3, cursor: isExportReady ? 'pointer' : 'default' }}
+        >⋯</span>
+        {showExportMenu && (
+          <div
+            style={{
+              position: 'absolute', top: 32, right: 0, zIndex: 999,
+              minWidth: 120, background: '#fff', borderRadius: 8,
+              boxShadow: '0 4px 16px rgba(0,0,0,0.12), 0 0 0 1px rgba(0,0,0,0.06)',
+              padding: '4px 0', overflow: 'hidden',
+            }}
+          >
+            <button
+              type="button"
+              disabled={exporting !== null}
+              onClick={() => handleExport('pdf')}
+              style={{
+                display: 'block', width: '100%', border: 'none', background: 'none',
+                padding: '10px 16px', fontSize: 13, fontWeight: 500,
+                color: exporting === 'pdf' ? '#9ca3af' : '#111',
+                cursor: exporting !== null ? 'not-allowed' : 'pointer',
+                textAlign: 'left', fontFamily: 'var(--ff)',
+              }}
+            >📄 {exporting === 'pdf' ? '生成中…' : '导出 PDF'}</button>
+            <button
+              type="button"
+              disabled={exporting !== null}
+              onClick={() => handleExport('xlsx')}
+              style={{
+                display: 'block', width: '100%', border: 'none', background: 'none',
+                padding: '10px 16px', fontSize: 13, fontWeight: 500,
+                color: exporting === 'xlsx' ? '#9ca3af' : '#111',
+                cursor: exporting !== null ? 'not-allowed' : 'pointer',
+                textAlign: 'left', fontFamily: 'var(--ff)',
+              }}
+            >📊 {exporting === 'xlsx' ? '生成中…' : '导出 XLSX'}</button>
+          </div>
+        )}
+      </div>
     </div>
   )
 
