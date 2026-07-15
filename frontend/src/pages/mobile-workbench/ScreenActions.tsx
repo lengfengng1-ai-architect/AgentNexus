@@ -172,11 +172,12 @@ function buildCards(outputs: PlanOutputs): CardItem[] {
 interface FeedbackModalProps {
   card: CardItem
   runId: string
+  outputs: PlanOutputs
   onClose: () => void
   onRegenerated: () => void
 }
 
-function FeedbackModal({ card, runId, onClose, onRegenerated }: FeedbackModalProps) {
+function FeedbackModal({ card, runId, outputs, onClose, onRegenerated }: FeedbackModalProps) {
   const [feedback, setFeedback] = useState('')
   const [optimizing, setOptimizing] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -185,19 +186,36 @@ function FeedbackModal({ card, runId, onClose, onRegenerated }: FeedbackModalPro
   const isPoster = card.filterKey === 'poster'
   const promptType = isPoster ? 'image' as const : 'video' as const
 
+  // 从 outputs 中提取品牌/产品/策略上下文，保证 AI 优化不偏题
+  const buildContext = useCallback(() => {
+    const brand = (outputs as Record<string, unknown>).brand_input as Record<string, unknown> | undefined
+    const strategy = outputs.strategy_generation as Record<string, unknown> | undefined
+    const fitness = outputs.fitness_analysis as Record<string, unknown> | undefined
+    const parts: string[] = []
+    if (brand?.brand_name) parts.push(`品牌：${brand.brand_name}`)
+    if (brand?.category) parts.push(`品类：${brand.category}`)
+    if (strategy?.positioning) parts.push(`核心主张：${strategy.positioning}`)
+    if (fitness?.primary_sport) parts.push(`运动场景：${fitness.primary_sport}`)
+    if (strategy?.marketing_goal) parts.push(`营销目标：${strategy.marketing_goal}`)
+    return parts.join(' | ')
+  }, [outputs])
+
   const handleOptimizePrompt = useCallback(async () => {
     if (!feedback.trim()) return
     setOptimizing(true)
     setError(null)
     try {
-      const result = await optimizePrompt(feedback, promptType)
+      // 把方案上下文拼到用户反馈前面，保证 LLM 知道是什么产品/品牌
+      const context = buildContext()
+      const contextualized = context ? `【方案背景】${context}\n【用户修改意见】${feedback}` : feedback
+      const result = await optimizePrompt(contextualized, promptType)
       setFeedback(result.optimized)
     } catch (err) {
       setError(err instanceof Error ? err.message : '优化失败')
     } finally {
       setOptimizing(false)
     }
-  }, [feedback, promptType])
+  }, [feedback, promptType, buildContext])
 
   const handleRegenerate = useCallback(async () => {
     if (!runId) return
@@ -515,6 +533,7 @@ export function ScreenActions({ onNavigate, outputs, runId, checkMediaStatus }: 
         <FeedbackModal
           card={editCard}
           runId={runId}
+          outputs={outputs}
           onClose={() => setEditCard(null)}
           onRegenerated={handleRegenerated}
         />
