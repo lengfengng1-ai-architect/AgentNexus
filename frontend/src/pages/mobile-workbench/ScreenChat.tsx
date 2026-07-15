@@ -95,6 +95,11 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     setInputValue('我是 [品牌名]，属于 [品类]，产品线是 [产品线]，目标人群 [目标人群]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
   }
 
+  // ── 市场分析快速填充 ──────────────────────────────────────────────────
+  const handleMarketAnalysisTemplate = () => {
+    setInputValue('我要对[产品名]进行市场分析')
+  }
+
   // ── 产品海报 virtual message ─────────────────────────────────────────
   const handlePosterTemplate = () => {
     addVirtualMessage('text_to_image', '帮我生成一张产品海报图片')
@@ -202,6 +207,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
           <button className="qb" onClick={() => onNavigate('brief')}>方案生成</button>
           <button className="qb" onClick={handlePosterTemplate}>产品海报</button>
           <button className="qb" onClick={handleVideoTemplate}>产品视频</button>
+          <button className="qb" onClick={handleMarketAnalysisTemplate}>市场分析</button>
         </div>
         <div className="inputbar-row">
           <input
