@@ -13,6 +13,7 @@ from app.agents.market_analysis_agent import (
     _graph,
     research_market,
 )
+from app.agents.llm_utils import drain_logs
 from app.config.cache_paths import MARKET_ANALYSIS_DIR, market_analysis_path
 from app.schemas.market_analysis import (
     MarketAnalysisProgressEvent,
@@ -75,6 +76,10 @@ async def analyze_stream(market_name: str, category: str) -> AsyncGenerator[str,
             translated = _translate_event(event, market_name, category)
             if translated is not None:
                 yield translated
+
+            # 排空 write_log 缓冲，作为 log 事件输出
+            for entry in drain_logs():
+                yield f"event: log\ndata: {json.dumps(entry, ensure_ascii=False)}\n\n"
     except Exception as exc:
         yield _sse_error(str(exc))
 

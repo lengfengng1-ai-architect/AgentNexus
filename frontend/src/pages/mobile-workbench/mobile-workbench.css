@@ -609,6 +609,30 @@
   border: none;
   border-top: 1px solid #e2e8f0;
 }
+/* —— 市场分析报告移动端样式（字号降级适配 360px） —— */
+.mw .market-report-mobile {
+  font-size: 13px;
+  line-height: 1.65;
+  word-break: break-word;
+}
+.mw .market-report-mobile h1 { font-size: 1.05rem; font-weight: 700; color: #0f172a; margin: 1em 0 0.6em; }
+.mw .market-report-mobile h2 { font-size: 0.95rem; font-weight: 700; color: #0f172a; margin: 1em 0 0.6em; }
+.mw .market-report-mobile h3 { font-size: 0.9rem; font-weight: 600; color: #1e293b; margin: 0.85em 0 0.5em; }
+.mw .market-report-mobile p { margin-bottom: 0.65em; line-height: 1.7; word-break: break-word; }
+.mw .market-report-mobile strong { font-weight: 600; }
+.mw .market-report-mobile em { font-style: italic; }
+.mw .market-report-mobile ul, .mw .market-report-mobile ol { margin: 0.4em 0; padding-left: 1.3em; }
+.mw .market-report-mobile li { margin-bottom: 0.25em; line-height: 1.6; }
+.mw .market-report-mobile table { width: 100%; border-collapse: collapse; margin: 0.75em 0; font-size: 0.85em; }
+.mw .market-report-mobile th, .mw .market-report-mobile td { border: 1px solid #d1d5db; padding: 5px 8px; text-align: left; word-break: break-word; }
+.mw .market-report-mobile th { background: #f8fafc; font-weight: 600; }
+.mw .market-report-mobile blockquote { border-left: 3px solid #3b82f6; padding: 6px 12px; margin: 0.75em 0; background: #f8fafc; color: #475569; font-size: 0.95em; }
+.mw .market-report-mobile code { background: #f1f5f9; padding: 1px 5px; border-radius: 4px; font-size: 0.875em; }
+.mw .market-report-mobile pre { background: #1e293b; color: #e2e8f0; padding: 10px; border-radius: 6px; overflow-x: auto; margin: 0.75em 0; }
+.mw .market-report-mobile pre code { background: transparent; padding: 0; color: inherit; }
+.mw .market-report-mobile hr { margin: 1.25em 0; border: none; border-top: 1px solid #e2e8f0; }
+.mw .table-wrap { overflow-x: auto; margin: 0.75em 0; }
+
 .mw .dp-hero { background: linear-gradient(135deg, var(--dark-1), var(--dark-2)); color: #ffffff; padding: 14px 16px 16px; }
 .mw .dp-hero .k { font-size: 11px; opacity: .82; }
 .mw .dp-hero .v { font-size: 18px; font-weight: 700; margin-top: 2px; }

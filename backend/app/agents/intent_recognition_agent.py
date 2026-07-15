@@ -124,6 +124,13 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
         if not output.reply:
             output.reply = f"为了生成营销方案，我还需要了解：{', '.join(missing)}"
 
+    # update_context 补全 category 后 → 提升为 market_research
+    if output.intent == "update_context" and output.market_name and output.brand_input.category:
+        output.intent = "market_research"
+        output.missing_fields = []
+        if not output.reply:
+            output.reply = f"好的！我已了解研究目标：{output.market_name}（{output.brand_input.category}）。请点击「开始分析」按钮进行市场分析。"
+
     # market_research: check market_name + category
     if output.intent == "market_research":
         mr_missing = []
@@ -136,7 +143,7 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
             output.missing_fields = mr_missing
             if not output.reply:
                 if "market_name" in mr_missing and "category" in mr_missing:
-                    output.reply = "好的，我来帮您做市场分析。请问您想分析哪个品牌或赛道？以及属于什么品类？"
+                    output.reply = "好的，我来帮您做市场分析。请问您是想分析哪一个方向或者一个具体的市场？"
                 elif "market_name" in mr_missing:
                     output.reply = "请问您想分析哪个品牌或赛道？"
                 else:
@@ -212,10 +219,20 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
             if getattr(original, key) != value
         }
 
-    # Fill market_name from context for market_research intent
-    if result.intent == "market_research" and not result.market_name:
-        if context.get("market_name"):
-            result.market_name = context["market_name"]
+        # LLM reply 含"品类"时，说明 LLM 实际在问品类，
+        # 但 _merge_context 从旧上下文中带入了 catgeory，
+        # 清除它避免 update_context → market_research 错误提升
+        if result.reply and "品类" in result.reply:
+            result.brand_input.category = None
+
+    # LLM 直接返回 market_research 时也可能同时设置 category 并反问"品类"
+    if result.reply and "品类" in result.reply and result.brand_input.category is not None:
+        result.brand_input.category = None
+
+    # Fill market_name from context
+    # (needed for update_context → market_research promotion downstream)
+    if not result.market_name and context.get("market_name"):
+        result.market_name = context["market_name"]
 
     result = _normalize_intent_output(result)
 
@@ -295,7 +312,16 @@ async def stream_intent_recognition(
             for key, value in result.brand_input.model_dump(exclude_none=True).items()
             if getattr(original, key) != value
         }
-    elif context.get("brand_input"):
+
+        # LLM reply 含"品类"时，清除从旧上下文 merge 来的 category
+        if result.reply and "品类" in result.reply:
+            result.brand_input.category = None
+
+    # LLM 直接返回 market_research 时也可能同时设置 category 并反问"品类"
+    if result.reply and "品类" in result.reply and result.brand_input.category is not None:
+        result.brand_input.category = None
+
+    if result.intent != "update_context" and context.get("brand_input"):
         # Always fill missing fields from context, for any intent
         ctx_bi = _parse_brand_input(context["brand_input"])
         merged = result.brand_input.model_dump(exclude_none=True)
@@ -305,10 +331,9 @@ async def stream_intent_recognition(
                 if val is not None:
                     setattr(result.brand_input, key, val)
 
-    # Fill market_name from context for market_research intent
-    if result.intent == "market_research" and not result.market_name:
-        if context.get("market_name"):
-            result.market_name = context["market_name"]
+    # Fill market_name from context
+    if not result.market_name and context.get("market_name"):
+        result.market_name = context["market_name"]
 
     result = _normalize_intent_output(result)
 
