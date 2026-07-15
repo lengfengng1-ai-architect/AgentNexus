@@ -174,15 +174,18 @@ ChatBubble 在市场分析进行时，SHALL 实时展示分析进度日志，每
 - **WHEN** 进度日志条数超过 50 条
 - **THEN** 截断保留最近 50 条
 
-### Requirement: 搜索来源 + 进度双窗口布局
+### Requirement: 进度日志展示
 
-市场分析流式进行期间，SHALL 同时展示搜索来源和进度日志两个嵌入式小窗口，上下排列。
+市场分析流式进行期间，SHALL 展示 ToolCallStatusBar（蓝色搜索状态条 + spinner）和进度日志窗口。
 
-#### Scenario: 双窗口布局
+#### Scenario: 进度阶段布局
 - **WHEN** 市场分析正在进行
-- **THEN** 上方显示搜索来源窗口，下方显示进度日志窗口
-- **THEN** 两个窗口均有 max-height 限制，内容超出时显示滚动条
-- **THEN** 新增内容时各窗口独立 auto-scroll 到底部
+- **THEN** 上方显示 ToolCallStatusBar（蓝色搜索状态条 + spinner，正在搜索时展示）
+- **THEN** 下方显示进度日志窗口
+- **THEN** 进度日志窗口有 max-height 限制，内容超出时显示滚动条
+- **THEN** 新增日志时自动 auto-scroll 到底部
+
+**注**：搜索来源窗口已移除，来源信息通过 ToolCallStatusBar 和 SourceCard 动画展示。
 
 ### Requirement: 结构化结果卡片集合
 
