@@ -1088,6 +1088,11 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
 
     # Inject rejection feedback into brand_input stored in the checkpoint so
     # the next node execution sees it.
+    # 累积历史驳回记录：_reject_history 数组记录每次驳回的原因
+    # 用户每次驳回后会重跑 budget_kpi，前几次驳回的原因不应丢失
+    history = brand_input.get("_reject_history") or []
+    history.append(reason)
+    brand_input["_reject_history"] = history
     brand_input["_reject_reason"] = reason
     channel_values["brand_input"] = brand_input
 
