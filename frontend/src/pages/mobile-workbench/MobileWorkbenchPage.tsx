@@ -248,7 +248,12 @@ export function MobileWorkbenchPage() {
             />
           </div>
           <div style={{ display: screen === 'actions' ? '' : 'none' }}>
-            <ScreenActions onNavigate={handleNavigate} outputs={outputs} />
+            <ScreenActions
+              onNavigate={handleNavigate}
+              outputs={outputs}
+              runId={(() => { try { return localStorage.getItem('allygo_mobile_plan_run_id') } catch { return null } })() || undefined}
+              checkMediaStatus={planRun.checkMediaStatus}
+            />
           </div>
           <div style={{ display: screen === 'dispatch' ? '' : 'none' }}>
             <ScreenDispatch outputs={outputs} briefData={briefData} />

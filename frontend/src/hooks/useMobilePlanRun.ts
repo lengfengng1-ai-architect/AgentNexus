@@ -447,6 +447,7 @@ export interface MobilePlanRunAPI {
   reject: (reason: string) => Promise<void>
   reset: () => void
   restoreFromRunId: (runId: string) => Promise<void>
+  checkMediaStatus: () => Promise<void>
 }
 
 export { PIPELINE_NODES }

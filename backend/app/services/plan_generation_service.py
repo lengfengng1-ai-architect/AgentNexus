@@ -72,10 +72,11 @@ _poster_cache: dict[str, dict[str, Any]] = {}
 _current_run_id: contextvars.ContextVar[str | None] = contextvars.ContextVar("_current_run_id", default=None)  # 跟踪当前正在执行的 run_id
 
 
-async def _build_promo_video_prompt(state: PlanState) -> str:
+async def _build_promo_video_prompt(state: PlanState, feedback: str = "") -> str:
     """用 LLM 优化宣传视频 prompt，输出后用于 HappyHorse 文生视频。
 
     基于品牌调性、策略定位和营销目标生成更具画面感和节奏感的 prompt。
+    feedback 不为空时作为用户修改意见影响 prompt 方向。
     """
     from app.agents.llm_utils import invoke_json
 
@@ -94,21 +95,29 @@ async def _build_promo_video_prompt(state: PlanState) -> str:
         f"营销目标：{marketing_goal}\n"
         f"核心传播信息：{'；'.join(key_messages) if key_messages else '无'}"
     )
-    # ponytail: 先用 LLM 优化，后续可改为模板 + 风格参数
-    result = await invoke_json(
+    if feedback:
+        raw_prompt += f"\n\n用户修改意见（需重点优化）：{feedback}"
+
+    instruction = (
         "你是一个专业的营销视频 prompt 工程师。"
         "根据品牌信息和营销策略，生成一段 HappyHorse 文生视频模型的 prompt。"
         "要求：画面感强、节奏明快、有品牌感，15 秒以内的短视频风格。"
-        "输出 JSON 格式 {\"prompt\": \"...\"}。",
+    )
+    if feedback:
+        instruction += f"\n请特别关注以下用户反馈方向：{feedback}"
+
+    # ponytail: 先用 LLM 优化，后续可改为模板 + 风格参数
+    result = await invoke_json(
+        instruction + "输出 JSON 格式 {\"prompt\": \"...\"}。",
         raw_prompt,
     )
     return result.get("prompt", raw_prompt)
 
 
-async def _run_promo_video(run_id: str, prompt: str) -> None:
+async def _run_promo_video(run_id: str, prompt: str, *, ratio: str = "16:9", resolution: str = "720P", duration: int = 5) -> None:
     """后台异步执行宣传视频生成，结果写入缓存和 DB。"""
     try:
-        task = await create_video_task(prompt, ratio="16:9", resolution="720P", duration=5)
+        task = await create_video_task(prompt, ratio=ratio, resolution=resolution, duration=duration)
         cache_entry = {
             "status": "generating",
             "task_id": task["task_id"],
@@ -1255,10 +1264,11 @@ async def run_exists(run_id: str) -> bool:
     return await _checkpoint_tuple(run_id) is not None
 
 
-async def regenerate_poster(run_id: str, *, size: str = DEFAULT_POSTER_SIZE) -> dict[str, Any]:
-    """重新生成海报（换尺寸/手动重试），后台触发并立即返回 generating 状态。
+async def regenerate_poster(run_id: str, *, size: str = DEFAULT_POSTER_SIZE, feedback: str = "") -> dict[str, Any]:
+    """重新生成海报（换尺寸/手动重试/用户修改意见），后台触发并立即返回 generating 状态。
 
     从 checkpoint 取 plan_generator.chapters 构造 plan_content。
+    feedback 不为空时拼入 plan_content，影响 AI 生成方向。
     Returns: 当前 poster 状态 dict。
     Raises ValueError: run 不存在或 chapters 为空。
     """
@@ -1270,9 +1280,35 @@ async def regenerate_poster(run_id: str, *, size: str = DEFAULT_POSTER_SIZE) -> 
     if not plan_content:
         raise ValueError("方案章节为空，无法生成海报")
 
+    if feedback:
+        plan_content = f"{plan_content}\n\n【用户修改意见】\n{feedback}"
+
     cache_entry = {"status": "generating", "size": size}
     _poster_cache[run_id] = cache_entry
     await _save_poster(run_id, cache_entry)
     asyncio.create_task(_run_poster(run_id, plan_content, size))
-    logger.info("[poster] regenerate triggered run=%s size=%s", run_id, size)
+    logger.info("[poster] regenerate triggered run=%s size=%s feedback=%s", run_id, size, feedback)
+    return cache_entry
+
+
+async def regenerate_promo_video(run_id: str, *, feedback: str = "", ratio: str = "16:9", resolution: str = "720P", duration: int = 5) -> dict[str, Any]:
+    """重新生成宣传视频（手动重试 / 用户修改意见），后台触发并立即返回 generating 状态。
+
+    从 checkpoint 取 strategy_generation 构建 prompt。
+    feedback 不为空时影响 AI prompt 生成方向。
+    Returns: 当前 promo_video 状态 dict。
+    Raises ValueError: run 不存在。
+    """
+    state = await _checkpoint_state(run_id)
+    if state is None:
+        raise ValueError(f"Run {run_id} not found")
+
+    prompt = await _build_promo_video_prompt(state, feedback=feedback)
+    logger.info("[promo_video] regenerate run=%s prompt=%.200s feedback=%s", run_id, prompt, feedback)
+
+    cache_entry = {"status": "generating", "prompt": prompt, "run_id": run_id}
+    _promo_video_cache[run_id] = cache_entry
+    await _save_promo_video(run_id, cache_entry)
+    asyncio.create_task(_run_promo_video(run_id, prompt, ratio=ratio, resolution=resolution, duration=duration))
+    logger.info("[promo_video] regenerate triggered run=%s", run_id)
     return cache_entry

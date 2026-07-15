@@ -1,12 +1,16 @@
 // ScreenActions — ④ 行动建议屏
 // 对接后端 action_recommendations + plan_data_query + 视频/海报数据
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import type { MobileScreen } from './ScreenChat'
 import type { PlanOutputs } from '../../types/plan'
+import { regeneratePoster, regeneratePromoVideo } from '../../api/plan'
+import { optimizePrompt } from '../../api/promptOptimizer'
 
 interface ScreenActionsProps {
   onNavigate: (s: MobileScreen) => void
   outputs: PlanOutputs
+  runId?: string
+  checkMediaStatus?: () => void
 }
 
 interface CardItem {
@@ -163,11 +167,211 @@ function buildCards(outputs: PlanOutputs): CardItem[] {
   return cards
 }
 
-function renderCard(c: CardItem, onDetail: (card: CardItem) => void) {
+// ── 修改意见弹窗 ──────────────────────────────────
+
+interface FeedbackModalProps {
+  card: CardItem
+  runId: string
+  onClose: () => void
+  onRegenerated: () => void
+}
+
+function FeedbackModal({ card, runId, onClose, onRegenerated }: FeedbackModalProps) {
+  const [feedback, setFeedback] = useState('')
+  const [optimizing, setOptimizing] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const isPoster = card.filterKey === 'poster'
+  const promptType = isPoster ? 'image' as const : 'video' as const
+
+  const handleOptimizePrompt = useCallback(async () => {
+    if (!feedback.trim()) return
+    setOptimizing(true)
+    setError(null)
+    try {
+      const result = await optimizePrompt(feedback, promptType)
+      setFeedback(result.optimized)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '优化失败')
+    } finally {
+      setOptimizing(false)
+    }
+  }, [feedback, promptType])
+
+  const handleRegenerate = useCallback(async () => {
+    if (!runId) return
+    setSubmitting(true)
+    setError(null)
+    try {
+      if (isPoster) {
+        await regeneratePoster(runId, '2688*1536', feedback)
+      } else {
+        await regeneratePromoVideo(runId, feedback)
+      }
+      onClose()
+      onRegenerated()
+    } catch (err) {
+      setError(err instanceof Error ? err.message : '重新生成失败')
+    } finally {
+      setSubmitting(false)
+    }
+  }, [runId, feedback, isPoster, onClose, onRegenerated])
+
+  return (
+    <div
+      style={{
+        position: 'fixed', inset: 0, zIndex: 99999,
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        background: 'rgba(15, 23, 42, 0.3)', padding: 20,
+      }}
+      onClick={onClose}
+    >
+      <div
+        style={{
+          width: 320, background: '#fff', borderRadius: 16,
+          padding: 24, boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+          animation: 'fadeSlideIn 0.25s ease-out',
+        }}
+        onClick={e => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 16 }}>
+          <div>
+            <div style={{ fontSize: 11, color: 'var(--muted)', marginBottom: 2 }}>
+              {card.type} · 修改意见
+            </div>
+            <div style={{ fontSize: 15, fontWeight: 700, color: '#111', lineHeight: 1.3 }}>
+              重新生成{card.type}
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              width: 28, height: 28, border: 'none', borderRadius: '50%',
+              background: '#f3f4f6', color: '#6b7280', cursor: 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              fontSize: 15, fontFamily: 'var(--ff)', flexShrink: 0,
+            }}
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Textarea */}
+        <textarea
+          value={feedback}
+          onChange={e => setFeedback(e.target.value)}
+          placeholder="说说你想怎么修改？比如：换个更清新的风格、色彩更鲜艳、突出运动感…"
+          rows={3}
+          style={{
+            width: '100%', padding: '10px 12px', borderRadius: 10,
+            border: '1px solid #e5e7eb', fontSize: 13, lineHeight: 1.5,
+            fontFamily: 'var(--ff)', resize: 'none', boxSizing: 'border-box',
+            outline: 'none', transition: 'border-color 0.2s',
+          }}
+          onFocus={e => { e.target.style.borderColor = '#1677ff' }}
+          onBlur={e => { e.target.style.borderColor = '#e5e7eb' }}
+        />
+
+        {/* Optimize prompt button */}
+        <div style={{ marginTop: 8, display: 'flex', justifyContent: 'flex-end' }}>
+          <button
+            type="button"
+            disabled={!feedback.trim() || optimizing}
+            onClick={handleOptimizePrompt}
+            style={{
+              fontSize: 11, padding: '4px 12px', borderRadius: 12,
+              border: '1px solid #dbeafe', background: optimizing ? '#f0f5ff' : '#eff6ff',
+              color: optimizing ? '#9ca3af' : '#1677ff', cursor: feedback.trim() ? 'pointer' : 'not-allowed',
+              fontFamily: 'var(--ff)', fontWeight: 600,
+              display: 'inline-flex', alignItems: 'center', gap: 3,
+              transition: 'all 0.2s',
+            }}
+          >
+            {optimizing ? '⏳ 优化中…' : '✨ 优化提示词'}
+          </button>
+        </div>
+
+        {/* Error */}
+        {error && (
+          <div style={{ fontSize: 11, color: '#dc2626', marginTop: 8, lineHeight: 1.4 }}>
+            {error}
+          </div>
+        )}
+
+        {/* Buttons */}
+        <div style={{ display: 'flex', gap: 10, marginTop: 16 }}>
+          <button
+            type="button"
+            onClick={onClose}
+            style={{
+              flex: 1, height: 40, border: '1px solid #e5e7eb',
+              borderRadius: 10, background: '#fff',
+              color: '#6b7280', fontSize: 13, fontWeight: 600,
+              cursor: 'pointer', fontFamily: 'var(--ff)',
+            }}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            disabled={submitting || !runId}
+            onClick={handleRegenerate}
+            style={{
+              flex: 1, height: 40, border: 'none', borderRadius: 10,
+              background: submitting ? '#9ca3af' : '#1677ff',
+              color: '#fff', fontSize: 13, fontWeight: 600,
+              cursor: submitting ? 'not-allowed' : 'pointer',
+              fontFamily: 'var(--ff)',
+            }}
+          >
+            {submitting ? '⏳ 生成中…' : '🔄 重新生成'}
+          </button>
+        </div>
+
+        <style>{`
+          @keyframes fadeSlideIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.97); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+          }
+        `}</style>
+      </div>
+    </div>
+  )
+}
+
+// ── 卡片渲染 ──────────────────────────────────
+
+function renderCard(c: CardItem, onDetail: (card: CardItem) => void, onEdit: (card: CardItem) => void) {
+  const showEditBtn = c.filterKey === 'poster' || c.filterKey === 'shortvideo'
+
+  const editBtn = showEditBtn && (
+    <button
+      type="button"
+      onClick={e => { e.stopPropagation(); onEdit(c) }}
+      title="修改后重新生成"
+      style={{
+        position: 'absolute', top: 6, right: 6,
+        width: 26, height: 26, border: 'none', borderRadius: '50%',
+        background: 'rgba(0,0,0,0.35)', color: '#fff', cursor: 'pointer',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontSize: 13, lineHeight: 1, backdropFilter: 'blur(4px)',
+        transition: 'background 0.2s', zIndex: 2,
+      }}
+      onMouseEnter={e => { (e.target as HTMLElement).style.background = 'rgba(0,0,0,0.55)' }}
+      onMouseLeave={e => { (e.target as HTMLElement).style.background = 'rgba(0,0,0,0.35)' }}
+    >
+      ✏️
+    </button>
+  )
+
   if (c.isVideo && c.videoUrl) {
     return (
-      <div key={c.id} className="acard">
-        <div style={{ background: '#0f0f23', minHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div key={c.id} className="acard" style={{ position: 'relative' }}>
+        {editBtn}
+        <div style={{ background: '#0f0f23', minHeight: 160, display: 'flex', alignItems: 'center', justifyContent: 'center', position: 'relative' }}>
           <video src={c.videoUrl} controls style={{ width: '100%', maxHeight: 200 }}>您的浏览器不支持视频播放</video>
         </div>
         <div className="ab">
@@ -181,7 +385,8 @@ function renderCard(c: CardItem, onDetail: (card: CardItem) => void) {
 
   if (c.imageUrl) {
     return (
-      <div key={c.id} className="acard">
+      <div key={c.id} className="acard" style={{ position: 'relative' }}>
+        {editBtn}
         <div style={{ background: 'var(--accent-softer)', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8 }}>
           <img src={c.imageUrl} alt={c.title} style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 4, objectFit: 'contain' }} />
         </div>
@@ -212,11 +417,31 @@ function renderCard(c: CardItem, onDetail: (card: CardItem) => void) {
   )
 }
 
-export function ScreenActions({ onNavigate, outputs }: ScreenActionsProps) {
+export function ScreenActions({ onNavigate, outputs, runId, checkMediaStatus }: ScreenActionsProps) {
   const [filter, setFilter] = useState<FilterKey>('all')
   const [detailCard, setDetailCard] = useState<CardItem | null>(null)
+  const [editCard, setEditCard] = useState<CardItem | null>(null)
   const cards = buildCards(outputs)
   const filtered = filter === 'all' ? cards : cards.filter(c => c.filterKey === filter)
+
+  const handleEdit = (card: CardItem) => {
+    setDetailCard(null)
+    setEditCard(card)
+  }
+
+  const handleRegenerated = useCallback(() => {
+    // 触发媒体状态轮询
+    if (checkMediaStatus) {
+      checkMediaStatus()
+      // 额外轮询几次确保拿到新状态
+      let count = 0
+      const interval = setInterval(() => {
+        checkMediaStatus()
+        count++
+        if (count >= 6) clearInterval(interval)
+      }, 4000)
+    }
+  }, [checkMediaStatus])
 
   return (
     <>
@@ -235,7 +460,7 @@ export function ScreenActions({ onNavigate, outputs }: ScreenActionsProps) {
             ))}
           </div>
           <div className="feed">
-            {filtered.map(c => renderCard(c, setDetailCard))}
+            {filtered.map(c => renderCard(c, setDetailCard, handleEdit))}
           </div>
           <div className="cta-line" onClick={() => onNavigate('dispatch')}>
             <div>
@@ -283,6 +508,16 @@ export function ScreenActions({ onNavigate, outputs }: ScreenActionsProps) {
             </button>
           </div>
         </div>
+      )}
+
+      {/* 修改意见弹窗 */}
+      {editCard && runId && (
+        <FeedbackModal
+          card={editCard}
+          runId={runId}
+          onClose={() => setEditCard(null)}
+          onRegenerated={handleRegenerated}
+        />
       )}
     </>
   )

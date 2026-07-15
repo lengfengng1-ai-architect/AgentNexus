@@ -141,11 +141,11 @@ export interface PosterStatus {
   height?: number
 }
 
-export async function regeneratePoster(runId: string, size: string): Promise<PosterStatus> {
+export async function regeneratePoster(runId: string, size: string, feedback = ''): Promise<PosterStatus> {
   const response = await fetch(`${API_BASE_URL}/plan/runs/${runId}/poster`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ size }),
+    body: JSON.stringify({ size, feedback }),
   })
 
   if (!response.ok) {
@@ -155,6 +155,22 @@ export async function regeneratePoster(runId: string, size: string): Promise<Pos
 
   const body = await response.json()
   return body.data as PosterStatus
+}
+
+export async function regeneratePromoVideo(runId: string, feedback = '', ratio = '16:9', resolution = '720P', duration = 5): Promise<Record<string, unknown>> {
+  const response = await fetch(`${API_BASE_URL}/plan/runs/${runId}/promo-video`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ feedback, ratio, resolution, duration }),
+  })
+
+  if (!response.ok) {
+    const text = await response.text().catch(() => '视频生成失败')
+    throw new Error(text)
+  }
+
+  const body = await response.json()
+  return body.data as Record<string, unknown>
 }
 
 export interface MediaStatus {
