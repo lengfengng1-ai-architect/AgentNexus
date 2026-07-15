@@ -25,6 +25,7 @@ export function ChatContainer() {
     updateVideoResult,
     updateImageResult,
     updateMessageContent,
+    setMarketResearchDone,
   } = useChat()
 
   const messagesEndRef = useRef<HTMLDivElement>(null)
@@ -32,6 +33,7 @@ export function ChatContainer() {
   const [showConfirm, setShowConfirm] = useState<string | null>(null)
   const [pendingBrandInput, setPendingBrandInput] = useState<BrandInput | null>(null)
   const abortRef = useRef<AbortController | null>(null)
+  const [marketResearchActiveIds, setMarketResearchActiveIds] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -73,6 +75,8 @@ export function ChatContainer() {
     if (!msg?.marketName) return
 
     updateMessageContent(msgId, '🔍 正在启动市场分析…')
+    setMarketResearchDone(msgId)  // 按钮点击即消失
+    setMarketResearchActiveIds(prev => new Set(prev).add(msgId))
 
     abortRef.current?.abort()
     const controller = new AbortController()
@@ -134,6 +138,21 @@ export function ChatContainer() {
             } catch { /* ignore */ }
           }
 
+          if (event === 'log' && data) {
+            try {
+              const p = JSON.parse(data)
+              const logMsg = p.message || ''
+              if (logMsg) {
+                progressLines.push(logMsg)
+                // 截断保留最近 50 条
+                if (progressLines.length > 50) {
+                  progressLines = progressLines.slice(-50)
+                }
+                updateMessageContent(msgId, progressLines.join('\n'))
+              }
+            } catch { /* ignore */ }
+          }
+
           if (event === 'result' && data) {
             try {
               const r = JSON.parse(data)
@@ -141,6 +160,8 @@ export function ChatContainer() {
               if (report) {
                 updateMessageContent(msgId, report)
               }
+              setMarketResearchDone(msgId)
+              setMarketResearchActiveIds(prev => { const next = new Set(prev); next.delete(msgId); return next })
             } catch { /* ignore */ }
           }
         }
@@ -148,6 +169,7 @@ export function ChatContainer() {
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       updateMessageContent(msgId, `❌ 市场分析失败：${err instanceof Error ? err.message : '未知错误'}`)
+      setMarketResearchActiveIds(prev => { const next = new Set(prev); next.delete(msgId); return next })
     }
   }, [messages, updateMessageContent])
 
@@ -170,6 +192,7 @@ export function ChatContainer() {
                 <ChatBubble
                   key={message.id}
                   message={message}
+                  isMarketResearchActive={marketResearchActiveIds.has(message.id)}
                   onRetry={message.retryable ? retryMessage : undefined}
                   onGeneratePlan={message.canGeneratePlan ? handleGeneratePlan : undefined}
                   onStartMarketResearch={message.canStartMarketResearch ? handleStartMarketResearch : undefined}

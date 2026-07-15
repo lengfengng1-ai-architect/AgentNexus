@@ -30,12 +30,14 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     updateImageResult,
     addVirtualMessage,
     updateMessageContent,
+    setMarketResearchDone,
   } = useChat()
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const abortRef = useRef<AbortController | null>(null)
   const [isListening, setIsListening] = useState(false)
+  const [marketResearchActiveIds, setMarketResearchActiveIds] = useState<Set<string>>(new Set())
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const inputValueRef = useRef<string>(inputValue)
   useEffect(() => { inputValueRef.current = inputValue }, [inputValue])
@@ -144,6 +146,8 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
 
     // 追加"分析中…"状态消息
     updateMessageContent(msgId, '🔍 正在启动市场分析…')
+    setMarketResearchDone(msgId) // 按钮点击即消失
+    setMarketResearchActiveIds(prev => new Set(prev).add(msgId))
 
     // Abort 上一个请求（如果有）
     abortRef.current?.abort()
@@ -207,6 +211,21 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
             } catch { /* ignore */ }
           }
 
+          if (event === 'log' && data) {
+            try {
+              const p = JSON.parse(data)
+              const logMsg = p.message || ''
+              if (logMsg) {
+                progressLines.push(logMsg)
+                // 截断保留最近 50 条
+                if (progressLines.length > 50) {
+                  progressLines = progressLines.slice(-50)
+                }
+                updateMessageContent(msgId, progressLines.join('\n'))
+              }
+            } catch { /* ignore */ }
+          }
+
           if (event === 'result' && data) {
             try {
               const r = JSON.parse(data)
@@ -214,6 +233,8 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
               if (report) {
                 updateMessageContent(msgId, report)
               }
+              setMarketResearchDone(msgId)
+              setMarketResearchActiveIds(prev => { const next = new Set(prev); next.delete(msgId); return next })
             } catch { /* ignore */ }
           }
         }
@@ -221,8 +242,9 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     } catch (err) {
       if (err instanceof DOMException && err.name === 'AbortError') return
       updateMessageContent(msgId, `❌ 市场分析失败：${err instanceof Error ? err.message : '未知错误'}`)
+      setMarketResearchActiveIds(prev => { const next = new Set(prev); next.delete(msgId); return next })
     }
-  }, [messages, updateMessageContent])
+  }, [messages, updateMessageContent, setMarketResearchDone])
 
   // ── 组件卸载时 abort 流 ─────────────────────────────────────────────────
   useEffect(() => {
@@ -242,6 +264,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
             key={m.id}
             message={m}
             variant="mobile"
+            isMarketResearchActive={marketResearchActiveIds.has(m.id)}
             onRetry={m.retryable ? handleRetry : undefined}
             onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
             onStartMarketResearch={m.canStartMarketResearch ? handleStartMarketResearch : undefined}

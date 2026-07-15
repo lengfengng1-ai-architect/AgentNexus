@@ -47,7 +47,7 @@
    - 如果关键词含"分析"/"调研"/"竞品"等，即使 brand_input 5 个字段齐全也应优先返回 market_research。
    - market_research 不要求 brand_input 的 5 个字段齐全。
    - market_research 需要 market_name 和 category 两个字段才能执行。
-   - 缺 market_name + category → reply 反问「请问您想分析哪个品牌或赛道？以及属于什么品类？」
+   - 缺 market_name + category → reply 反问「请问您是想分析哪一个方向或者一个具体的市场？」
    - 缺 market_name（有 category）→ reply 反问「请问您想分析哪个品牌或赛道？」
    - 缺 category（有 market_name）→ reply 反问「请问它属于什么品类？例如：饮料、运动服饰等」
    - 字段齐全时 reply 设为「好的！我已了解研究目标：{market_name}（{category}）。请点击"开始分析"按钮进行市场分析。」

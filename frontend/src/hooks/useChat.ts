@@ -41,6 +41,7 @@ type ChatAction =
   | { type: 'IMAGE_RESULT'; messageId: string; imageResult: ImageResultData }
   | { type: 'ADD_VIRTUAL_MESSAGE'; intent: ChatMessage['intent']; userContent?: string }
   | { type: 'UPDATE_MESSAGE_CONTENT'; messageId: string; content: string }
+  | { type: 'SET_MARKET_RESEARCH_DONE'; messageId: string }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
   return {
@@ -186,6 +187,13 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
     case 'UPDATE_MESSAGE_CONTENT': {
       const next = state.messages.map(m =>
         m.id === action.messageId ? { ...m, content: action.content } : m,
+      )
+      return { ...state, messages: next }
+    }
+
+    case 'SET_MARKET_RESEARCH_DONE': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId ? { ...m, canStartMarketResearch: false } : m,
       )
       return { ...state, messages: next }
     }
@@ -338,6 +346,10 @@ export function useChat() {
     dispatch({ type: 'UPDATE_MESSAGE_CONTENT', messageId, content })
   }, [])
 
+  const setMarketResearchDone = useCallback((messageId: string) => {
+    dispatch({ type: 'SET_MARKET_RESEARCH_DONE', messageId })
+  }, [])
+
   const latestBrandInput = getLatestBrandInput(state.messages)
   return {
     messages: state.messages,
@@ -354,6 +366,7 @@ export function useChat() {
     addVirtualMessage,
     updateMessageContent,
     updateMessageContent,
+    setMarketResearchDone,
   }
 }
 

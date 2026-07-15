@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { marked } from 'marked'
 import type { ChatMessage } from '../types/chat'
 import { InlineVideoCard } from './InlineVideoCard'
 import { InlineImageCard } from './InlineImageCard'
@@ -43,6 +44,7 @@ function TypingReasoning({ text }: { text: string }) {
 
 interface ChatBubbleProps {
   message: ChatMessage
+  isMarketResearchActive?: boolean
   variant?: 'mobile'
   onRetry?: (messageId: string) => void
   onGeneratePlan?: (messageId: string) => void
@@ -51,12 +53,13 @@ interface ChatBubbleProps {
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function ChatBubble({ message, variant, onRetry, onGeneratePlan, onStartMarketResearch, onVideoResult, onImageResult }: ChatBubbleProps) {
+export function ChatBubble({ message, isMarketResearchActive = false, variant, onRetry, onGeneratePlan, onStartMarketResearch, onVideoResult, onImageResult }: ChatBubbleProps) {
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
   const isVideoIntent = message.intent === 'generate_video' || message.intent === 'text_to_video'
   const videoPrompt = message.intent === 'generate_video' ? message.videoPrompt : message.generationPrompt
   const isImageIntent = message.intent === 'text_to_image'
+  const isMarketResearch = !isUser && message.intent === 'market_research'
 
   return (
     <div className={['flex w-full', isUser ? 'justify-end' : 'justify-start'].join(' ')}>
@@ -69,17 +72,29 @@ export function ChatBubble({ message, variant, onRetry, onGeneratePlan, onStartM
           message.isError ? 'ring-2 ring-start/50' : '',
         ].join(' ')}
       >
-        <div className="whitespace-pre-wrap text-sm leading-relaxed sm:text-base">
-          {isStreaming ? (
-            message.reasoning ? (
-              <TypingReasoning text={message.reasoning} />
+        {isMarketResearch && isMarketResearchActive ? (
+          <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed sm:text-base">
+            {message.content}
+          </div>
+        ) : isMarketResearch && message.content ? (
+          <div
+            className={variant === 'mobile' ? 'market-report-mobile' : 'market-report text-sm leading-relaxed sm:text-base'}
+            style={{ whiteSpace: 'normal' }}
+            dangerouslySetInnerHTML={{ __html: marked.parse(message.content) }}
+          />
+        ) : (
+          <div className="whitespace-pre-wrap text-sm leading-relaxed sm:text-base">
+            {isStreaming ? (
+              message.reasoning ? (
+                <TypingReasoning text={message.reasoning} />
+              ) : (
+                <TypingIndicator />
+              )
             ) : (
-              <TypingIndicator />
-            )
-          ) : (
-            message.content
-          )}
-        </div>
+              message.content
+            )}
+          </div>
+        )}
         {/* InlineVideoCard for video intents */}
         {!isUser && isVideoIntent && !isStreaming && (
           <InlineVideoCard
@@ -135,4 +150,29 @@ export function ChatBubble({ message, variant, onRetry, onGeneratePlan, onStartM
       </div>
     </div>
   )
+}
+
+// ponytail: 市场分析报告的 markdown 渲染样式。如果后续需要抽离为全局组件，可移入独立 CSS。
+const _reportStyle = document.createElement('style')
+_reportStyle.textContent = `
+.market-report h1 { font-size: 1.25rem; font-weight: 700; color: #0f172a; margin: 1.25em 0 0.75em; }
+.market-report h2 { font-size: 1.1rem; font-weight: 700; color: #0f172a; margin: 1.25em 0 0.75em; }
+.market-report h3 { font-size: 1rem; font-weight: 600; color: #1e293b; margin: 1em 0 0.5em; }
+.market-report p { margin-bottom: 0.75em; line-height: 1.8; word-break: break-word; }
+.market-report strong { font-weight: 600; }
+.market-report em { font-style: italic; }
+.market-report ul, .market-report ol { margin: 0.5em 0; padding-left: 1.5em; }
+.market-report li { margin-bottom: 0.3em; line-height: 1.7; }
+.market-report table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.9em; }
+.market-report th, .market-report td { border: 1px solid #d1d5db; padding: 6px 10px; text-align: left; }
+.market-report th { background: #f8fafc; font-weight: 600; }
+.market-report blockquote { border-left: 3px solid #3b82f6; padding: 8px 16px; margin: 1em 0; background: #f8fafc; color: #475569; }
+.market-report code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.875em; }
+.market-report pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 1em 0; }
+.market-report pre code { background: transparent; padding: 0; color: inherit; }
+.market-report hr { margin: 1.5em 0; border: none; border-top: 1px solid #e2e8f0; }
+`
+_reportStyle.id = 'market-report-style'
+if (!document.getElementById('market-report-style')) {
+  document.head.appendChild(_reportStyle)
 }
