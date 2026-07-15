@@ -144,7 +144,7 @@
   height: 100%;
   overflow-y: auto;
   scrollbar-width: none;
-  padding-bottom: 64px;
+  padding-bottom: 85px;
 }
 .mw .screen::-webkit-scrollbar {
   display: none;
