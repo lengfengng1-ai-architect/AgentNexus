@@ -1,7 +1,37 @@
 /* mobile-workbench.css — 移动端工作台预览页样式系统
    作用域：.mw（所有变量挂在 .mw 选择器下，不挂 :root，与 PC 端 index.css token 隔离）
+   同时 :root 下复制一份核心变量给 createPortal 到 document.body 的弹窗使用
    OpenSpec: openspec/changes/add-mobile-workbench-preview · in_scope: plan-generation
    调色板移植自设计稿 system-kit.mobile-workbench2.html（蓝色 #1677ff 系 + color-mix 派生） */
+
+/* ponytail: 为 createPortal 到 document.body 的弹窗提供变量（.mw 作用域外的弹窗无法继承 .mw 变量）
+   变量名与 .mw 内的名称完全一致，弹窗 inline style 引用 var(--bg) / var(--accent) 等即可正常解析。
+   .mw 内部的元素因 CSS 优先级会覆盖这些 :root 值，互不干扰。 */
+:root {
+  --bg: #ffffff;
+  --fg: #111111;
+  --accent: #1677ff;
+  --surface: #f7f8fa;
+  --muted: #6b7280;
+  --border: #d9dee7;
+  --accent-deep: color-mix(in srgb, #1677ff 52%, #111111);
+  --accent-soft: color-mix(in srgb, #1677ff 14%, #ffffff);
+  --accent-softer: color-mix(in srgb, #1677ff 6%, #ffffff);
+  --accent-border: color-mix(in srgb, #1677ff 32%, #ffffff);
+  --fg-soft: color-mix(in srgb, #111111 72%, #ffffff);
+  --shadow: color-mix(in srgb, #111111 16%, transparent);
+  --shadow-lg: color-mix(in srgb, #111111 22%, transparent);
+  --line: color-mix(in srgb, #d9dee7 55%, #ffffff);
+  --dark-1: #111111;
+  --dark-2: color-mix(in srgb, #111111 80%, #ffffff);
+  --r-xs: 6px;
+  --r-sm: 8px;
+  --r-md: 12px;
+  --r-lg: 16px;
+  --r-xl: 20px;
+  --ff: Inter, 'PingFang SC', 'Microsoft YaHei', system-ui, -apple-system, 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+  --ff-mono: 'SFMono-Regular', Consolas, Menlo, Courier, monospace;
+}
 
 .mw {
   --bg: #ffffff;
