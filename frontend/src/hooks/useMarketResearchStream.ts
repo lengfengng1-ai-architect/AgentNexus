@@ -125,11 +125,6 @@ export function useMarketResearchStream(dispatch: DispatchMethods) {
                   setActiveSearches(prev =>
                     prev.filter(s => s.search_id !== parsed.search_id),
                   )
-                  const count = parsed.result_count ?? 0
-                  dispatch.appendMarketResearchLog(
-                    msgId,
-                    `  → 返回 ${count} 条结果`,
-                  )
                   break
                 }
 
@@ -229,10 +224,10 @@ export function useMarketResearchStream(dispatch: DispatchMethods) {
                   break
                 }
 
-                // ── 文本日志 ──
+                // ── 文本日志 — 只展示结构化进度日志，忽略搜索失败的原始信息 ──
                 case 'log': {
                   const logMsg = parsed.message || ''
-                  if (logMsg) {
+                  if (logMsg && !logMsg.startsWith('⚠️')) {
                     dispatch.appendMarketResearchLog(msgId, logMsg)
                   }
                   break

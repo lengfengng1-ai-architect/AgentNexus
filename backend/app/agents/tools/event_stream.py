@@ -10,6 +10,7 @@ Corresponding in_scope ID: market-analysis
 from __future__ import annotations
 
 import asyncio
+import json
 from collections.abc import Callable
 
 # ── Event type constants ──
