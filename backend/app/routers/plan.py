@@ -23,6 +23,7 @@ from app.services.plan_generation_service import (
     get_status,
     list_runs,
     regenerate_poster,
+    regenerate_promo_video,
     reject_run,
     rerun_run,
     run_exists,
@@ -162,6 +163,7 @@ async def plan_run_status(run_id: str = Path(..., description="运行实例 ID")
 
 class PosterRegenerateRequest(BaseModel):
     size: str = Field(default="2688*1536", description="分辨率，如 2688*1536、1536*2688、2048*2048")
+    feedback: str = Field(default="", description="用户修改意见，影响重新生成方向")
 
 
 @router.post("/plan/runs/{run_id}/poster")
@@ -169,17 +171,42 @@ async def plan_run_regenerate_poster(
     run_id: str = Path(..., description="运行实例 ID"),
     body: PosterRegenerateRequest = PosterRegenerateRequest(),  # type: ignore[call-arg]
 ):
-    """重新生成海报图片（手动重试 / 切换尺寸），后台异步执行。"""
+    """重新生成海报图片（手动重试 / 切换尺寸 / 输入修改意见），后台异步执行。"""
     if not_found := await _require_run(run_id):
         return not_found
     try:
-        poster = await regenerate_poster(run_id, size=body.size)
+        poster = await regenerate_poster(run_id, size=body.size, feedback=body.feedback)
     except ValueError as exc:
         return _error_response(400, str(exc), ErrorCode.BAD_REQUEST)
     except Exception as exc:
         logger.exception("failed to regenerate poster for run %s", run_id)
         return _error_response(500, f"Failed to regenerate poster: {exc}", ErrorCode.INTERNAL_ERROR)
     return APIResponse(success=True, data=poster)
+
+
+class PromoVideoRegenerateRequest(BaseModel):
+    feedback: str = Field(default="", description="用户修改意见，影响重新生成方向")
+    ratio: str = Field(default="16:9", description="宽高比：16:9 / 9:16 / 1:1 / 4:3 / 3:4 / 4:5 / 5:4 / 9:21 / 21:9")
+    resolution: str = Field(default="720P", description="分辨率：720P / 1080P")
+    duration: int = Field(default=5, ge=3, le=15, description="视频时长（秒）")
+
+
+@router.post("/plan/runs/{run_id}/promo-video")
+async def plan_run_regenerate_promo_video(
+    run_id: str = Path(..., description="运行实例 ID"),
+    body: PromoVideoRegenerateRequest = PromoVideoRegenerateRequest(),  # type: ignore[call-arg]
+):
+    """重新生成宣传视频（手动重试 / 输入修改意见），后台异步执行。"""
+    if not_found := await _require_run(run_id):
+        return not_found
+    try:
+        video = await regenerate_promo_video(run_id, feedback=body.feedback, ratio=body.ratio, resolution=body.resolution, duration=body.duration)
+    except ValueError as exc:
+        return _error_response(400, str(exc), ErrorCode.BAD_REQUEST)
+    except Exception as exc:
+        logger.exception("failed to regenerate promo video for run %s", run_id)
+        return _error_response(500, f"Failed to regenerate promo video: {exc}", ErrorCode.INTERNAL_ERROR)
+    return APIResponse(success=True, data=video)
 
 
 @router.get("/plan/runs/{run_id}/media-status")
