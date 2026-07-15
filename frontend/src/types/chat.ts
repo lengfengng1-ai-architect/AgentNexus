@@ -52,6 +52,12 @@ export interface ChatMessage {
   canStartMarketResearch?: boolean
   /** 市场调研目标名称（品牌名/赛道名） */
   marketName?: string
+  /** 市场分析搜索来源 URL 列表（流式进行中实时追加） */
+  marketResearchSources?: { url: string; title: string }[]
+  /** 市场分析进度日志（流式进行中实时追加） */
+  marketResearchProgressLogs?: string[]
+  /** 市场分析完成后的完整结构化结果 */
+  marketResearchResult?: Record<string, unknown>
 }
 
 export type FieldKey = keyof BrandInput

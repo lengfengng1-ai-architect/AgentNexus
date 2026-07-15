@@ -1,9 +1,10 @@
 // ScreenChat — ① 对话入口屏（移动端）
-// OpenSpec: openspec/changes/mobile-chat-backend-integration
-// in_scope: brand-input, mobile-chat-session
+// OpenSpec: openspec/changes/market-analysis-search-sync/
+// in_scope: brand-input, mobile-chat-session, market-analysis
 // 使用 useChat hook 对接后端 /chat/stream SSE 端点
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useChat } from '../../hooks/useChat'
+import { useMarketResearchStream } from '../../hooks/useMarketResearchStream'
 import { ChatBubble } from '../../components/ChatBubble'
 import { ErrorBar } from '../../components/ErrorBar'
 import type { BrandInput } from '../../types/chat'
@@ -31,13 +32,26 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     addVirtualMessage,
     updateMessageContent,
     setMarketResearchDone,
+    appendMarketResearchSources,
+    appendMarketResearchLog,
+    setMarketResearchResult,
   } = useChat()
+
+  const {
+    startMarketResearch,
+    activeIds: marketResearchActiveIds,
+    activeSearches,
+  } = useMarketResearchStream({
+    updateMessageContent,
+    setMarketResearchDone,
+    appendMarketResearchSources,
+    appendMarketResearchLog,
+    setMarketResearchResult,
+  })
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const abortRef = useRef<AbortController | null>(null)
   const [isListening, setIsListening] = useState(false)
-  const [marketResearchActiveIds, setMarketResearchActiveIds] = useState<Set<string>>(new Set())
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const inputValueRef = useRef<string>(inputValue)
   useEffect(() => { inputValueRef.current = inputValue }, [inputValue])
@@ -131,7 +145,6 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     const aiIdx = messages.findIndex(m => m.id === msgId)
     if (aiIdx === -1) { onNavigate('brief'); return }
     const msg = messages[aiIdx]
-    // 取 AI 消息前面最近的一条用户消息内容，作为 parseBriefInput 的输入源
     let userContent: string | undefined
     for (let i = aiIdx - 1; i >= 0; i--) {
       if (messages[i].role === 'user') { userContent = messages[i].content; break }
@@ -139,117 +152,14 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     onNavigate('brief', userContent || msg.content || undefined, msg.brandInput)
   }, [messages, onNavigate])
 
-  // ── 市场分析 ───────────────────────────────────────────────────────────
-  const handleStartMarketResearch = useCallback(async (msgId: string) => {
-    const msg = messages.find(m => m.id === msgId)
-    if (!msg?.marketName) return
-
-    // 追加"分析中…"状态消息
-    updateMessageContent(msgId, '🔍 正在启动市场分析…')
-    setMarketResearchDone(msgId) // 按钮点击即消失
-    setMarketResearchActiveIds(prev => new Set(prev).add(msgId))
-
-    // Abort 上一个请求（如果有）
-    abortRef.current?.abort()
-    const controller = new AbortController()
-    abortRef.current = controller
-
-    try {
-      const resp = await fetch(`${API_BASE}/market-analysis/stream`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ market_name: msg.marketName, category: msg.brandInput?.category || '' }),
-        signal: controller.signal,
-      })
-      if (!resp.ok) throw new Error('市场分析请求失败')
-      if (!resp.body) throw new Error('响应体为空')
-
-      const reader = resp.body.getReader()
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let progressLines: string[] = []
-
-      while (true) {
-        const { done: streamDone, value } = await reader.read()
-        if (streamDone) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const parts = buffer.split('\n\n')
-        buffer = parts.pop() || ''
-
-        for (const part of parts) {
-          if (!part.trim()) continue
-          let event = '', data = ''
-          for (const line of part.split('\n')) {
-            const s = line.trim()
-            if (s.startsWith('event:')) event = s.slice(6).trim()
-            else if (s.startsWith('data:')) data = s.slice(5).trim()
-          }
-
-          if (event === 'progress' && data) {
-            try {
-              const p = JSON.parse(data)
-              const label = p.stage || p.node || ''
-              if (!progressLines.includes(label)) {
-                progressLines.push(label)
-                updateMessageContent(msgId, progressLines.join('\n'))
-              }
-            } catch { /* ignore parse errors */ }
-          }
-
-          if (event === 'node_end' && data) {
-            try {
-              const p = JSON.parse(data)
-              if (p.status === 'completed') {
-                // Replace the last progress line with a completed version
-                const lastIdx = progressLines.length - 1
-                if (lastIdx >= 0 && !progressLines[lastIdx].includes('✓')) {
-                  progressLines[lastIdx] = progressLines[lastIdx] + '  ✓'
-                  updateMessageContent(msgId, progressLines.join('\n'))
-                }
-              }
-            } catch { /* ignore */ }
-          }
-
-          if (event === 'log' && data) {
-            try {
-              const p = JSON.parse(data)
-              const logMsg = p.message || ''
-              if (logMsg) {
-                progressLines.push(logMsg)
-                // 截断保留最近 50 条
-                if (progressLines.length > 50) {
-                  progressLines = progressLines.slice(-50)
-                }
-                updateMessageContent(msgId, progressLines.join('\n'))
-              }
-            } catch { /* ignore */ }
-          }
-
-          if (event === 'result' && data) {
-            try {
-              const r = JSON.parse(data)
-              const report = r.result?.full_report || r.full_report || ''
-              if (report) {
-                updateMessageContent(msgId, report)
-              }
-              setMarketResearchDone(msgId)
-              setMarketResearchActiveIds(prev => { const next = new Set(prev); next.delete(msgId); return next })
-            } catch { /* ignore */ }
-          }
-        }
-      }
-    } catch (err) {
-      if (err instanceof DOMException && err.name === 'AbortError') return
-      updateMessageContent(msgId, `❌ 市场分析失败：${err instanceof Error ? err.message : '未知错误'}`)
-      setMarketResearchActiveIds(prev => { const next = new Set(prev); next.delete(msgId); return next })
-    }
-  }, [messages, updateMessageContent, setMarketResearchDone])
-
-  // ── 组件卸载时 abort 流 ─────────────────────────────────────────────────
+  // ── 市场分析：自动触发 ──────────────────────────────────────────────────
   useEffect(() => {
-    return () => { abortRef.current?.abort() }
-  }, [])
+    for (const m of messages) {
+      if (m.canStartMarketResearch && !marketResearchActiveIds.has(m.id) && m.marketName) {
+        startMarketResearch(m.id, m.marketName, m.brandInput?.category || '')
+      }
+    }
+  }, [messages, marketResearchActiveIds, startMarketResearch])
 
   return (
     <>
@@ -265,9 +175,11 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
             message={m}
             variant="mobile"
             isMarketResearchActive={marketResearchActiveIds.has(m.id)}
+            activeSearches={
+              marketResearchActiveIds.has(m.id) ? activeSearches : undefined
+            }
             onRetry={m.retryable ? handleRetry : undefined}
             onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
-            onStartMarketResearch={m.canStartMarketResearch ? handleStartMarketResearch : undefined}
             onVideoResult={updateVideoResult}
             onImageResult={updateImageResult}
           />

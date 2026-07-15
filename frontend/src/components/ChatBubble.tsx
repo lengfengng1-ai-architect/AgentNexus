@@ -3,6 +3,8 @@ import { marked } from 'marked'
 import type { ChatMessage } from '../types/chat'
 import { InlineVideoCard } from './InlineVideoCard'
 import { InlineImageCard } from './InlineImageCard'
+import { MarketResearchProgressCard } from './MarketResearchProgressCard'
+import { MarketResearchResultCards } from './MarketResearchResultCards'
 
 function TypingIndicator() {
   return (
@@ -45,15 +47,15 @@ function TypingReasoning({ text }: { text: string }) {
 interface ChatBubbleProps {
   message: ChatMessage
   isMarketResearchActive?: boolean
+  activeSearches?: { search_id: string; query: string }[]
   variant?: 'mobile'
   onRetry?: (messageId: string) => void
   onGeneratePlan?: (messageId: string) => void
-  onStartMarketResearch?: (messageId: string) => void
   onVideoResult?: (messageId: string, result: NonNullable<ChatMessage['videoResult']>) => void
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function ChatBubble({ message, isMarketResearchActive = false, variant, onRetry, onGeneratePlan, onStartMarketResearch, onVideoResult, onImageResult }: ChatBubbleProps) {
+export function ChatBubble({ message, isMarketResearchActive = false, activeSearches, variant, onRetry, onGeneratePlan, onVideoResult, onImageResult }: ChatBubbleProps) {
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
   const isVideoIntent = message.intent === 'generate_video' || message.intent === 'text_to_video'
@@ -72,11 +74,20 @@ export function ChatBubble({ message, isMarketResearchActive = false, variant, o
           message.isError ? 'ring-2 ring-start/50' : '',
         ].join(' ')}
       >
-        {isMarketResearch && isMarketResearchActive ? (
-          <div className="max-h-[60vh] overflow-y-auto whitespace-pre-wrap text-sm leading-relaxed sm:text-base">
-            {message.content}
-          </div>
+        {/* 市场分析：流式进行中 → 进度卡片 */}
+        {isMarketResearch && message.marketResearchResult ? (
+          /* 完成态：结构化卡片集合（不可滚动） */
+          <MarketResearchResultCards result={message.marketResearchResult} variant={variant} />
+        ) : isMarketResearch && (message.marketResearchSources?.length || message.marketResearchProgressLogs?.length) ? (
+          /* 进度态：搜索来源 + 进度日志双窗口（可滚动） */
+          <MarketResearchProgressCard
+            sources={message.marketResearchSources || []}
+            logs={message.marketResearchProgressLogs || []}
+            activeSearches={activeSearches}
+            variant={variant}
+          />
         ) : isMarketResearch && message.content ? (
+          /* 回退兼容：纯文本报告（防止异常断开时无 UI） */
           <div
             className={variant === 'mobile' ? 'market-report-mobile' : 'market-report text-sm leading-relaxed sm:text-base'}
             style={{ whiteSpace: 'normal' }}
@@ -125,17 +136,6 @@ export function ChatBubble({ message, isMarketResearchActive = false, variant, o
               : 'mt-3 rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start'}
           >
             生成方案
-          </button>
-        )}
-        {!isUser && message.canStartMarketResearch && onStartMarketResearch && (
-          <button
-            type="button"
-            onClick={() => onStartMarketResearch(message.id)}
-            className={variant === 'mobile'
-              ? 'mt-3 w-full rounded-[8px] bg-[#1677ff] py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#1677ff]/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1677ff]'
-              : 'mt-3 rounded-lg bg-start px-3 py-1.5 text-xs font-medium text-white transition-colors hover:bg-start/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-start'}
-          >
-            开始分析
           </button>
         )}
         {message.isError && onRetry && (

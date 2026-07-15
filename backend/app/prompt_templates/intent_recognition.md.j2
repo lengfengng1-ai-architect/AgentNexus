@@ -50,7 +50,7 @@
    - 缺 market_name + category → reply 反问「请问您是想分析哪一个方向或者一个具体的市场？」
    - 缺 market_name（有 category）→ reply 反问「请问您想分析哪个品牌或赛道？」
    - 缺 category（有 market_name）→ reply 反问「请问它属于什么品类？例如：饮料、运动服饰等」
-   - 字段齐全时 reply 设为「好的！我已了解研究目标：{market_name}（{category}）。请点击"开始分析"按钮进行市场分析。」
+   - 字段齐全时 reply 设为「好的！已了解研究目标：{market_name}（{category}），正在进行分析…」
 3. generate_video → 用户想用图片生成视频。
    - 如果上下文中包含 image_url，则 image_url 赋值为该 URL，同时从用户输入提取视频描述（如有）作为 video_prompt。
    - 如果上下文中没有 image_url，则 image_url 设为 null，在 missing_fields 中添加 "image_url"。

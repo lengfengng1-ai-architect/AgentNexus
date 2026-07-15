@@ -2,11 +2,13 @@ import type { CompetitiveLandscape } from '../types/marketAnalysis'
 
 interface CompetitiveLandscapeCardProps {
   data: CompetitiveLandscape
+  variant?: 'mobile'
 }
 
-export function CompetitiveLandscapeCard({ data }: CompetitiveLandscapeCardProps) {
+export function CompetitiveLandscapeCard({ data, variant }: CompetitiveLandscapeCardProps) {
+  const isMobile = variant === 'mobile'
   return (
-    <div className="rounded-xl border border-line bg-white p-4 shadow-sm sm:p-5">
+    <div className={`rounded-xl border border-line bg-white ${isMobile ? 'p-3' : 'p-4'} shadow-sm sm:p-5`}>
       <div className="mb-3 flex items-center gap-2">
         <span className="text-lg">🏢</span>
         <h3 className="font-semibold text-track">竞争格局</h3>
