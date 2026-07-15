@@ -46,8 +46,13 @@
 - 品牌名称：{{ brand_name }}
 - 品类：{{ category }}
 - 目标城市：{{ city }}
+{% if reject_reason %}
+- **用户要求的预算：从下方「用户修改指令」中提取预算值**（如有多次修改以最新一次为准，如未提预算则以原始输入为准）
+- **用户要求的执行周期：从下方「用户修改指令」中提取周期值**（如有多次修改以最新一次为准，如未提周期则以原始输入为准）
+{% else %}
 - 总预算：{{ budget }} 万元
 - 执行周期：{{ period }} 个月
+{% endif %}
 - 盟域计划：{{ leagues_plan }}
 - 赛事计划：{{ events_plan }}
 - 达人计划：{{ influencer_plan }}
@@ -55,14 +60,19 @@
 - 经营社计划：{{ store_plan }}
 {% if reject_reason %}
 - ⚠️ 用户修改指令（优先级最高，以下要求覆盖输入信息中的对应值）：
-{% for line in reject_reason.split('；') %}
+{% for line in reject_reason.split('\n') %}
   {% if line %}  - {{ line }}{% endif %}
 {% endfor %}
 {% endif %}
 
 要求：
+{% if reject_reason %}
+- **用户修改指令的优先级高于输入信息**：如果用户明确要求修改预算或周期，以用户要求为准
+- total_budget 和 period_months 的值以用户修改指令中的最新要求为准
+{% else %}
 - total_budget 必须等于输入的总预算（{{ budget }} 万元）
 - period_months 必须等于输入的执行周期（{{ period }} 个月）
+{% endif %}
 - 分配类别不少于 5 项，包含达人合作、内容制作、活动执行、平台投放、运营资源
 - 各项占比之和为 100
 - KPI 要可量化、与执行计划对应

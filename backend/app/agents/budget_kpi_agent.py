@@ -36,12 +36,18 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
     budget = parse_budget(brand_input.get("budget"))
     period = parse_period(brand_input.get("period"))
     reject_reason = brand_input.get("_reject_reason") or ""
+    reject_history = brand_input.get("_reject_history") or []
+    # 累积所有历史驳回记录，按次数编号，每次重跑都能看到全部历史
+    reject_history_notes: list[str] = []
+    for i, r in enumerate(reject_history, 1):
+        reject_history_notes.append(f"第{i}次修改：{r}")
+    reject_reason_all = "\n".join(reject_history_notes) if reject_history_notes else reject_reason
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
     write_log("budget_kpi", f"📊 正在为 {brand_name} 测算预算分配和 KPI…")
-    if reject_reason:
-        write_log("budget_kpi", f"📝 用户补充要求：{reject_reason}")
+    if reject_reason_all:
+        write_log("budget_kpi", f"📝 用户修改历史：{'; '.join(reject_history_notes) if reject_history_notes else reject_reason}")
     prompt = _render(
         "budget_kpi",
         brand_name=brand_name,
@@ -49,7 +55,7 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
         city=city,
         budget=budget,
         period=period,
-        reject_reason=reject_reason,
+        reject_reason=reject_reason_all,
         leagues_plan=execution.get("leagues_plan", ""),
         events_plan=execution.get("events_plan", ""),
         influencer_plan=execution.get("influencer_plan", ""),
@@ -57,13 +63,18 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
         store_plan=execution.get("store_plan", ""),
     )
 
-    if reject_reason:
+    if reject_reason_all:
         logger.info("[budget_kpi] 用户驳回后完整提示词：\n%s", prompt)
 
     result = await invoke_json(
         prompt,
         f"请为 {brand_name} 生成预算与 KPI。",
     )
+    # 防御：LLM 可能输出浮点数 amount（如 2.5），转为整数
+    # 注意：这里不覆盖 total_budget / period_months，让 prompt 约束生效
+    for alloc in result.get("allocations") or []:
+        if isinstance(alloc, dict) and "amount" in alloc:
+            alloc["amount"] = int(alloc["amount"])
     write_log("budget_kpi", "✓ 预算 KPI 测算完成")
     return BudgetKpiOutput.model_validate(result).model_dump()
 
