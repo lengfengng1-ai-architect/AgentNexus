@@ -332,14 +332,19 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
         <div style={{
           position: 'fixed', inset: 0, zIndex: 99999,
           display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(15, 23, 42, 0.3)',
+          background: 'rgba(15, 23, 42, 0.35)',
         }}>
-          {/* 手机框内弹窗 */}
-          <div style={{
-            width: 300, background: '#fff', borderRadius: 10,
-            padding: '14px 16px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
-            maxHeight: '60vh', overflow: 'auto',
+          {/* 手机框内弹窗 — 外层 overflow hidden 裁切圆角 */}
+          <div className="bk-modal" style={{
+            width: 300, borderRadius: 'var(--r-lg)',
+            boxShadow: '0 12px 40px var(--shadow-lg)',
+            overflow: 'hidden', background: 'var(--bg)',
+            maxHeight: '68vh',
           }}>
+            <div style={{
+              padding: '16px 16px 14px',
+              maxHeight: 'inherit', overflowY: 'auto', overflowX: 'hidden',
+            }}>
             {(() => {
               const isBk = pausedSnapshot!.node_id === 'budget_kpi'
               let bk: Record<string, unknown> | undefined
@@ -439,148 +444,245 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
 
               /* ── budget_kpi 结果弹窗 ── */
               return <>
-                <div style={{ textAlign: 'center', marginBottom: 10 }}>
-                  <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>预算与 KPI</div>
-                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>确认后继续，不满意可驳回重跑</div>
-                </div>
+                {/* 弹窗入场动画 */}
+                <style>{`
+                  @keyframes bk-fade-in { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
+                  @keyframes bk-slide-up { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+                  .bk-modal { animation: bk-fade-in 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+                  .bk-section { animation: bk-slide-up 0.35s cubic-bezier(0.16,1,0.3,1) both; }
+                  .bk-section:nth-child(1) { animation-delay: 0.05s; }
+                  .bk-section:nth-child(2) { animation-delay: 0.1s; }
+                  .bk-section:nth-child(3) { animation-delay: 0.15s; }
+                  .bk-section:nth-child(4) { animation-delay: 0.2s; }
+                  .bk-btn { transition: all 0.2s cubic-bezier(0.16,1,0.3,1); }
+                  .bk-btn:active { transform: scale(0.97); }
+                  .bk-btn-secondary:active { background: var(--surface) !important; }
+                  .bk-progress-fill { transition: width 0.8s cubic-bezier(0.16,1,0.3,1); }
+                `}</style>
 
-                {/* 总预算 + 周期 */}
-                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
-                  <div style={{ flex: 1, background: '#f5f7fa', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 1 }}>总预算</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#1677ff' }}>{bk?.total_budget ?? '—'}<span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)' }}> 万元</span></div>
-                  </div>
-                  <div style={{ flex: 1, background: '#f5f7fa', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
-                    <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 1 }}>执行周期</div>
-                    <div style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{bk?.period_months ?? '—'}<span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)' }}> 个月</span></div>
-                  </div>
-                </div>
-
-                {/* 预算分配 */}
-                {Array.isArray(bk?.allocations) && (bk!.allocations as Array<Record<string, unknown>>).length > 0 && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#111', marginBottom: 4 }}>预算分配</div>
-                    {(bk!.allocations as Array<Record<string, unknown>>).map((a, i) => (
-                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
-                        <span style={{ fontSize: 10, color: 'var(--muted)', width: 52, flexShrink: 0 }}>{a.category as string}</span>
-                        <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--surface)', overflow: 'hidden' }}>
-                          <div style={{ width: `${a.percentage as number}%`, height: '100%', borderRadius: 3, background: 'var(--accent)' }} />
-                        </div>
-                        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', width: 40, textAlign: 'right' }}>{a.percentage as number}%</span>
-                        <span style={{ fontSize: 10, color: 'var(--muted)', width: 44, textAlign: 'right' }}>{a.amount as number}万元</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {/* KPI 指标 */}
-                {bk?.kpis && typeof bk.kpis === 'object' && Object.keys(bk.kpis).length > 0 && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#111', marginBottom: 4 }}>KPI 指标</div>
-                    <div style={{ background: '#f5f7fa', borderRadius: 6, padding: 8 }}>
-                      {(Object.entries(bk.kpis as Record<string, string>)).map(([key, val]) => (
-                        <div key={key} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10 }}>
-                          <span style={{ color: 'var(--muted)' }}>{key}</span>
-                          <span style={{ fontWeight: 600, color: '#111' }}>{val}</span>
-                        </div>
-                      ))}
+                <div className="bk-modal">
+                  {/* 头部 */}
+                  <div style={{ textAlign: 'center', marginBottom: 14 }}>
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
+                      <span style={{ fontSize: 16 }}>📊</span>
+                      <span style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>预算与 KPI</span>
+                    </div>
+                    <div style={{ fontSize: 11, color: 'var(--muted)', lineHeight: 1.4, maxWidth: 220, margin: '0 auto' }}>
+                      确认数据后继续生成，不满意可驳回调整
                     </div>
                   </div>
-                )}
 
-                {/* 关键里程碑 */}
-                {Array.isArray(bk?.timeline) && (bk!.timeline as string[]).length > 0 && (
-                  <div style={{ marginBottom: 10 }}>
-                    <div style={{ fontSize: 11, fontWeight: 600, color: '#111', marginBottom: 4 }}>里程碑</div>
-                    {(bk!.timeline as string[]).map((t, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 2, fontSize: 10, color: 'var(--muted)' }}>
-                        <span style={{ color: 'var(--accent)' }}>•</span>
-                        <span>{t}</span>
+                  {/* 总预算 + 周期 — 双卡片 */}
+                  <div className="bk-section" style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                    <div style={{
+                      flex: 1, background: 'var(--accent-softer)', borderRadius: 'var(--r-md)',
+                      padding: '12px 10px', textAlign: 'center', border: '1px solid var(--accent-border)',
+                    }}>
+                      <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 500, marginBottom: 3 }}>总预算</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)' }}>
+                        {bk?.total_budget ?? '—'}
+                        <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)' }}> 万元</span>
                       </div>
-                    ))}
+                    </div>
+                    <div style={{
+                      flex: 1, background: 'var(--surface)', borderRadius: 'var(--r-md)',
+                      padding: '12px 10px', textAlign: 'center', border: '1px solid var(--border)',
+                    }}>
+                      <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 500, marginBottom: 3 }}>执行周期</div>
+                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--fg)' }}>
+                        {bk?.period_months ?? '—'}
+                        <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)' }}> 个月</span>
+                      </div>
+                    </div>
                   </div>
-                )}
 
-                {/* 两个按钮 */}
-                <div style={{ display: 'flex', gap: 8 }}>
-                  <button
-                    type="button"
-                    disabled={isLoading || isConnected}
-                    onClick={handleApprove}
-                    style={{
-                      flex: 1, height: 36, border: 'none', borderRadius: 8,
-                      background: isLoading || isConnected ? '#9ca3af' : '#1677ff',
-                      color: '#ffffff', fontSize: 13, fontWeight: 600,
-                      cursor: isLoading || isConnected ? 'not-allowed' : 'pointer',
-                      fontFamily: 'var(--ff)',
-                    }}
-                  >
-                    {isLoading ? '…' : '确认继续'}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => { setShowRejectInput(true); setRejectReason('') }}
-                    style={{
-                      flex: 1, height: 36, border: '1px solid #d9dee7',
-                      borderRadius: 8, background: '#ffffff',
-                      color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                      fontFamily: 'var(--ff)',
-                    }}
-                  >
-                    驳回重跑
-                  </button>
-                </div>
+                  {/* 预算分配 */}
+                  {Array.isArray(bk?.allocations) && (bk!.allocations as Array<Record<string, unknown>>).length > 0 && (
+                    <div className="bk-section" style={{
+                      marginBottom: 10, border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+                      background: 'var(--bg)', overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        padding: '9px 12px', background: 'var(--surface)', borderBottom: '1px solid var(--line)',
+                        fontSize: 11, fontWeight: 600, color: 'var(--fg)', display: 'flex', alignItems: 'center', gap: 4,
+                      }}>
+                        <span>预算分配</span>
+                        <span style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 400 }}>
+                          ({(bk!.allocations as Array<Record<string, unknown>>).length}项)
+                        </span>
+                      </div>
+                      <div style={{ padding: '10px 12px 8px' }}>
+                        {(bk!.allocations as Array<Record<string, unknown>>).map((a, i) => (
+                          <div key={i} style={{ marginBottom: 8 }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 3 }}>
+                              <span style={{ fontSize: 10, color: 'var(--fg-soft)', fontWeight: 500 }}>{a.category as string}</span>
+                              <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)' }}>
+                                {a.percentage as number}% <span style={{ color: 'var(--muted)', fontWeight: 400 }}>({(a.amount as number) ?? '—'}万元)</span>
+                              </span>
+                            </div>
+                            <div style={{
+                              height: 6, borderRadius: 3, background: 'var(--surface)', overflow: 'hidden',
+                            }}>
+                              <div className="bk-progress-fill" style={{
+                                width: `${a.percentage as number}%`, height: '100%', borderRadius: 3,
+                                background: `var(--accent)`,
+                                opacity: 1 - i * 0.12 > 0.4 ? 1 - i * 0.12 : 0.4,
+                              }} />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
 
-                {/* 驳回输入 */}
-                {showRejectInput && (
-                  <div style={{ marginTop: 10 }}>
-                    <textarea
-                      placeholder="补充要求，如：减少赛事投入、提高达人合作占比…"
-                      value={rejectReason}
-                      onChange={e => setRejectReason(e.target.value)}
-                      rows={2}
+                  {/* KPI 指标 */}
+                  {bk?.kpis && typeof bk.kpis === 'object' && Object.keys(bk.kpis).length > 0 && (
+                    <div className="bk-section" style={{
+                      marginBottom: 10, border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+                      background: 'var(--bg)', overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        padding: '9px 12px', background: 'var(--surface)', borderBottom: '1px solid var(--line)',
+                        fontSize: 11, fontWeight: 600, color: 'var(--fg)',
+                      }}>
+                        KPI 指标
+                      </div>
+                      <div style={{ padding: 8 }}>
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 4 }}>
+                          {(Object.entries(bk.kpis as Record<string, string>)).map(([key, val]) => (
+                            <div key={key} style={{
+                              background: 'var(--surface)', borderRadius: 'var(--r-sm)',
+                              padding: '7px 8px', textAlign: 'center',
+                            }}>
+                              <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--fg)', marginBottom: 1 }}>
+                                {val}
+                              </div>
+                              <div style={{ fontSize: 9, color: 'var(--muted)' }}>
+                                {key}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 关键里程碑 */}
+                  {Array.isArray(bk?.timeline) && (bk!.timeline as string[]).length > 0 && (
+                    <div className="bk-section" style={{
+                      marginBottom: 10, border: '1px solid var(--border)', borderRadius: 'var(--r-md)',
+                      background: 'var(--bg)', overflow: 'hidden',
+                    }}>
+                      <div style={{
+                        padding: '9px 12px', background: 'var(--surface)', borderBottom: '1px solid var(--line)',
+                        fontSize: 11, fontWeight: 600, color: 'var(--fg)',
+                      }}>
+                        里程碑
+                      </div>
+                      <div style={{ padding: '8px 12px' }}>
+                        {(bk!.timeline as string[]).map((t, i) => (
+                          <div key={i} style={{
+                            display: 'flex', gap: 6, marginBottom: i < (bk!.timeline as string[]).length - 1 ? 4 : 0,
+                            fontSize: 10, color: 'var(--fg-soft)', lineHeight: 1.4,
+                          }}>
+                            <span style={{
+                              marginTop: 3, width: 5, height: 5, borderRadius: '50%',
+                              background: 'var(--accent)', flexShrink: 0, opacity: 0.6,
+                            }} />
+                            <span>{t}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 按钮组 */}
+                  <div className="bk-section" style={{ display: 'flex', gap: 8 }}>
+                    <button
+                      type="button"
+                      disabled={isLoading || isConnected}
+                      onClick={handleApprove}
+                      className="bk-btn"
                       style={{
-                        width: '100%', padding: '6px 8px', borderRadius: 6,
-                        border: '1px solid var(--border)', fontSize: 11,
-                        fontFamily: 'var(--ff)', resize: 'none', boxSizing: 'border-box',
+                        flex: 1, height: 38, border: 'none', borderRadius: 'var(--r-sm)',
+                        background: isLoading || isConnected ? '#9ca3af' : 'var(--accent)',
+                        color: '#ffffff', fontSize: 13, fontWeight: 600,
+                        cursor: isLoading || isConnected ? 'not-allowed' : 'pointer',
+                        fontFamily: 'var(--ff)',
                       }}
-                    />
-                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                      <button
-                        type="button"
-                        disabled={!rejectReason.trim()}
-                        onClick={handleReject}
-                        style={{
-                          flex: 1, height: 32, border: 'none', borderRadius: 6,
-                          background: rejectReason.trim() ? '#dc2626' : '#9ca3af',
-                          color: '#fff', fontSize: 12, fontWeight: 600,
-                          cursor: rejectReason.trim() ? 'pointer' : 'not-allowed',
-                          fontFamily: 'var(--ff)',
-                        }}
-                      >
-                        确认驳回
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => { setShowRejectInput(false); setRejectReason('') }}
-                        style={{
-                          flex: 1, height: 32, border: '1px solid var(--border)',
-                          borderRadius: 6, background: '#fff',
-                          color: 'var(--muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                          fontFamily: 'var(--ff)',
-                        }}
-                      >
-                        取消
-                      </button>
-                    </div>
+                    >
+                      {isLoading ? '…' : '确认继续'}
+                    </button>
+                    <button
+                      type="button"
+                      className="bk-btn bk-btn-secondary"
+                      onClick={() => { setShowRejectInput(true); setRejectReason('') }}
+                      style={{
+                        flex: 1, height: 38, border: '1px solid var(--border)',
+                        borderRadius: 'var(--r-sm)', background: 'var(--bg)',
+                        color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        fontFamily: 'var(--ff)',
+                      }}
+                    >
+                      驳回重跑
+                    </button>
                   </div>
-                )}
+
+                  {/* 驳回输入 */}
+                  {showRejectInput && (
+                    <div className="bk-section" style={{ marginTop: 10 }}>
+                      <textarea
+                        placeholder="补充要求，如：减少赛事投入、提高达人合作占比…"
+                        value={rejectReason}
+                        onChange={e => setRejectReason(e.target.value)}
+                        rows={2}
+                        style={{
+                          width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)',
+                          border: '1px solid var(--border)', fontSize: 11,
+                          fontFamily: 'var(--ff)', resize: 'none', boxSizing: 'border-box',
+                          background: 'var(--bg)',
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                        <button
+                          type="button"
+                          disabled={!rejectReason.trim()}
+                          onClick={handleReject}
+                          className="bk-btn"
+                          style={{
+                            flex: 1, height: 34, border: 'none', borderRadius: 'var(--r-sm)',
+                            background: rejectReason.trim() ? '#dc2626' : '#9ca3af',
+                            color: '#fff', fontSize: 12, fontWeight: 600,
+                            cursor: rejectReason.trim() ? 'pointer' : 'not-allowed',
+                            fontFamily: 'var(--ff)',
+                          }}
+                        >
+                          确认驳回
+                        </button>
+                        <button
+                          type="button"
+                          className="bk-btn bk-btn-secondary"
+                          onClick={() => { setShowRejectInput(false); setRejectReason('') }}
+                          style={{
+                            flex: 1, height: 34, border: '1px solid var(--border)',
+                            borderRadius: 'var(--r-sm)', background: 'var(--bg)',
+                            color: 'var(--muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            fontFamily: 'var(--ff)',
+                          }}
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </>
             })()}
           </div>
-        </div>,
-        document.body
-      )}
+        </div>
+      </div>,
+      document.body
+    )}
 
       <style>{`
         @keyframes fadeIn { from { opacity: 0 } to { opacity: 1 } }
