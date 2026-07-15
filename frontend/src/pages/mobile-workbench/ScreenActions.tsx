@@ -362,7 +362,7 @@ function FeedbackModal({ card, runId, outputs, onClose, onRegenerated }: Feedbac
 
 // ── 卡片渲染 ──────────────────────────────────
 
-function renderCard(c: CardItem, onDetail: (card: CardItem) => void, onEdit: (card: CardItem) => void) {
+function renderCard(c: CardItem, onDetail: (card: CardItem) => void, onEdit: (card: CardItem) => void, onImageClick: (url: string) => void) {
   const showEditBtn = c.filterKey === 'poster' || c.filterKey === 'shortvideo'
 
   const editBtn = showEditBtn && (
@@ -406,7 +406,12 @@ function renderCard(c: CardItem, onDetail: (card: CardItem) => void, onEdit: (ca
       <div key={c.id} className="acard" style={{ position: 'relative' }}>
         {editBtn}
         <div style={{ background: 'var(--accent-softer)', minHeight: 120, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 8 }}>
-          <img src={c.imageUrl} alt={c.title} style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 4, objectFit: 'contain' }} />
+          <img
+            src={c.imageUrl}
+            alt={c.title}
+            style={{ maxWidth: '100%', maxHeight: 180, borderRadius: 4, objectFit: 'contain', cursor: 'pointer' }}
+            onClick={() => onImageClick(c.imageUrl!)}
+          />
         </div>
         <div className="ab">
           <div className="at">{c.title}</div>
@@ -439,6 +444,7 @@ export function ScreenActions({ onNavigate, outputs, runId, checkMediaStatus }: 
   const [filter, setFilter] = useState<FilterKey>('all')
   const [detailCard, setDetailCard] = useState<CardItem | null>(null)
   const [editCard, setEditCard] = useState<CardItem | null>(null)
+  const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
   const cards = buildCards(outputs)
   const filtered = filter === 'all' ? cards : cards.filter(c => c.filterKey === filter)
 
@@ -478,7 +484,7 @@ export function ScreenActions({ onNavigate, outputs, runId, checkMediaStatus }: 
             ))}
           </div>
           <div className="feed">
-            {filtered.map(c => renderCard(c, setDetailCard, handleEdit))}
+            {filtered.map(c => renderCard(c, setDetailCard, handleEdit, (url) => setLightboxUrl(url)))}
           </div>
           <div className="cta-line" onClick={() => onNavigate('dispatch')}>
             <div>
@@ -524,6 +530,42 @@ export function ScreenActions({ onNavigate, outputs, runId, checkMediaStatus }: 
             >
               关闭
             </button>
+          </div>
+        </div>
+      )}
+
+      {/* 大图预览 */}
+      {lightboxUrl && (
+        <div
+          style={{
+            position: 'fixed', inset: 0, zIndex: 99999,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            background: 'rgba(15, 23, 42, 0.85)', padding: 20,
+          }}
+          onClick={() => setLightboxUrl(null)}
+        >
+          <div
+            style={{ position: 'relative', maxWidth: '90vw', maxHeight: '85vh' }}
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              type="button"
+              onClick={() => setLightboxUrl(null)}
+              style={{
+                position: 'absolute', top: -36, right: 0,
+                width: 32, height: 32, border: 'none', borderRadius: '50%',
+                background: 'rgba(255,255,255,0.15)', color: '#fff', cursor: 'pointer',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontSize: 16, fontFamily: 'var(--ff)',
+              }}
+            >
+              ✕
+            </button>
+            <img
+              src={lightboxUrl}
+              alt="大图预览"
+              style={{ maxWidth: '100%', maxHeight: '85vh', borderRadius: 8, objectFit: 'contain', boxShadow: '0 8px 40px rgba(0,0,0,0.3)' }}
+            />
           </div>
         </div>
       )}
