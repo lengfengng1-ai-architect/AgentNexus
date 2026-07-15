@@ -38,6 +38,7 @@ logger = logging.getLogger(__name__)
 _CHECKPOINT_DB_PATH = "data/checkpoints.db"
 # 从数据查询起,每个节点执行前暂停,等待用户「确认继续」。
 # interrupt_before 使 snapshot.node_id = 即将执行的节点,该节点显示「等待确认」+ 按钮。
+# budget_kpi 同时使用 interrupt_before（执行前确认）和 interrupt_after（执行后展示结果）。
 _INTERRUPT_BEFORE = [
     "plan_data_query",
     "fitness_analysis",
@@ -47,6 +48,7 @@ _INTERRUPT_BEFORE = [
     "action_recommendations",
     "plan_generator",
 ]
+_INTERRUPT_AFTER = ["budget_kpi"]
 _PARALLEL_NODES = ["product_research", "market_research", "audience_insight"]
 
 
@@ -573,6 +575,7 @@ async def _get_graph() -> Any:
         _graph = _build_graph().compile(
             checkpointer=saver,
             interrupt_before=_INTERRUPT_BEFORE,
+            interrupt_after=_INTERRUPT_AFTER,
         )
     return _graph
 
@@ -734,9 +737,17 @@ async def _stream_events(
         # 对所有已有输出（非空 dict）的节点加入 started，防止 resume replay 重复发 node.start。
         # ponytail: state_values 可能存 {}（节点失败返回空），用 truthy 检查会漏掉。
         # 判断标准：值存在且不是初始值 {}（不是空 dict 或 None）
+        # 确定当前 next 指向，next[0] 之前的节点都已执行过，
+        # 但 budget_kpi 可能已被 reject_run 清空但 astream_events 仍卡在旧版 checkpoint。
+        # 使用 next_nodes 判断：如果 next[0] 在 budget_kpi 之后，
+        # 说明 budget_kpi 已经执行过 next 走到了下游，才应该 mark started。
+        # 如果 next[0] == budget_kpi，说明 budget_kpi 还没执行，不要跳过。
         for _nid in _NODE_ORDER:
             val = state_values.get(_nid)
             if val and isinstance(val, dict) and len(val) > 0:
+                # 额外校验：如果 next[0] 指向此节点，说明它虽然 state 中有旧输出但即将重新执行
+                if next_nodes and next_nodes[0] == _nid:
+                    continue
                 started.add(_nid)
     except Exception:
         pass
@@ -765,7 +776,9 @@ async def _stream_events(
 
     # After the event stream finishes, check whether the graph paused at an
     # interrupt checkpoint. With interrupt_before, the stream stops before each
-    # confirm-required node runs. Emit workflow.paused whenever next is non-empty.
+    # confirm-required node runs. With interrupt_after (budget_kpi), the stream
+    # stops after the node completes and next points to its successor.
+    # Emit workflow.paused whenever next is non-empty.
     state_obj = await graph.aget_state(_thread_config(run_id))
     next_nodes = list(getattr(state_obj, "next", ()) or [])
     state_values = getattr(state_obj, "values", {}) or {}
@@ -773,34 +786,60 @@ async def _stream_events(
     # 防御:LangGraph 在并行 fan-in 边界场景下,next 可能比预期提前非空(部分并行
     # 分支未完成但 next 已含 fan-in 节点)。手动校验并行前置节点全部完成才 paused。
     if next_nodes:
-        node_id = next_nodes[0]
-        required = _PARALLEL_PREDECESSORS.get(node_id, [])
+        raw_node_id = next_nodes[0]
+        required = _PARALLEL_PREDECESSORS.get(raw_node_id, [])
         if required and not all(state_values.get(p) for p in required):
             logger.warning(
                 "[sse] workflow.paused deferred: next=%s but parallel predecessors %s not all complete",
-                node_id, required,
+                raw_node_id, required,
             )
         else:
+            # Determine if this is an interrupt_after pause (budget_kpi).
+            # When interrupt_after triggers, next points to the successor node.
+            # Check interrupt_after FIRST — the successor node may also be in
+            # interrupt_before, but interrupt_after takes priority.
+            paused_node_id = raw_node_id
+            is_after = False
+            for ia_node in _INTERRUPT_AFTER:
+                ia_idx = _NODE_ORDER.index(ia_node) if ia_node in _NODE_ORDER else -1
+                if ia_idx >= 0 and ia_idx + 1 < len(_NODE_ORDER) and _NODE_ORDER[ia_idx + 1] == raw_node_id:
+                    paused_node_id = ia_node
+                    is_after = True
+                    break
+
+            if not is_after and raw_node_id in _INTERRUPT_BEFORE:
+                # Genuine interrupt_before — nothing more to resolve
+                pass
+            elif not is_after and raw_node_id in _INTERRUPT_AFTER:
+                # budget_kpi is the next node but hasn't run yet (interrupt_before
+                # on execution_planning set next=budget_kpi). Treat as interrupt_before.
+                pass
+
             counter[0] += 1
-            logger.info("[sse] workflow.paused run=%s at node=%s", run_id, node_id)
+            logger.info("[sse] workflow.paused run=%s at node=%s (is_after=%s)", run_id, paused_node_id, is_after)
             yield _sse_frame(
                 event_id=counter[0],
                 event="workflow.paused",
                 data={
                     "run_id": run_id,
-                    "snapshot": _paused_snapshot(state_values, node_id),  # type: ignore[arg-type]
+                    "snapshot": _paused_snapshot(state_values, paused_node_id, is_after=is_after),  # type: ignore[arg-type]
                     "reason": "review",
             },
         )
 
 
-def _paused_snapshot(state: PlanState, node_id: str) -> dict[str, Any]:
-    """Build snapshot of the node that's about to execute."""
+def _paused_snapshot(state: PlanState, node_id: str, *, is_after: bool = False) -> dict[str, Any]:
+    """Build snapshot of the pause point.
+
+    When is_after is True (interrupt_after for budget_kpi), the node has already
+    executed and its output is available in state, so no node_input is included.
+    """
     return {
         "node_id": node_id,
-        "node_input": _node_inputs(node_id, state),
+        "is_after": is_after,
+        "node_input": {} if is_after else _node_inputs(node_id, state),
         "upstream_outputs": {
-            key: state.get(key, {}) for key in _NODE_ORDER if key != node_id
+            key: state.get(key, {}) for key in _NODE_ORDER if is_after or key != node_id
         },
     }
 
@@ -865,14 +904,34 @@ def _status_for_state(
     # 用 LangGraph 的 next 字段判断状态(与 SSE _stream_events 同源)。
     # next 为空 → 流程结束 completed;next 非空且是 interrupt 节点 → paused;
     # next 非空但不是 interrupt 节点 → running(并行节点执行中)。
+    # interrupt_after: budget_kpi 执行后暂停,next 指向其后继节点 action_recommendations。
+    # 注意:先检测 interrupt_after 后继,再检测 interrupt_before,
+    # 因为 action_recommendations 可能既是 interrupt_before 节点,
+    # 又是 budget_kpi interrupt_after 的后继 → interrupt_after 优先。
     current_node: str | None = None
     paused_snapshot: dict[str, Any] | None = None
     nn = next_nodes or []
     if nn:
         cn = nn[0]
         current_node = cn
-        if cn in _INTERRUPT_BEFORE:
+        # Check interrupt_after successor first
+        is_after = False
+        paused_node_id = cn
+        for ia_node in _INTERRUPT_AFTER:
+            ia_idx = _NODE_ORDER.index(ia_node) if ia_node in _NODE_ORDER else -1
+            if ia_idx >= 0 and ia_idx + 1 < len(_NODE_ORDER) and _NODE_ORDER[ia_idx + 1] == cn:
+                paused_node_id = ia_node
+                is_after = True
+                break
+        if is_after:
+            paused_snapshot = _paused_snapshot(state, paused_node_id, is_after=True)
+            current_node = paused_node_id
+            status = "paused"
+        elif cn in _INTERRUPT_BEFORE:
             paused_snapshot = _paused_snapshot(state, cn)
+            status = "paused"
+        elif cn in _INTERRUPT_AFTER:
+            paused_snapshot = _paused_snapshot(state, cn, is_after=True)
             status = "paused"
         else:
             status = "running"
@@ -1008,20 +1067,44 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
         )
         return
 
-    # Inject rejection feedback into brand_input stored in the checkpoint so
-    # the next node execution sees it.
+    # Detect whether this is an interrupt_after pause (budget_kpi).
+    # interrupt_after means budget_kpi has already run; next points to
+    # action_recommendations. We need to clear budget_kpi's output and
+    # roll back the state so it re-executes.
+    state_obj = await graph.aget_state(_thread_config(run_id))
+    next_nodes = list(getattr(state_obj, "next", ()) or [])
+    is_interrupt_after = False
+    if next_nodes:
+        cn = next_nodes[0]
+        for ia_node in _INTERRUPT_AFTER:
+            ia_idx = _NODE_ORDER.index(ia_node) if ia_node in _NODE_ORDER else -1
+            if ia_idx >= 0 and ia_idx + 1 < len(_NODE_ORDER) and _NODE_ORDER[ia_idx + 1] == cn:
+                is_interrupt_after = True
+                break
+
     checkpoint = tuple_.checkpoint
     channel_values = checkpoint.setdefault("channel_values", {})
     brand_input = dict(channel_values.get("brand_input") or {})
+
+    # Inject rejection feedback into brand_input stored in the checkpoint so
+    # the next node execution sees it.
     brand_input["_reject_reason"] = reason
     channel_values["brand_input"] = brand_input
 
-    saver = await _get_saver()
-    await saver.aput(
-        tuple_.config,
-        checkpoint,
-        tuple_.metadata,
-        checkpoint["channel_versions"],
+    # 每次驳回都要清除 budget_kpi 及其下游输出，强制重新执行。
+    # 不能用 is_interrupt_after 判断决定走哪个分支，因为第二次驳回时
+    # 检查点状态已经过一轮修改，is_interrupt_after 可能检测失败。
+    logger.info("[plan] 用户驳回 budget_kpi，原因：%s", reason)
+    for key in ("budget_kpi", "action_recommendations", "plan_generator"):
+        channel_values.pop(key, None)
+
+    # Use aupdate_state (async) to roll back next to budget_kpi by
+    # pretending the last node was execution_planning (which edges to
+    # budget_kpi). Sync update_state fails with AsyncSqliteSaver.
+    await graph.aupdate_state(
+        _thread_config(run_id),
+        values=channel_values,
+        as_node="execution_planning",
     )
 
     try:

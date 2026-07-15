@@ -135,7 +135,11 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
 
   const showModal = status === 'paused' && pausedSnapshot !== null
 
-  // 自动模式：暂停后自动确认继续
+  // 弹窗关闭/重新打开时重置驳回输入状态
+  useEffect(() => {
+    setShowRejectInput(false)
+    setRejectReason('')
+  }, [showModal])
   useEffect(() => {
     if (autoMode && status === 'paused' && pausedSnapshot && !isLoading && !isConnected) {
       handleApprove()
@@ -332,91 +336,247 @@ export function ScreenGenerate({ onNavigate, briefData, planRun }: ScreenGenerat
         }}>
           {/* 手机框内弹窗 */}
           <div style={{
-            width: 342, background: '#fff', borderRadius: 12,
-            padding: 20, boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            width: 300, background: '#fff', borderRadius: 10,
+            padding: '14px 16px', boxShadow: '0 8px 30px rgba(0,0,0,0.12)',
+            maxHeight: '60vh', overflow: 'auto',
           }}>
-            {/* 即将执行的节点名 */}
-            <div style={{ textAlign: 'center', marginBottom: 20 }}>
-              <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>即将执行</div>
-              <div style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>
-                {steps.find(s => s.id === pausedSnapshot!.node_id)?.label || pausedSnapshot!.node_id}
-              </div>
-            </div>
+            {(() => {
+              const isBk = pausedSnapshot!.node_id === 'budget_kpi'
+              let bk: Record<string, unknown> | undefined
+              let hasData = false
+              if (isBk) {
+                bk = pausedSnapshot!.upstream_outputs.budget_kpi as Record<string, unknown> | undefined
+                hasData = !!(bk && typeof bk.total_budget !== 'undefined')
+              }
+              // 只有 budget_kpi 真正执行完（有输出数据）才展示结果弹窗
+              // 否则都用通用弹窗（首次到 budget_kpi 时节点还没跑，或者非 budget_kpi 节点）
+              const showResult = isBk && hasData
 
-            {/* 两个按钮 */}
-            <div style={{ display: 'flex', gap: 10 }}>
-              <button
-                type="button"
-                disabled={isLoading || isConnected}
-                onClick={handleApprove}
-                style={{
-                  flex: 1, height: 40, border: 'none', borderRadius: 8,
-                  background: isLoading || isConnected ? '#9ca3af' : '#1677ff',
-                  color: '#ffffff', fontSize: 13, fontWeight: 600,
-                  cursor: isLoading || isConnected ? 'not-allowed' : 'pointer',
-                  fontFamily: 'var(--ff)',
-                }}
-              >
-                {isLoading ? '…' : '✓ 确认继续'}
-              </button>
-              <button
-                type="button"
-                onClick={() => { setShowRejectInput(true); setRejectReason('') }}
-                style={{
-                  flex: 1, height: 40, border: '1px solid #d9dee7',
-                  borderRadius: 8, background: '#ffffff',
-                  color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                  fontFamily: 'var(--ff)',
-                }}
-              >
-                ✕ 驳回重跑
-              </button>
-            </div>
+              if (!showResult) {
+                /* ── 通用弹窗（非 budget_kpi，或首次到 budget_kpi 但还没跑） ── */
+                return <>
+                  <div style={{ textAlign: 'center', marginBottom: 20 }}>
+                    <div style={{ fontSize: 13, color: 'var(--muted)', marginBottom: 4 }}>即将执行</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>
+                      {steps.find(s => s.id === pausedSnapshot!.node_id)?.label || pausedSnapshot!.node_id}
+                    </div>
+                  </div>
 
-            {/* 驳回输入 */}
-            {showRejectInput && (
-              <div style={{ marginTop: 12 }}>
-                <textarea
-                  placeholder="请输入驳回原因…"
-                  value={rejectReason}
-                  onChange={e => setRejectReason(e.target.value)}
-                  rows={2}
-                  style={{
-                    width: '100%', padding: '8px 10px', borderRadius: 8,
-                    border: '1px solid var(--border)', fontSize: 12,
-                    fontFamily: 'var(--ff)', resize: 'none', boxSizing: 'border-box',
-                  }}
-                />
-                <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                  <div style={{ display: 'flex', gap: 10 }}>
+                    <button
+                      type="button"
+                      disabled={isLoading || isConnected}
+                      onClick={handleApprove}
+                      style={{
+                        flex: 1, height: 40, border: 'none', borderRadius: 8,
+                        background: isLoading || isConnected ? '#9ca3af' : '#1677ff',
+                        color: '#ffffff', fontSize: 13, fontWeight: 600,
+                        cursor: isLoading || isConnected ? 'not-allowed' : 'pointer',
+                        fontFamily: 'var(--ff)',
+                      }}
+                    >
+                      {isLoading ? '…' : '✓ 确认继续'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowRejectInput(true); setRejectReason('') }}
+                      style={{
+                        flex: 1, height: 40, border: '1px solid #d9dee7',
+                        borderRadius: 8, background: '#ffffff',
+                        color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                        fontFamily: 'var(--ff)',
+                      }}
+                    >
+                      ✕ 驳回重跑
+                    </button>
+                  </div>
+
+                  {showRejectInput && (
+                    <div style={{ marginTop: 12 }}>
+                      <textarea
+                        placeholder="请输入驳回原因…"
+                        value={rejectReason}
+                        onChange={e => setRejectReason(e.target.value)}
+                        rows={2}
+                        style={{
+                          width: '100%', padding: '8px 10px', borderRadius: 8,
+                          border: '1px solid var(--border)', fontSize: 12,
+                          fontFamily: 'var(--ff)', resize: 'none', boxSizing: 'border-box',
+                        }}
+                      />
+                      <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+                        <button
+                          type="button"
+                          disabled={!rejectReason.trim()}
+                          onClick={handleReject}
+                          style={{
+                            flex: 1, height: 36, border: 'none', borderRadius: 8,
+                            background: rejectReason.trim() ? '#dc2626' : '#9ca3af',
+                            color: '#fff', fontSize: 12, fontWeight: 600,
+                            cursor: rejectReason.trim() ? 'pointer' : 'not-allowed',
+                            fontFamily: 'var(--ff)',
+                          }}
+                        >
+                          确认驳回
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowRejectInput(false); setRejectReason('') }}
+                          style={{
+                            flex: 1, height: 36, border: '1px solid var(--border)',
+                            borderRadius: 8, background: '#fff',
+                            color: 'var(--muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                            fontFamily: 'var(--ff)',
+                          }}
+                        >
+                          取消
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              }
+
+              /* ── budget_kpi 结果弹窗 ── */
+              return <>
+                <div style={{ textAlign: 'center', marginBottom: 10 }}>
+                  <div style={{ fontSize: 15, fontWeight: 700, color: '#111' }}>预算与 KPI</div>
+                  <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>确认后继续，不满意可驳回重跑</div>
+                </div>
+
+                {/* 总预算 + 周期 */}
+                <div style={{ display: 'flex', gap: 8, marginBottom: 10 }}>
+                  <div style={{ flex: 1, background: '#f5f7fa', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 1 }}>总预算</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#1677ff' }}>{bk?.total_budget ?? '—'}<span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)' }}> 万元</span></div>
+                  </div>
+                  <div style={{ flex: 1, background: '#f5f7fa', borderRadius: 6, padding: '8px 10px', textAlign: 'center' }}>
+                    <div style={{ fontSize: 10, color: 'var(--muted)', marginBottom: 1 }}>执行周期</div>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: '#111' }}>{bk?.period_months ?? '—'}<span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)' }}> 个月</span></div>
+                  </div>
+                </div>
+
+                {/* 预算分配 */}
+                {Array.isArray(bk?.allocations) && (bk!.allocations as Array<Record<string, unknown>>).length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#111', marginBottom: 4 }}>预算分配</div>
+                    {(bk!.allocations as Array<Record<string, unknown>>).map((a, i) => (
+                      <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 4, marginBottom: 3 }}>
+                        <span style={{ fontSize: 10, color: 'var(--muted)', width: 52, flexShrink: 0 }}>{a.category as string}</span>
+                        <div style={{ flex: 1, height: 5, borderRadius: 3, background: 'var(--surface)', overflow: 'hidden' }}>
+                          <div style={{ width: `${a.percentage as number}%`, height: '100%', borderRadius: 3, background: 'var(--accent)' }} />
+                        </div>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: 'var(--accent)', width: 40, textAlign: 'right' }}>{a.percentage as number}%</span>
+                        <span style={{ fontSize: 10, color: 'var(--muted)', width: 44, textAlign: 'right' }}>{a.amount as number}万元</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* KPI 指标 */}
+                {bk?.kpis && typeof bk.kpis === 'object' && Object.keys(bk.kpis).length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#111', marginBottom: 4 }}>KPI 指标</div>
+                    <div style={{ background: '#f5f7fa', borderRadius: 6, padding: 8 }}>
+                      {(Object.entries(bk.kpis as Record<string, string>)).map(([key, val]) => (
+                        <div key={key} style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2, fontSize: 10 }}>
+                          <span style={{ color: 'var(--muted)' }}>{key}</span>
+                          <span style={{ fontWeight: 600, color: '#111' }}>{val}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* 关键里程碑 */}
+                {Array.isArray(bk?.timeline) && (bk!.timeline as string[]).length > 0 && (
+                  <div style={{ marginBottom: 10 }}>
+                    <div style={{ fontSize: 11, fontWeight: 600, color: '#111', marginBottom: 4 }}>里程碑</div>
+                    {(bk!.timeline as string[]).map((t, i) => (
+                      <div key={i} style={{ display: 'flex', gap: 4, marginBottom: 2, fontSize: 10, color: 'var(--muted)' }}>
+                        <span style={{ color: 'var(--accent)' }}>•</span>
+                        <span>{t}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {/* 两个按钮 */}
+                <div style={{ display: 'flex', gap: 8 }}>
                   <button
                     type="button"
-                    disabled={!rejectReason.trim()}
-                    onClick={handleReject}
+                    disabled={isLoading || isConnected}
+                    onClick={handleApprove}
                     style={{
                       flex: 1, height: 36, border: 'none', borderRadius: 8,
-                      background: rejectReason.trim() ? '#dc2626' : '#9ca3af',
-                      color: '#fff', fontSize: 12, fontWeight: 600,
-                      cursor: rejectReason.trim() ? 'pointer' : 'not-allowed',
+                      background: isLoading || isConnected ? '#9ca3af' : '#1677ff',
+                      color: '#ffffff', fontSize: 13, fontWeight: 600,
+                      cursor: isLoading || isConnected ? 'not-allowed' : 'pointer',
                       fontFamily: 'var(--ff)',
                     }}
                   >
-                    确认驳回
+                    {isLoading ? '…' : '确认继续'}
                   </button>
                   <button
                     type="button"
-                    onClick={() => { setShowRejectInput(false); setRejectReason('') }}
+                    onClick={() => { setShowRejectInput(true); setRejectReason('') }}
                     style={{
-                      flex: 1, height: 36, border: '1px solid var(--border)',
-                      borderRadius: 8, background: '#fff',
-                      color: 'var(--muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                      flex: 1, height: 36, border: '1px solid #d9dee7',
+                      borderRadius: 8, background: '#ffffff',
+                      color: '#6b7280', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                       fontFamily: 'var(--ff)',
                     }}
                   >
-                    取消
+                    驳回重跑
                   </button>
                 </div>
-              </div>
-            )}
+
+                {/* 驳回输入 */}
+                {showRejectInput && (
+                  <div style={{ marginTop: 10 }}>
+                    <textarea
+                      placeholder="补充要求，如：减少赛事投入、提高达人合作占比…"
+                      value={rejectReason}
+                      onChange={e => setRejectReason(e.target.value)}
+                      rows={2}
+                      style={{
+                        width: '100%', padding: '6px 8px', borderRadius: 6,
+                        border: '1px solid var(--border)', fontSize: 11,
+                        fontFamily: 'var(--ff)', resize: 'none', boxSizing: 'border-box',
+                      }}
+                    />
+                    <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                      <button
+                        type="button"
+                        disabled={!rejectReason.trim()}
+                        onClick={handleReject}
+                        style={{
+                          flex: 1, height: 32, border: 'none', borderRadius: 6,
+                          background: rejectReason.trim() ? '#dc2626' : '#9ca3af',
+                          color: '#fff', fontSize: 12, fontWeight: 600,
+                          cursor: rejectReason.trim() ? 'pointer' : 'not-allowed',
+                          fontFamily: 'var(--ff)',
+                        }}
+                      >
+                        确认驳回
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setShowRejectInput(false); setRejectReason('') }}
+                        style={{
+                          flex: 1, height: 32, border: '1px solid var(--border)',
+                          borderRadius: 6, background: '#fff',
+                          color: 'var(--muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
+                          fontFamily: 'var(--ff)',
+                        }}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            })()}
           </div>
         </div>,
         document.body
