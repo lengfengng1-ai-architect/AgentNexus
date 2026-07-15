@@ -76,8 +76,22 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
       >
         {/* 市场分析：流式进行中 → 进度卡片 */}
         {isMarketResearch && message.marketResearchResult ? (
-          /* 完成态：结构化卡片集合（不可滚动） */
-          <MarketResearchResultCards result={message.marketResearchResult} variant={variant} />
+          /* 完成态：移动端只渲染 full_report markdown，PC 端保持结构化卡片 */
+          variant === 'mobile' ? (
+            <div
+              className="market-report-mobile"
+              style={{ whiteSpace: 'normal' }}
+              dangerouslySetInnerHTML={{
+                __html: marked.parse(
+                  (message.marketResearchResult as Record<string, unknown>)?.full_report as string ||
+                    message.content ||
+                    '',
+                ),
+              }}
+            />
+          ) : (
+            <MarketResearchResultCards result={message.marketResearchResult} variant={variant} />
+          )
         ) : isMarketResearch && (message.marketResearchSources?.length || message.marketResearchProgressLogs?.length) ? (
           /* 进度态：搜索来源 + 进度日志双窗口（可滚动） */
           <MarketResearchProgressCard
@@ -171,6 +185,15 @@ _reportStyle.textContent = `
 .market-report pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 1em 0; }
 .market-report pre code { background: transparent; padding: 0; color: inherit; }
 .market-report hr { margin: 1.5em 0; border: none; border-top: 1px solid #e2e8f0; }
+.market-report-mobile { font-size: 14px; line-height: 1.6; color: #1e293b; word-break: break-word; overflow-wrap: break-word; }
+.market-report-mobile h1 { font-size: 17px; font-weight: 700; margin: 1em 0 0.5em; }
+.market-report-mobile h2 { font-size: 15px; font-weight: 600; margin: 1em 0 0.5em; }
+.market-report-mobile h3 { font-size: 14px; font-weight: 600; margin: 0.75em 0 0.4em; }
+.market-report-mobile p { margin-bottom: 0.6em; line-height: 1.6; word-break: break-word; }
+.market-report-mobile a { color: #1677ff; overflow-wrap: break-word; word-break: break-all; }
+.market-report-mobile table { font-size: 13px; }
+.market-report-mobile code { font-size: 13px; }
+.market-report-mobile blockquote { font-size: 13px; }
 `
 _reportStyle.id = 'market-report-style'
 if (!document.getElementById('market-report-style')) {

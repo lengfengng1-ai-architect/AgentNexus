@@ -186,14 +186,14 @@ ChatBubble 在市场分析进行时，SHALL 实时展示分析进度日志，每
 
 ### Requirement: 结构化结果卡片集合
 
-市场分析流完成后，SHALL 将小窗口替换为结构化卡片集合，展示完整的分析结果。
+PC 端市场分析流完成后，SHALL 将小窗口替换为结构化卡片集合，展示完整的分析结果。
 
-#### Scenario: 流完成切换
+#### Scenario: 流完成切换（PC 端）
 - **WHEN** ChatContainer 收到 SSE `result` 事件
 - **THEN** 隐藏搜索来源和进度小窗口
 - **THEN** 显示结构化卡片集合（不可滚动，信息完整展现）
 
-#### Scenario: 卡片集合内容
+#### Scenario: 卡片集合内容（PC 端）
 - **WHEN** 结构化卡片集合展示
 - **THEN** 展示市场摘要卡（名称/行业/地理/周期）
 - **THEN** 展示市场规模卡（TAM/SAM/SOM/CAGR）
@@ -202,6 +202,31 @@ ChatBubble 在市场分析进行时，SHALL 实时展示分析进度日志，每
 - **THEN** 展示竞争格局卡
 - **THEN** 展示机会评估卡
 - **THEN** 展示证据来源列表（可折叠）
+
+### Requirement: 移动端分析完成态只渲染完整报告
+
+移动端市场分析完成后，SHALL 只渲染 `full_report` 的 marked markdown，不渲染 MarketResearchResultCards 结构化卡片。
+
+#### Scenario: 移动端完成态展示完整报告
+- **WHEN** 移动端（ScreenChat）市场分析 SSE 流完成且收到 `result` 事件
+- **THEN** ChatBubble 渲染 `full_report` 字段的 marked markdown，以 `market-report-mobile` CSS class 渲染
+- **THEN** 不展示结构化卡片集合
+
+#### Scenario: PC 端不受影响
+- **WHEN** PC 端（ChatContainer）市场分析完成
+- **THEN** 仍然渲染 MarketResearchResultCards
+
+### Requirement: 移动端报告字体和溢出控制
+
+移动端完整报告 SHALL 使用统一字号体系并控制 URL 溢出。
+
+#### Scenario: 字号比例
+- **WHEN** 移动端渲染完整报告
+- **THEN** 正文 font-size 为 14px，h1 为 17px，h2 为 15px，h3 为 14px
+
+#### Scenario: URL 溢出控制
+- **WHEN** 移动端报告中的链接超出容器宽度
+- **THEN** `overflow-wrap: break-word` 和 `word-break: break-all` 确保不溢出气泡框
 
 #### Scenario: 分析失败场景
 - **WHEN** SSE 流报告错误或连接中断
@@ -231,6 +256,8 @@ ChatBubble 在市场分析进行时，SHALL 实时展示分析进度日志，每
 - **THEN** 搜索来源窗口和进度日志窗口的 max-height 均为 30vh
 
 ### Requirement: 移动端样式适配 — MarketResearchResultCards
+
+**注**：本 change 后移动端完成态不再渲染 MarketResearchResultCards，但该组件定义保留供 PC 端使用。
 
 移动端 MarketResearchResultCards 及其子卡片组件 SHALL 使用更紧凑的尺寸：padding p-3、space-y-3，MarketSizeCard 三列改为垂直排列。
 
