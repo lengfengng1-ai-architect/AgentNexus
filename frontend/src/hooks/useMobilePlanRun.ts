@@ -33,6 +33,7 @@ export interface MobileStep {
 
 export interface MobilePausedSnapshot {
   node_id: string
+  is_after?: boolean
   node_input: Record<string, unknown>
   upstream_outputs: Record<string, unknown>
 }
@@ -59,6 +60,7 @@ type Action =
   | { type: 'NODE_COMPLETE'; nodeId: string }
   | { type: 'NODE_FAILED'; nodeId: string; message: string }
   | { type: 'WORKFLOW_PAUSED'; snapshot: MobilePausedSnapshot }
+  | { type: 'WORKFLOW_RESUME'; nodeId: string }
   | { type: 'WORKFLOW_COMPLETE'; outputs: PlanOutputs; chapters: PlanChapter[] }
   | { type: 'UPDATE_MEDIA'; promoVideo: Record<string, unknown> | null | undefined; poster: Record<string, unknown> | null | undefined }
   | { type: 'SET_ERROR'; error: string }
@@ -140,8 +142,27 @@ function reducer(state: MobilePlanRunState, action: Action): MobilePlanRunState 
         status: 'paused',
         isLoading: false,
         pausedSnapshot: action.snapshot,
+        steps: state.steps.map((s) => {
+          // is_after=true: 该节点已执行完毕（如 budget_kpi 结果弹窗），不应改为 waiting
+          if (s.id === action.snapshot.node_id) {
+            if (action.snapshot.is_after) {
+              return s.status === 'running' || s.status === 'pending' ? { ...s, status: 'complete' as PlanNodeStatus, summary: '执行完成' } : s
+            }
+            return { ...s, status: 'waiting' as PlanNodeStatus, summary: '等待人工确认' }
+          }
+          return s
+        }),
+      }
+    case 'WORKFLOW_RESUME':
+      return {
+        ...state,
+        status: 'running',
+        isLoading: true,
+        pausedSnapshot: null,
         steps: state.steps.map((s) =>
-          s.id === action.snapshot.node_id ? { ...s, status: 'waiting' as PlanNodeStatus, summary: '等待人工确认' } : s,
+          s.id === action.nodeId || s.status === 'waiting'
+            ? { ...s, status: 'running' as PlanNodeStatus, summary: '已采纳反馈，重新执行…' }
+            : s,
         ),
       }
     case 'WORKFLOW_COMPLETE': {
@@ -347,7 +368,10 @@ export function useMobilePlanRun() {
     if (!rid) return
     dispatch({ type: 'SET_LOADING', loading: true })
     if (state.pausedSnapshot) {
-      dispatch({ type: 'NODE_START', nodeId: state.pausedSnapshot.node_id })
+      // is_after=true: 节点已执行完毕，无需再标记为 running（如 budget_kpi 结果弹窗确认）
+      if (!state.pausedSnapshot.is_after) {
+        dispatch({ type: 'NODE_START', nodeId: state.pausedSnapshot.node_id })
+      }
     }
     try {
       const stream = await approvePlanRun(rid)
@@ -364,7 +388,9 @@ export function useMobilePlanRun() {
   const reject = useCallback(async (reason: string) => {
     const rid = runIdRef.current
     if (!rid) return
-    dispatch({ type: 'SET_LOADING', loading: true })
+    // Determine which node to re-run: the paused node
+    const redoNodeId = state.pausedSnapshot?.node_id || 'budget_kpi'
+    dispatch({ type: 'WORKFLOW_RESUME', nodeId: redoNodeId })
     try {
       const stream = await rejectPlanRun(rid, { reason })
       dispatch({ type: 'SET_CONNECTED', connected: true })

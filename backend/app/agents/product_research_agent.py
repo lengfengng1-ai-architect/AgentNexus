@@ -358,12 +358,24 @@ async def finalize_node(state: ProductResearchState) -> dict:
 
                 prompt_text += (
                     '\n\n请根据以上信息，输出严格的 JSON 格式（不要 markdown 代码块），'
-                    '格式如下：\n'
-                    '{"identity":{"name":"...","brand":"...","category":"..."},'
-                    '"official_description":"...",'
-                    '"features":[{"title":"...","description":"..."}],'
-                    '"specifications":{"key":"value"},'
-                    '"availability":[{"channel":"...","price":"..."}]}'
+                    '缺失字段使用 null，格式如下：\n'
+                    '{"identity":{'
+                    '"product_name":{"value":"...","sources":[],"method":"extracted","quote":null},'
+                    '"brand":{"value":"...","sources":[],"method":"extracted","quote":null},'
+                    '"manufacturer":{"value":"...","sources":[],"method":"extracted","quote":null},'
+                    '"industry":{"value":"...","sources":[],"method":"extracted","quote":null},'
+                    '"category":{"value":"...","sources":[],"method":"extracted","quote":null}},'
+                    '"official_description":{'
+                    '"description":{"value":"...","sources":[],"method":"extracted","quote":null},'
+                    '"tagline":{"value":"...","sources":[],"method":"extracted","quote":null},'
+                    '"statement":{"value":"...","sources":[],"method":"extracted","quote":null}},'
+                    '"features":[{"name":"功能名","category":null,"description":"...","evidence":[]}],'
+                    '"specifications":{"value":{},"sources":[],"method":"extracted"},'
+                    '"availability":{'
+                    '"status":{"value":"...","sources":[],"method":"extracted","quote":null},'
+                    '"pricing":[],'
+                    '"available_regions":{"value":[],"sources":[],"method":"extracted"},'
+                    '"access_model":{"value":"...","sources":[],"method":"extracted","quote":null}}}'
                 )
                 result_raw = await llm.ainvoke([
                     SystemMessage(content="你是一个产品信息提取专家。请只输出 JSON，不要包含其他文字。"),

@@ -65,7 +65,7 @@ class PausedSnapshot(BaseModel):
 
     node_id: str = Field(
         ...,
-        description="即将执行的节点 ID",
+        description="暂停节点的 ID",
         json_schema_extra={
             "enum": [
                 "plan_data_query",
@@ -78,7 +78,8 @@ class PausedSnapshot(BaseModel):
             ]
         },
     )
-    node_input: dict = Field(..., description="即将执行节点的输入 payload")
+    is_after: bool = Field(False, description="是否为 interrupt_after 暂停（true=节点已执行完展示结果，false=节点即将执行）")
+    node_input: dict = Field(..., description="暂停节点的输入 payload")
     upstream_outputs: dict = Field(
         default_factory=dict, description="已完成上游节点的输出"
     )

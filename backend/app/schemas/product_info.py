@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 # ── 基础溯源类型 ───────────────────────────────────
@@ -63,6 +63,13 @@ class PriceItem(BaseModel):
     price: str | None = Field(None, description="价格数值，如 5999 元")
     currency: str | None = Field(None, description="货币，如 CNY/USD")
     source: str | None = Field(None, description="该价格的信息来源 URL")
+
+    @field_validator("price", mode="before")
+    @classmethod
+    def coerce_price_to_str(cls, v):
+        if isinstance(v, (int, float)):
+            return str(v)
+        return v
 
 
 class Availability(BaseModel):
