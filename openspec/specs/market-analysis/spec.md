@@ -62,11 +62,11 @@ The system SHALL expose a `POST /api/v1/market-analysis/stream` endpoint that re
 
 #### Scenario: 正常推送工具调用开始
 - **WHEN** market analysis agent 的某个节点开始调用 web_search 工具
-- **THEN** SSE 推送 `tool_call_start` 事件，包含 `tool`（固定为 "web_search"）、`query`（搜索关键词）、`search_id`（本轮搜索唯一标识）
+- **THEN** SSE 推送 `tool_call_start` 事件，格式为 `event: tool_call_start\ndata: {"tool":"web_search","query":"...","search_id":"..."}\n\n`
 
 #### Scenario: 正常推送工具调用结束
 - **WHEN** market analysis agent 的某个节点完成一次 web_search 调用
-- **THEN** SSE 推送 `tool_call_end` 事件，包含 `tool`、`query`、`search_id`、`result_count`（返回结果数）
+- **THEN** SSE 推送 `tool_call_end` 事件，格式为 `event: tool_call_end\ndata: {"tool":"web_search","query":"...","search_id":"...","result_count":N}\n\n`
 
 ### Requirement: 搜索结果实时推送
 

@@ -10,9 +10,7 @@ Corresponding in_scope ID: market-analysis
 from __future__ import annotations
 
 import asyncio
-import json
 from collections.abc import Callable
-from typing import Any
 
 # ── Event type constants ──
 
@@ -38,11 +36,9 @@ def make_emit(queue: asyncio.Queue) -> Callable[[str, dict], None]:
         emit = make_emit(queue)
         # pass emit into call_node_* functions
     """
-    encoder = json.JSONEncoder(ensure_ascii=False)
 
     def emit(event: str, data: dict) -> None:
-        payload = encoder.encode({"event": event, "data": data})
-        queue.put_nowait(payload)
+        queue.put_nowait(build_sse_frame(event, data))
 
     return emit
 
