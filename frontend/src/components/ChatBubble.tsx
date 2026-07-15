@@ -76,22 +76,18 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
       >
         {/* 市场分析：流式进行中 → 进度卡片 */}
         {isMarketResearch && message.marketResearchResult ? (
-          /* 完成态：移动端只渲染 full_report markdown，PC 端保持结构化卡片 */
-          variant === 'mobile' ? (
-            <div
-              className="market-report-mobile"
-              style={{ whiteSpace: 'normal' }}
-              dangerouslySetInnerHTML={{
-                __html: marked.parse(
-                  (message.marketResearchResult as Record<string, unknown>)?.full_report as string ||
-                    message.content ||
-                    '',
-                ),
-              }}
-            />
-          ) : (
-            <MarketResearchResultCards result={message.marketResearchResult} variant={variant} />
-          )
+          /* 完成态：渲染 full_report markdown（PC/移动端统一） */
+          <div
+            className={variant === 'mobile' ? 'market-report-mobile' : 'market-report text-sm leading-relaxed sm:text-base'}
+            style={{ whiteSpace: 'normal' }}
+            dangerouslySetInnerHTML={{
+              __html: marked.parse(
+                (message.marketResearchResult as Record<string, unknown>)?.full_report as string ||
+                  message.content ||
+                  '',
+              ),
+            }}
+          />
         ) : isMarketResearch && (message.marketResearchSources?.length || message.marketResearchProgressLogs?.length) ? (
           /* 进度态：搜索来源 + 进度日志双窗口（可滚动） */
           <MarketResearchProgressCard

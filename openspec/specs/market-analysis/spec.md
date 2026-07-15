@@ -187,24 +187,14 @@ ChatBubble 在市场分析进行时，SHALL 实时展示分析进度日志，每
 
 **注**：搜索来源窗口已移除，来源信息通过 ToolCallStatusBar 和 SourceCard 动画展示。
 
-### Requirement: 结构化结果卡片集合
+### Requirement: 完成态渲染完整报告
 
-PC 端市场分析流完成后，SHALL 将小窗口替换为结构化卡片集合，展示完整的分析结果。
+PC 端和移动端市场分析完成后，SHALL 统一渲染 `full_report` 的 marked markdown。
 
-#### Scenario: 流完成切换（PC 端）
-- **WHEN** ChatContainer 收到 SSE `result` 事件
+#### Scenario: 流完成切换
+- **WHEN** 收到 SSE `result` 事件
 - **THEN** 隐藏搜索来源和进度小窗口
-- **THEN** 显示结构化卡片集合（不可滚动，信息完整展现）
-
-#### Scenario: 卡片集合内容（PC 端）
-- **WHEN** 结构化卡片集合展示
-- **THEN** 展示市场摘要卡（名称/行业/地理/周期）
-- **THEN** 展示市场规模卡（TAM/SAM/SOM/CAGR）
-- **THEN** 展示趋势信号卡
-- **THEN** 展示目标用户卡
-- **THEN** 展示竞争格局卡
-- **THEN** 展示机会评估卡
-- **THEN** 展示证据来源列表（可折叠）
+- **THEN** PC 端以 `.market-report` class、移动端以 `.market-report-mobile` class 渲染 `full_report` marked markdown
 
 ### Requirement: 移动端分析完成态只渲染完整报告
 
