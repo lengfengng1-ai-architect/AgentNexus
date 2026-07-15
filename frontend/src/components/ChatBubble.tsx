@@ -176,7 +176,9 @@ _reportStyle.textContent = `
 .market-report table { width: 100%; border-collapse: collapse; margin: 1em 0; font-size: 0.9em; }
 .market-report th, .market-report td { border: 1px solid #d1d5db; padding: 6px 10px; text-align: left; }
 .market-report th { background: #f8fafc; font-weight: 600; }
-.market-report a { overflow-wrap: break-word; word-break: break-all; color: #1677ff; }
+.market-report a { overflow-wrap: break-word; word-break: break-all; color: #1677ff; display: inline-block; }
+.market-report a::before { content: ''; display: block; height: 0.3em; }
+.market-report a::after { content: ''; display: block; height: 0.3em; }
 .market-report blockquote { border-left: 3px solid #3b82f6; padding: 8px 16px; margin: 1em 0; background: #f8fafc; color: #475569; }
 .market-report code { background: #f1f5f9; padding: 2px 6px; border-radius: 4px; font-size: 0.875em; }
 .market-report pre { background: #1e293b; color: #e2e8f0; padding: 12px; border-radius: 6px; overflow-x: auto; margin: 1em 0; }
