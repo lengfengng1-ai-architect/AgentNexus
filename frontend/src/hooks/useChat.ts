@@ -42,6 +42,9 @@ type ChatAction =
   | { type: 'ADD_VIRTUAL_MESSAGE'; intent: ChatMessage['intent']; userContent?: string }
   | { type: 'UPDATE_MESSAGE_CONTENT'; messageId: string; content: string }
   | { type: 'SET_MARKET_RESEARCH_DONE'; messageId: string }
+  | { type: 'APPEND_MARKET_RESEARCH_SOURCES'; messageId: string; sources: { url: string; title: string }[] }
+  | { type: 'APPEND_MARKET_RESEARCH_LOG'; messageId: string; log: string }
+  | { type: 'SET_MARKET_RESEARCH_RESULT'; messageId: string; result: Record<string, unknown> }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
   return {
@@ -198,6 +201,37 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, messages: next }
     }
 
+    case 'APPEND_MARKET_RESEARCH_SOURCES': {
+      const next = state.messages.map(m => {
+        if (m.id !== action.messageId) return m
+        const existing = m.marketResearchSources || []
+        const existingUrls = new Set(existing.map(s => s.url))
+        const fresh = action.sources.filter(s => s.url && !existingUrls.has(s.url))
+        if (fresh.length === 0) return m
+        return { ...m, marketResearchSources: [...existing, ...fresh] }
+      })
+      return { ...state, messages: next }
+    }
+
+    case 'APPEND_MARKET_RESEARCH_LOG': {
+      const next = state.messages.map(m => {
+        if (m.id !== action.messageId) return m
+        const existing = m.marketResearchProgressLogs || []
+        const updated = [...existing, action.log]
+        // 截断保留最近 50 条
+        if (updated.length > 50) updated.splice(0, updated.length - 50)
+        return { ...m, marketResearchProgressLogs: updated }
+      })
+      return { ...state, messages: next }
+    }
+
+    case 'SET_MARKET_RESEARCH_RESULT': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId ? { ...m, marketResearchResult: action.result } : m,
+      )
+      return { ...state, messages: next }
+    }
+
     default:
       return state
   }
@@ -350,6 +384,18 @@ export function useChat() {
     dispatch({ type: 'SET_MARKET_RESEARCH_DONE', messageId })
   }, [])
 
+  const appendMarketResearchSources = useCallback((messageId: string, sources: { url: string; title: string }[]) => {
+    dispatch({ type: 'APPEND_MARKET_RESEARCH_SOURCES', messageId, sources })
+  }, [])
+
+  const appendMarketResearchLog = useCallback((messageId: string, log: string) => {
+    dispatch({ type: 'APPEND_MARKET_RESEARCH_LOG', messageId, log })
+  }, [])
+
+  const setMarketResearchResult = useCallback((messageId: string, result: Record<string, unknown>) => {
+    dispatch({ type: 'SET_MARKET_RESEARCH_RESULT', messageId, result })
+  }, [])
+
   const latestBrandInput = getLatestBrandInput(state.messages)
   return {
     messages: state.messages,
@@ -367,6 +413,9 @@ export function useChat() {
     updateMessageContent,
     updateMessageContent,
     setMarketResearchDone,
+    appendMarketResearchSources,
+    appendMarketResearchLog,
+    setMarketResearchResult,
   }
 }
 

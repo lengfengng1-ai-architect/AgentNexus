@@ -2,6 +2,13 @@
 
 请评估「{{ market_name }}」的市场机会。
 
+{% if search_context %}
+## 搜索结果参考
+以下是搜索到的关于「{{ market_name }}」的风险与机会信息：
+
+{{ search_context }}
+{% endif %}
+
 上下文：{{ context }}
 
 输出纯 JSON（字段名必须精确）：
@@ -20,6 +27,7 @@
 ```
 
 溯源规则：
-- `key_opportunities`、`key_risks` 中的每条内容标注来源
-- 如果是基于前面模块的数据推断，写 `来源: 综合前述分析 — AI总结`
-- `recommended_actions` 和 `unknowns_to_verify` 属于 AI 建议，统一写 `来源: AI总结`
+- `key_opportunities`、`key_risks` 中的**每条内容必须标注来源**
+- 如果是基于前面模块的数据推断，写 `[来源: 综合前述分析 — AI总结]`
+- 有具体信息来源的写 `[来源: https://...]`
+- `recommended_actions` 和 `unknowns_to_verify` 写 `[来源: AI总结]`

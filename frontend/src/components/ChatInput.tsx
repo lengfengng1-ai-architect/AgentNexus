@@ -286,7 +286,14 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
     setIsListening(true)
   }, [isListening, onChange, showToast])
 
-  // ── 占位按钮（制图/数据） ──────────────────────────────────────
+  // ── 📈市场分析 ──────────────────────────────────────────────────
+  const handleMarketAnalysis = useCallback(() => {
+    onChange('我要对[产品名]进行市场分析')
+    setShowMenu(false)
+    setTimeout(() => textareaRef.current?.focus(), 0)
+  }, [onChange])
+
+  // ── 占位按钮（制图） ──────────────────────────────────────────
   const showPlaceholderToast = useCallback(() => {
     setShowMenu(false)
     showToast('功能开发中，敬请期待')
@@ -424,7 +431,7 @@ export function ChatInput({ value, onChange, onSend, disabled }: ChatInputProps)
                     <MenuBtn icon="🖼️" label="制图" onClick={showPlaceholderToast} />
                     <MenuBtn icon="📋" label="方案" onClick={handlePrefillTemplate} />
                     <MenuBtn icon="💬" label="语音" onClick={handleVoice} />
-                    <MenuBtn icon="📈" label="数据" onClick={showPlaceholderToast} />
+                    <MenuBtn icon="📈" label="市场分析" onClick={handleMarketAnalysis} />
                   </div>
                 </div>
               )}
