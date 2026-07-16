@@ -6,6 +6,7 @@ Corresponding in_scope ID: workflow-orchestration
 
 import json
 import logging
+import re
 from pathlib import Path
 from typing import Any, AsyncGenerator
 
@@ -78,6 +79,30 @@ def _parse_brand_input(data: dict[str, Any]) -> BrandInput:
     )
 
 
+# ── 正则兜底：LLM 未提取 category 时，从用户原始输入中按优先级匹配 ──────────
+_CATEGORY_PATTERNS = (
+    re.compile(r'属于(.+?)品类'),
+    re.compile(r'品类[是为：:]\s*(.+?)(?=[，。、\n]|$)'),
+)
+
+
+def _extract_category_fallback(message: str, current_category: str | None) -> str | None:
+    """Fallback category extraction via regex, only when LLM didn't extract one.
+
+    Priority:
+      1. "属于 X 品类"
+      2. "品类[是为：:] X"
+    Returns None if no pattern matches.
+    """
+    if current_category is not None:
+        return None  # LLM 已提取，不干预
+    for pattern in _CATEGORY_PATTERNS:
+        m = pattern.search(message)
+        if m:
+            return m.group(1).strip()
+    return None
+
+
 def _merge_context(
     context: dict[str, Any], output: IntentRecognitionOutput
 ) -> IntentRecognitionOutput:
@@ -112,13 +137,11 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
         if getattr(output.brand_input, field) is None
     ]
 
-    INDEPENDENT = ("clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research")
+    INDEPENDENT = ("chat", "query_data", "clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research")
 
     if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image", "market_research"):
         output.intent = "generate_plan"
         output.confidence = max(output.confidence, 0.95)
-        if not output.reply:
-            output.reply = "信息已确认完整，开始生成营销方案。"
     elif missing and output.intent not in INDEPENDENT:
         output.intent = "clarify"
         if not output.reply:
@@ -167,6 +190,27 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
     if output.intent in ("generate_plan", "clarify"):
         output.missing_fields = missing
     # For other intents, preserve their own missing_fields (e.g. image_url)
+
+    # generate_plan: 无论 LLM 从哪条路径进入，reply 统一覆盖为字段摘要
+    if output.intent == "generate_plan":
+        bi = output.brand_input
+        output.reply = (
+            f"品牌：{bi.brand_name} · 品类：{bi.category} · 城市：{bi.city}"
+            f" · {bi.budget}万 · {bi.period}个月"
+        )
+
+    # clarify: 有缺失字段时 reply 强制覆盖为反问，避免 LLM 虚假承诺
+    if output.intent == "clarify" and missing:
+        _field_labels = {
+            "brand_name": "品牌名",
+            "category": "品类",
+            "city": "城市",
+            "budget": "预算",
+            "period": "周期",
+        }
+        cn_missing = [_field_labels.get(f, f) for f in missing]
+        output.reply = f"为了生成营销方案，我还需要了解：{'、'.join(cn_missing)}"
+
     return output
 
 
@@ -233,6 +277,11 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
     # (needed for update_context → market_research promotion downstream)
     if not result.market_name and context.get("market_name"):
         result.market_name = context["market_name"]
+
+    # 正则兜底：LLM 未提取 category 时从用户输入中提取
+    fallback = _extract_category_fallback(message, result.brand_input.category)
+    if fallback:
+        result.brand_input.category = fallback
 
     result = _normalize_intent_output(result)
 
@@ -334,6 +383,11 @@ async def stream_intent_recognition(
     # Fill market_name from context
     if not result.market_name and context.get("market_name"):
         result.market_name = context["market_name"]
+
+    # 正则兜底：LLM 未提取 category 时从用户输入中提取
+    fallback = _extract_category_fallback(message, result.brand_input.category)
+    if fallback:
+        result.brand_input.category = fallback
 
     result = _normalize_intent_output(result)
 
