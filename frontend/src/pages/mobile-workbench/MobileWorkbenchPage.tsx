@@ -228,7 +228,7 @@ export function MobileWorkbenchPage() {
       </div>
       <div style={{ position: 'relative' }}>
         <PhoneFrame topbar={topbar}>
-          <div style={{ display: screen === 'chat' ? '' : 'none' }}>
+          <div style={{ display: screen === 'chat' ? 'flex' : 'none', flex: screen === 'chat' ? 1 : '', flexDirection: 'column', overflow: 'visible', position: 'relative' }}>
             <ScreenChat onNavigate={handleChatNavigate} />
           </div>
           <div style={{ display: screen === 'brief' ? '' : 'none' }}>

@@ -25,27 +25,21 @@ describe('MobileWorkbenchPage', () => {
     expect(input.value).toBe('帮我做蓝莓饮品方案')
   })
 
-  test('空消息时发送按钮禁用', () => {
+  test('输入为空时显示语音按钮，输入文字后显示发送按钮', () => {
     render(<MobileWorkbenchPage />)
-    const send = screen.getByLabelText('发送')
-    expect(send.hasAttribute('disabled')).toBe(true)
-  })
-
-  test('非空消息发送按钮可点击', () => {
-    render(<MobileWorkbenchPage />)
+    expect(document.querySelector('button.mic-btn')).not.toBeNull()
     const input = screen.getByPlaceholderText('给 Agent 发消息…') as HTMLInputElement
     fireEvent.change(input, { target: { value: '测试' } })
-    const send = screen.getByLabelText('发送')
-    expect(send.hasAttribute('disabled')).toBe(false)
+    expect(document.querySelector('button.mic-btn')).toBeNull()
+    const send = document.querySelector('button.send-btn') as HTMLButtonElement
+    expect(send).not.toBeNull()
+    expect(send.disabled).toBe(false)
   })
 
-  test('点击快捷「方案生成」切到 ② 简报屏', () => {
+  test('点击顶部 Tab「方案生成」切到 ③ 方案生成屏', () => {
     render(<MobileWorkbenchPage />)
-    fireEvent.click(screen.getByRole('button', { name: '方案生成' }))
-    // ScreenBrief 渲染表单而非占位
-    expect(screen.getByText('方案简报')).toBeDefined()
-    expect(screen.getByText('② 简报').className).toContain('on')
-    // ScreenChat 仅 display:none 隐藏，不 unmount，所以输入框 DOM 仍存在
-    expect(screen.getByPlaceholderText('给 Agent 发消息…')).not.toBeVisible()
+    fireEvent.click(screen.getByRole('tab', { name: '③ 方案生成' }))
+    // 当前选中 tab 带 on 类
+    expect(screen.getByText('③ 方案生成').className).toContain('on')
   })
 })

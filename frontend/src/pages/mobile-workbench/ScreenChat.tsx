@@ -1,12 +1,16 @@
-// ScreenChat — ① 对话入口屏（移动端）
-// OpenSpec: openspec/changes/market-analysis-search-sync/
 // in_scope: brand-input, mobile-chat-session, market-analysis
-// 使用 useChat hook 对接后端 /chat/stream SSE 端点
-import { useCallback, useEffect, useRef, useState } from 'react'
+// OpenSpec: openspec/changes/mobile-chat-ui-redesign
+// 移动端聊天屏 — 新版沉浸式输入 + +号面板
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useChat } from '../../hooks/useChat'
 import { useMarketResearchStream } from '../../hooks/useMarketResearchStream'
 import { ChatBubble } from '../../components/ChatBubble'
 import { ErrorBar } from '../../components/ErrorBar'
+import { ChatSuggestionHeader } from './screen-chat/ChatSuggestionHeader'
+import { ChatActionPanel } from './screen-chat/ChatActionPanel'
+import { ChatInputBar } from './screen-chat/ChatInputBar'
+import type { SuggestedPrompt } from './screen-chat/types'
+import './screen-chat/screen-chat.css'
 import type { BrandInput } from '../../types/chat'
 
 export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview'
@@ -17,6 +21,21 @@ interface ScreenChatProps {
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 const BACKEND_ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, '')
+
+const SUGGESTION_POOL: SuggestedPrompt[] = [
+  { id: 'nav-brief', icon: '📝', label: '推荐方案生成', action: 'navigate-brief' },
+  { id: 'prefill-brand', icon: '💰', label: '预算评估', action: 'prefill-brand-template' },
+  { id: 'prefill-market', icon: '📊', label: '市场分析', action: 'prefill-market-analysis' },
+  { id: 'send-alliance', icon: '🤝', label: '创建盟域', action: 'send-text', payload: '帮我创建一个盟域活动方案' },
+  { id: 'send-activity', icon: '🎯', label: '创建活动', action: 'send-text', payload: '帮我策划一个品牌营销活动' },
+  { id: 'virtual-image', icon: '🖼️', label: '产品海报', action: 'virtual-image' },
+  { id: 'virtual-video', icon: '🎬', label: '产品视频', action: 'virtual-video' },
+]
+
+// ponytail: 简单随机打乱；天花板是伪随机分布不均，升级路径可引入加权或后端推荐
+function shuffle<T>(arr: T[]): T[] {
+  return [...arr].sort(() => Math.random() - 0.5)
+}
 
 export function ScreenChat({ onNavigate }: ScreenChatProps) {
   const {
@@ -51,22 +70,88 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
 
   const bottomRef = useRef<HTMLDivElement>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
+  const textInputRef = useRef<HTMLInputElement>(null)
   const [isListening, setIsListening] = useState(false)
+  // @ts-expect-error SpeechRecognition 浏览器类型未在 lib.dom.d.ts 中定义，运行时从 window 获取
   const recognitionRef = useRef<SpeechRecognition | null>(null)
   const inputValueRef = useRef<string>(inputValue)
   useEffect(() => { inputValueRef.current = inputValue }, [inputValue])
   const [uploading, setUploading] = useState(false)
   const [uploadError, setUploadError] = useState<string | null>(null)
 
+  const [showActionPanel, setShowActionPanel] = useState(false)
+  const [suggestedPrompts, setSuggestedPrompts] = useState<SuggestedPrompt[]>(() =>
+    shuffle(SUGGESTION_POOL).slice(0, 4)
+  )
+
+  const hasSentMessage = messages.length > 0
+  const showSuggestions = !hasSentMessage && !showActionPanel
+
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // ── 语音输入 ──────────────────────────────────────────────────────────
-  const handleVoice = () => {
-    const API: new () => SpeechRecognition =
-      (window as unknown as { SpeechRecognition: new () => SpeechRecognition }).SpeechRecognition ??
-      (window as unknown as { webkitSpeechRecognition: new () => SpeechRecognition }).webkitSpeechRecognition
+  // ── 换一批 ─────────────────────────────────────────────────────────────
+  const handleRefreshSuggestions = useCallback(() => {
+    setSuggestedPrompts(shuffle(SUGGESTION_POOL).slice(0, 4))
+  }, [])
+
+  // ── 推荐卡片点击 ───────────────────────────────────────────────────────
+  const handlePromptClick = useCallback((prompt: SuggestedPrompt) => {
+    switch (prompt.action) {
+      case 'navigate-brief':
+        onNavigate('brief')
+        break
+      case 'prefill-brand-template':
+        setInputValue('我是 [品牌名]，属于 [品类]，产品线是 [产品线]，目标人群 [目标人群]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
+        setTimeout(() => textInputRef.current?.focus(), 0)
+        break
+      case 'prefill-market-analysis':
+        setInputValue('我要对[产品名]进行市场分析')
+        setTimeout(() => textInputRef.current?.focus(), 0)
+        break
+      case 'send-text':
+        if (prompt.payload) sendMessage(prompt.payload)
+        break
+      case 'virtual-image':
+        addVirtualMessage('text_to_image', '帮我生成一张产品海报图片')
+        break
+      case 'virtual-video':
+        addVirtualMessage('generate_video', '帮我生成一条宣传视频')
+        break
+    }
+  }, [onNavigate, setInputValue, sendMessage, addVirtualMessage])
+
+  // ── + 号面板 ───────────────────────────────────────────────────────────
+  const handleToggleActionPanel = useCallback(() => {
+    setShowActionPanel(prev => !prev)
+  }, [])
+
+  const handleCloseActionPanel = useCallback(() => {
+    setShowActionPanel(false)
+  }, [])
+
+  const handleUploadClick = useCallback(() => {
+    fileInputRef.current?.click()
+  }, [])
+
+  const handleCreateImage = useCallback(() => {
+    addVirtualMessage('text_to_image', '帮我生成一张产品海报图片')
+  }, [addVirtualMessage])
+
+  const handleCreateVideo = useCallback(() => {
+    addVirtualMessage('generate_video', '帮我生成一条宣传视频')
+  }, [addVirtualMessage])
+
+  // ── 语音输入 ───────────────────────────────────────────────────────────
+  const handleVoice = useCallback(() => {
+    const Win = window as unknown as {
+      // @ts-expect-error SpeechRecognition 为浏览器 Web Speech API，lib.dom.d.ts 未声明
+      SpeechRecognition?: new () => SpeechRecognition
+      // @ts-expect-error 同上
+      webkitSpeechRecognition?: new () => SpeechRecognition
+    }
+    const API = Win.SpeechRecognition ?? Win.webkitSpeechRecognition
     if (!API) return
     if (isListening) { recognitionRef.current?.stop(); setIsListening(false); return }
     const recognition = new API()
@@ -88,27 +173,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     recognition.start()
     recognitionRef.current = recognition
     setIsListening(true)
-  }
-
-  // ── 方案模板快速填充 ───────────────────────────────────────────────────
-  const handlePrefillTemplate = () => {
-    setInputValue('我是 [品牌名]，属于 [品类]，产品线是 [产品线]，目标人群 [目标人群]，想在 [城市] 做活动，预算 [金额] 万，周期 [时长] 个月')
-  }
-
-  // ── 市场分析快速填充 ──────────────────────────────────────────────────
-  const handleMarketAnalysisTemplate = () => {
-    setInputValue('我要对[产品名]进行市场分析')
-  }
-
-  // ── 产品海报 virtual message ─────────────────────────────────────────
-  const handlePosterTemplate = () => {
-    addVirtualMessage('text_to_image', '帮我生成一张产品海报图片')
-  }
-
-  // ── 产品视频 virtual message ──────────────────────────────────────────
-  const handleVideoTemplate = () => {
-    addVirtualMessage('generate_video', '帮我生成一条宣传视频')
-  }
+  }, [isListening, setInputValue])
 
   // ── 文件上传 ───────────────────────────────────────────────────────────
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -135,11 +200,11 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
   }, [inputValue, sendMessage])
 
   // ── 发送文字 ───────────────────────────────────────────────────────────
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     const v = inputValue.trim()
     if (!v || isLoading || uploading) return
     sendMessage(v)
-  }
+  }, [inputValue, isLoading, uploading, sendMessage])
 
   // ── ChatBubble 回调 ────────────────────────────────────────────────────
   const handleRetry = useCallback((messageId: string) => {
@@ -166,30 +231,51 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     }
   }, [messages, marketResearchActiveIds, startMarketResearch])
 
-  return (
+  // 清理语音识别
+  useEffect(() => {
+    return () => {
+      recognitionRef.current?.stop()
+    }
+  }, [])
+
+  const chatContent = useMemo(() => (
     <>
+      {messages.map(m => (
+        <ChatBubble
+          key={m.id}
+          message={m}
+          variant="mobile"
+          isMarketResearchActive={marketResearchActiveIds.has(m.id)}
+          activeSearches={
+            marketResearchActiveIds.has(m.id) ? activeSearches : undefined
+          }
+          onRetry={m.retryable ? handleRetry : undefined}
+          onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
+          onVideoResult={updateVideoResult}
+          onImageResult={updateImageResult}
+        />
+      ))}
+      <div ref={bottomRef} />
+    </>
+  ), [messages, marketResearchActiveIds, activeSearches, handleRetry, handleGeneratePlan, updateVideoResult, updateImageResult])
+
+  return (
+    <div className="chat-screen">
       {error && <ErrorBar message={error} />}
       {uploadError && (
         <ErrorBar message={uploadError} onDismiss={() => setUploadError(null)} />
       )}
 
-      <div className="chat">
-        {messages.map(m => (
-          <ChatBubble
-            key={m.id}
-            message={m}
-            variant="mobile"
-            isMarketResearchActive={marketResearchActiveIds.has(m.id)}
-            activeSearches={
-              marketResearchActiveIds.has(m.id) ? activeSearches : undefined
-            }
-            onRetry={m.retryable ? handleRetry : undefined}
-            onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
-            onVideoResult={updateVideoResult}
-            onImageResult={updateImageResult}
+      <div className="chat-messages">
+        {showSuggestions ? (
+          <ChatSuggestionHeader
+            prompts={suggestedPrompts}
+            onPromptClick={handlePromptClick}
+            onRefresh={handleRefreshSuggestions}
           />
-        ))}
-        <div ref={bottomRef} />
+        ) : (
+          chatContent
+        )}
       </div>
 
       <input
@@ -200,50 +286,24 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
         onChange={handleFileSelect}
       />
 
-      <div className="inputbar">
-        <div className="quick-btns">
-          <button className="qb" onClick={() => fileInputRef.current?.click()}>附件上传</button>
-          <button className="qb" onClick={handlePrefillTemplate}>方案模版</button>
-          <button className="qb" onClick={() => onNavigate('brief')}>方案生成</button>
-          <button className="qb" onClick={handlePosterTemplate}>产品海报</button>
-          <button className="qb" onClick={handleVideoTemplate}>产品视频</button>
-          <button className="qb" onClick={handleMarketAnalysisTemplate}>市场分析</button>
-        </div>
-        <div className="inputbar-row">
-          <input
-            type="text"
-            placeholder="给 Agent 发消息…"
-            value={inputValue}
-            onChange={e => setInputValue(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                handleSend()
-              }
-            }}
-            disabled={isLoading}
-          />
-          <button
-            className="mic-btn"
-            aria-label="语音输入"
-            onClick={handleVoice}
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <rect x="9" y="2" width="6" height="11" rx="3" ry="3" />
-              <path d="M5 10a7 7 0 0 0 14 0" />
-              <line x1="12" y1="19" x2="12" y2="22" />
-            </svg>
-          </button>
-          <button
-            className="send"
-            aria-label="发送"
-            onClick={handleSend}
-            disabled={isLoading || uploading || !inputValue.trim()}
-          >
-            ↑
-          </button>
-        </div>
-      </div>
-    </>
+      <ChatActionPanel
+        isOpen={showActionPanel}
+        onClose={handleCloseActionPanel}
+        onUpload={handleUploadClick}
+        onCreateImage={handleCreateImage}
+        onCreateVideo={handleCreateVideo}
+      />
+
+      <ChatInputBar
+        value={inputValue}
+        onChange={setInputValue}
+        onSend={handleSend}
+        onVoice={handleVoice}
+        onToggleActionPanel={handleToggleActionPanel}
+        isActionPanelOpen={showActionPanel}
+        disabled={isLoading || uploading}
+        inputRef={textInputRef}
+      />
+    </div>
   )
 }
