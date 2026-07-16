@@ -63,6 +63,8 @@ export function MobileWorkbenchPage() {
   const [suppressCheckpoint, setSuppressCheckpoint] = useState(false)
   // 预算预览正在退出动画中
   const [isBpAnimatingOut, setIsBpAnimatingOut] = useState(false)
+  // 预算预览重新生成中（用户点发送 → 加载新数据）
+  const [budgetPreviewLoading, setBudgetPreviewLoading] = useState(false)
 
   // 三点导出菜单状态
   const [showExportMenu, setShowExportMenu] = useState(false)
@@ -159,6 +161,35 @@ export function MobileWorkbenchPage() {
       setSuppressCheckpoint(true)
     }, 300) // 匹配滑出动画时长 0.3s
   }
+
+  // 预算预览重新生成：用户发送反馈 → loading → 后端 SSE 重新执行 → 收到新 paused 数据后刷新
+  const handleBudgetRegen = (feedback: string) => {
+    setBudgetPreviewLoading(true)
+    const rid = (() => { try { return localStorage.getItem('allygo_mobile_plan_run_id') } catch { return null } })()
+    if (rid) {
+      planRun.reject(feedback)
+    }
+  }
+
+  // 监控 pausedSnapshot 更新：当预算预览 loading 中且收到新的 budget_kpi paused 数据时刷新预览
+  useEffect(() => {
+    if (!budgetPreviewLoading) return
+    if (!planRun.pausedSnapshot) return
+    const bk = planRun.pausedSnapshot.upstream_outputs?.budget_kpi as Record<string, unknown> | undefined
+    if (!bk || typeof bk.total_budget === 'undefined') return
+    // 提取新数据刷新预算预览
+    const allocs = (bk.allocations as Array<{category: string; percentage: number; amount: number}> | undefined) || []
+    const kpis = (bk.kpis as Record<string, string>) || {}
+    const timeline = (bk.timeline as string[]) || []
+    setBudgetPreviewData({
+      totalBudget: (bk.total_budget as number) || 0,
+      periodMonths: (bk.period_months as number) || 0,
+      allocations: allocs,
+      kpis,
+      timeline,
+    })
+    setBudgetPreviewLoading(false)
+  }, [budgetPreviewLoading, planRun.pausedSnapshot])
 
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
   const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => {
@@ -309,6 +340,8 @@ export function MobileWorkbenchPage() {
                 initialKpis={budgetPreviewData.kpis}
                 initialTimeline={budgetPreviewData.timeline}
                 onBack={handleBudgetPreviewBack}
+                loading={budgetPreviewLoading}
+                onRegenerate={handleBudgetRegen}
               />
             </div>
           )}

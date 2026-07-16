@@ -19,6 +19,10 @@ interface ScreenBudgetPreviewProps {
   initialKpis: Record<string, string>
   initialTimeline: string[]
   onBack: (allocations: BudgetAllocation[]) => void
+  /** 是否正在重新生成（后端执行中，显示转圈） */
+  loading?: boolean
+  /** 用户输入反馈后触发重新生成 */
+  onRegenerate?: (feedback: string) => void
 }
 
 const MS_COLORS = ['#1677ff', '#52c41a', '#fa8c16', '#eb2f96', '#722ed1', '#13c2c2', '#f5222d', '#2f54eb', '#faad14', '#a0d911']
@@ -77,6 +81,8 @@ export function ScreenBudgetPreview({
   initialKpis,
   initialTimeline,
   onBack,
+  loading = false,
+  onRegenerate,
 }: ScreenBudgetPreviewProps) {
   const [allocations, setAllocations] = useState<BudgetAllocation[]>(initialAllocations)
   const [editableBudget, setEditableBudget] = useState(initialBudget)
@@ -90,6 +96,15 @@ export function ScreenBudgetPreview({
   const originalBudgetRef = useRef(initialBudget)
   // use refs for drag state to avoid closure staleness
   const dragRef = useRef({ idx: -1, origPct: 0, startAngle: 0 })
+
+  // 当 initial 数据变化（重新生成返回新数据时）重置内部状态
+  useEffect(() => {
+    setAllocations(initialAllocations)
+    setEditableBudget(initialBudget)
+    setEditablePeriod(initialPeriod)
+    originalBudgetRef.current = initialBudget
+    setFeedback('')
+  }, [initialAllocations, initialBudget, initialPeriod])
 
   // Update amounts when allocations change — use editableBudget
   const allocsWithAmount = allocations.map(a => ({
@@ -136,10 +151,15 @@ export function ScreenBudgetPreview({
       budget: 0, // computed below
     }
   })
-  // Budget weighted by stage weights (same weights)
+  // Budget weighted by stage weights (same weights) — 最后一项取余确保总和 = 总预算
   milestones.forEach((m, i) => {
-    m.budget = Math.round(editableBudget * stageWeights[i] / totalW)
+    if (i < milestones.length - 1) {
+      m.budget = Math.round(editableBudget * stageWeights[i] / totalW)
+    }
   })
+  // 最后一项 = 总预算 - 前面各项之和，确保加起来精确等于总预算
+  const sumPrev = milestones.slice(0, -1).reduce((s, m) => s + m.budget, 0)
+  milestones[milestones.length - 1].budget = Math.max(0, editableBudget - sumPrev)
 
   // KPI base
   const kpiBase = useRef({ expo: 12000000, click: 800000, conv: 50000, interact: 600000 })
@@ -343,6 +363,13 @@ export function ScreenBudgetPreview({
     }
   }, [isDragging, handlePointerDown, handlePointerMove, handlePointerUp])
 
+  // 重新生成完成后清除输入框
+  useEffect(() => {
+    if (!loading) {
+      setFeedback('')
+    }
+  }, [loading])
+
   // ───── Pie SVG ─────
   const pieSvg = (() => {
     const cx = 120, cy = 120, r = 92
@@ -402,14 +429,7 @@ export function ScreenBudgetPreview({
 
   const handleSendFeedback = () => {
     if (!feedback.trim()) return
-    // Submit feedback along with current allocations
-    const finalData = allocsWithAmount.map(a => ({
-      category: a.category,
-      percentage: Math.round(a.percentage * 10) / 10,
-      amount: a.amount,
-    }))
-    console.log('[BudgetPreview] 反馈:', feedback, '数据:', finalData)
-    onBack(finalData)
+    onRegenerate?.(feedback.trim())
   }
 
   return (
@@ -417,6 +437,23 @@ export function ScreenBudgetPreview({
       <style>{`
         .mw .screen { overflow: hidden !important; padding: 0 !important; }
       `}</style>
+      {/* 重新生成 loading 覆盖层 */}
+      {loading && (
+        <div style={{
+          position: 'absolute', inset: 0, zIndex: 99,
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          background: 'rgba(255,255,255,0.85)',
+          gap: 12,
+        }}>
+          <div style={{
+            width: 36, height: 36, border: '3px solid var(--border)',
+            borderTopColor: 'var(--accent)', borderRadius: '50%',
+            animation: 'mw-spin 0.8s linear infinite',
+          }} />
+          <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-soft)' }}>正在根据反馈重新生成…</div>
+          <style>{`@keyframes mw-spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      )}
       {/* Top bar */}
       <div style={{
         display: 'flex', alignItems: 'center', padding: '8px 14px',
@@ -573,20 +610,25 @@ export function ScreenBudgetPreview({
           type="text"
           placeholder="输入备注或反馈…"
           value={feedback}
+          disabled={loading}
           onChange={e => setFeedback(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter') handleSendFeedback() }}
           style={{
             flex: 1, height: 36, border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
             padding: '0 10px', fontSize: 12, fontFamily: 'var(--ff)', outline: 'none',
-            background: 'var(--surface)', color: 'var(--fg)',
+            background: loading ? 'var(--surface)' : 'var(--surface)', color: 'var(--fg)',
+            opacity: loading ? 0.5 : 1,
           }}
         />
         <button
           type="button"
+          disabled={loading || !feedback.trim()}
           onClick={handleSendFeedback}
           style={{
             width: 36, height: 36, border: 'none', borderRadius: 'var(--r-sm)',
-            background: 'var(--accent)', color: '#fff', fontSize: 16, cursor: 'pointer',
+            background: loading || !feedback.trim() ? 'var(--border)' : 'var(--accent)',
+            color: '#fff', fontSize: 16,
+            cursor: loading || !feedback.trim() ? 'not-allowed' : 'pointer',
             display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
             fontFamily: 'var(--ff)',
           }}
