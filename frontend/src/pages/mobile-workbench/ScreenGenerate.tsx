@@ -14,6 +14,7 @@ interface ScreenGenerateProps {
   onNavigate: (s: MobileScreen, data?: BriefFormData) => void
   briefData: BriefFormData | null
   planRun: MobilePlanRunAPI
+  suppressCheckpoint?: boolean
   onOpenBudgetPreview: (data: {
     totalBudget: number
     periodMonths: number
@@ -23,7 +24,7 @@ interface ScreenGenerateProps {
   }) => void
 }
 
-export function ScreenGenerate({ onNavigate, briefData, planRun, onOpenBudgetPreview }: ScreenGenerateProps) {
+export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpoint, onOpenBudgetPreview }: ScreenGenerateProps) {
   const {
     status,
     steps,
@@ -141,7 +142,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, onOpenBudgetPre
     }
   }, [rejectReason, reject])
 
-  const showModal = status === 'paused' && pausedSnapshot !== null
+  const showModal = status === 'paused' && pausedSnapshot !== null && !suppressCheckpoint
 
   // 弹窗关闭/重新打开时重置驳回输入状态
   useEffect(() => {
@@ -339,7 +340,6 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, onOpenBudgetPre
       {showModal && <div style={{
         position: 'absolute', inset: 0, zIndex: 50,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
-        background: 'rgba(15, 23, 42, 0.35)',
       }}>
         <div style={{
           width: 300, borderRadius: 'var(--r-lg)',
@@ -464,41 +464,14 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, onOpenBudgetPre
 
                 <div className="bk-modal">
                   {/* 标题 */}
-                  <div className="bk-section" style={{ textAlign: 'center', marginBottom: 14 }}>
-                    <div style={{ fontSize: 15, fontWeight: 700, color: 'var(--fg)' }}>
+                  <div className="bk-section" style={{ textAlign: 'center', marginBottom: 20 }}>
+                    <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)' }}>
                       <span style={{ fontSize: 16, marginRight: 4 }}>📊</span>预算与 KPI
-                    </div>
-                    <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2, lineHeight: 1.4 }}>
-                      确认数据后继续生成，不满意可驳回调整
-                    </div>
-                  </div>
-
-                  {/* 总预算 + 周期 */}
-                  <div className="bk-section" style={{ display: 'flex', gap: 8, marginBottom: 14 }}>
-                    <div style={{
-                      flex: 1, background: 'var(--accent-softer)', borderRadius: 'var(--r-md)',
-                      padding: '12px 10px', textAlign: 'center', border: '1px solid var(--accent-border)',
-                    }}>
-                      <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 500, marginBottom: 3 }}>总预算</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)' }}>
-                        {bk?.total_budget ?? '—'}
-                        <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)' }}> 万元</span>
-                      </div>
-                    </div>
-                    <div style={{
-                      flex: 1, background: 'var(--surface)', borderRadius: 'var(--r-md)',
-                      padding: '12px 10px', textAlign: 'center', border: '1px solid var(--border)',
-                    }}>
-                      <div style={{ fontSize: 10, color: 'var(--muted)', fontWeight: 500, marginBottom: 3 }}>执行周期</div>
-                      <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--fg)' }}>
-                        {bk?.period_months ?? '—'}
-                        <span style={{ fontSize: 10, fontWeight: 400, color: 'var(--muted)' }}> 个月</span>
-                      </div>
                     </div>
                   </div>
 
                   {/* 按钮组：预览预算 + 确认继续 */}
-                  <div className="bk-section" style={{ display: 'flex', gap: 8 }}>
+                  <div className="bk-section" style={{ display: 'flex', gap: 10 }}>
                     <button
                       type="button"
                       className="bk-btn"
@@ -517,8 +490,8 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, onOpenBudgetPre
                         })
                       }}
                       style={{
-                        flex: 1, height: 38, border: '1px solid var(--border)',
-                        borderRadius: 'var(--r-sm)', background: 'var(--bg)',
+                        flex: 1, height: 40, border: '1px solid var(--border)',
+                        borderRadius: 8, background: 'var(--bg)',
                         color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
                         fontFamily: 'var(--ff)',
                       }}
@@ -531,7 +504,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, onOpenBudgetPre
                       onClick={handleApprove}
                       className="bk-btn"
                       style={{
-                        flex: 1, height: 38, border: 'none', borderRadius: 'var(--r-sm)',
+                        flex: 1, height: 40, border: 'none', borderRadius: 8,
                         background: isLoading || isConnected ? '#9ca3af' : 'var(--accent)',
                         color: '#ffffff', fontSize: 13, fontWeight: 600,
                         cursor: isLoading || isConnected ? 'not-allowed' : 'pointer',
@@ -542,70 +515,6 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, onOpenBudgetPre
                     </button>
                   </div>
 
-                  {/* 驳回 */}
-                  {showRejectInput && (
-                    <div className="bk-section" style={{ marginTop: 10 }}>
-                      <textarea
-                        placeholder="补充要求，如：减少赛事投入、提高达人合作占比…"
-                        value={rejectReason}
-                        onChange={e => setRejectReason(e.target.value)}
-                        rows={2}
-                        style={{
-                          width: '100%', padding: '8px 10px', borderRadius: 'var(--r-sm)',
-                          border: '1px solid var(--border)', fontSize: 11,
-                          fontFamily: 'var(--ff)', resize: 'none', boxSizing: 'border-box',
-                          background: 'var(--bg)',
-                        }}
-                      />
-                      <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
-                        <button
-                          type="button"
-                          disabled={!rejectReason.trim()}
-                          onClick={handleReject}
-                          className="bk-btn"
-                          style={{
-                            flex: 1, height: 34, border: 'none', borderRadius: 'var(--r-sm)',
-                            background: rejectReason.trim() ? '#dc2626' : '#9ca3af',
-                            color: '#fff', fontSize: 12, fontWeight: 600,
-                            cursor: rejectReason.trim() ? 'pointer' : 'not-allowed',
-                            fontFamily: 'var(--ff)',
-                          }}
-                        >
-                          确认驳回
-                        </button>
-                        <button
-                          type="button"
-                          className="bk-btn"
-                          onClick={() => { setShowRejectInput(false); setRejectReason('') }}
-                          style={{
-                            flex: 1, height: 34, border: '1px solid var(--border)',
-                            borderRadius: 'var(--r-sm)', background: 'var(--bg)',
-                            color: 'var(--muted)', fontSize: 12, fontWeight: 600, cursor: 'pointer',
-                            fontFamily: 'var(--ff)',
-                          }}
-                        >
-                          取消
-                        </button>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* 不含驳回输入时，显示驳回入口 */}
-                  {!showRejectInput && (
-                    <div className="bk-section" style={{ marginTop: 8, textAlign: 'center' }}>
-                      <button
-                        type="button"
-                        onClick={() => { setShowRejectInput(true); setRejectReason('') }}
-                        style={{
-                          border: 'none', background: 'none', color: 'var(--muted)',
-                          fontSize: 11, cursor: 'pointer', fontFamily: 'var(--ff)',
-                          textDecoration: 'underline', textUnderlineOffset: 2,
-                        }}
-                      >
-                        数据不满意？驳回重跑
-                      </button>
-                    </div>
-                  )}
                 </div>
               </>
             })()}
