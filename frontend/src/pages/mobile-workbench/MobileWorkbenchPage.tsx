@@ -9,6 +9,7 @@ import { ScreenGenerate } from './ScreenGenerate'
 import { ScreenPreview } from './ScreenPreview'
 import { ScreenActions } from './ScreenActions'
 import { ScreenDispatch } from './ScreenDispatch'
+import { ScreenBudgetPreview, type BudgetAllocation } from './ScreenBudgetPreview'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import { exportPlanPdf, exportPlanXlsx } from '../../api/plan'
 import type { BrandInput } from '../../types/chat'
@@ -22,13 +23,17 @@ const TABS: { key: MobileScreen; label: string }[] = [
   { key: 'dispatch', label: '⑤ 下发转达' },
 ]
 
-const DEFAULT_TOPBAR: Record<MobileScreen, { t: string; sub: string }> = {
+// 隐藏 Tab 栏的屏
+const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview']
+
+const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   chat: { t: '营销方案助手', sub: 'AllyGo Agent' },
   brief: { t: '营销方案工作台', sub: '娃哈哈 · 魅力系列' },
   generate: { t: '方案生成', sub: '魅力系列 · 运动盟域' },
   preview: { t: '方案预览', sub: '完整展示' },
   actions: { t: '下一步行动建议', sub: '魅力系列 · 共 6 项' },
   dispatch: { t: '下发与转发达成', sub: '统一发声 · 跨盟下发' },
+  'budget-preview': { t: '预算分配与预览', sub: '' },
 }
 
 // 从 pendingChatData 的 inputText 中提取 product_label 用于 topbar
@@ -44,6 +49,15 @@ export function MobileWorkbenchPage() {
   const [briefData, setBriefData] = useState<BriefFormData | null>(null)
   const planRun = useMobilePlanRun()
   const { outputs, checkMediaStatus, status } = planRun
+
+  // Budget preview state
+  const [budgetPreviewData, setBudgetPreviewData] = useState<{
+    totalBudget: number
+    periodMonths: number
+    allocations: BudgetAllocation[]
+    kpis: Record<string, string>
+    timeline: string[]
+  } | null>(null)
 
   // 三点导出菜单状态
   const [showExportMenu, setShowExportMenu] = useState(false)
@@ -107,6 +121,16 @@ export function MobileWorkbenchPage() {
     setScreen(s)
   }
 
+  // 预算预览返回时，提交调整后的比例并通过 approve 继续
+  const handleBudgetPreviewBack = (allocations: BudgetAllocation[]) => {
+    setScreen('generate')
+    // 将调整后的预算数据通过 approve 提交给后端
+    const rid = (() => { try { return localStorage.getItem('allygo_mobile_plan_run_id') } catch { return null } })()
+    if (rid) {
+      planRun.approveWithBudget(allocations)
+    }
+  }
+
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
   const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => {
     if (inputText || brandInput) {
@@ -126,11 +150,12 @@ export function MobileWorkbenchPage() {
 
   // 返回上一屏（不回退数据）
   const handleBack = () => {
-    const prev: Record<MobileScreen, MobileScreen | null> = {
+    const prev: Record<string, MobileScreen | null> = {
       chat: null,
       brief: 'chat',
       generate: 'brief',
       preview: 'generate',
+      'budget-preview': 'generate',
       actions: 'generate',
       dispatch: 'actions',
     }
@@ -142,16 +167,20 @@ export function MobileWorkbenchPage() {
   const brandLabel = briefData?.brand_name ?? pendingChatData?.brandInput?.brand_name ?? ''
   const productLabel = briefData?.product_matrix?.split(/[（(]/)[0] || briefData?.product_matrix || parseProductLabel(pendingChatData?.inputText) || ''
   const itemCount = outputs?.action_recommendations?.actions?.length ?? 6
-  const topbarText: Record<MobileScreen, { t: string; sub: string }> = {
+  const topbarText: Record<string, { t: string; sub: string }> = {
     ...DEFAULT_TOPBAR,
     brief: { t: '营销方案工作台', sub: `${brandLabel} · ${productLabel}` },
     generate: { t: '方案生成', sub: `${productLabel} · 运动盟域` },
     preview: { t: '方案预览', sub: `${productLabel} · 完整展示` },
     actions: { t: '下一步行动建议', sub: `${productLabel} · 共 ${itemCount + 6} 项` },
     dispatch: { t: '下发与转发达成', sub: `${brandLabel} · 跨盟下发` },
+    'budget-preview': { t: '预算分配与预览', sub: `${productLabel}` },
   }
   const meta = topbarText[screen]
   const isExportReady = (screen === 'generate' || screen === 'preview') && status === 'completed'
+
+  // 预算预览页在手机框内展示，使用自己的顶栏，隐藏 PhoneFrame 顶栏
+  const hideTopbar = screen === 'budget-preview'
 
   // 方案生成活跃状态：running / paused 时简报页按钮应显示生成中并禁用
   const isPlanGenerating = status === 'running' || status === 'paused'
@@ -213,7 +242,7 @@ export function MobileWorkbenchPage() {
 
   return (
     <div className="mw">
-      <div className="mw-tabs" role="tablist" aria-label="移动端工作台屏幕切换">
+      <div className="mw-tabs" role="tablist" aria-label="移动端工作台屏幕切换" style={{ display: HIDE_TABS.includes(screen) ? 'none' : '' }}>
         {TABS.map(t => (
           <button
             key={t.key}
@@ -227,7 +256,21 @@ export function MobileWorkbenchPage() {
         ))}
       </div>
       <div style={{ position: 'relative' }}>
-        <PhoneFrame topbar={topbar}>
+        <PhoneFrame topbar={hideTopbar ? undefined : topbar}>
+          {screen === 'budget-preview' && budgetPreviewData ? (
+            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', minHeight: 0 }}>
+              <ScreenBudgetPreview
+                onNavigate={setScreen}
+                totalBudget={budgetPreviewData.totalBudget}
+                periodMonths={budgetPreviewData.periodMonths}
+                initialAllocations={budgetPreviewData.allocations}
+                initialKpis={budgetPreviewData.kpis}
+                initialTimeline={budgetPreviewData.timeline}
+                onBack={handleBudgetPreviewBack}
+              />
+            </div>
+          ) : (
+          <>
           <div style={{ display: screen === 'chat' ? '' : 'none' }}>
             <ScreenChat onNavigate={handleChatNavigate} />
           </div>
@@ -239,6 +282,10 @@ export function MobileWorkbenchPage() {
               onNavigate={handleNavigate}
               briefData={briefData}
               planRun={planRun}
+              onOpenBudgetPreview={(data) => {
+                setBudgetPreviewData(data)
+                setScreen('budget-preview')
+              }}
             />
           </div>
           <div style={{ display: screen === 'preview' ? '' : 'none' }}>
@@ -258,6 +305,8 @@ export function MobileWorkbenchPage() {
           <div style={{ display: screen === 'dispatch' ? '' : 'none' }}>
             <ScreenDispatch outputs={outputs} briefData={briefData} />
           </div>
+          </>
+          )}
         </PhoneFrame>
       </div>
     </div>
