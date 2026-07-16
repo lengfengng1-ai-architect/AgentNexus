@@ -6,6 +6,13 @@ import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { startPlanRun, approvePlanRun, rejectPlanRun, getPlanRunStatus, getPlanMediaStatus } from '../api/plan'
 import type { PlanChapter, PlanLogEvent, PlanNodeStatus, PlanOutputs } from '../types/plan'
 
+// Budget allocation type for passing adjusted data
+export interface BudgetAllocation {
+  category: string
+  percentage: number
+  amount: number
+}
+
 const PIPELINE_NODES: { id: string; label: string; desc: string }[] = [
   { id: 'product_research', label: '产品调研', desc: '搜索并分析品牌产品信息与市场定位' },
   { id: 'market_research', label: '市场调研', desc: '收集行业趋势、竞品格局、消费洞察' },
@@ -363,7 +370,7 @@ export function useMobilePlanRun() {
     }
   }, [consumeStream])
 
-  const approve = useCallback(async () => {
+  const approve = useCallback(async (budgetAllocations?: BudgetAllocation[]) => {
     const rid = runIdRef.current
     if (!rid) return
     dispatch({ type: 'SET_LOADING', loading: true })
@@ -374,7 +381,10 @@ export function useMobilePlanRun() {
       }
     }
     try {
-      const stream = await approvePlanRun(rid)
+      const input = budgetAllocations
+        ? { edited_input: { budget_kpi_adjusted: budgetAllocations } as Record<string, unknown> }
+        : undefined
+      const stream = await approvePlanRun(rid, input)
       dispatch({ type: 'SET_CONNECTED', connected: true })
       await consumeStream(stream)
     } catch (error) {
@@ -384,6 +394,10 @@ export function useMobilePlanRun() {
       dispatch({ type: 'SET_LOADING', loading: false })
     }
   }, [consumeStream, state.pausedSnapshot])
+
+  const approveWithBudget = useCallback((allocs: BudgetAllocation[]) => {
+    approve(allocs)
+  }, [approve])
 
   const reject = useCallback(async (reason: string) => {
     const rid = runIdRef.current
@@ -452,6 +466,7 @@ export function useMobilePlanRun() {
     ...state,
     start,
     approve,
+    approveWithBudget,
     reject,
     reset,
     restoreFromRunId,
@@ -470,6 +485,7 @@ export interface MobilePlanRunAPI {
   isLoading: boolean
   start: (brandInput: Record<string, unknown>) => Promise<void>
   approve: () => Promise<void>
+  approveWithBudget: (allocations: BudgetAllocation[]) => void
   reject: (reason: string) => Promise<void>
   reset: () => void
   restoreFromRunId: (runId: string) => Promise<void>

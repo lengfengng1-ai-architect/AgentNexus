@@ -148,6 +148,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 .mw .screen::-webkit-scrollbar {
   display: none;
@@ -684,3 +685,29 @@
 .mw .fwd { font-size: 10px; font-weight: 600; padding: 3px 9px; border-radius: 20px; cursor: pointer; flex: none; }
 .mw .fwd.done { background: var(--accent-soft); color: var(--accent); }
 .mw .fwd.wait { background: var(--surface); color: var(--muted); border: 1px solid var(--border); }
+
+/* —— 预算预览滑动动画 —— */
+@keyframes slide-in-right {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+@keyframes slide-out-right {
+  from { transform: translateX(0); }
+  to { transform: translateX(100%); }
+}
+.mw .bp-slide-in {
+  animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mw .bp-slide-out {
+  animation: slide-out-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mw .bp-slide-in,
+  .mw .bp-slide-out {
+    animation: none;
+  }
+  .mw .bp-slide-out {
+    display: none;
+  }
+}
