@@ -3,9 +3,15 @@
   "configurations": [
     {
       "name": "frontend",
-      "runtimeExecutable": "npx",
+      "runtimeExecutable": "/Users/tuling/.local/bin/npx",
       "runtimeArgs": ["vite"],
       "autoPort": true
+    },
+    {
+      "name": "prototype",
+      "runtimeExecutable": "/Users/tuling/.local/bin/npx",
+      "runtimeArgs": ["serve", ".", "-p", "3458", "-s", "--no-clipboard"],
+      "port": 3458
     }
   ]
 }
