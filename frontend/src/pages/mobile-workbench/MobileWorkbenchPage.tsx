@@ -59,10 +59,31 @@ export function MobileWorkbenchPage() {
     timeline: string[]
   } | null>(null)
 
+  // 预算预览滑动动画状态：关闭弹窗后抑制 checkpoint 弹窗再次弹出
+  const [suppressCheckpoint, setSuppressCheckpoint] = useState(false)
+  // 预算预览正在退出动画中
+  const [isBpAnimatingOut, setIsBpAnimatingOut] = useState(false)
+
   // 三点导出菜单状态
   const [showExportMenu, setShowExportMenu] = useState(false)
   const [exporting, setExporting] = useState<'pdf' | 'xlsx' | null>(null)
   const exportRef = useRef<HTMLDivElement>(null)
+
+  // 当流水线脱离 paused 状态（变为 running / completed / failed）时，
+  // 自动清除 suppressCheckpoint，不再需要弹窗抑制
+  useEffect(() => {
+    if (status !== 'paused') {
+      setSuppressCheckpoint(false)
+    }
+  }, [status])
+
+  // 当 checkpoint 到达非 budget_kpi 的新节点时，清除抑制
+  // 防止在用户返回 generate 屏后，下一个 checkpoint 也被屏蔽
+  useEffect(() => {
+    if (planRun.pausedSnapshot && planRun.pausedSnapshot.node_id !== 'budget_kpi') {
+      setSuppressCheckpoint(false)
+    }
+  }, [planRun.pausedSnapshot])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -121,14 +142,22 @@ export function MobileWorkbenchPage() {
     setScreen(s)
   }
 
-  // 预算预览返回时，提交调整后的比例并通过 approve 继续
+  // 预算预览返回时：触发滑出动画 → 完成后切回 generate 屏并提交数据
   const handleBudgetPreviewBack = (allocations: BudgetAllocation[]) => {
-    setScreen('generate')
-    // 将调整后的预算数据通过 approve 提交给后端
+    // 1. 触发滑出动画的同时开始提交流程（SSE 在动画期间即可启动）
+    setIsBpAnimatingOut(true)
     const rid = (() => { try { return localStorage.getItem('allygo_mobile_plan_run_id') } catch { return null } })()
     if (rid) {
       planRun.approveWithBudget(allocations)
     }
+    // 2. 等待动画结束后切换屏幕，此时流水线可能已开始执行
+    setTimeout(() => {
+      setIsBpAnimatingOut(false)
+      setBudgetPreviewData(null)
+      setScreen('generate')
+      // 抑制 checkpoint 弹窗，确保用户看到的是流水线继续执行中的状态
+      setSuppressCheckpoint(true)
+    }, 300) // 匹配滑出动画时长 0.3s
   }
 
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
@@ -180,7 +209,11 @@ export function MobileWorkbenchPage() {
   const isExportReady = (screen === 'generate' || screen === 'preview') && status === 'completed'
 
   // 预算预览页在手机框内展示，使用自己的顶栏，隐藏 PhoneFrame 顶栏
-  const hideTopbar = screen === 'budget-preview'
+  // 动画退出中也不显示 topbar（保持视觉连贯）
+  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut
+
+  // 预算预览正在展示中：包括正在展示 slide-in 或已展示
+  const showingBudgetPreview = screen === 'budget-preview' || isBpAnimatingOut
 
   // 方案生成活跃状态：running / paused 时简报页按钮应显示生成中并禁用
   const isPlanGenerating = status === 'running' || status === 'paused'
@@ -257,8 +290,17 @@ export function MobileWorkbenchPage() {
       </div>
       <div style={{ position: 'relative' }}>
         <PhoneFrame topbar={hideTopbar ? undefined : topbar}>
-          {screen === 'budget-preview' && budgetPreviewData ? (
-            <div style={{ display: 'flex', flexDirection: 'column', flex: 1, height: '100%', minHeight: 0 }}>
+          {/* 预算预览覆盖层：手机框内绝对定位，从右向左滑入/滑出
+              不依赖 !showingBudgetPreview 做条件渲染，确保其他屏保持挂载 */}
+          {showingBudgetPreview && budgetPreviewData && (
+            <div
+              className={isBpAnimatingOut ? 'bp-slide-out' : 'bp-slide-in'}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column',
+                background: 'var(--bg)', overflow: 'hidden',
+              }}
+            >
               <ScreenBudgetPreview
                 onNavigate={setScreen}
                 totalBudget={budgetPreviewData.totalBudget}
@@ -269,8 +311,7 @@ export function MobileWorkbenchPage() {
                 onBack={handleBudgetPreviewBack}
               />
             </div>
-          ) : (
-          <>
+          )}
           <div style={{ display: screen === 'chat' ? '' : 'none' }}>
             <ScreenChat onNavigate={handleChatNavigate} />
           </div>
@@ -282,8 +323,10 @@ export function MobileWorkbenchPage() {
               onNavigate={handleNavigate}
               briefData={briefData}
               planRun={planRun}
+              suppressCheckpoint={suppressCheckpoint}
               onOpenBudgetPreview={(data) => {
                 setBudgetPreviewData(data)
+                setSuppressCheckpoint(true)
                 setScreen('budget-preview')
               }}
             />
@@ -305,8 +348,6 @@ export function MobileWorkbenchPage() {
           <div style={{ display: screen === 'dispatch' ? '' : 'none' }}>
             <ScreenDispatch outputs={outputs} briefData={briefData} />
           </div>
-          </>
-          )}
         </PhoneFrame>
       </div>
     </div>
