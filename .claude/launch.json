@@ -15,12 +15,6 @@
       "runtimeArgs": ["run", "uvicorn", "app.main:app", "--port", "8000", "--reload"],
       "cwd": "${workspaceFolder}/backend",
       "port": 8000
-    },
-    {
-      "name": "prototype",
-      "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "3456", "--bind", "127.0.0.1"],
-      "port": 3456
     }
   ]
 }
