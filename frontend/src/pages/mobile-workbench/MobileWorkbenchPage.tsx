@@ -27,7 +27,7 @@ const TABS: { key: MobileScreen; label: string }[] = [
 const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview']
 
 const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
-  chat: { t: '营销方案助手', sub: 'AllyGo Agent · 4M+1C 模型' },
+  chat: { t: '营销方案助手', sub: 'AllyGo Agent' },
   brief: { t: '营销方案工作台', sub: '娃哈哈 · 魅力系列' },
   generate: { t: '方案生成', sub: '魅力系列 · 运动盟域' },
   preview: { t: '方案预览', sub: '完整展示' },
@@ -48,7 +48,7 @@ export function MobileWorkbenchPage() {
   const [screen, setScreen] = useState<MobileScreen>('chat')
   const [briefData, setBriefData] = useState<BriefFormData | null>(null)
   const planRun = useMobilePlanRun()
-  const { outputs, checkMediaStatus, status, pausedSnapshot } = planRun
+  const { outputs, checkMediaStatus, status } = planRun
 
   // Budget preview state
   const [budgetPreviewData, setBudgetPreviewData] = useState<{
