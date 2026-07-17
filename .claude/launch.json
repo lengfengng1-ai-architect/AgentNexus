@@ -19,8 +19,8 @@
     {
       "name": "prototype",
       "runtimeExecutable": "python3",
-      "runtimeArgs": ["-m", "http.server", "3457", "--bind", "127.0.0.1"],
-      "port": 3457
+      "runtimeArgs": ["-m", "http.server", "3458", "--bind", "127.0.0.1"],
+      "port": 3458
     }
   ]
 }

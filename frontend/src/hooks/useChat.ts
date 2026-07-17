@@ -29,7 +29,7 @@ interface VideoResultData {
 
 type ChatAction =
   | { type: 'SET_INPUT'; value: string }
-  | { type: 'SEND_MESSAGE'; content: string }
+  | { type: 'SEND_MESSAGE'; content: string; imageUrls?: string[] }
   | { type: 'STREAM_START' }
   | { type: 'STREAM_REASONING'; text: string }
   | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null; imageUrls?: string[]; videoPrompt?: string | null; generationPrompt?: string | null; messageId?: string; marketName?: string | null }
@@ -39,7 +39,7 @@ type ChatAction =
   | { type: 'LOAD_HISTORY'; messages: ChatMessage[] }
   | { type: 'VIDEO_RESULT'; messageId: string; videoResult: VideoResultData }
   | { type: 'IMAGE_RESULT'; messageId: string; imageResult: ImageResultData }
-  | { type: 'ADD_VIRTUAL_MESSAGE'; intent: ChatMessage['intent']; userContent?: string }
+  | { type: 'ADD_VIRTUAL_MESSAGE'; intent: ChatMessage['intent']; userContent?: string; imageUrl?: string }
   | { type: 'UPDATE_MESSAGE_CONTENT'; messageId: string; content: string }
   | { type: 'SET_MARKET_RESEARCH_DONE'; messageId: string }
   | { type: 'APPEND_MARKET_RESEARCH_SOURCES'; messageId: string; sources: { url: string; title: string }[] }
@@ -73,6 +73,14 @@ function getLatestBrandInput(messages: ChatMessage[]): BrandInput | undefined {
   return merged
 }
 
+function getLatestImageUrls(messages: ChatMessage[]): string[] {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const urls = messages[i].imageUrls
+    if (urls && urls.length > 0) return urls
+  }
+  return []
+}
+
 function getStreamingMsgIndex(msgs: ChatMessage[]): number {
   for (let i = msgs.length - 1; i >= 0; i--) {
     if (msgs[i].id.startsWith('stream-')) return i
@@ -86,7 +94,10 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, inputValue: action.value }
 
     case 'SEND_MESSAGE': {
-      const userMessage = createMessage(action.content, 'user')
+      const userMessage: ChatMessage = {
+        ...createMessage(action.content, 'user'),
+        imageUrls: action.imageUrls && action.imageUrls.length > 0 ? action.imageUrls : undefined,
+      }
       return { ...state, messages: [...state.messages, userMessage], inputValue: '', error: null }
     }
 
@@ -175,12 +186,13 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         role: 'user',
         content: action.userContent ?? '',
       }
+      const imageUrls = action.imageUrl ? [action.imageUrl] : undefined
       const aiMsg: ChatMessage = {
         id: `virtual-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
         role: 'ai',
         content: '',
         intent: action.intent,
-        imageUrls: action.intent === 'generate_video' || action.intent === 'text_to_video' ? [] : undefined,
+        imageUrls: imageUrls ?? (action.intent === 'generate_video' || action.intent === 'text_to_video' ? [] : undefined),
         videoPrompt: action.intent === 'generate_video' || action.intent === 'text_to_video' ? null : undefined,
         generationPrompt: action.intent === 'text_to_image' ? '' : undefined,
       }
@@ -238,20 +250,20 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 }
 
 export function useChat() {
-  const [state, dispatch] = useReducer(chatReducer, { messages: [], inputValue: '', isLoading: false, error: null })
+  // ponytail: 用 lazy initializer 同步读取历史，useState 初始值即为历史消息，
+  // 避免「mount 时先以空 state 触发持久化 effect 覆盖 localStorage」的竞态。
+  // reducer 的 LOAD_HISTORY 仍保留以兼容其他调用方。
+  const [state, dispatch] = useReducer(chatReducer, undefined, () => {
+    let messages: ChatMessage[] = []
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY)
+      if (raw) messages = JSON.parse(raw) as ChatMessage[]
+    } catch { /* ignore */ }
+    return { messages, inputValue: '', isLoading: false, error: null }
+  })
   const isProcessingRef = useRef(false)
   const messagesRef = useRef(state.messages)
   messagesRef.current = state.messages
-
-  useEffect(() => {
-    try {
-      const raw = localStorage.getItem(STORAGE_KEY)
-      if (raw) {
-        const parsed = JSON.parse(raw) as ChatMessage[]
-        dispatch({ type: 'LOAD_HISTORY', messages: parsed })
-      }
-    } catch { /* ignore */ }
-  }, [])
 
   useEffect(() => {
     try {
@@ -266,7 +278,7 @@ export function useChat() {
     if (isProcessingRef.current || (!content.trim() && (!imageUrls || imageUrls.length === 0))) return
     isProcessingRef.current = true
     dispatch({ type: 'CLEAR_ERROR' })
-    dispatch({ type: 'SEND_MESSAGE', content: content.trim() })
+    dispatch({ type: 'SEND_MESSAGE', content: content.trim(), imageUrls })
     dispatch({ type: 'STREAM_START' })
 
     // Build full context: conversation history + merged brand_input
@@ -277,7 +289,11 @@ export function useChat() {
       .slice(-10) // keep last 10 exchanges
     const context: Record<string, unknown> = { conversation_history: conversationHistory }
     if (lastBrand) context.brand_input = lastBrand
-    if (imageUrls && imageUrls.length > 0) context.image_urls = imageUrls
+    // ponytail: 图片上下文跨轮延续。本轮上传优先，否则沿用最近一条带图消息，
+    // 使「先传图→反问→用户说想法」时仍能走以图生图/生视频。
+    const effectiveImageUrls =
+      imageUrls && imageUrls.length > 0 ? imageUrls : getLatestImageUrls(messagesRef.current)
+    if (effectiveImageUrls.length > 0) context.image_urls = effectiveImageUrls
 
     // Pass latest market_name for market_research context
     const lastMsgWithMarket = messagesRef.current.slice().reverse().find(m => m.marketName)
@@ -304,7 +320,7 @@ export function useChat() {
             brandInput: chunk.intent.brand_input,
             missingFields: chunk.intent.missing_fields || [],
             gate: chunk.intent.gate,
-            imageUrls: chunk.intent.image_urls,
+            imageUrls: chunk.intent.image_url ? [chunk.intent.image_url] : undefined,
             videoPrompt: chunk.intent.video_prompt,
             generationPrompt: chunk.intent.generation_prompt,
             marketName: chunk.intent.market_name,
@@ -349,7 +365,7 @@ export function useChat() {
             brandInput: chunk.intent.brand_input,
             missingFields: chunk.intent.missing_fields || [],
             gate: chunk.intent.gate,
-            imageUrls: chunk.intent.image_urls,
+            imageUrls: chunk.intent.image_url ? [chunk.intent.image_url] : undefined,
             videoPrompt: chunk.intent.video_prompt,
             generationPrompt: chunk.intent.generation_prompt,
             marketName: chunk.intent.market_name,
@@ -372,8 +388,8 @@ export function useChat() {
     dispatch({ type: 'IMAGE_RESULT', messageId, imageResult })
   }, [])
 
-  const addVirtualMessage = useCallback((intent: ChatMessage['intent'], userContent?: string) => {
-    dispatch({ type: 'ADD_VIRTUAL_MESSAGE', intent, userContent })
+  const addVirtualMessage = useCallback((intent: ChatMessage['intent'], userContent?: string, imageUrl?: string) => {
+    dispatch({ type: 'ADD_VIRTUAL_MESSAGE', intent, userContent, imageUrl })
   }, [])
 
   const updateMessageContent = useCallback((messageId: string, content: string) => {
@@ -410,7 +426,6 @@ export function useChat() {
     updateVideoResult,
     updateImageResult,
     addVirtualMessage,
-    updateMessageContent,
     updateMessageContent,
     setMarketResearchDone,
     appendMarketResearchSources,

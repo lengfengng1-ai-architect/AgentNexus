@@ -4,7 +4,34 @@ import type { ChatMessage } from '../types/chat'
 import { InlineVideoCard } from './InlineVideoCard'
 import { InlineImageCard } from './InlineImageCard'
 import { MarketResearchProgressCard } from './MarketResearchProgressCard'
-import { MarketResearchResultCards } from './MarketResearchResultCards'
+
+function isSafeImageUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url)
+    return ['http:', 'https:', 'oss:'].includes(parsed.protocol)
+  } catch {
+    // ponytail: 相对路径（如 /uploads/xxx）也允许；升级路径：统一返回绝对 URL
+    return url.startsWith('/')
+  }
+}
+
+function ChatBubbleImage({ url }: { url: string }) {
+  if (!isSafeImageUrl(url)) {
+    return (
+      <span className="max-w-[200px] rounded-lg border border-current/20 px-2 py-1 text-xs opacity-70">
+        图片链接不安全
+      </span>
+    )
+  }
+  return (
+    <img
+      src={url}
+      alt="上传的图片"
+      className="max-w-[200px] rounded-lg object-cover"
+      loading="lazy"
+    />
+  )
+}
 
 function TypingIndicator() {
   return (
@@ -62,6 +89,8 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
   const videoPrompt = message.intent === 'generate_video' ? message.videoPrompt : message.generationPrompt
   const isImageIntent = message.intent === 'text_to_image'
   const isMarketResearch = !isUser && message.intent === 'market_research'
+  // ponytail: isMarketResearchActive 由父级传入但当前组件未使用，保留以保持 props 兼容
+  void isMarketResearchActive
 
   return (
     <div className={['flex w-full', isUser ? 'justify-end' : 'justify-start'].join(' ')}>
@@ -132,10 +161,19 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
           <InlineImageCard
             variant={variant}
             prompt={message.generationPrompt ?? ''}
+            imageUrl={message.imageUrls?.[0]}
             messageId={message.id}
             existingResult={message.imageResult}
             onImageResult={onImageResult}
           />
+        )}
+        {/* User uploaded image thumbnails */}
+        {isUser && message.imageUrls && message.imageUrls.length > 0 && (
+          <div className="mt-2 flex flex-col gap-2">
+            {message.imageUrls.map((url, idx) => (
+              <ChatBubbleImage key={`${url}-${idx}`} url={url} />
+            ))}
+          </div>
         )}
         {!isUser && message.canGeneratePlan && onGeneratePlan && (
           <button

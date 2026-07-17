@@ -22,6 +22,7 @@ from langchain_core.messages import HumanMessage, SystemMessage
 from app.agents.llm_utils import build_chat_model
 from app.agents.registry import register
 from app.config.settings import settings
+from app.services.image_base64 import to_data_uri
 
 logger = logging.getLogger(__name__)
 
@@ -113,6 +114,7 @@ async def call_qwen_image_api(
     api_key: str,
     size: str = _DEFAULT_SIZE,
     negative_prompt: str = _DEFAULT_NEGATIVE_PROMPT,
+    image_url: str | None = None,
 ) -> dict[str, Any]:
     """调用 Qwen-Image API 生成图片。
 
@@ -121,6 +123,8 @@ async def call_qwen_image_api(
         api_key: DashScope API Key
         size: 分辨率，如 "2048*2048"
         negative_prompt: 反向提示词
+        image_url: 参考图（本地上传路径或 URL），有则走以图生图（I2I），
+                   本地图会转为 Base64 内联，模型端无需公网下载
 
     Returns:
         { image_url, width, height }
@@ -129,12 +133,19 @@ async def call_qwen_image_api(
         "Content-Type": "application/json",
         "Authorization": f"Bearer {api_key}",
     }
+
+    # 构造 input.messages 的 content 数组
+    content: list[dict[str, str]] = []
+    if image_url:
+        content.append({"image": to_data_uri(image_url)})
+    content.append({"text": prompt})
+
     payload = {
         "model": _DEFAULT_MODEL,
         "input": {
             "messages": [{
                 "role": "user",
-                "content": [{"text": prompt}],
+                "content": content,
             }],
         },
         "parameters": {
@@ -250,15 +261,16 @@ def _is_direct_image_prompt(text: str) -> bool:
 
 
 async def run_image_generation(state: dict[str, Any]) -> dict[str, Any]:
-    """图片生成 Agent 入口——接收方案文本，生成图片并返回 URL。
+    """图片生成 Agent 入口——接收方案文本和可选的参考图，生成图片并返回 URL。
 
     流程:
-      1. LLM 根据方案内容生成详细的 image prompt
-      2. 调用 Qwen-Image API 生成图片
+      1. LLM 根据方案内容生成详细的 image prompt（无图）或直接使用用户描述（参考图）
+      2. 调用 Qwen-Image API 生成图片（T2I 或 I2I）
       3. 返回图片 URL 及元信息
 
     期望 state 字段:
-      - plan_content (必填): 方案文本内容
+      - plan_content (必填): 方案文本内容 / 用户图片描述
+      - image_url (可选): 参考图 OSS URL，有则走以图生图（I2I）
       - image_type (可选): 图片类型，默认 main_visual
       - size (可选): 分辨率，默认根据 image_type 自动选择
       - negative_prompt (可选): 反向提示词
@@ -268,6 +280,10 @@ async def run_image_generation(state: dict[str, Any]) -> dict[str, Any]:
     if not plan_content or not plan_content.strip():
         raise ValueError("缺少必填字段: plan_content")
 
+    image_url = state.get("image_url") or None
+    if image_url:
+        # 将参考图（本地上传路径/URL）转为 Base64 内联，模型端无需公网下载
+        image_url = to_data_uri(image_url)
     image_type = state.get("image_type", "main_visual")
     size = state.get("size") or _IMAGE_TYPE_DEFAULTS.get(image_type, {}).get("size", _DEFAULT_SIZE)
     negative_prompt = state.get("negative_prompt", _DEFAULT_NEGATIVE_PROMPT)
@@ -279,14 +295,22 @@ async def run_image_generation(state: dict[str, Any]) -> dict[str, Any]:
             "或 MYSELF_API_KEY。"
         )
 
-    # Step 1: 判断是否需要 LLM 重写 prompt
-    # 如果用户输入已经是详细的视觉描述（含摄影术语、镜头参数等），直接跳过 LLM 重写
-    if _is_direct_image_prompt(plan_content):
+    if image_url:
+        # ponytail: 以图生图 — 用户有参考图时直接用用户文字描述作为 prompt，跳过 LLM 重写
         image_prompt = plan_content
-        logger.info("直接使用用户输入作为 image prompt (%d chars)", len(image_prompt))
+        # 日志只记录参考图来源特征，避免把 Base64 全量数据写入日志
+        logger.info(
+            "以图生图模式: image_ref=%s (%d chars), prompt=%s",
+            image_url[:32], len(image_url), image_prompt[:100],
+        )
     else:
-        image_prompt = await generate_image_prompt(plan_content, image_type)
-        logger.info("已生成 image prompt (type=%s, %d chars)", image_type, len(image_prompt))
+        # Step 1: 判断是否需要 LLM 重写 prompt
+        if _is_direct_image_prompt(plan_content):
+            image_prompt = plan_content
+            logger.info("直接使用用户输入作为 image prompt (%d chars)", len(image_prompt))
+        else:
+            image_prompt = await generate_image_prompt(plan_content, image_type)
+            logger.info("已生成 image prompt (type=%s, %d chars)", image_type, len(image_prompt))
 
     # Step 2: 调用 Qwen-Image API
     api_result = await call_qwen_image_api(
@@ -294,6 +318,7 @@ async def run_image_generation(state: dict[str, Any]) -> dict[str, Any]:
         api_key=api_key,
         size=size,
         negative_prompt=negative_prompt,
+        image_url=image_url,
     )
 
     return {

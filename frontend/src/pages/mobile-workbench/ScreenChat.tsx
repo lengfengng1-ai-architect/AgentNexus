@@ -1,7 +1,7 @@
 // in_scope: brand-input, mobile-chat-session, market-analysis
 // OpenSpec: openspec/changes/mobile-chat-ui-redesign
-// 移动端聊天屏 — 新版沉浸式输入 + +号面板
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+// 移动端聊天屏 — 新版沉浸式输入 + +号面板 + 聚焦chips
+import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { useChat } from '../../hooks/useChat'
 import { useMarketResearchStream } from '../../hooks/useMarketResearchStream'
 import { ChatBubble } from '../../components/ChatBubble'
@@ -22,8 +22,10 @@ interface ScreenChatProps {
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 const BACKEND_ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, '')
 
-const SUGGESTION_POOL: SuggestedPrompt[] = [
-  { id: 'nav-brief', icon: '📝', label: '推荐方案生成', action: 'navigate-brief' },
+// ponytail: 推荐方案生成固定显示，其余 4 个胶囊从池中随机刷新
+const PINNED_PROMPT: SuggestedPrompt = { id: 'nav-brief', icon: '📝', label: '推荐方案生成', action: 'navigate-brief' }
+
+const REFRESHABLE_POOL: SuggestedPrompt[] = [
   { id: 'prefill-brand', icon: '💰', label: '预算评估', action: 'prefill-brand-template' },
   { id: 'prefill-market', icon: '📊', label: '市场分析', action: 'prefill-market-analysis' },
   { id: 'send-alliance', icon: '🤝', label: '创建盟域', action: 'send-text', payload: '帮我创建一个盟域活动方案' },
@@ -31,6 +33,40 @@ const SUGGESTION_POOL: SuggestedPrompt[] = [
   { id: 'virtual-image', icon: '🖼️', label: '产品海报', action: 'virtual-image' },
   { id: 'virtual-video', icon: '🎬', label: '产品视频', action: 'virtual-video' },
 ]
+
+// ponytail: 聚焦 chips 的 SVG 图标（与药丸网格一致但使用描边风格）
+const FOCUS_CHIP_ICONS: Record<string, () => JSX.Element> = {
+  'navigate-brief': () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M12 2L2 7l10 5 10-5-10-5z" /><path d="M2 17l10 5 10-5" />
+    </svg>
+  ),
+  'prefill-brand-template': () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <line x1="12" y1="1" x2="12" y2="23" /><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+    </svg>
+  ),
+  'prefill-market-analysis': () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M18 20V10" /><path d="M12 20V4" /><path d="M6 20v-6" />
+    </svg>
+  ),
+  'send-text': () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <circle cx="12" cy="12" r="10" /><line x1="2" y1="12" x2="22" y2="12" /><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z" />
+    </svg>
+  ),
+  'virtual-image': () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+    </svg>
+  ),
+  'virtual-video': () => (
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" /><polyline points="14 2 14 8 20 8" />
+    </svg>
+  ),
+}
 
 // ponytail: 简单随机打乱；天花板是伪随机分布不均，升级路径可引入加权或后端推荐
 function shuffle<T>(arr: T[]): T[] {
@@ -80,20 +116,41 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
   const [uploadError, setUploadError] = useState<string | null>(null)
 
   const [showActionPanel, setShowActionPanel] = useState(false)
+  const [isInputFocused, setIsInputFocused] = useState(false)
+  const [refreshing, setRefreshing] = useState(false)
   const [suggestedPrompts, setSuggestedPrompts] = useState<SuggestedPrompt[]>(() =>
-    shuffle(SUGGESTION_POOL).slice(0, 4)
+    shuffle(REFRESHABLE_POOL).slice(0, 4)
   )
 
+  // ponytail: 其余按短到长排列，推荐方案生成（最长的 6 字）放在最后
+  const displayPrompts = [[...suggestedPrompts].sort((a, b) => a.label.length - b.label.length), PINNED_PROMPT].flat()
+
   const hasSentMessage = messages.length > 0
-  const showSuggestions = !hasSentMessage && !showActionPanel
+  const showSuggestions = !hasSentMessage && !showActionPanel && !isInputFocused
+  const showFocusChips = !hasSentMessage && isInputFocused && inputValue.trim().length === 0 && !showActionPanel
 
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // ── 换一批 ─────────────────────────────────────────────────────────────
+  // ── 换一批（带旋转动画） ───────────────────────────────────────────────
   const handleRefreshSuggestions = useCallback(() => {
-    setSuggestedPrompts(shuffle(SUGGESTION_POOL).slice(0, 4))
+    if (refreshing) return
+    setRefreshing(true)
+    // ponytail: 简单延时模拟换一批动画。升级路径：可考虑 CSSTransition 或 Framer Motion
+    setTimeout(() => {
+      setSuggestedPrompts(shuffle(REFRESHABLE_POOL).slice(0, 4))
+      setRefreshing(false)
+    }, 250)
+  }, [refreshing])
+
+  // ── 输入框聚焦/失焦 ────────────────────────────────────────────────────
+  const handleInputFocus = useCallback(() => {
+    setIsInputFocused(true)
+  }, [])
+
+  const handleInputBlur = useCallback(() => {
+    setIsInputFocused(false)
   }, [])
 
   // ── 推荐卡片点击 ───────────────────────────────────────────────────────
@@ -136,12 +193,15 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
   }, [])
 
   const handleCreateImage = useCallback(() => {
-    addVirtualMessage('text_to_image', '帮我生成一张产品海报图片')
-  }, [addVirtualMessage])
+    // ponytail: 自动获取最新上传的图片 URL 传入 virtual message，支持以图生图
+    const lastImgUrl = messages.slice().reverse().find(m => m.imageUrls?.length)?.imageUrls?.[0]
+    addVirtualMessage('text_to_image', '帮我生成一张产品海报图片', lastImgUrl)
+  }, [addVirtualMessage, messages])
 
   const handleCreateVideo = useCallback(() => {
-    addVirtualMessage('generate_video', '帮我生成一条宣传视频')
-  }, [addVirtualMessage])
+    const lastImgUrl = messages.slice().reverse().find(m => m.imageUrls?.length)?.imageUrls?.[0]
+    addVirtualMessage('generate_video', '帮我生成一条宣传视频', lastImgUrl)
+  }, [addVirtualMessage, messages])
 
   // ── 语音输入 ───────────────────────────────────────────────────────────
   const handleVoice = useCallback(() => {
@@ -177,17 +237,21 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
 
   // ── 文件上传 ───────────────────────────────────────────────────────────
   const handleFileSelect = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files
-    if (!files || files.length === 0) return
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    // ponytail: 先复制文件再重置 input，因为 input.files 返回的 FileList 是实时的，
+    // 重置 value 会清空它，导致后续 FormData 拿不到文件
     e.target.value = ''
 
     setUploading(true)
     try {
       const formData = new FormData()
-      Array.from(files).forEach(f => formData.append('files', f))
+      files.forEach(f => formData.append('files', f))
       const res = await fetch(`${API_BASE}/upload`, { method: 'POST', body: formData })
       if (!res.ok) throw new Error('Upload failed')
       const data = await res.json()
+      // ponytail: 统一用本地上传 URL（同域），气泡展示与模型推理共用；
+      // 后端以图生图/生视频时会读取本地文件转 Base64 内联，无需公网图床
       const urls: string[] = data.files.map((item: { url: string }) =>
         item.url.startsWith('http') ? item.url : `${BACKEND_ORIGIN}${item.url}`
       )
@@ -238,6 +302,51 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     }
   }, [])
 
+  // ── 聚焦 chips 点击：填充输入框 ─────────────────────────────────────────
+  const handleChipClick = useCallback((prompt: SuggestedPrompt) => {
+    if (prompt.payload) {
+      sendMessage(prompt.payload)
+    } else {
+      setInputValue(prompt.label)
+      setTimeout(() => textInputRef.current?.focus(), 0)
+    }
+  }, [sendMessage, setInputValue])
+
+  const floatingContent = useMemo(() => {
+    if (showActionPanel) {
+      return (
+        <ChatActionPanel
+          isOpen={showActionPanel}
+          onClose={handleCloseActionPanel}
+          onUpload={handleUploadClick}
+          onCreateImage={handleCreateImage}
+          onCreateVideo={handleCreateVideo}
+        />
+      )
+    }
+    if (showFocusChips) {
+      return (
+        <div className="focus-chips visible">
+          {displayPrompts.map(p => (
+            <button
+              key={p.id}
+              type="button"
+              className="focus-chip"
+              onMouseDown={e => {
+                e.preventDefault()
+                handleChipClick(p)
+              }}
+            >
+              {FOCUS_CHIP_ICONS[p.action]?.()}
+              <span>{p.label}</span>
+            </button>
+          ))}
+        </div>
+      )
+    }
+    return null
+  }, [showActionPanel, showFocusChips, suggestedPrompts, handleChipClick])
+
   const chatContent = useMemo(() => (
     <>
       {messages.map(m => (
@@ -266,12 +375,13 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
         <ErrorBar message={uploadError} onDismiss={() => setUploadError(null)} />
       )}
 
-      <div className="chat-messages">
+      <div className={`chat-messages${showSuggestions ? ' suggestions-showing' : ''}${!hasSentMessage && isInputFocused ? ' input-focused' : ''}`}>
         {showSuggestions ? (
           <ChatSuggestionHeader
-            prompts={suggestedPrompts}
+            prompts={displayPrompts}
             onPromptClick={handlePromptClick}
             onRefresh={handleRefreshSuggestions}
+            refreshing={refreshing}
           />
         ) : (
           chatContent
@@ -286,14 +396,6 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
         onChange={handleFileSelect}
       />
 
-      <ChatActionPanel
-        isOpen={showActionPanel}
-        onClose={handleCloseActionPanel}
-        onUpload={handleUploadClick}
-        onCreateImage={handleCreateImage}
-        onCreateVideo={handleCreateVideo}
-      />
-
       <ChatInputBar
         value={inputValue}
         onChange={setInputValue}
@@ -303,6 +405,9 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
         isActionPanelOpen={showActionPanel}
         disabled={isLoading || uploading}
         inputRef={textInputRef}
+        onFocus={handleInputFocus}
+        onBlur={handleInputBlur}
+        floatingPanel={floatingContent}
       />
     </div>
   )

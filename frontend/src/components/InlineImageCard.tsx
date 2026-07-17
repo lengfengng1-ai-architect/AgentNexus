@@ -13,12 +13,13 @@ const IMAGE_SIZES = [
 interface InlineImageCardProps {
   prompt: string
   messageId: string
+  imageUrl?: string | null
   variant?: 'mobile'
   existingResult?: ChatMessage['imageResult']
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function InlineImageCard({ prompt: initialPrompt, messageId, variant, existingResult, onImageResult }: InlineImageCardProps) {
+export function InlineImageCard({ prompt: initialPrompt, messageId, imageUrl, variant, existingResult, onImageResult }: InlineImageCardProps) {
   const isMobile = variant === 'mobile'
   const [isLoading, setIsLoading] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
@@ -61,7 +62,7 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, variant, exi
       const resp = await fetch(`${API_BASE}/image/generate`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: prompt.trim(), size }),
+        body: JSON.stringify({ prompt: prompt.trim(), size, image_url: imageUrl || undefined }),
       })
       if (!mountedRef.current) return
       const body = await resp.json()

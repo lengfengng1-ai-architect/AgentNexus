@@ -1,3 +1,4 @@
+import logging
 import uuid
 from pathlib import Path
 
@@ -5,6 +6,8 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from app.config.settings import settings
 from app.schemas.upload import UploadFileItem, UploadResponse
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["upload"])
 
@@ -14,7 +17,7 @@ UPLOAD_DIR = Path(settings.upload_dir)
 @router.post(
     "/upload",
     summary="上传文件",
-    description="接受 multipart/form-data 文件上传，保存到服务器并返回可访问的 URL。支持单个或多个文件同时上传。",
+    description="接受 multipart/form-data 文件上传，保存到本地 uploads/ 目录，返回本地可访问的 URL。本地图片用于消息气泡展示，并在以图生图/图生视频时由后端读取转为 Base64 内联传给模型。",
     response_model=UploadResponse,
     responses={
         400: {"description": "未检测到上传文件"},

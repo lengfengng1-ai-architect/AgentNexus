@@ -1,0 +1,601 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>营销方案助手 · 聊天页</title>
+<style>
+  /* ============================================================
+     设计参考: png design system · 浅色调 + 玻璃质感 + 蓝调
+     三态：默认引导(2×3 药丸网格) → 聚焦输入(竖向chips) → +号面板
+     CSS 类名与项目代码保持一致
+     ============================================================ */
+  :root{
+    --bg:#ffffff;
+    --fg:#111111;
+    --accent:#1677ff;
+    --surface:#f7f8fa;
+    --muted:#6b7280;
+    --border:#d9dee7;
+    --accent-deep:color-mix(in srgb,#1677ff 52%,#111111);
+    --accent-soft:color-mix(in srgb,#1677ff 14%,#ffffff);
+    --accent-softer:color-mix(in srgb,#1677ff 6%,#ffffff);
+    --accent-border:color-mix(in srgb,#1677ff 32%,#ffffff);
+    --fg-soft:color-mix(in srgb,#111111 72%,#ffffff);
+    --shadow-sm:color-mix(in srgb,#111111 5%,transparent);
+    --shadow-md:color-mix(in srgb,#111111 10%,transparent);
+    --shadow-lg:color-mix(in srgb,#111111 16%,transparent);
+    --glass-white:color-mix(in srgb,#ffffff 76%,transparent);
+    --glass-light:color-mix(in srgb,#ffffff 68%,transparent);
+    --glass-hover:color-mix(in srgb,#f7f8fa 92%,transparent);
+    --input-bg:#f7f8fa;
+    --r-sm:8px; --r-md:12px; --r-lg:18px; --r-xl:22px;
+    --ff:Inter,"PingFang SC","Microsoft YaHei",system-ui,-apple-system,"Segoe UI","Helvetica Neue",Arial,sans-serif;
+  }
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
+  body{
+    font-family:var(--ff);
+    background:linear-gradient(160deg,color-mix(in srgb,#1677ff 4%,#ffffff) 0%,#f7f8fa 40%,#ffffff 100%);
+    display:flex;justify-content:center;align-items:center;min-height:100vh;
+    -webkit-font-smoothing:antialiased;
+  }
+
+  /* —— 手机壳 —— */
+  .phone-frame{
+    width:390px;height:844px;background:var(--bg);border-radius:44px;
+    box-shadow:0 0 0 1px var(--shadow-sm),0 20px 60px var(--shadow-lg);
+    overflow:hidden;display:flex;flex-direction:column;position:relative;
+  }
+
+  /* —— 顶栏 —— */
+  .topbar{
+    flex:none;display:flex;align-items:center;gap:8px;padding:12px 16px;
+    background:var(--bg);border-bottom:1px solid var(--border);z-index:30;
+  }
+  .topbar .ico{font-size:22px;cursor:pointer;color:var(--muted);width:28px;text-align:center;flex:none;}
+  .topbar .t{flex:1;font-size:17px;font-weight:700;color:var(--fg);line-height:1.2;}
+  .topbar .t small{display:block;font-weight:400;font-size:12px;color:var(--muted);}
+
+  /* —— 聊天屏 —— */
+  .chat-screen{
+    position:relative;flex:1;display:flex;flex-direction:column;
+    overflow:hidden;
+  }
+  /* 装饰色块 — 给毛玻璃提供可模糊的背景层次 */
+  .chat-screen::before{
+    content:'';position:absolute;inset:0;z-index:0;pointer-events:none;
+    background:
+      radial-gradient(circle 280px at 20% 15%,color-mix(in srgb,#1677ff 12%,#ffffff) 0%,transparent 100%),
+      radial-gradient(circle 220px at 80% 45%,color-mix(in srgb,#1677ff 8%,#f7f8fa) 0%,transparent 100%),
+      radial-gradient(circle 180px at 50% 85%,color-mix(in srgb,#1677ff 6%,#f7f8fa) 0%,transparent 100%),
+      linear-gradient(180deg,#ffffff 0%,color-mix(in srgb,#1677ff 3%,#f7f8fa) 100%);
+  }
+  .chat-messages{
+    flex:1;overflow-y:auto;scrollbar-width:none;
+    padding:28px 16px 80px;display:flex;flex-direction:column;gap:10px;
+    position:relative;z-index:1;
+  }
+  .chat-messages::-webkit-scrollbar{display:none;}
+
+  /* —— 引导区（默认态）—— */
+  .suggestion-header{
+    padding:28px 16px 16px;display:flex;flex-direction:column;gap:10px;align-items:center;
+    animation:sg-enter 400ms cubic-bezier(0.16,1,0.3,1) forwards;
+    position:relative;z-index:1;
+  }
+  @keyframes sg-enter{from{opacity:0;transform:translateY(20px);}to{opacity:1;transform:translateY(0);}}
+  .suggestion-header .sh-title{
+    width:100%;font-size:30px;font-weight:700;color:var(--fg);
+    letter-spacing:-0.02em;line-height:1.15;
+  }
+  .suggestion-header .sh-subtitle{
+    width:100%;font-size:14px;color:var(--muted);margin-top:2px;
+  }
+
+  /* 药丸网格 — flex-wrap 两行排列 */
+  .sg-scroll{
+    display:flex;flex-wrap:wrap;gap:8px 10px;width:100%;margin-top:4px;
+  }
+
+  /* 推荐胶囊 — 椭圆药丸形，icon + 文字横排 */
+  .suggestion-card{
+    display:inline-flex;align-items:center;gap:8px;
+    padding:10px 18px;border-radius:50px;
+    background:color-mix(in srgb,#ffffff 72%,transparent);
+    border:1px solid color-mix(in srgb,#ffffff 40%,transparent);
+    box-shadow:0 2px 12px color-mix(in srgb,#111111 5%,transparent),inset 0 1px 0 color-mix(in srgb,#ffffff 60%,transparent);
+    backdrop-filter:blur(20px) saturate(1.4);-webkit-backdrop-filter:blur(20px) saturate(1.4);
+    cursor:pointer;font-family:var(--ff);
+    transition:background .18s,transform .18s,box-shadow .18s;
+    animation:card-in 380ms cubic-bezier(0.16,1,0.3,1) forwards;
+    opacity:0;transform:translateY(12px);
+  }
+  .suggestion-card:nth-child(1){animation-delay:50ms;}
+  .suggestion-card:nth-child(2){animation-delay:100ms;}
+  .suggestion-card:nth-child(3){animation-delay:150ms;}
+  .suggestion-card:nth-child(4){animation-delay:200ms;}
+  .suggestion-card:nth-child(5){animation-delay:250ms;}
+  .suggestion-card:nth-child(6){animation-delay:300ms;}
+  @keyframes card-in{to{opacity:1;transform:translateY(0);}}
+  .suggestion-card:active{
+    background:var(--glass-hover);transform:scale(0.96);
+  }
+  .suggestion-card .sc-icon{
+    width:32px;height:32px;border-radius:50%;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--accent-softer);
+  }
+  .suggestion-card .sc-icon svg{width:18px;height:18px;}
+  .suggestion-card .sc-label{font-size:13px;font-weight:600;color:var(--fg);line-height:1.3;white-space:nowrap;}
+
+  /* 换一批按钮 */
+  .suggestion-refresh{
+    display:inline-flex;align-items:center;gap:6px;
+    color:var(--fg-soft);font-size:13px;padding:9px 16px;border-radius:20px;
+    background:color-mix(in srgb,#ffffff 68%,transparent);
+    border:1px solid color-mix(in srgb,#ffffff 40%,transparent);
+    backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);
+    cursor:pointer;font-family:var(--ff);margin-top:6px;transition:background .15s;
+    position:relative;z-index:1;
+  }
+  .suggestion-refresh:active{background:var(--glass-hover);}
+  .suggestion-refresh.spinning svg{animation:spin-once 500ms cubic-bezier(0.4,0,0.2,1);}
+  @keyframes spin-once{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
+  .suggestion-card.card-out{
+    animation:card-out 180ms cubic-bezier(0.4,0,0.2,1) forwards !important;
+  }
+  @keyframes card-out{
+    from{opacity:1;transform:translateY(0) scale(1);}
+    to{opacity:0;transform:translateY(8px) scale(0.92);}
+  }
+
+  /* —— 聚焦输入时的竖向推荐列表 —— */
+  .focus-chips{
+    flex:none;padding:8px 16px 10px;display:none;
+    flex-direction:column;gap:6px;
+    position:relative;z-index:5;
+    background:transparent;
+    animation:chips-in 280ms cubic-bezier(0.16,1,0.3,1) forwards;
+    max-height:220px;overflow-y:auto;
+  }
+  .focus-chips::-webkit-scrollbar{display:none;}
+  .focus-chips.visible{display:flex;}
+  @keyframes chips-in{from{opacity:0;transform:translateY(12px);}to{opacity:1;transform:translateY(0);}}
+  .focus-chip{
+    display:flex;align-items:center;gap:10px;
+    padding:13px 14px;border-radius:0;white-space:nowrap;
+    background:transparent;
+    border:none;
+    font-size:14px;font-weight:500;color:var(--muted);font-family:var(--ff);cursor:pointer;
+    transition:background .15s,color .15s;
+  }
+  .focus-chip:active{background:color-mix(in srgb,#f7f8fa 80%,transparent);}
+  .focus-chip svg{width:18px;height:18px;flex:none;color:var(--muted);}
+
+  /* —— 消息气泡 —— */
+  .bubble-row{display:flex;width:100%;}
+  .bubble-row.user{justify-content:flex-end;}
+  .bubble-row.ai{justify-content:flex-start;}
+  .bubble{
+    max-width:82%;border-radius:14px;padding:10px 13px;font-size:13px;line-height:1.55;
+  }
+  .bubble.user{background:var(--accent);color:#ffffff;border-radius:14px 14px 4px 14px;}
+  .bubble.ai{
+    background:var(--surface);color:var(--fg);border:1px solid var(--border);
+    border-radius:14px 14px 14px 4px;
+  }
+
+  /* —— 输入栏 —— */
+  .chat-input-bar{
+    position:relative;flex:none;padding:10px 16px 16px;
+    background:linear-gradient(0deg,color-mix(in srgb,#ffffff 92%,transparent) 60%,transparent 100%);
+    z-index:20;
+  }
+  .chat-input-wrap{
+    display:flex;align-items:center;gap:0;
+    height:44px;border-radius:22px;
+    background:var(--input-bg);border:1.5px solid var(--border);
+    transition:border-color .18s,box-shadow .18s,background .18s;
+    overflow:hidden;
+  }
+  .chat-input-wrap.focused{
+    border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-softer);background:var(--bg);
+  }
+  .chat-input-wrap .plus-btn{
+    width:44px;height:44px;border:none;border-radius:22px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:transparent;color:var(--muted);font-size:24px;cursor:pointer;
+    transition:color .15s,transform .22s cubic-bezier(0.16,1,0.3,1);
+    font-weight:300;
+  }
+  .chat-input-wrap .plus-btn.active{
+    color:var(--fg);transform:rotate(45deg);
+  }
+  .chat-input-wrap .plus-btn:active{color:var(--fg);}
+  .chat-input-wrap input{
+    flex:1;height:44px;border:none;background:transparent;
+    color:var(--fg);font-family:var(--ff);font-size:14px;outline:none;
+    padding:0;
+  }
+  .chat-input-wrap input::placeholder{color:var(--muted);}
+  .chat-input-wrap .input-action{
+    flex:none;display:flex;align-items:center;padding-right:4px;
+  }
+  .chat-input-wrap .send-btn{
+    width:36px;height:36px;border-radius:50%;border:none;display:flex;
+    align-items:center;justify-content:center;
+    background:var(--accent);color:#ffffff;font-size:16px;cursor:pointer;
+    box-shadow:0 2px 14px var(--accent-soft);transition:background .15s;
+  }
+  .chat-input-wrap .send-btn:active{background:var(--accent-deep);}
+  .chat-input-wrap .send-btn:disabled{background:var(--border);box-shadow:none;cursor:not-allowed;}
+  .chat-input-wrap .mic-btn{
+    width:36px;height:36px;border-radius:50%;border:none;display:flex;
+    align-items:center;justify-content:center;
+    background:transparent;color:var(--muted);cursor:pointer;
+  }
+  .chat-input-wrap .mic-btn:active{background:var(--surface);}
+
+  /* —— +号面板 —— */
+  .chat-action-panel{
+    flex:none;padding:12px 16px 24px;border-radius:24px 24px 0 0;
+    background:color-mix(in srgb,#ffffff 82%,transparent);
+    border-top:1px solid color-mix(in srgb,#ffffff 50%,transparent);
+    box-shadow:0 -10px 40px color-mix(in srgb,#111111 8%,transparent);
+    backdrop-filter:blur(28px) saturate(1.3);-webkit-backdrop-filter:blur(28px) saturate(1.3);
+    animation:panel-in 280ms cubic-bezier(0.16,1,0.3,1) forwards;
+    position:relative;z-index:10;
+  }
+  @keyframes panel-in{from{transform:translateY(100%);}to{transform:translateY(0);}}
+  .chat-action-panel .cap-handle{
+    width:40px;height:4px;border-radius:2px;background:var(--border);margin:0 auto 22px;
+  }
+  .cap-list{display:flex;flex-direction:column;gap:6px;}
+  .cap-item{
+    display:flex;align-items:center;gap:14px;padding:14px 12px;
+    border-radius:var(--r-md);background:transparent;border:none;
+    width:100%;text-align:left;cursor:pointer;font-family:var(--ff);
+    transition:background .15s,transform .08s;
+    animation:ci-in 280ms cubic-bezier(0.16,1,0.3,1) forwards;
+    opacity:0;transform:translateY(12px);
+  }
+  .cap-item:nth-child(1){animation-delay:30ms;}
+  .cap-item:nth-child(2){animation-delay:70ms;}
+  .cap-item:nth-child(3){animation-delay:110ms;}
+  @keyframes ci-in{to{opacity:1;transform:translateY(0);}}
+  .cap-item:active{background:var(--surface);transform:scale(0.99);}
+  .cap-item .cap-icon{
+    width:44px;height:44px;border-radius:14px;flex:none;
+    display:flex;align-items:center;justify-content:center;
+    background:var(--accent-softer);
+  }
+  .cap-item .cap-icon svg{width:22px;height:22px;color:var(--accent);}
+  .cap-item .cap-text{display:flex;flex-direction:column;gap:2px;min-width:0;}
+  .cap-item .cap-title{font-size:15px;font-weight:600;color:var(--fg);}
+  .cap-item .cap-subtitle{font-size:12px;color:var(--muted);}
+
+  .cap-backdrop{position:absolute;inset:0;z-index:24;}
+</style>
+</head>
+<body>
+
+<div class="phone-frame">
+
+  <!-- 顶栏 -->
+  <div class="topbar">
+    <span class="ico">‹</span>
+    <span class="t">营销方案助手<small>AllyGo Agent</small></span>
+    <span class="ico" style="font-size:16px;">⋯</span>
+  </div>
+
+  <div class="chat-screen">
+    <div class="chat-messages" id="messagesContainer">
+
+      <!-- 引导区（初始态） -->
+      <div class="suggestion-header" id="suggestionHeader">
+        <div class="sh-title">Hi, 老板</div>
+        <div class="sh-subtitle">让复杂，变简单</div>
+
+        <div class="sg-scroll" id="sgScroll">
+          <button type="button" class="suggestion-card">
+            <span class="sc-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" fill="#1677ff" opacity="0.9"/><path d="M2 17l10 5 10-5" stroke="#1677ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12l10 5 10-5" stroke="#1677ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+            <span class="sc-label">推荐方案生成</span>
+          </button>
+          <button type="button" class="suggestion-card">
+            <span class="sc-icon">
+              <svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="7" height="7" rx="2" fill="#1677ff" opacity="0.45"/><rect x="14" y="3" width="7" height="7" rx="2" fill="#1677ff" opacity="0.7"/><rect x="3" y="14" width="7" height="7" rx="2" fill="#1677ff" opacity="0.7"/><rect x="14" y="14" width="7" height="7" rx="2" fill="#1677ff"/></svg>
+            </span>
+            <span class="sc-label">预算评估</span>
+          </button>
+          <button type="button" class="suggestion-card">
+            <span class="sc-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M3 20L8.5 12 13 16 21 4" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8.5" cy="12" r="2.5" fill="#1677ff" opacity="0.2"/><circle cx="13" cy="16" r="2.5" fill="#1677ff" opacity="0.2"/><circle cx="21" cy="4" r="2.5" fill="#1677ff" opacity="0.2"/></svg>
+            </span>
+            <span class="sc-label">市场分析</span>
+          </button>
+          <button type="button" class="suggestion-card">
+            <span class="sc-icon">
+              <svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#1677ff" stroke-width="2"/><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9" stroke="#1677ff" stroke-width="1.8" stroke-linecap="round"/><path d="M12 3a15 15 0 0 0-4 9 15 15 0 0 0 4 9" stroke="#1677ff" stroke-width="1.8" stroke-linecap="round"/><line x1="3" y1="12" x2="21" y2="12" stroke="#1677ff" stroke-width="1.8"/></svg>
+            </span>
+            <span class="sc-label">创建盟域</span>
+          </button>
+          <button type="button" class="suggestion-card">
+            <span class="sc-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#1677ff" opacity="0.85"/></svg>
+            </span>
+            <span class="sc-label">一键统领</span>
+          </button>
+          <button type="button" class="suggestion-card">
+            <span class="sc-icon">
+              <svg viewBox="0 0 24 24" fill="none"><path d="M18 20V10" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/><path d="M12 20V4" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/><path d="M6 20v-6" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/></svg>
+            </span>
+            <span class="sc-label">数据报告</span>
+          </button>
+        </div>
+
+        <button type="button" class="suggestion-refresh" id="sgRefresh">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          <span>换一批</span>
+        </button>
+      </div>
+    </div><!-- /chat-messages -->
+
+    <!-- 聚焦输入时的建议 chips -->
+    <div class="focus-chips" id="focusChips">
+      <button type="button" class="focus-chip" data-label="推荐方案生成">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/></svg>
+        <span>推荐方案生成</span>
+      </button>
+      <button type="button" class="focus-chip" data-label="预算评估">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+        <span>预算评估</span>
+      </button>
+      <button type="button" class="focus-chip" data-label="市场分析">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 20V10"/><path d="M12 20V4"/><path d="M6 20v-6"/></svg>
+        <span>市场分析</span>
+      </button>
+      <button type="button" class="focus-chip" data-label="创建盟域">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="2" y1="12" x2="22" y2="12"/><path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/></svg>
+        <span>创建盟域</span>
+      </button>
+      <button type="button" class="focus-chip" data-label="一键统领">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+        <span>一键统领</span>
+      </button>
+      <button type="button" class="focus-chip" data-label="数据报告">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        <span>数据报告</span>
+      </button>
+    </div>
+
+    <!-- hidden file input -->
+    <input type="file" multiple style="display:none" id="fileInput">
+
+    <!-- +号面板 -->
+    <div class="chat-action-panel" id="actionPanel" style="display:none;">
+      <div class="cap-handle"></div>
+      <div class="cap-list">
+        <button type="button" class="cap-item">
+          <span class="cap-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>
+          </span>
+          <span class="cap-text"><span class="cap-title">上传附件</span><span class="cap-subtitle">支持图片、文档等</span></span>
+        </button>
+        <button type="button" class="cap-item">
+          <span class="cap-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+          </span>
+          <span class="cap-text"><span class="cap-title">创作图片</span><span class="cap-subtitle">一句话生成产品海报</span></span>
+        </button>
+        <button type="button" class="cap-item">
+          <span class="cap-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>
+          </span>
+          <span class="cap-text"><span class="cap-title">创作视频</span><span class="cap-subtitle">快速生成宣传视频</span></span>
+        </button>
+      </div>
+    </div>
+
+    <!-- 输入栏 -->
+    <div class="chat-input-bar">
+      <div class="chat-input-wrap" id="inputWrap">
+        <button type="button" class="plus-btn" id="plusBtn" aria-label="展开菜单">+</button>
+        <input type="text" placeholder="给 Agent 发消息…" id="chatInput">
+        <div class="input-action">
+          <button type="button" class="send-btn" id="sendBtn" aria-label="发送" style="display:none;">↑</button>
+          <button type="button" class="mic-btn" id="micBtn" aria-label="语音输入">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="11" rx="3"/><path d="M5 10a7 7 0 0 0 14 0"/><line x1="12" y1="19" x2="12" y2="22"/></svg>
+          </button>
+        </div>
+      </div>
+    </div>
+  </div><!-- /chat-screen -->
+</div><!-- /phone-frame -->
+
+<script>
+(function(){
+  var plusBtn=document.getElementById('plusBtn');
+  var panel=document.getElementById('actionPanel');
+  var input=document.getElementById('chatInput');
+  var inputWrap=document.getElementById('inputWrap');
+  var sendBtn=document.getElementById('sendBtn');
+  var micBtn=document.getElementById('micBtn');
+  var header=document.getElementById('suggestionHeader');
+  var container=document.getElementById('messagesContainer');
+  var focusChips=document.getElementById('focusChips');
+
+  var panelOpen=false, hasSent=false;
+
+  /* 面板开关 */
+  function togglePanel(e){
+    e&&e.stopPropagation();
+    panelOpen=!panelOpen;
+    plusBtn.classList.toggle('active',panelOpen);
+    panel.style.display=panelOpen?'':'none';
+    if(panelOpen){focusChips.classList.remove('visible');input.focus();}
+  }
+  plusBtn.addEventListener('click',togglePanel);
+
+  /* 输入框聚焦 → 显示建议 chips + 输入框描边 */
+  input.addEventListener('focus',function(){
+    inputWrap.classList.add('focused');
+    if(!hasSent && !panelOpen){focusChips.classList.add('visible');}
+  });
+  input.addEventListener('blur',function(){
+    inputWrap.classList.remove('focused');
+    setTimeout(function(){focusChips.classList.remove('visible');},150);
+  });
+
+  /* 输入内容 → 切换发送/语音 */
+  input.addEventListener('input',function(){
+    var v=input.value.trim().length>0;
+    sendBtn.style.display=v?'':'none';
+    micBtn.style.display=v?'none':'';
+    if(v) focusChips.classList.remove('visible');
+  });
+
+  function esc(s){var d=document.createElement('div');d.textContent=s;return d.innerHTML;}
+
+  function sendMessage(val){
+    var v=val||input.value.trim();if(!v) return;
+    if(!hasSent&&header){header.remove();}
+    focusChips.classList.remove('visible');
+    var ur=document.createElement('div');ur.className='bubble-row user';
+    ur.innerHTML='<div class="bubble user">'+esc(v)+'</div>';
+    container.appendChild(ur);
+    setTimeout(function(){
+      var ar=document.createElement('div');ar.className='bubble-row ai';
+      ar.innerHTML='<div class="bubble ai">已收到你的消息。我来处理「'+esc(v)+'」相关需求，请稍等…</div>';
+      container.appendChild(ar);container.scrollTop=container.scrollHeight;
+    },550);
+    input.value='';sendBtn.style.display='none';micBtn.style.display='';
+    hasSent=true;container.scrollTop=container.scrollHeight;
+  }
+
+  sendBtn.addEventListener('click',function(){sendMessage();});
+  input.addEventListener('keydown',function(e){if(e.key==='Enter'){e.preventDefault();sendMessage();}});
+
+  /* 网格卡片点击 */
+  document.querySelectorAll('.suggestion-card').forEach(function(card){
+    card.addEventListener('click',function(){
+      var label=card.querySelector('.sc-label')?.textContent||'';
+      if(!hasSent&&header){header.remove();}
+      focusChips.classList.remove('visible');
+      var ur=document.createElement('div');ur.className='bubble-row user';
+      ur.innerHTML='<div class="bubble user">'+esc(label)+'</div>';
+      container.appendChild(ur);
+      setTimeout(function(){
+        var reply='';
+        if(label.includes('方案'))reply='好的！我来为你创建营销方案。请先到简报页面填写品牌和活动基本信息。';
+        else if(label.includes('预算'))reply='好的，我来帮你做预算评估。请告诉我预算范围、目标城市和活动周期。';
+        else if(label.includes('市场'))reply='好的，开始进行市场分析。我来搜索行业趋势、竞品信息和目标人群洞察。';
+        else if(label.includes('盟域'))reply='好的，我来帮你创建盟域活动方案。请先确认品牌名称和目标盟域范围。';
+        else reply='收到，正在处理…';
+        var ar=document.createElement('div');ar.className='bubble-row ai';
+        ar.innerHTML='<div class="bubble ai">'+esc(reply)+'</div>';
+        container.appendChild(ar);container.scrollTop=container.scrollHeight;
+      },500);
+      hasSent=true;container.scrollTop=container.scrollHeight;
+    });
+  });
+
+  /* 换一批 — 图标+文案一起换，3 组各 6 个 */
+  var cardSets=[
+    [
+      {l:'一键统领',svg:'<svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#1677ff" opacity="0.85"/></svg>'},
+      {l:'数据报告',svg:'<svg viewBox="0 0 24 24" fill="none"><path d="M18 20V10" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/><path d="M12 20V4" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/><path d="M6 20v-6" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/></svg>'},
+      {l:'海报生成',svg:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#1677ff" stroke-width="2"/><circle cx="8.5" cy="8.5" r="2" fill="#1677ff" opacity="0.4"/><polyline points="21 15 16 10 5 21" stroke="#1677ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+      {l:'短视频脚本',svg:'<svg viewBox="0 0 24 24" fill="none"><polygon points="23 7 16 12 23 17" fill="#1677ff" opacity="0.85"/><rect x="1" y="5" width="15" height="14" rx="3" stroke="#1677ff" stroke-width="2"/></svg>'},
+      {l:'预算评估',svg:'<svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="1" x2="12" y2="23" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+      {l:'创建盟域',svg:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#1677ff" stroke-width="2"/><path d="M12 3a15 15 0 0 1 4 9 15 15 0 0 1-4 9" stroke="#1677ff" stroke-width="1.8" stroke-linecap="round"/><path d="M12 3a15 15 0 0 0-4 9 15 15 0 0 0 4 9" stroke="#1677ff" stroke-width="1.8" stroke-linecap="round"/><line x1="3" y1="12" x2="21" y2="12" stroke="#1677ff" stroke-width="1.8"/></svg>'}
+    ],
+    [
+      {l:'竞品分析',svg:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#1677ff" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="#1677ff" stroke-width="2"/><line x1="12" y1="3" x2="12" y2="8" stroke="#1677ff" stroke-width="1.8"/><line x1="12" y1="16" x2="12" y2="21" stroke="#1677ff" stroke-width="1.8"/></svg>'},
+      {l:'投放优化',svg:'<svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/><path d="M22 2l-7 20-4-9-9-4z" fill="#1677ff" opacity="0.25" stroke="#1677ff" stroke-width="2" stroke-linejoin="round"/></svg>'},
+      {l:'活动排期',svg:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="4" width="18" height="18" rx="3" stroke="#1677ff" stroke-width="2"/><line x1="16" y1="2" x2="16" y2="6" stroke="#1677ff" stroke-width="2" stroke-linecap="round"/><line x1="8" y1="2" x2="8" y2="6" stroke="#1677ff" stroke-width="2" stroke-linecap="round"/><line x1="3" y1="10" x2="21" y2="10" stroke="#1677ff" stroke-width="1.8"/><circle cx="12" cy="16" r="1.5" fill="#1677ff"/></svg>'},
+      {l:'社群运营',svg:'<svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#1677ff" stroke-width="2" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="#1677ff" stroke-width="2"/><path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="#1677ff" stroke-width="2" stroke-linecap="round"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="#1677ff" stroke-width="2" stroke-linecap="round"/></svg>'},
+      {l:'推荐方案生成',svg:'<svg viewBox="0 0 24 24" fill="none"><path d="M12 2L2 7l10 5 10-5-10-5z" fill="#1677ff" opacity="0.9"/><path d="M2 17l10 5 10-5" stroke="#1677ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M2 12l10 5 10-5" stroke="#1677ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+      {l:'市场分析',svg:'<svg viewBox="0 0 24 24" fill="none"><path d="M3 20L8.5 12 13 16 21 4" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="8.5" cy="12" r="2.5" fill="#1677ff" opacity="0.2"/><circle cx="13" cy="16" r="2.5" fill="#1677ff" opacity="0.2"/><circle cx="21" cy="4" r="2.5" fill="#1677ff" opacity="0.2"/></svg>'}
+    ],
+    [
+      {l:'预算评估',svg:'<svg viewBox="0 0 24 24" fill="none"><line x1="12" y1="1" x2="12" y2="23" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+      {l:'一键统领',svg:'<svg viewBox="0 0 24 24" fill="none"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" fill="#1677ff" opacity="0.85"/></svg>'},
+      {l:'海报生成',svg:'<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="3" width="18" height="18" rx="3" stroke="#1677ff" stroke-width="2"/><circle cx="8.5" cy="8.5" r="2" fill="#1677ff" opacity="0.4"/><polyline points="21 15 16 10 5 21" stroke="#1677ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'},
+      {l:'竞品分析',svg:'<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="9" stroke="#1677ff" stroke-width="2"/><circle cx="12" cy="12" r="4" stroke="#1677ff" stroke-width="2"/><line x1="12" y1="3" x2="12" y2="8" stroke="#1677ff" stroke-width="1.8"/><line x1="12" y1="16" x2="12" y2="21" stroke="#1677ff" stroke-width="1.8"/></svg>'},
+      {l:'社群运营',svg:'<svg viewBox="0 0 24 24" fill="none"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2" stroke="#1677ff" stroke-width="2" stroke-linecap="round"/><circle cx="9" cy="7" r="4" stroke="#1677ff" stroke-width="2"/><path d="M23 21v-2a4 4 0 0 0-3-3.87" stroke="#1677ff" stroke-width="2" stroke-linecap="round"/><path d="M16 3.13a4 4 0 0 1 0 7.75" stroke="#1677ff" stroke-width="2" stroke-linecap="round"/></svg>'},
+      {l:'投放优化',svg:'<svg viewBox="0 0 24 24" fill="none"><path d="M22 2L11 13" stroke="#1677ff" stroke-width="2.2" stroke-linecap="round"/><path d="M22 2l-7 20-4-9-9-4z" fill="#1677ff" opacity="0.25" stroke="#1677ff" stroke-width="2" stroke-linejoin="round"/></svg>'}
+    ]
+  ];
+  var currentSet=0, refreshing=false;
+  document.querySelector('.suggestion-refresh')?.addEventListener('click',function(){
+    if(refreshing) return;
+    var btn=this;
+    var grid=document.getElementById('sgScroll');
+    if(!grid) return;
+    var cards=grid.querySelectorAll('.suggestion-card');
+    refreshing=true;
+    btn.classList.add('spinning');
+    cards.forEach(function(c){c.classList.add('card-out');});
+    setTimeout(function(){
+      currentSet=(currentSet+1)%cardSets.length;
+      var s=cardSets[currentSet];
+      cards.forEach(function(c,i){
+        if(!s[i]) return;
+        c.querySelector('.sc-label').textContent=s[i].l;
+        c.querySelector('.sc-icon').innerHTML=s[i].svg;
+        c.classList.remove('card-out');
+        c.style.animation='none';void c.offsetHeight;c.style.animation='';
+      });
+      setTimeout(function(){
+        btn.classList.remove('spinning');
+        refreshing=false;
+      },400);
+    },200);
+  });
+
+  /* 聚焦 chips 点击 */
+  document.querySelectorAll('.focus-chip').forEach(function(chip){
+    chip.addEventListener('mousedown',function(e){
+      e.preventDefault();
+      var text=chip.getAttribute('data-label')||chip.textContent.trim();
+      input.value=text;
+      sendBtn.style.display='';micBtn.style.display='none';
+      focusChips.classList.remove('visible');
+      input.focus();
+    });
+  });
+
+  /* 加号面板项 */
+  document.querySelectorAll('.cap-item').forEach(function(item){
+    item.addEventListener('click',function(){
+      var t=item.querySelector('.cap-title')?.textContent||'';
+      if(t==='上传附件')document.getElementById('fileInput').click();
+      else if(t==='创作图片')showToast('创建图片请求已发送');
+      else if(t==='创作视频')showToast('创建视频请求已发送');
+      if(panelOpen) togglePanel();
+    });
+  });
+  document.getElementById('fileInput').addEventListener('change',function(e){
+    if(e.target.files?.length){showToast('已选择 '+e.target.files.length+' 个文件');e.target.value='';}
+  });
+  function showToast(msg){
+    var t=document.createElement('div');
+    t.textContent=msg;
+    Object.assign(t.style,{
+      position:'absolute',bottom:'80px',left:'50%',transform:'translateX(-50%)',
+      background:'rgba(0,0,0,0.75)',color:'#fff',padding:'8px 18px',borderRadius:'20px',
+      fontSize:'13px',zIndex:999,fontFamily:'var(--ff)',pointerEvents:'none',
+      animation:'toast-fade 2s forwards'
+    });
+    document.querySelector('.chat-screen').appendChild(t);
+    setTimeout(function(){t.remove();},2000);
+  }
+  var ts=document.createElement('style');
+  ts.textContent='@keyframes toast-fade{0%{opacity:0;transform:translateX(-50%) translateY(8px)}15%{opacity:1;transform:translateX(-50%) translateY(0)}75%{opacity:1}to{opacity:0}}';
+  document.head.appendChild(ts);
+})();
+</script>
+</body>
+</html>

@@ -432,3 +432,112 @@ async def test_intent__market_research__fills_market_name_from_context():
 
     assert output.intent == "market_research"
     assert output.market_name == "娃哈哈"
+
+
+# ── image fallback normalization ─────────────────────────────────────────
+
+
+def test_normalize__empty_message_with_image_urls__asks_clarify_options():
+    """上传图片无文字 → clarify 反问三选一，不直接判生成意图。"""
+    output = IntentRecognitionOutput(
+        intent="chat",
+        confidence=0.5,
+        reply="你好！",
+        brand_input={},
+    )
+    normalized = intent_recognition_agent._normalize_intent_output(
+        output, image_urls=["oss://uploads/test.png"]
+    )
+
+    assert normalized.intent == "clarify"
+    assert normalized.missing_fields == []
+    assert normalized.confidence >= 0.85
+    assert "参数介绍图" in normalized.reply
+    assert "宣传图" in normalized.reply
+    assert "宣传短片" in normalized.reply
+
+
+def test_normalize__clarify_with_image_urls__keeps_clarify_options():
+    """clarify + 图片 → 保持 clarify 反问，不被品牌字段缺失覆盖。"""
+    output = IntentRecognitionOutput(
+        intent="clarify",
+        confidence=0.6,
+        reply="为了生成营销方案，我还需要了解：品牌名",
+        brand_input={},
+        missing_fields=["brand_name"],
+    )
+    normalized = intent_recognition_agent._normalize_intent_output(
+        output, image_urls=["oss://uploads/test.png"]
+    )
+
+    assert normalized.intent == "clarify"
+    assert "参数介绍图" in normalized.reply
+    assert "宣传短片" in normalized.reply
+
+
+def test_normalize__no_image_urls__keep_original_chat():
+    output = IntentRecognitionOutput(
+        intent="chat",
+        confidence=0.9,
+        reply="你好！",
+        brand_input={},
+    )
+    normalized = intent_recognition_agent._normalize_intent_output(output)
+
+    assert normalized.intent == "chat"
+    assert normalized.image_url is None
+
+
+def test_normalize__generate_video_with_image_urls__unchanged():
+    output = IntentRecognitionOutput(
+        intent="generate_video",
+        confidence=0.9,
+        reply="好的。",
+        brand_input={},
+        image_url="oss://uploads/test.png",
+        video_prompt="做成视频",
+    )
+    normalized = intent_recognition_agent._normalize_intent_output(
+        output, image_urls=["oss://uploads/test.png"]
+    )
+
+    assert normalized.intent == "generate_video"
+    assert normalized.image_url == "oss://uploads/test.png"
+    assert "image_url" not in normalized.missing_fields
+
+
+def test_normalize__text_to_image_backfills_reference_image():
+    """以图生图：text_to_image 无 image_url 时从上下文参考图回填。"""
+    output = IntentRecognitionOutput(
+        intent="text_to_image",
+        confidence=0.85,
+        reply="好的。",
+        brand_input={},
+        image_url=None,
+        generation_prompt="基于这张图做海报",
+    )
+    normalized = intent_recognition_agent._normalize_intent_output(
+        output, image_urls=["oss://uploads/ref.png"]
+    )
+
+    assert normalized.intent == "text_to_image"
+    assert normalized.image_url == "oss://uploads/ref.png"
+
+
+def test_normalize__generate_video_backfills_reference_image():
+    """以图生视频：generate_video 无 image_url 时从上下文参考图回填，不再追问。"""
+    output = IntentRecognitionOutput(
+        intent="generate_video",
+        confidence=0.85,
+        reply="好的。",
+        brand_input={},
+        image_url=None,
+        video_prompt="做成宣传短片",
+    )
+    normalized = intent_recognition_agent._normalize_intent_output(
+        output, image_urls=["oss://uploads/ref.png"]
+    )
+
+    assert normalized.intent == "generate_video"
+    assert normalized.image_url == "oss://uploads/ref.png"
+    assert "image_url" not in normalized.missing_fields

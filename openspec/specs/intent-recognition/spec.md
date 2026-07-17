@@ -101,6 +101,26 @@ TBD - created by archiving change add-intent-recognition-agent. Update Purpose a
 - **AND** `updated_fields` SHALL 包含 `city: "北京"`
 - **AND** `brand_input.city` SHALL 为 "北京"
 
+#### Scenario: 用户上传图片且未输入文字
+- **GIVEN** 用户上传图片附件
+- **AND** 用户未输入文字消息
+- **AND** 上下文中包含 `image_urls`
+- **WHEN** 调用 `intent_recognition` 节点
+- **THEN** 输出 `intent` SHALL 为 `clarify`
+- **AND** `missing_fields` SHALL 为空列表
+- **AND** `reply` SHALL 反问用户想生成哪种内容（电商产品参数介绍图 / 好看的宣传图 / 产品宣传短片）
+- **AND** `confidence` SHALL ≥ 0.8
+
+#### Scenario: 用户上传图片并要求以图生图
+- **GIVEN** 用户上传图片附件
+- **AND** 用户输入"基于这张图生成海报"
+- **AND** 上下文中包含 `image_urls`
+- **WHEN** 调用 `intent_recognition` 节点
+- **THEN** 输出 `intent` SHALL 为 `text_to_image`
+- **AND** `image_url` SHALL 从附件元数据回填
+- **AND** `generation_prompt` SHALL 从用户输入提取
+- **AND** `confidence` SHALL ≥ 0.8
+
 ### Requirement: 意图识别输出使用统一结构化 Schema
 
 系统 SHALL 使用 Pydantic schema `IntentRecognitionOutput` 约束 `intent_recognition` 节点的输出，字段包括 `intent`、`confidence`、`reply`、`brand_input`、`missing_fields`、`updated_fields`。

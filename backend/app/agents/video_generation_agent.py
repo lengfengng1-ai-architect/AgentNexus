@@ -16,6 +16,7 @@ from typing import Any
 import httpx
 
 from app.config.settings import settings
+from app.services.image_base64 import to_data_uri
 
 logger = logging.getLogger(__name__)
 
@@ -59,10 +60,11 @@ def _headers() -> dict[str, str]:
     key = settings.dashscope_api_key
     if not key or key == "your-dashscope-api-key-here":
         key = settings.myself_api_key
-    return {
+    headers: dict[str, str] = {
         "Authorization": f"Bearer {key}",
         "Content-Type": "application/json",
     }
+    return headers
 
 
 def _build_create_body(
@@ -77,12 +79,13 @@ def _build_create_body(
     """根据 image_urls 决定 T2V / R2V 的请求体结构。
 
     - 有 image_urls → HappyHorse R2V（model + input.media + input.prompt?）
+      参考图转为 Base64 内联（data:{mime};base64,...），模型端无需公网下载
     - 无 image_urls → HappyHorse T2V（model + input.prompt，prompt 必填）
     """
     if image_urls and len(image_urls) > 0:
         model = settings.dashscope_r2v_model
         inp: dict[str, Any] = {
-            "media": [{"type": "reference_image", "url": url} for url in image_urls],
+            "media": [{"type": "reference_image", "url": to_data_uri(url)} for url in image_urls],
         }
         if prompt:
             inp["prompt"] = prompt

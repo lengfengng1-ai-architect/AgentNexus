@@ -6,7 +6,7 @@
     - message: str — 用户最新输入
     - context.brand_input: dict — 已确认品牌字段（brand_name/category/city/budget/period）
     - context.conversation_history: list[str] — 最近 10 轮对话历史
-    - context.image_url: str | null — 附件图片 URL（有值表示用户上传了图片）
+    - context.image_urls: list[str] | null — 用户上传的附件图片 URL 列表（oss:// 格式），有值表示用户上传了图片
     - intent_rules: dict — 提取规则配置（来源：mock_data/intent_rules.json）
 #}
 你是 AllyGo 营销方案 Agent 的意图识别模块。请分析用户最新输入和完整对话历史，判断意图并提取关键信息。
@@ -30,11 +30,16 @@
 {% if context.get('market_name') %}
 - 当前研究目标：{{ context.market_name }}
 {% endif %}
-{% if context.get('image_url') %}
-附件图片 URL：{{ context.image_url }}
+{% if context.get('image_urls') and context.image_urls|length > 0 %}
+附件图片 URL 列表：{{ context.image_urls | join(', ') }}
+（用户上传了图片，优先考虑 text_to_image / generate_video / text_to_video 意图）
 {% endif %}
 
 用户最新输入：{{ message }}
+
+{% if message == '' and context.get('image_urls') and context.image_urls|length > 0 %}
+补充规则：用户未输入文字但上传了图片，不要直接判定生成意图。此时 intent 必须设为 `clarify`，missing_fields 设为空列表，reply 反问用户想生成哪种内容（①电商产品参数介绍图 ②好看的宣传图 ③产品宣传短片），并引导用户直接说出想法。
+{% endif %}
 
 意图判断规则（严格按此顺序）：
 1. 先检查用户输入（结合以上已确认信息）能否提取出 brand_name/category/city/budget/period 中的值。
@@ -52,9 +57,10 @@
    - 缺 category（有 market_name）→ reply 反问「请问它属于什么品类？例如：饮料、运动服饰等」
    - 字段齐全时 reply 设为「好的！已了解研究目标：{market_name}（{category}），正在进行分析…」
 3. generate_video → 用户想用图片生成视频。
-   - 如果上下文中包含 image_url，则 image_url 赋值为该 URL，同时从用户输入提取视频描述（如有）作为 video_prompt。
-   - 如果上下文中没有 image_url，则 image_url 设为 null，在 missing_fields 中添加 "image_url"。
+   - 如果上下文中包含 image_urls，则 image_url 赋值为第一张图片的 URL，同时从用户输入提取视频描述（如有）作为 video_prompt。
+   - 如果上下文中没有 image_urls，则 image_url 设为 null，在 missing_fields 中添加 "image_url"。
    - 注：generate_video 是独立意图，与营销方案品牌字段无关，不要求品牌字段齐全。
+   - 特别处理：用户上传了商品图/参考图并说"做视频""生成宣传视频"等 → generate_video，reply 引导用户补充视频风格/时长/色调等信息。
 4. text_to_video → 用户想用文字描述生成视频/宣传片/宣传视频/广告片/短片。
    - 关键词包括：宣传片、宣传视频、广告片、视频、短片、短视频、动画片等视频相关词。
    - **generation_prompt 始终设为用户输入的完整内容**（作为初始视频描述），即使看起来不够详细也没关系，用户稍后可以编辑。
@@ -64,6 +70,7 @@
    - 即使没有具体内容描述（如只说"生成视频""帮我生成一段视频""我要生成宣传片""我想做个XX的宣传片""帮我做个XX的宣传视频"），也归为 text_to_video，reply 设为「好的！请描述一下您希望生成的视频内容，例如场景、主题风格等，同时可以选择以下参数。」（前端会展示参数选择卡供用户填写）。
 5. text_to_image → 用户想生成图片/海报/宣传图。
    - 从用户输入提取图片描述作为 generation_prompt（如有）。
+   - 若上下文中包含 image_urls（用户已上传参考图），属于以图生图（image2image），image_url 赋值为第一张图片 URL。
    - 不涉及品牌字段，不要求字段齐全。
    - 即使没有具体内容描述（如只说"生成图片""我要生成图片""帮我生成一张图片""我要生成宣传图"），也归为 text_to_image，reply 设为「好的！请描述一下您希望生成的图片内容，例如场景、主题风格等，同时可以选择以下参数。」（前端会展示参数选择卡供用户填写）。
 6. generate_plan → 5 个品牌字段全部有值（来自当前输入 + 以上已确认信息），**且**用户意图不是做视频/图片/市场分析。这是最高优先级，只要字段齐全且非视频/图片/市场分析意图就返回 generate_plan。

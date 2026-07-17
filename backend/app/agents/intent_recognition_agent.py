@@ -35,7 +35,14 @@ def _load_system_prompt(message: str, context: dict[str, Any]) -> str:
     if context.get("market_name"):
         clean_ctx["market_name"] = context["market_name"]
 
-    # Clean brand_input null values for template rendering
+    # Pass through image_urls for image/video generation intents
+    image_urls = context.get("image_urls")
+    if isinstance(image_urls, list) and len(image_urls) > 0:
+        clean_ctx["image_urls"] = image_urls
+    # Backwards compatibility: single image_url from older clients
+    image_url = context.get("image_url")
+    if image_url and not clean_ctx.get("image_urls"):
+        clean_ctx["image_urls"] = [image_url]
     bi = context.get("brand_input", {}) or {}
     if isinstance(bi, dict):
         for key in ("brand_name", "category", "city", "budget", "period"):
@@ -120,7 +127,11 @@ def _merge_context(
     return output
 
 
-def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecognitionOutput:
+def _normalize_intent_output(
+    output: IntentRecognitionOutput,
+    *,
+    image_urls: list[str] | None = None,
+) -> IntentRecognitionOutput:
     """Correct intent based on field completeness.
 
     LLM sometimes returns clarify despite all fields being present, or
@@ -176,15 +187,22 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
             if not output.reply:
                 output.reply = f"好的！我已了解研究目标：{output.market_name}（{output.brand_input.category}）。请点击「开始分析」按钮进行市场分析。"
 
-    # generate_video: image_url 检查
+    # generate_video: image_url 检查，支持从 context.image_urls 回填
     if output.intent == "generate_video" and not output.image_url:
-        if "image_url" not in output.missing_fields:
-            output.missing_fields = list(output.missing_fields) + ["image_url"]
-        if not output.reply:
-            output.reply = "好的，请提供需要生成视频的图片。"
+        if image_urls:
+            output.image_url = image_urls[0]
+        else:
+            if "image_url" not in output.missing_fields:
+                output.missing_fields = list(output.missing_fields) + ["image_url"]
+            if not output.reply:
+                output.reply = "好的，请提供需要生成视频的图片。"
     elif output.intent == "generate_video" and output.image_url:
         if "image_url" in output.missing_fields:
             output.missing_fields = [f for f in output.missing_fields if f != "image_url"]
+
+    # text_to_image（以图生图 image2image）：有参考图上下文但 LLM 未回填 image_url 时补齐
+    if output.intent == "text_to_image" and not output.image_url and image_urls:
+        output.image_url = image_urls[0]
 
     # Only set brand-related missing_fields for plan-related intents
     if output.intent in ("generate_plan", "clarify"):
@@ -200,7 +218,8 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
         )
 
     # clarify: 有缺失字段时 reply 强制覆盖为反问，避免 LLM 虚假承诺
-    if output.intent == "clarify" and missing:
+    # （图片澄清分支见下方，优先于此处，不受品牌字段缺失影响）
+    if output.intent == "clarify" and missing and not image_urls:
         _field_labels = {
             "brand_name": "品牌名",
             "category": "品类",
@@ -210,6 +229,22 @@ def _normalize_intent_output(output: IntentRecognitionOutput) -> IntentRecogniti
         }
         cn_missing = [_field_labels.get(f, f) for f in missing]
         output.reply = f"为了生成营销方案，我还需要了解：{'、'.join(cn_missing)}"
+
+    # 图片上传澄清分支：用户上传图片但 LLM 返回 chat/clarify 时，
+    # 不直接判生成意图，而是反问用户想做什么（①参数介绍图 ②宣传图 ③宣传短片）。
+    # 用户下轮回复后，LLM 结合 image_urls 上下文自然分流到
+    # text_to_image（以图生图）或 generate_video（以图生视频）。
+    if output.intent in ("chat", "clarify") and image_urls:
+        output.intent = "clarify"
+        output.missing_fields = []
+        output.confidence = max(output.confidence, 0.85)
+        output.reply = (
+            "收到图片！想让我帮你生成哪种内容？\n"
+            "① 电商产品参数介绍图\n"
+            "② 好看的宣传图\n"
+            "③ 产品宣传短片\n"
+            "或者直接说出你的想法，我来帮你实现。"
+        )
 
     return output
 
@@ -283,7 +318,11 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
     if fallback:
         result.brand_input.category = fallback
 
-    result = _normalize_intent_output(result)
+    image_urls = context.get("image_urls")
+    if not isinstance(image_urls, list):
+        image_urls = None
+
+    result = _normalize_intent_output(result, image_urls=image_urls)
 
     logger.info(
         "Intent recognized: %s (confidence=%.2f)",
@@ -389,7 +428,11 @@ async def stream_intent_recognition(
     if fallback:
         result.brand_input.category = fallback
 
-    result = _normalize_intent_output(result)
+    image_urls = context.get("image_urls")
+    if not isinstance(image_urls, list):
+        image_urls = None
+
+    result = _normalize_intent_output(result, image_urls=image_urls)
 
     logger.info("Intent recognized: %s (confidence=%.2f)", result.intent, result.confidence)
     yield ("", result.model_dump())

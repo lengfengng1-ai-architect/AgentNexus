@@ -345,7 +345,7 @@ export function MobileWorkbenchPage() {
               />
             </div>
           )}
-          <div style={{ display: screen === 'chat' ? 'flex' : 'none', flex: screen === 'chat' ? 1 : '', flexDirection: 'column', overflow: 'visible', position: 'relative' }}>
+          <div style={{ display: screen === 'chat' ? 'flex' : 'none', flex: screen === 'chat' ? 1 : '', flexDirection: 'column', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
             <ScreenChat onNavigate={handleChatNavigate} />
           </div>
           <div style={{ display: screen === 'brief' ? '' : 'none' }}>

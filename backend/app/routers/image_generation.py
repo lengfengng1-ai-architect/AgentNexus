@@ -16,8 +16,9 @@ logger = logging.getLogger(__name__)
 
 
 class ImageGenerateRequest(BaseModel):
-    prompt: str = Field(..., description="文生图正向提示词")
+    prompt: str = Field(..., description="文生图正向提示词或用图片描述文字")
     size: str = Field(default="2048*2048", description="分辨率，如 2048*2048、2688*1536")
+    image_url: str | None = Field(default=None, description="参考图 OSS URL，有则走以图生图（I2I）")
 
 
 class ImageGenerateData(BaseModel):
@@ -28,13 +29,14 @@ class ImageGenerateData(BaseModel):
 
 @router.post("/image/generate")
 async def image_generate(body: ImageGenerateRequest) -> APIResponse:
-    """直通 Qwen-Image API 生成图片。"""
+    """生成图片（T2I / I2I）。"""
     try:
         result = await run_image_generation({
             "plan_content": body.prompt,
             "image_type": "main_visual",
             "size": body.size,
             "negative_prompt": "",
+            "image_url": body.image_url,
         })
 
         image_url = result.get("image_url", "")

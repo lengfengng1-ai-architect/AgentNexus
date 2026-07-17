@@ -32,6 +32,10 @@ backend/data/plan_records.db*
 backend/logs/
 logs/
 
+# Uploaded files (user attachments, test images)
+uploads/
+backend/uploads/
+
 # E2E test screenshots (Playwright visual regression)
 frontend/e2e/__screenshots__/
 

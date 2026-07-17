@@ -71,6 +71,22 @@ description: 聊天输入框附件从 URL 输入改造为本地文件选取/拖�
 - **THEN** 系统自动检测 textarea 中的 URL（以空格/换行分隔）
 - **AND** 验证 URL 格式后加入 imageUrls 列表
 
+### Requirement: 用户消息气泡显示上传的图片缩略图
+
+系统 SHALL 在用户发送的消息气泡中展示 `imageUrls` 列表中的图片缩略图。单图宽度 SHALL 限制在气泡内并保持圆角；多图 SHALL 垂直堆叠展示。
+
+#### Scenario: 用户上传单张图片
+- **WHEN** 用户通过附件上传一张图片并成功返回 URL
+- **AND** 消息气泡渲染
+- **THEN** 该用户消息气泡 SHALL 显示一张缩略图
+- **AND** 图片宽度 SHALL 不超过气泡宽度
+- **AND** 图片 SHALL 保持圆角
+
+#### Scenario: 用户上传多张图片
+- **WHEN** 用户通过附件上传多张图片并成功返回 URL 列表
+- **AND** 消息气泡渲染
+- **THEN** 该用户消息气泡 SHALL 按顺序垂直显示多张缩略图
+
 ### Requirement: 后端文件上传接口
 
 新增 `POST /api/v1/upload` 接口，接受 multipart/form-data 文件上传。
