@@ -24,13 +24,19 @@ class OptimizedPrompt(BaseModel):
     reason: str = Field(default="", description="优化说明（简要描述做了哪些增强）")
 
 
-async def optimize_prompt(prompt: str, prompt_type: str) -> OptimizedPrompt:
-    """Call LLM to optimize a prompt for the given media type."""
+async def optimize_prompt(prompt: str, prompt_type: str, image_context: str | None = None) -> OptimizedPrompt:
+    """Call LLM to optimize a prompt for the given media type.
+
+    Args:
+        prompt: 用户原始提示词。
+        prompt_type: 优化场景类型（video / image / brand）。
+        image_context: 参考图片内容描述（可选），优化结果须与其主体一致。
+    """
     if not prompt.strip():
         raise ValueError("提示词不能为空")
 
     template = _TEMPLATE_ENV.get_template("prompt_optimizer.md.j2")
-    system_prompt = template.render(type=prompt_type, prompt=prompt)
+    system_prompt = template.render(type=prompt_type, prompt=prompt, image_context=image_context)
 
     llm = build_chat_model()
     response = await llm.ainvoke([

@@ -29,7 +29,7 @@ interface VideoResultData {
 
 type ChatAction =
   | { type: 'SET_INPUT'; value: string }
-  | { type: 'SEND_MESSAGE'; content: string; imageUrls?: string[] }
+  | { type: 'SEND_MESSAGE'; content: string; imageUrls?: string[]; imageCaptions?: string[] }
   | { type: 'STREAM_START' }
   | { type: 'STREAM_REASONING'; text: string }
   | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null; imageUrls?: string[]; videoPrompt?: string | null; generationPrompt?: string | null; messageId?: string; marketName?: string | null }
@@ -39,7 +39,7 @@ type ChatAction =
   | { type: 'LOAD_HISTORY'; messages: ChatMessage[] }
   | { type: 'VIDEO_RESULT'; messageId: string; videoResult: VideoResultData }
   | { type: 'IMAGE_RESULT'; messageId: string; imageResult: ImageResultData }
-  | { type: 'ADD_VIRTUAL_MESSAGE'; intent: ChatMessage['intent']; userContent?: string; imageUrl?: string }
+  | { type: 'ADD_VIRTUAL_MESSAGE'; intent: ChatMessage['intent']; userContent?: string; imageUrl?: string; imageCaption?: string }
   | { type: 'UPDATE_MESSAGE_CONTENT'; messageId: string; content: string }
   | { type: 'SET_MARKET_RESEARCH_DONE'; messageId: string }
   | { type: 'APPEND_MARKET_RESEARCH_SOURCES'; messageId: string; sources: { url: string; title: string }[] }
@@ -81,6 +81,14 @@ function getLatestImageUrls(messages: ChatMessage[]): string[] {
   return []
 }
 
+function getLatestImageCaptions(messages: ChatMessage[]): string[] {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const captions = messages[i].imageCaptions
+    if (captions && captions.some(c => c)) return captions
+  }
+  return []
+}
+
 function getStreamingMsgIndex(msgs: ChatMessage[]): number {
   for (let i = msgs.length - 1; i >= 0; i--) {
     if (msgs[i].id.startsWith('stream-')) return i
@@ -97,6 +105,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       const userMessage: ChatMessage = {
         ...createMessage(action.content, 'user'),
         imageUrls: action.imageUrls && action.imageUrls.length > 0 ? action.imageUrls : undefined,
+        imageCaptions:
+          action.imageCaptions && action.imageCaptions.some(c => c) ? action.imageCaptions : undefined,
       }
       return { ...state, messages: [...state.messages, userMessage], inputValue: '', error: null }
     }
@@ -139,6 +149,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         missingFields: action.missingFields.length > 0 ? action.missingFields : undefined,
         gate: action.gate,
         imageUrls: action.imageUrls,
+        // AI 卡片（InlineImage/Video）从 aiMessage 读 caption；从最近一条带图用户消息延续
+        imageCaptions: action.imageUrls?.length ? getLatestImageCaptions(msgs) : undefined,
         videoPrompt: action.videoPrompt,
         generationPrompt: action.generationPrompt,
       }
@@ -193,6 +205,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         content: '',
         intent: action.intent,
         imageUrls: imageUrls ?? (action.intent === 'generate_video' || action.intent === 'text_to_video' ? [] : undefined),
+        imageCaptions: action.imageCaption ? [action.imageCaption] : undefined,
         videoPrompt: action.intent === 'generate_video' || action.intent === 'text_to_video' ? null : undefined,
         generationPrompt: action.intent === 'text_to_image' ? '' : undefined,
       }
@@ -274,11 +287,11 @@ export function useChat() {
 
   const setInputValue = useCallback((value: string) => { dispatch({ type: 'SET_INPUT', value }) }, [])
 
-  const sendMessage = useCallback(async (content: string, imageUrls?: string[]) => {
+  const sendMessage = useCallback(async (content: string, imageUrls?: string[], imageCaptions?: string[]) => {
     if (isProcessingRef.current || (!content.trim() && (!imageUrls || imageUrls.length === 0))) return
     isProcessingRef.current = true
     dispatch({ type: 'CLEAR_ERROR' })
-    dispatch({ type: 'SEND_MESSAGE', content: content.trim(), imageUrls })
+    dispatch({ type: 'SEND_MESSAGE', content: content.trim(), imageUrls, imageCaptions })
     dispatch({ type: 'STREAM_START' })
 
     // Build full context: conversation history + merged brand_input
@@ -294,6 +307,10 @@ export function useChat() {
     const effectiveImageUrls =
       imageUrls && imageUrls.length > 0 ? imageUrls : getLatestImageUrls(messagesRef.current)
     if (effectiveImageUrls.length > 0) context.image_urls = effectiveImageUrls
+    // 图片描述（VL caption）与 image_urls 同生命周期，供意图识别预填生成描述
+    const effectiveCaptions =
+      imageCaptions && imageCaptions.some(c => c) ? imageCaptions : getLatestImageCaptions(messagesRef.current)
+    if (effectiveCaptions.length > 0) context.image_captions = effectiveCaptions
 
     // Pass latest market_name for market_research context
     const lastMsgWithMarket = messagesRef.current.slice().reverse().find(m => m.marketName)
@@ -388,8 +405,8 @@ export function useChat() {
     dispatch({ type: 'IMAGE_RESULT', messageId, imageResult })
   }, [])
 
-  const addVirtualMessage = useCallback((intent: ChatMessage['intent'], userContent?: string, imageUrl?: string) => {
-    dispatch({ type: 'ADD_VIRTUAL_MESSAGE', intent, userContent, imageUrl })
+  const addVirtualMessage = useCallback((intent: ChatMessage['intent'], userContent?: string, imageUrl?: string, imageCaption?: string) => {
+    dispatch({ type: 'ADD_VIRTUAL_MESSAGE', intent, userContent, imageUrl, imageCaption })
   }, [])
 
   const updateMessageContent = useCallback((messageId: string, content: string) => {

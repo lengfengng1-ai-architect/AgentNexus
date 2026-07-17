@@ -81,11 +81,17 @@ components:
           type: string
           description: "文件的 MIME 类型"
           example: "image/png"
+        caption:
+          type: string
+          nullable: true
+          description: "视觉模型生成的图片中文描述（1-2 句，主体/颜色/构图/风格）；仅图片文件生成，非图片文件或视觉模型调用失败时为 null"
+          example: "一双红色跑鞋，白底，侧面视角，电商产品摄影风格"
       required:
         - name
         - url
         - size
         - mimeType
+        - caption
 
     UploadResponse:
       type: object

@@ -15,12 +15,14 @@ interface InlineImageCardProps {
   prompt: string
   messageId: string
   imageUrl?: string | null
+  /** 参考图的 VL 内容描述（AI 优化时传入，使优化结果与图片相关） */
+  imageCaption?: string | null
   variant?: 'mobile'
   existingResult?: ChatMessage['imageResult']
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function InlineImageCard({ prompt: initialPrompt, messageId, imageUrl, variant, existingResult, onImageResult }: InlineImageCardProps) {
+export function InlineImageCard({ prompt: initialPrompt, messageId, imageUrl, imageCaption, variant, existingResult, onImageResult }: InlineImageCardProps) {
   const isMobile = variant === 'mobile'
   const [isLoading, setIsLoading] = useState(false)
   const [optimizing, setOptimizing] = useState(false)
@@ -45,14 +47,14 @@ export function InlineImageCard({ prompt: initialPrompt, messageId, imageUrl, va
     if (!prompt.trim() || optimizing) return
     setOptimizing(true)
     try {
-      const result = await optimizePrompt(prompt, 'image')
+      const result = await optimizePrompt(prompt, 'image', imageCaption)
       setPrompt(result.optimized)
     } catch (err) {
       setError(err instanceof Error ? err.message : '优化失败')
     } finally {
       setOptimizing(false)
     }
-  }, [prompt, optimizing])
+  }, [prompt, optimizing, imageCaption])
 
   const handleGenerate = useCallback(async () => {
     if (isLoading || !prompt.trim()) return

@@ -1,0 +1,129 @@
+# ──────────────────────────────────────────────
+# OpenSpec: 提示词 AI 优化
+# in_scope id: video-generation（图/视频生成链路）
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "提示词 AI 优化"
+  description: "对图片/视频/品牌文案提示词进行 AI 润色增强，可选携带参考图片内容描述使优化结果与图片相关"
+  version: "v0.1"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /prompt/optimize:
+    post:
+      operationId: prompt_optimize
+      summary: "AI 优化提示词"
+      description: |
+        接收原始提示词与优化场景类型，返回优化后的提示词与优化说明。
+        可选携带 image_context（参考图片的内容描述，如上传图片的 caption），
+        使优化结果与参考图片主体保持一致。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromptOptimizeRequest"
+      responses:
+        "200":
+          description: "优化成功"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromptOptimizeResponse"
+        "400":
+          description: "提示词为空等参数错误"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        "422":
+          description: "请求体校验失败"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+components:
+  schemas:
+    PromptOptimizeRequest:
+      type: object
+      description: "提示词优化请求"
+      properties:
+        prompt:
+          type: string
+          maxLength: 10000
+          description: "原始提示词（必填，非空）"
+          example: "一双跑鞋的海报"
+        type:
+          type: string
+          enum: [video, image, brand]
+          description: "优化场景类型：video 视频 / image 图片 / brand 品牌文案"
+          example: "image"
+        image_context:
+          type: string
+          maxLength: 500
+          nullable: true
+          description: "参考图片的内容描述（如上传图片的 caption），可选；提供后优化结果 SHALL 与图片主体相关"
+          example: "一双红色跑鞋，白底，侧面视角"
+      required:
+        - prompt
+        - type
+
+    OptimizeResult:
+      type: object
+      description: "优化结果"
+      properties:
+        optimized:
+          type: string
+          description: "优化后的提示词"
+          example: "一双亮红色低帮跑鞋置于纯白背景中央，45° 侧面视角，电商产品摄影风格，高清细节"
+        reason:
+          type: string
+          description: "优化说明（做了哪些增强）"
+          example: "补充了颜色、构图与风格描述"
+      required:
+        - optimized
+        - reason
+
+    PromptOptimizeResponse:
+      type: object
+      description: "统一响应信封"
+      properties:
+        success:
+          type: boolean
+          description: "是否成功"
+          example: true
+        data:
+          $ref: "#/components/schemas/OptimizeResult"
+        error:
+          $ref: "#/components/schemas/APIError"
+      required:
+        - success
+
+    APIError:
+      type: object
+      description: "统一错误响应"
+      properties:
+        detail:
+          type: string
+          description: "人类可读的错误描述"
+        code:
+          type: string
+          description: "错误码"
+      required:
+        - detail
+        - code
+
+  responses:
+    InternalError:
+      description: "服务器内部错误"
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/APIError"

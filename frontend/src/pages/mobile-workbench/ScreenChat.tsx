@@ -194,13 +194,13 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
 
   const handleCreateImage = useCallback(() => {
     // ponytail: 自动获取最新上传的图片 URL 传入 virtual message，支持以图生图
-    const lastImgUrl = messages.slice().reverse().find(m => m.imageUrls?.length)?.imageUrls?.[0]
-    addVirtualMessage('text_to_image', '帮我生成一张产品海报图片', lastImgUrl)
+    const lastImgMsg = messages.slice().reverse().find(m => m.imageUrls?.length)
+    addVirtualMessage('text_to_image', '帮我生成一张产品海报图片', lastImgMsg?.imageUrls?.[0], lastImgMsg?.imageCaptions?.[0] || undefined)
   }, [addVirtualMessage, messages])
 
   const handleCreateVideo = useCallback(() => {
-    const lastImgUrl = messages.slice().reverse().find(m => m.imageUrls?.length)?.imageUrls?.[0]
-    addVirtualMessage('generate_video', '帮我生成一条宣传视频', lastImgUrl)
+    const lastImgMsg = messages.slice().reverse().find(m => m.imageUrls?.length)
+    addVirtualMessage('generate_video', '帮我生成一条宣传视频', lastImgMsg?.imageUrls?.[0], lastImgMsg?.imageCaptions?.[0] || undefined)
   }, [addVirtualMessage, messages])
 
   // ── 语音输入 ───────────────────────────────────────────────────────────
@@ -255,7 +255,9 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
       const urls: string[] = data.files.map((item: { url: string }) =>
         item.url.startsWith('http') ? item.url : `${BACKEND_ORIGIN}${item.url}`
       )
-      sendMessage(inputValue.trim(), urls)
+      // VL 生成的图片描述（失败/非图片为 null），随消息传给意图识别与 AI 优化
+      const captions: string[] = data.files.map((item: { caption?: string | null }) => item.caption ?? '')
+      sendMessage(inputValue.trim(), urls, captions)
     } catch {
       setUploadError('文件上传失败，请重试')
     } finally {

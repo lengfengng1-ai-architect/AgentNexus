@@ -33,6 +33,8 @@ export interface ChatMessage {
   confirmed?: boolean
   /** 图标生成导航 */
   imageUrls?: string[]
+  /** 上传图片的 VL 内容描述，与 imageUrls 索引对齐（意图识别/AI 优化用） */
+  imageCaptions?: string[]
   videoPrompt?: string | null
   generationPrompt?: string | null
   /** 视频生成结果（内嵌播放器用） */

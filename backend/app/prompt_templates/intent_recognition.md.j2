@@ -34,6 +34,10 @@
 附件图片 URL 列表：{{ context.image_urls | join(', ') }}
 （用户上传了图片，优先考虑 text_to_image / generate_video / text_to_video 意图）
 {% endif %}
+{% if context.get('image_captions') and context.image_captions|length > 0 %}
+附件图片内容描述：{{ context.image_captions | join('；') }}
+（这是视觉模型对用户上传图片的客观描述。以图生图/以图生视频时，generation_prompt / video_prompt 应结合该描述与用户输入生成具体内容：用户输入提供场景/风格时以用户输入为主，描述仅补充主体信息；用户输入无具体描述时，基于描述生成合理的默认生成文案，如"红色跑鞋在灯光下旋转展示，电商广告风格"。）
+{% endif %}
 
 用户最新输入：{{ message }}
 
@@ -58,6 +62,7 @@
    - 字段齐全时 reply 设为「好的！已了解研究目标：{market_name}（{category}），正在进行分析…」
 3. generate_video → 用户想用图片生成视频。
    - 如果上下文中包含 image_urls，则 image_url 赋值为第一张图片的 URL，同时从用户输入提取视频描述（如有）作为 video_prompt。
+   - 如果上下文包含 image_captions（图片内容描述），video_prompt 应结合该描述生成具体内容；用户输入无具体描述时，基于描述生成默认视频文案（如主体+展示动作+风格）。
    - 如果上下文中没有 image_urls，则 image_url 设为 null，在 missing_fields 中添加 "image_url"。
    - 注：generate_video 是独立意图，与营销方案品牌字段无关，不要求品牌字段齐全。
    - 特别处理：用户上传了商品图/参考图并说"做视频""生成宣传视频"等 → generate_video，reply 引导用户补充视频风格/时长/色调等信息。
@@ -71,6 +76,7 @@
 5. text_to_image → 用户想生成图片/海报/宣传图。
    - 从用户输入提取图片描述作为 generation_prompt（如有）。
    - 若上下文中包含 image_urls（用户已上传参考图），属于以图生图（image2image），image_url 赋值为第一张图片 URL。
+   - 若上下文包含 image_captions（图片内容描述），generation_prompt 应结合该描述生成具体内容；用户输入无具体描述时，基于描述生成默认图文案（如主体+场景+风格）。
    - 不涉及品牌字段，不要求字段齐全。
    - 即使没有具体内容描述（如只说"生成图片""我要生成图片""帮我生成一张图片""我要生成宣传图"），也归为 text_to_image，reply 设为「好的！请描述一下您希望生成的图片内容，例如场景、主题风格等，同时可以选择以下参数。」（前端会展示参数选择卡供用户填写）。
 6. generate_plan → 5 个品牌字段全部有值（来自当前输入 + 以上已确认信息），**且**用户意图不是做视频/图片/市场分析。这是最高优先级，只要字段齐全且非视频/图片/市场分析意图就返回 generate_plan。

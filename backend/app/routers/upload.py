@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import uuid
 from pathlib import Path
@@ -6,6 +7,7 @@ from fastapi import APIRouter, UploadFile, File, HTTPException
 
 from app.config.settings import settings
 from app.schemas.upload import UploadFileItem, UploadResponse
+from app.services.image_caption import generate_caption
 
 logger = logging.getLogger(__name__)
 
@@ -31,6 +33,7 @@ async def upload_files(files: list[UploadFile] = File(..., description="上传�
 
     UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
     result: list[UploadFileItem] = []
+    caption_tasks: list[tuple[int, asyncio.Task[str | None]]] = []
 
     for f in files:
         content = await f.read()
@@ -48,13 +51,25 @@ async def upload_files(files: list[UploadFile] = File(..., description="上传�
 
         dest.write_bytes(content)
 
+        mime = f.content_type or "application/octet-stream"
         result.append(
             UploadFileItem(
                 name=f.filename or safe_name,
                 url=f"/uploads/{safe_name}",
                 size=len(content),
-                mimeType=f.content_type or "application/octet-stream",
+                mimeType=mime,
             )
         )
+        # 图片文件并发生成 caption（失败降级 null，不阻塞上传）
+        if mime.startswith("image/"):
+            caption_tasks.append((len(result) - 1, asyncio.create_task(generate_caption(dest))))
+
+    for idx, task in caption_tasks:
+        # 兜底：caption 任务出现任何未预期异常都不阻塞上传响应
+        try:
+            result[idx].caption = await task
+        except Exception:
+            logger.warning("caption 任务异常，降级为 null: %s", result[idx].name, exc_info=True)
+            result[idx].caption = None
 
     return UploadResponse(files=result)

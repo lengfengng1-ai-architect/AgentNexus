@@ -43,6 +43,12 @@ def _load_system_prompt(message: str, context: dict[str, Any]) -> str:
     image_url = context.get("image_url")
     if image_url and not clean_ctx.get("image_urls"):
         clean_ctx["image_urls"] = [image_url]
+    # 图片 caption（VL 生成的内容描述），过滤空串后透传
+    image_captions = context.get("image_captions")
+    if isinstance(image_captions, list):
+        captions = [c for c in image_captions if isinstance(c, str) and c]
+        if captions:
+            clean_ctx["image_captions"] = captions
     bi = context.get("brand_input", {}) or {}
     if isinstance(bi, dict):
         for key in ("brand_name", "category", "city", "budget", "period"):

@@ -18,6 +18,11 @@ logger = logging.getLogger(__name__)
 class PromptOptimizeRequest(BaseModel):
     prompt: str = Field(..., description="原始提示词", max_length=10000)
     type: Literal["video", "image", "brand"] = Field(..., description="优化场景类型")
+    image_context: str | None = Field(
+        default=None,
+        description="参考图片内容描述（可选），优化结果须与其主体一致",
+        max_length=500,
+    )
 
 
 class PromptOptimizeData(BaseModel):
@@ -29,7 +34,7 @@ class PromptOptimizeData(BaseModel):
 async def prompt_optimize(body: PromptOptimizeRequest) -> APIResponse:
     """AI 优化提示词，支持视频/图片/品牌文案三种场景。"""
     try:
-        result = await optimize_prompt(body.prompt, body.type)
+        result = await optimize_prompt(body.prompt, body.type, body.image_context)
         return APIResponse(data=PromptOptimizeData(
             optimized=result.optimized,
             reason=result.reason,

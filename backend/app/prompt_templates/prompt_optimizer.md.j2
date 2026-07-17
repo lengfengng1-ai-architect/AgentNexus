@@ -4,7 +4,12 @@
   变量：
     - type: str — 优化类型：video / image / brand
     - prompt: str — 用户原始提示词
+    - image_context: str | None — 参考图片内容描述（可选，优化结果须与其主体一致）
 #}
+{% if image_context %}
+参考图片内容：{{ image_context }}
+（优化后的提示词必须与参考图片的主体保持一致，不可偏离成无关主体。）
+{% endif %}
 {% if type == "video" %}
 你是一位专业的视频广告创意导演。请优化以下视频描述，使其更适合 AI 视频生成。
 

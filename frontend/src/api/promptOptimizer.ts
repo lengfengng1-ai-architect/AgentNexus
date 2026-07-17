@@ -5,11 +5,15 @@ interface OptimizeResult {
   reason: string
 }
 
-export async function optimizePrompt(prompt: string, type: 'video' | 'image' | 'brand'): Promise<OptimizeResult> {
+export async function optimizePrompt(
+  prompt: string,
+  type: 'video' | 'image' | 'brand',
+  imageContext?: string | null,
+): Promise<OptimizeResult> {
   const resp = await fetch(`${API_BASE}/prompt/optimize`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ prompt, type }),
+    body: JSON.stringify(imageContext ? { prompt, type, image_context: imageContext } : { prompt, type }),
   })
   const body = await resp.json()
   if (!body.success) throw new Error(body.error?.detail || '优化失败')

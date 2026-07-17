@@ -7,6 +7,8 @@ import type { ChatMessage } from '../types/chat'
 interface InlineVideoCardProps {
   prompt?: string | null
   imageUrls: string[]
+  /** 第一张参考图的 VL 内容描述（AI 优化时传入） */
+  imageCaption?: string | null
   messageId: string
   variant?: 'mobile'
   existingResult?: ChatMessage['videoResult']
@@ -24,7 +26,7 @@ interface ProgressData {
 
 const RATIOS = ['16:9', '9:16', '1:1', '4:3', '3:4', '4:5', '5:4', '9:21', '21:9']
 
-export function InlineVideoCard({ prompt, imageUrls, messageId, variant, existingResult, onVideoResult }: InlineVideoCardProps) {
+export function InlineVideoCard({ prompt, imageUrls, imageCaption, messageId, variant, existingResult, onVideoResult }: InlineVideoCardProps) {
   const isMobile = variant === 'mobile'
   // Generation params
   const [resolution, setResolution] = useState('720P')
@@ -114,7 +116,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, variant, existin
     if (!text?.trim() || optimizing) return
     setOptimizing(true)
     try {
-      const result = await optimizePrompt(text, 'video')
+      const result = await optimizePrompt(text, 'video', imageCaption)
       if (prompt) setEditablePrompt(result.optimized)
       else setDescriptionText(result.optimized)
     } catch (err) {
@@ -122,7 +124,7 @@ export function InlineVideoCard({ prompt, imageUrls, messageId, variant, existin
     } finally {
       setOptimizing(false)
     }
-  }, [prompt, editablePrompt, descriptionText, optimizing])
+  }, [prompt, editablePrompt, descriptionText, optimizing, imageCaption])
 
   const handleGenerate = useCallback(async () => {
     if (isLoading) return

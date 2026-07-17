@@ -541,3 +541,37 @@ def test_normalize__generate_video_backfills_reference_image():
     assert normalized.intent == "generate_video"
     assert normalized.image_url == "oss://uploads/ref.png"
     assert "image_url" not in normalized.missing_fields
+
+
+# ── image_captions：caption 透传到 prompt ─────────────────────────────────────
+
+
+def test_load_prompt__with_image_captions__renders_caption_block():
+    """context 携带 image_captions 时，prompt 包含图片描述区块。"""
+    prompt = intent_recognition_agent._load_system_prompt(
+        "帮我生成产品宣传片",
+        {
+            "image_urls": ["/uploads/shoe.png"],
+            "image_captions": ["一双红色跑鞋，白底，侧面视角"],
+        },
+    )
+    assert "一双红色跑鞋，白底，侧面视角" in prompt
+    assert "附件图片内容描述" in prompt
+
+
+def test_load_prompt__without_captions__no_caption_block():
+    """无 image_captions 时，prompt 不含图片描述区块（行为不变）。"""
+    prompt = intent_recognition_agent._load_system_prompt(
+        "帮我生成产品宣传片",
+        {"image_urls": ["/uploads/shoe.png"]},
+    )
+    assert "附件图片内容描述" not in prompt
+
+
+def test_load_prompt__empty_captions__no_caption_block():
+    """caption 全为空字符串时（VL 失败降级）不渲染描述区块。"""
+    prompt = intent_recognition_agent._load_system_prompt(
+        "帮我生成产品宣传片",
+        {"image_urls": ["/uploads/shoe.png"], "image_captions": ["", ""]},
+    )
+    assert "附件图片内容描述" not in prompt

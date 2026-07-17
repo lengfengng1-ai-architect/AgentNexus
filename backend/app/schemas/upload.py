@@ -8,6 +8,10 @@ class UploadFileItem(BaseModel):
     url: str = Field(description="本地可访问的 URL 路径")
     size: int = Field(description="文件大小（字节）")
     mime_type: str = Field(description="MIME 类型", alias="mimeType")
+    caption: str | None = Field(
+        default=None,
+        description="视觉模型生成的图片中文描述；非图片文件或生成失败时为 null",
+    )
 
     model_config = {"populate_by_name": True}
 
