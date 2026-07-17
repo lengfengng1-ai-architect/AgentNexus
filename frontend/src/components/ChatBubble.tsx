@@ -71,6 +71,26 @@ function TypingReasoning({ text }: { text: string }) {
   )
 }
 
+// 移动端流式思考小卡：固定高度 + 内部滚动跟随，仅存在于流式期间（不持久化）
+function ReasoningBox({ text }: { text: string }) {
+  const contentRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const el = contentRef.current
+    if (el) el.scrollTop = el.scrollHeight
+  }, [text])
+
+  return (
+    <div className="rb-box">
+      <div className="rb-title">💭 思考中…</div>
+      <div ref={contentRef} className="rb-content">
+        <TypingReasoning text={text} />
+        <span className="rb-cursor" aria-hidden="true" />
+      </div>
+    </div>
+  )
+}
+
 interface ChatBubbleProps {
   message: ChatMessage
   isMarketResearchActive?: boolean
@@ -132,6 +152,15 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
             style={{ whiteSpace: 'normal' }}
             dangerouslySetInnerHTML={{ __html: marked.parse(message.content) }}
           />
+        ) : isStreaming && variant === 'mobile' ? (
+          // 移动端流式：reasoning 渲染为独立固定高度小卡，不混在正文容器
+          message.reasoning ? (
+            <ReasoningBox text={message.reasoning} />
+          ) : (
+            <div className="whitespace-pre-wrap text-sm leading-relaxed sm:text-base">
+              <TypingIndicator />
+            </div>
+          )
         ) : (
           <div className="whitespace-pre-wrap text-sm leading-relaxed sm:text-base">
             {isStreaming ? (

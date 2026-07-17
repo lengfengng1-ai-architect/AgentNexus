@@ -1,0 +1,440 @@
+/* in_scope: video-generation
+   OpenSpec: openspec/changes/mobile-media-cards-redesign
+   移动端对话流内联媒体卡片（图片/视频生成）+ 流式思考小卡样式。
+   仅作用于 .mw 作用域，不影响 PC 端（PC 端样式仍为组件内 Tailwind 类）。 */
+
+/* ── 卡片容器：纯白 + 细边框 + 轻阴影 ─────────────────────────────── */
+.mw .imc-card {
+  margin-top: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 2px 12px rgba(10, 36, 80, 0.06);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+/* 标题行：图标 + 标题 + 右侧 AI 优化按钮 */
+.mw .imc-title-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.mw .imc-title-icon {
+  width: 26px;
+  height: 26px;
+  border-radius: 8px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-softer);
+  font-size: 14px;
+}
+
+.mw .imc-title {
+  flex: 1;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--fg);
+}
+
+.mw .imc-optimize-btn {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--ff);
+  padding: 4px 10px;
+  cursor: pointer;
+  transition: color .15s, border-color .15s;
+}
+
+.mw .imc-optimize-btn:not(:disabled):active {
+  color: var(--accent);
+  border-color: var(--accent-border);
+}
+
+.mw .imc-optimize-btn:disabled {
+  opacity: .45;
+  cursor: not-allowed;
+}
+
+.mw .imc-spinner {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: imc-spin .7s linear infinite;
+}
+
+@keyframes imc-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* hairline 分隔 */
+.mw .imc-hairline {
+  height: 1px;
+  background: var(--border);
+  opacity: .6;
+  margin: 0 -14px; /* 贯穿卡片内边距 */
+}
+
+/* 参考图缩略条 */
+.mw .imc-thumbs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mw .imc-thumbs img {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-sm);
+  object-fit: cover;
+  border: 1px solid var(--border);
+}
+
+/* 描述输入区 */
+.mw .imc-field-label {
+  display: block;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.mw .imc-textarea {
+  width: 100%;
+  resize: none;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--ff);
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 8px 10px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.mw .imc-textarea::placeholder { color: var(--muted); opacity: .7; }
+
+.mw .imc-textarea:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-softer);
+  background: var(--bg);
+}
+
+.mw .imc-textarea:disabled {
+  opacity: .6;
+}
+
+/* 尺寸/比例 chip 行 */
+.mw .imc-chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.mw .imc-chip {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--ff);
+  padding: 6px 12px;
+  cursor: pointer;
+  transition: background .15s, color .15s, border-color .15s;
+}
+
+.mw .imc-chip:not(:disabled):active { border-color: var(--accent-border); }
+
+.mw .imc-chip.on {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+  font-weight: 500;
+}
+
+.mw .imc-chip:disabled { opacity: .5; cursor: not-allowed; }
+
+/* 全宽胶囊主按钮 */
+.mw .imc-cta {
+  width: 100%;
+  border: none;
+  border-radius: 22px;
+  background: var(--accent);
+  color: #fff;
+  font-family: var(--ff);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 11px 16px;
+  cursor: pointer;
+  box-shadow: 0 2px 14px var(--accent-soft);
+  transition: background .15s, transform .08s;
+}
+
+.mw .imc-cta:not(:disabled):active {
+  background: var(--accent-deep);
+  transform: scale(.99);
+}
+
+.mw .imc-cta:disabled {
+  background: var(--border);
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+/* 骨架屏（图片生成中） */
+.mw .imc-skeleton {
+  position: relative;
+  width: 100%;
+  border-radius: var(--r-md);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.mw .imc-skeleton::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, rgba(255, 255, 255, .85) 50%, transparent 70%);
+  animation: imc-shimmer 1.4s infinite;
+}
+
+@keyframes imc-shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.mw .imc-status-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* 完成态：媒体 + 参数行 + 文字链接行 */
+.mw .imc-result-media {
+  width: 100%;
+  border-radius: var(--r-md);
+  display: block;
+}
+
+.mw .imc-meta-line {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mw .imc-result-actions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.mw .imc-result-actions .imc-link {
+  border: none;
+  background: none;
+  padding: 6px 2px; /* 加大触控区域 */
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--ff);
+  cursor: pointer;
+  transition: color .15s;
+}
+
+.mw .imc-result-actions .imc-link:active { color: var(--accent); }
+
+.mw .imc-result-actions .imc-sep { opacity: .5; }
+
+/* 错误提示 + 重试 */
+.mw .imc-error {
+  border: 1px solid #fecaca;
+  background: #fef2f2;
+  color: #b91c1c;
+  border-radius: var(--r-md);
+  font-size: 12px;
+  padding: 8px 10px;
+}
+
+.mw .imc-retry-btn {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--bg);
+  color: var(--muted);
+  font-family: var(--ff);
+  font-size: 13px;
+  font-weight: 500;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background .15s;
+}
+
+.mw .imc-retry-btn:active { background: var(--surface); }
+
+/* URL 输入行（视频卡片无参考图时） */
+.mw .imc-url-row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.mw .imc-url-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--ff);
+  font-size: 13px;
+  padding: 8px 40px 8px 10px;
+  outline: none;
+  transition: border-color .15s, box-shadow .15s;
+}
+
+.mw .imc-url-input::placeholder { color: var(--muted); opacity: .7; }
+
+.mw .imc-url-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-softer);
+  background: var(--bg);
+}
+
+.mw .imc-url-remove {
+  flex: none;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+  color: var(--muted);
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* 参数折叠面板 */
+.mw .imc-params-toggle {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: space-between;
+  border: none;
+  background: none;
+  padding: 2px 0;
+  color: var(--muted);
+  font-size: 12px;
+  font-family: var(--ff);
+  cursor: pointer;
+}
+
+.mw .imc-params-grid {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+}
+
+.mw .imc-params-grid .imc-input,
+.mw .imc-params-grid .imc-select {
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  background: var(--surface);
+  color: var(--fg);
+  font-family: var(--ff);
+  font-size: 13px;
+  padding: 7px 8px;
+  outline: none;
+}
+
+.mw .imc-params-grid .imc-input:focus,
+.mw .imc-params-grid .imc-select:focus {
+  border-color: var(--accent);
+  background: var(--bg);
+}
+
+/* 视频生成进度（移动端微调既有进度条颜色 token） */
+.mw .imc-progress-track {
+  height: 6px;
+  width: 100%;
+  overflow: hidden;
+  border-radius: 999px;
+  background: var(--border);
+}
+
+.mw .imc-progress-fill {
+  height: 100%;
+  border-radius: 999px;
+  background: var(--accent);
+  transition: width .5s ease-out;
+}
+
+/* ── 流式思考小卡 ────────────────────────────────────────────────── */
+.mw .rb-box {
+  /* ponytail: 气泡内嵌小卡，margin 由气泡 padding 承担；screen-chat.css 的
+     气泡字体覆盖规则用 !important，故这里不重写 margin */
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--surface);
+  padding: 8px 10px;
+}
+
+.mw .rb-title {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--muted);
+  margin-bottom: 6px;
+}
+
+.mw .rb-content {
+  height: 6.5em; /* ponytail: 固定高度保证流式期间气泡总高恒定；约 5 行 13px */
+  overflow-y: auto;
+  scrollbar-width: none;
+  font-size: 13px;
+  line-height: 1.55;
+  color: var(--muted);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.mw .rb-content::-webkit-scrollbar { display: none; }
+
+.mw .rb-cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  margin-left: 2px;
+  vertical-align: -2px;
+  background: var(--accent);
+  animation: rb-blink 1s steps(2) infinite;
+}
+
+@keyframes rb-blink {
+  50% { opacity: 0; }
+}
