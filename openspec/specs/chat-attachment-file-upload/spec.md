@@ -12,7 +12,7 @@ description: 聊天输入框附件从 URL 输入改造为本地文件选取/拖�
 
 ### Requirement: 上传附件 — 文件选取与拖拽
 
-点击 📎 附件后在输入框容器内部上沿展开文件上传区域，支持点击选择文件和拖拽文件两种方式。文件上传区域取代原有的 URL 输入框。
+点击 📎 附件后在输入框容器内部上沿展开文件上传区域，SHALL 支持点击选择文件和拖拽文件两种方式。文件上传区域 SHALL 取代原有的 URL 输入框。
 
 #### Scenario: 点击触发文件选择
 - **WHEN** 用户点击面板中的 📎附件
@@ -32,7 +32,7 @@ description: 聊天输入框附件从 URL 输入改造为本地文件选取/拖�
 
 ### Requirement: 附件预览与删除
 
-选中或拖拽文件后，在输入框容器内部上沿展示附件预览条，每个附件可单独删除。
+选中或拖拽文件后，系统 SHALL 在输入框容器内部上沿展示附件预览条，每个附件 SHALL 可单独删除。
 
 #### Scenario: 图片附件展示缩略图
 - **WHEN** 用户选中了图片文件（jpg/png/gif/webp/svg）
@@ -51,7 +51,7 @@ description: 聊天输入框附件从 URL 输入改造为本地文件选取/拖�
 
 ### Requirement: 发送时文件上传 + URL 自动提取
 
-点击发送按钮时，自动上传本地附件到后端获取 URL，同时检测 textarea 输入中的图片 URL，合并后传给 AI。
+点击发送按钮时，系统 SHALL 自动上传本地附件到后端获取 URL，同时检测 textarea 输入中的图片 URL，合并后传给 AI。
 
 #### Scenario: 有本地附件时发送
 - **WHEN** 用户点击发送
@@ -89,13 +89,14 @@ description: 聊天输入框附件从 URL 输入改造为本地文件选取/拖�
 
 ### Requirement: 后端文件上传接口
 
-新增 `POST /api/v1/upload` 接口，接受 multipart/form-data 文件上传。
+新增 `POST /api/v1/upload` 接口，接受 multipart/form-data 文件上传。图片文件的响应项 SHALL 额外携带 `caption` 字段（视觉模型生成的图片描述，可为 null）。
 
 #### Scenario: 上传成功返回 URL
 - **WHEN** 客户端通过 `multipart/form-data` 上传文件
 - **THEN** 服务器保存文件到配置的上传目录
-- **AND** 返回 `{ files: [{ name, url, size, mime_type }] }`
+- **AND** 返回 `{ files: [{ name, url, size, mime_type, caption }] }`
 - **AND** URL 可公开访问（通过 StaticFiles 挂载）
+- **AND** 图片文件的 `caption` 为视觉模型生成的中文描述（失败时为 null），非图片文件 `caption` 为 null
 
 #### Scenario: 无文件上传请求
 - **WHEN** 请求体中没有文件数据

@@ -124,3 +124,18 @@
 - **THEN** 图片 SHALL 撑满卡片宽度、大圆角展示，无额外灰底包裹
 - **AND** 图片下方 SHALL 有一行 muted 色文字链接：全屏、复制链接、重新生成
 - **AND** 点击「重新生成」SHALL 回到编辑态
+
+### Requirement: 图片卡片 AI 优化 SHALL 携带图片上下文
+
+`InlineImageCard` 调用 AI 优化时，SHALL 将图片 caption（如有）作为 `image_context` 传入 `/api/v1/prompt/optimize`，使优化结果与参考图片内容相关。
+
+#### Scenario: 有 caption 时优化结果与图片相关
+- **GIVEN** 卡片渲染时消息携带图片 caption（如"一双红色跑鞋"）
+- **WHEN** 用户点击「✨ AI 优化」
+- **THEN** 优化请求 SHALL 携带 `image_context`
+- **AND** 优化后的提示词 SHALL 与图片主体一致（不会优化成与跑鞋无关的内容）
+
+#### Scenario: 无 caption 时行为不变
+- **GIVEN** 消息无图片 caption
+- **WHEN** 用户点击「✨ AI 优化」
+- **THEN** 优化请求不携带 `image_context`，行为与现状一致

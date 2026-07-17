@@ -222,3 +222,18 @@ InlineVideoCard 中的视频参数（分辨率、宽高比、时长等）SHALL �
 - **AND** 参数信息 SHALL 显示为一行（如 `720P · 16:9 · 5s`），muted 色
 - **AND** 播放器下方 SHALL 有一行 muted 色文字链接：全屏、重新生成
 - **AND** 点击「重新生成」SHALL 回到编辑态
+
+### Requirement: 视频卡片 AI 优化 SHALL 携带图片上下文
+
+`InlineVideoCard` 调用 AI 优化时，SHALL 将第一张参考图的 caption（如有）作为 `image_context` 传入 `/api/v1/prompt/optimize`，使优化结果与参考图片内容相关。
+
+#### Scenario: 有 caption 时优化结果与图片相关
+- **GIVEN** 卡片渲染时消息携带参考图 caption
+- **WHEN** 用户点击「✨ AI 优化」
+- **THEN** 优化请求 SHALL 携带 `image_context`
+- **AND** 优化后的视频描述 SHALL 与参考图主体一致
+
+#### Scenario: 无 caption 时行为不变
+- **GIVEN** 消息无参考图 caption
+- **WHEN** 用户点击「✨ AI 优化」
+- **THEN** 优化请求不携带 `image_context`，行为与现状一致
