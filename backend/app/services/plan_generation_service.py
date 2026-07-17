@@ -48,7 +48,7 @@ _INTERRUPT_BEFORE = [
     "action_recommendations",
     "plan_generator",
 ]
-_INTERRUPT_AFTER = ["budget_kpi"]
+_INTERRUPT_AFTER = ["budget_kpi", "action_recommendations"]
 _PARALLEL_NODES = ["product_research", "market_research", "audience_insight"]
 
 
@@ -460,6 +460,7 @@ def _node_inputs(node_id: str, state: PlanState) -> dict[str, Any]:
             "strategy_generation": state.get("strategy_generation", {}),
             "fitness_analysis": state.get("fitness_analysis", {}),
             "budget_kpi": state.get("budget_kpi", {}),
+            "execution_planning": state.get("execution_planning", {}),
         }
     # plan_generator
     all_upstream = dict(state)
@@ -488,11 +489,13 @@ def _build_node(node_id: str) -> Any:
             await _save_node_status(rid, node_id, "failed")
             return {node_id: {}}
 
-        # After action_recommendations completes, async trigger promo video.
-        # 独立 try：视频触发的任何异常都不能影响节点主输出。
+        # After action_recommendations completes, async trigger promo video AND poster.
+        # 移到此处而非放在 plan_generator 之后，使用户在 checkpoint 弹窗预览时已能看到媒体状态。
+        # 独立 try：视频/海报触发的任何异常都不能影响节点主输出。
         if node_id == "action_recommendations":
             try:
                 rid = _current_run_id.get() or ""
+                # 宣传视频
                 prompt = await _build_promo_video_prompt(state)
                 logger.info("[promo_video] run=%s optimized prompt: %s", rid, prompt)
                 write_log("action_recommendations", f"📹 宣传视频提示词: {prompt}")
@@ -503,18 +506,40 @@ def _build_node(node_id: str) -> Any:
             except Exception:
                 logger.exception("[promo_video] trigger failed, skipping video generation")
 
-        # After plan_generator completes, async trigger poster image generation.
-        # chapters 在本节点输出 result 中，取出拼成 plan_content 后后台生成。
-        if node_id == "plan_generator":
             try:
                 rid = _current_run_id.get() or ""
-                chapters = (result.get("plan_generator") or {}).get("chapters") or []
-                plan_content = _build_poster_content(chapters)
+                # 海报：从上游节点的 strategy_generation 生成 plan_content
+                strategy = state.get("strategy_generation", {})
+                positioning = strategy.get("positioning", "")
+                marketing_goal = strategy.get("marketing_goal", "")
+                plan_content = (
+                    "基于以下营销方案生成一张主视觉海报，要求画面大气、品牌感强、"
+                    "色彩鲜明，突出运动场景与年轻活力："
+                    f"核心主张：{positioning}；营销目标：{marketing_goal}"
+                )
                 if plan_content:
                     _poster_cache[rid] = {"status": "generating", "run_id": rid}
                     await _save_poster(rid, _poster_cache[rid])
                     asyncio.create_task(_run_poster(rid, plan_content))
                     logger.info("[poster] triggered async task for run=%s", rid)
+            except Exception:
+                logger.exception("[poster] trigger failed, skipping poster generation")
+
+        # After plan_generator completes — poster already triggered in action_recommendations,
+        # so this block only handles the poster improvement with actual chapters content.
+        if node_id == "plan_generator":
+            try:
+                rid = _current_run_id.get() or ""
+                chapters = (result.get("plan_generator") or {}).get("chapters") or []
+                if chapters:
+                    plan_content = _build_poster_content(chapters)
+                    if plan_content:
+                        # Update the already-triggered poster with richer chapters content
+                        # by re-saving as "generating" with new content
+                        _poster_cache[rid] = {"status": "generating", "size": DEFAULT_POSTER_SIZE, "run_id": rid}
+                        await _save_poster(rid, _poster_cache[rid])
+                        asyncio.create_task(_run_poster(rid, plan_content))
+                        logger.info("[poster] triggered regenerated poster with chapters for run=%s", rid)
             except Exception:
                 logger.exception("[poster] trigger failed, skipping poster generation")
 
@@ -1096,21 +1121,29 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
     brand_input["_reject_reason"] = reason
     channel_values["brand_input"] = brand_input
 
-    # 每次驳回都要清除 budget_kpi 及其下游输出，强制重新执行。
-    # 不能用 is_interrupt_after 判断决定走哪个分支，因为第二次驳回时
-    # 检查点状态已经过一轮修改，is_interrupt_after 可能检测失败。
-    logger.info("[plan] 用户驳回 budget_kpi，原因：%s", reason)
-    for key in ("budget_kpi", "action_recommendations", "plan_generator"):
-        channel_values.pop(key, None)
-
-    # Use aupdate_state (async) to roll back next to budget_kpi by
-    # pretending the last node was execution_planning (which edges to
-    # budget_kpi). Sync update_state fails with AsyncSqliteSaver.
-    await graph.aupdate_state(
-        _thread_config(run_id),
-        values=channel_values,
-        as_node="execution_planning",
-    )
+    # 根据暂停节点动态决定清除范围
+    logger.info("[plan] reject at node=%s reason=%s", next_nodes, reason)
+    if "action_recommendations" in next_nodes or (next_nodes and next_nodes[0] == "plan_generator"):
+        # 暂停在 action_recommendations 之后（interrupt_after）
+        # 用 `as_node="budget_kpi"` 因为 LangGraph 图的边是 budget_kpi → action_recommendations，
+        # 所以 as_node="budget_kpi" 让 next = action_recommendations，重跑 action_recommendations
+        # 但不清除 budget_kpi 的输出，保留预算数据不变
+        for key in ("action_recommendations", "plan_generator"):
+            channel_values.pop(key, None)
+        await graph.aupdate_state(
+            _thread_config(run_id),
+            values=channel_values,
+            as_node="budget_kpi",
+        )
+    else:
+        # 预算场景下，回滚到 execution_planning 让 budget_kpi 重跑
+        for key in ("budget_kpi", "action_recommendations", "plan_generator"):
+            channel_values.pop(key, None)
+        await graph.aupdate_state(
+            _thread_config(run_id),
+            values=channel_values,
+            as_node="execution_planning",
+        )
 
     try:
         async for frame in _stream_events(graph, Command(resume={}), run_id):

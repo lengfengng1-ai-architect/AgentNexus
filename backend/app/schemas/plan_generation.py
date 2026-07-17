@@ -266,7 +266,11 @@ class ActionRecommendation(BaseModel):
     """行动建议条目。"""
 
     title: str = Field(..., description="行动标题")
-    description: str = Field(default="", description="行动描述")
+    description: str = Field(default="", description="行动描述（100字以内）")
+    start_date: str = Field(default="", description="开始日期，如'7月25日'")
+    end_date: str = Field(default="", description="结束日期，如'8月5日'")
+    priority: str = Field(default="中", description="优先级：高/中/普通")
+    category: str = Field(default="", description="分类：达人合作/赛事活动/内容制作/平台投放/运营资源")
 
 
 class ActionRecommendationsOutput(BaseModel):
