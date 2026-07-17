@@ -10,6 +10,7 @@ import { ScreenPreview } from './ScreenPreview'
 import { ScreenActions } from './ScreenActions'
 import { ScreenDispatch } from './ScreenDispatch'
 import { ScreenBudgetPreview, type BudgetAllocation } from './ScreenBudgetPreview'
+import { ScreenActionPreview } from './ScreenActionPreview'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import { exportPlanPdf, exportPlanXlsx } from '../../api/plan'
 import type { BrandInput } from '../../types/chat'
@@ -24,7 +25,7 @@ const TABS: { key: MobileScreen; label: string }[] = [
 ]
 
 // 隐藏 Tab 栏的屏
-const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview']
+const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview']
 
 const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   chat: { t: '营销方案助手', sub: 'AllyGo Agent' },
@@ -60,11 +61,24 @@ export function MobileWorkbenchPage() {
   } | null>(null)
 
   // 预算预览滑动动画状态：关闭弹窗后抑制 checkpoint 弹窗再次弹出
-  const [suppressCheckpoint, setSuppressCheckpoint] = useState(false)
+  // 记录正在被抑制的节点 ID，只有该节点的 checkpoint 才被抑制，新节点到来时自动清除
+  const [suppressedPausedNodeId, setSuppressedPausedNodeId] = useState<string | null>(null)
   // 预算预览正在退出动画中
   const [isBpAnimatingOut, setIsBpAnimatingOut] = useState(false)
   // 预算预览重新生成中（用户点发送 → 加载新数据）
   const [budgetPreviewLoading, setBudgetPreviewLoading] = useState(false)
+
+  // Action preview state
+  const [actionPreviewLoading, setActionPreviewLoading] = useState(false)
+
+  // Action preview data — extracted from pausedSnapshot
+  const [actionPreviewData, setActionPreviewData] = useState<{
+    actions: { title: string; description: string; start_date?: string; end_date?: string; priority?: string; category?: string }[]
+    brandName?: string
+    category?: string
+    totalBudget?: number
+    periodMonths?: number
+  } | null>(null)
 
   // 三点导出菜单状态
   const [showExportMenu, setShowExportMenu] = useState(false)
@@ -72,20 +86,19 @@ export function MobileWorkbenchPage() {
   const exportRef = useRef<HTMLDivElement>(null)
 
   // 当流水线脱离 paused 状态（变为 running / completed / failed）时，
-  // 自动清除 suppressCheckpoint，不再需要弹窗抑制
+  // 自动清除抑制
   useEffect(() => {
     if (status !== 'paused') {
-      setSuppressCheckpoint(false)
+      setSuppressedPausedNodeId(null)
     }
   }, [status])
 
-  // 当 checkpoint 到达非 budget_kpi 的新节点时，清除抑制
-  // 防止在用户返回 generate 屏后，下一个 checkpoint 也被屏蔽
+  // 当 checkpoint 到达非被抑制的节点时，清除抑制的记录
   useEffect(() => {
-    if (planRun.pausedSnapshot && planRun.pausedSnapshot.node_id !== 'budget_kpi') {
-      setSuppressCheckpoint(false)
+    if (planRun.pausedSnapshot && suppressedPausedNodeId !== null && planRun.pausedSnapshot.node_id !== suppressedPausedNodeId) {
+      setSuppressedPausedNodeId(null)
     }
-  }, [planRun.pausedSnapshot])
+  }, [planRun.pausedSnapshot, suppressedPausedNodeId])
 
   useEffect(() => {
     const handler = (e: MouseEvent) => {
@@ -122,9 +135,10 @@ export function MobileWorkbenchPage() {
     }
   }
 
-  // 媒体轮询：actions 屏时才查，海报/视频都到终态（completed/failed）就不轮询了
+  // 媒体轮询：actions 屏或 action-preview 时才查，海报/视频都到终态就不轮询了
   useEffect(() => {
-    if (status !== 'completed' || screen !== 'actions') return
+    const shouldPoll = (status === 'completed' && screen === 'actions') || screen === 'action-preview'
+    if (!shouldPoll) return
     const posterDone = outputs?.poster?.status === 'completed' || outputs?.poster?.status === 'failed'
     const videoDone = outputs?.promo_video?.status === 'completed' || outputs?.promo_video?.status === 'failed'
     if (posterDone && videoDone) return
@@ -157,8 +171,8 @@ export function MobileWorkbenchPage() {
       setIsBpAnimatingOut(false)
       setBudgetPreviewData(null)
       setScreen('generate')
-      // 抑制 checkpoint 弹窗，确保用户看到的是流水线继续执行中的状态
-      setSuppressCheckpoint(true)
+      // 抑制 budget_kpi 的 checkpoint，用户看到的是流水线继续执行中的状态
+      setSuppressedPausedNodeId('budget_kpi')
     }, 300) // 匹配滑出动画时长 0.3s
   }
 
@@ -169,6 +183,40 @@ export function MobileWorkbenchPage() {
     if (rid) {
       planRun.reject(feedback)
     }
+  }
+
+  // Action preview: navigate from generate screen
+  const handleOpenActionPreview = () => {
+    if (planRun.pausedSnapshot) {
+      const ar = planRun.pausedSnapshot.upstream_outputs?.action_recommendations as Record<string, unknown> | undefined
+      const brandInput = planRun.pausedSnapshot.upstream_outputs?.brand_input as Record<string, unknown> | undefined
+      const budgetKpi = planRun.pausedSnapshot.upstream_outputs?.budget_kpi as Record<string, unknown> | undefined
+      if (ar && Array.isArray(ar.actions)) {
+        setActionPreviewData({
+          actions: ar.actions as { title: string; description: string; start_date?: string; end_date?: string; priority?: string; category?: string }[],
+          brandName: (brandInput?.brand_name as string) || '',
+          category: (brandInput?.category as string) || '',
+          totalBudget: (budgetKpi?.total_budget as number) || 0,
+          periodMonths: (budgetKpi?.period_months as number) || 0,
+        })
+      }
+    }
+    setSuppressedPausedNodeId('action_recommendations')
+    setScreen('action-preview')
+  }
+
+  // Action preview: approve and return to generate screen
+  const handleActionApprove = () => {
+    planRun.approve()
+    setActionPreviewData(null)
+    setSuppressedPausedNodeId(null)
+    setScreen('generate')
+  }
+
+  // Action preview: reject (send feedback) → backend reruns action_recommendations
+  const handleActionRegen = (feedback: string) => {
+    setActionPreviewLoading(true)
+    planRun.reject(feedback)
   }
 
   // 监控 pausedSnapshot 更新：当预算预览 loading 中且收到新的 budget_kpi paused 数据时刷新预览
@@ -190,6 +238,24 @@ export function MobileWorkbenchPage() {
     })
     setBudgetPreviewLoading(false)
   }, [budgetPreviewLoading, planRun.pausedSnapshot])
+
+  // 监控 action_recommendations pausedSnapshot：loading 中收到新数据时刷新
+  useEffect(() => {
+    if (!actionPreviewLoading) return
+    if (!planRun.pausedSnapshot) return
+    const ar = planRun.pausedSnapshot.upstream_outputs?.action_recommendations as Record<string, unknown> | undefined
+    if (!ar || !ar.actions) return
+    const brandInput = planRun.pausedSnapshot.upstream_outputs?.brand_input as Record<string, unknown> | undefined
+    const budgetKpi = planRun.pausedSnapshot.upstream_outputs?.budget_kpi as Record<string, unknown> | undefined
+    setActionPreviewData({
+      actions: (ar.actions as Array<{title: string; description: string; start_date?: string; end_date?: string; priority?: string; category?: string}>) || [],
+      brandName: (brandInput?.brand_name as string) || '',
+      category: (brandInput?.category as string) || '',
+      totalBudget: (budgetKpi?.total_budget as number) || 0,
+      periodMonths: (budgetKpi?.period_months as number) || 0,
+    })
+    setActionPreviewLoading(false)
+  }, [actionPreviewLoading, planRun.pausedSnapshot])
 
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
   const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => {
@@ -216,6 +282,7 @@ export function MobileWorkbenchPage() {
       generate: 'brief',
       preview: 'generate',
       'budget-preview': 'generate',
+      'action-preview': 'generate',
       actions: 'generate',
       dispatch: 'actions',
     }
@@ -235,16 +302,28 @@ export function MobileWorkbenchPage() {
     actions: { t: '下一步行动建议', sub: `${productLabel} · 共 ${itemCount + 6} 项` },
     dispatch: { t: '下发与转发达成', sub: `${brandLabel} · 跨盟下发` },
     'budget-preview': { t: '预算分配与预览', sub: `${productLabel}` },
+    'action-preview': { t: '行动预览', sub: `${productLabel}` },
   }
   const meta = topbarText[screen]
   const isExportReady = (screen === 'generate' || screen === 'preview') && status === 'completed'
 
   // 预算预览页在手机框内展示，使用自己的顶栏，隐藏 PhoneFrame 顶栏
   // 动画退出中也不显示 topbar（保持视觉连贯）
-  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut
+  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview'
 
   // 预算预览正在展示中：包括正在展示 slide-in 或已展示
   const showingBudgetPreview = screen === 'budget-preview' || isBpAnimatingOut
+
+  // action-preview 返回时 approve 继续流水线（同 budget-preview 模式）
+  const handleActionPreviewBack = () => {
+    setSuppressedPausedNodeId('action_recommendations')
+    planRun.approve()
+    setActionPreviewData(null)
+    setScreen('generate')
+  }
+
+  // action-preview 与 budget-preview 共享 hideTopbar 和 showing 逻辑
+  const showingActionPreview = screen === 'action-preview'
 
   // 方案生成活跃状态：running / paused 时简报页按钮应显示生成中并禁用
   const isPlanGenerating = status === 'running' || status === 'paused'
@@ -345,22 +424,53 @@ export function MobileWorkbenchPage() {
               />
             </div>
           )}
+          {/* 行动建议预览覆盖层 */}
+          {showingActionPreview && actionPreviewData && (
+            <div
+              className="ap-overlay"
+              style={{
+                position: 'absolute', inset: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column',
+                background: 'var(--bg)', overflow: 'hidden',
+              }}
+            >
+              <ScreenActionPreview
+                onNavigate={setScreen}
+                actions={actionPreviewData.actions}
+                brandName={actionPreviewData.brandName}
+                category={actionPreviewData.category}
+                totalBudget={actionPreviewData.totalBudget}
+                periodMonths={actionPreviewData.periodMonths}
+                posterStatus={outputs?.poster?.status}
+                videoStatus={outputs?.promo_video?.status}
+                posterUrl={outputs?.poster?.image_url}
+                videoUrl={outputs?.promo_video?.video_url}
+                onApprove={handleActionApprove}
+                onReject={handleActionRegen}
+                onBack={handleActionPreviewBack}
+                loading={actionPreviewLoading}
+              />
+            </div>
+          )}
           <div style={{ display: screen === 'chat' ? 'flex' : 'none', flex: screen === 'chat' ? 1 : '', flexDirection: 'column', minHeight: 0, overflow: 'hidden', position: 'relative' }}>
             <ScreenChat onNavigate={handleChatNavigate} />
           </div>
           <div style={{ display: screen === 'brief' ? '' : 'none' }}>
             <ScreenBrief onNavigate={handleNavigate} initialInput={pendingChatData?.inputText} initialBrandData={pendingChatData?.brandInput ?? undefined} isGenerating={isPlanGenerating} />
           </div>
-          <div style={{ display: screen === 'generate' ? '' : 'none' }}>
+          <div style={{ display: screen === 'generate' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <ScreenGenerate
               onNavigate={handleNavigate}
               briefData={briefData}
               planRun={planRun}
-              suppressCheckpoint={suppressCheckpoint}
+              suppressCheckpointNodeId={suppressedPausedNodeId}
               onOpenBudgetPreview={(data) => {
                 setBudgetPreviewData(data)
-                setSuppressCheckpoint(true)
+                setSuppressedPausedNodeId('budget_kpi')
                 setScreen('budget-preview')
+              }}
+              onOpenActionPreview={() => {
+                handleOpenActionPreview()
               }}
             />
           </div>

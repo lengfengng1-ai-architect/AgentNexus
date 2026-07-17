@@ -14,7 +14,8 @@ interface ScreenGenerateProps {
   onNavigate: (s: MobileScreen, data?: BriefFormData) => void
   briefData: BriefFormData | null
   planRun: MobilePlanRunAPI
-  suppressCheckpoint?: boolean
+  /** 要抑制的 paused node_id，为 null 时不抑制 */
+  suppressCheckpointNodeId?: string | null
   onOpenBudgetPreview: (data: {
     totalBudget: number
     periodMonths: number
@@ -22,9 +23,10 @@ interface ScreenGenerateProps {
     kpis: Record<string, string>
     timeline: string[]
   }) => void
+  onOpenActionPreview: () => void
 }
 
-export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpoint, onOpenBudgetPreview }: ScreenGenerateProps) {
+export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpointNodeId, onOpenBudgetPreview, onOpenActionPreview }: ScreenGenerateProps) {
   const {
     status,
     steps,
@@ -142,7 +144,8 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
     }
   }, [rejectReason, reject])
 
-  const showModal = status === 'paused' && pausedSnapshot !== null && !suppressCheckpoint
+  const showModal = status === 'paused' && pausedSnapshot !== null
+    && (!suppressCheckpointNodeId || pausedSnapshot.node_id !== suppressCheckpointNodeId)
 
   // 弹窗关闭/重新打开时重置驳回输入状态
   useEffect(() => {
@@ -160,7 +163,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
   // 恢复中不显示 idle 占位，等拿到结果后直接展示 pipeline
   if (isIdle && !briefData && !restoring) {
     return (
-      <div className="mw-placeholder">
+      <div className="mw-placeholder" style={{ flex: 1 }}>
         <div className="ph-title">📋 方案生成</div>
         <div>请先在 ② 简报屏填写信息，点击「AI 生成方案」开始</div>
       </div>
@@ -168,7 +171,9 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
   }
 
   return (
-    <>
+    <div className="mw-generate-scroll" style={{ flex: 1, paddingBottom: 20, overflowY: 'auto', overflowX: 'hidden' }}>
+      <style>{`.mw-generate-scroll{scrollbar-width:none!important;-ms-overflow-style:none!important}
+.mw-generate-scroll::-webkit-scrollbar{display:none!important;width:0!important;height:0!important;background:transparent!important;}`}</style>
       {status !== 'idle' && (
       <div className="sec">
         <h3>智能方案生成引擎 {status === 'running' && isConnected && <span className="more" style={{color:'var(--accent)'}}>执行中…</span>}</h3>
@@ -340,6 +345,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
       {showModal && <div style={{
         position: 'absolute', inset: 0, zIndex: 50,
         display: 'flex', alignItems: 'center', justifyContent: 'center',
+        pointerEvents: 'none',
       }}>
         <div style={{
           width: 300, borderRadius: 'var(--r-lg)',
@@ -347,6 +353,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
           overflow: 'hidden', background: 'var(--bg)',
           maxHeight: '68vh',
           animation: 'bksi 0.35s cubic-bezier(0.16,1,0.3,1) both',
+          pointerEvents: 'auto',
         }}>
           <div style={{
             padding: '16px 16px 14px',
@@ -354,15 +361,21 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
           }}>
           {(() => {
               const isBk = pausedSnapshot!.node_id === 'budget_kpi'
+              const isAr = pausedSnapshot!.node_id === 'action_recommendations'
+              const isResultNode = isBk || isAr
               let bk: Record<string, unknown> | undefined
+              let ar: Record<string, unknown> | undefined
               let hasData = false
               if (isBk) {
                 bk = pausedSnapshot!.upstream_outputs.budget_kpi as Record<string, unknown> | undefined
                 hasData = !!(bk && typeof bk.total_budget !== 'undefined')
               }
-              // 只有 budget_kpi 真正执行完（有输出数据）才展示结果弹窗
-              // 否则都用通用弹窗（首次到 budget_kpi 时节点还没跑，或者非 budget_kpi 节点）
-              const showResult = isBk && hasData
+              if (isAr) {
+                ar = pausedSnapshot!.upstream_outputs.action_recommendations as Record<string, unknown> | undefined
+                hasData = !!(ar && Array.isArray(ar.actions) && ar.actions.length > 0)
+              }
+              // 只有结果节点真正执行完（有输出数据）才展示结果弹窗
+              const showResult = isResultNode && hasData
 
               if (!showResult) {
                 /* ── 通用弹窗（非 budget_kpi，或首次到 budget_kpi 但还没跑） ── */
@@ -449,7 +462,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
                 </>
               }
 
-              /* ── budget_kpi 结果弹窗（精简版） ── */
+              /* ── 结果弹窗（budget_kpi 或 action_recommendations） ── */
               return <>
                 <style>{`
                   @keyframes bk-fade-in { from { opacity: 0; transform: translateY(16px) scale(0.97); } to { opacity: 1; transform: translateY(0) scale(1); } }
@@ -466,38 +479,58 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
                   {/* 标题 */}
                   <div className="bk-section" style={{ textAlign: 'center', marginBottom: 20 }}>
                     <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)' }}>
-                      <span style={{ fontSize: 16, marginRight: 4 }}>📊</span>预算与 KPI
+                      {isBk ? <><span style={{ fontSize: 16, marginRight: 4 }}>📊</span>预算与 KPI</> : <><span style={{ fontSize: 16, marginRight: 4 }}>💡</span>行动建议</>}
                     </div>
+                    {isAr && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        {ar && Array.isArray(ar.actions) ? `共 ${ar.actions.length} 项行动建议` : ''}，点击预览查看详情
+                      </div>
+                    )}
                   </div>
 
-                  {/* 按钮组：预览预算 + 确认继续 */}
+                  {/* 按钮组 */}
                   <div className="bk-section" style={{ display: 'flex', gap: 10 }}>
-                    <button
-                      type="button"
-                      className="bk-btn"
-                      onClick={() => {
-                        // 提取数据传递给 budget preview
-                        const allocs = (bk?.allocations as Array<{category: string; percentage: number; amount: number}> | undefined) || []
-                        const kpis = (bk?.kpis as Record<string, string>) || {}
-                        const timeline = (bk?.timeline as string[]) || []
-                        // 先关弹窗再触发导航
-                        onOpenBudgetPreview({
-                          totalBudget: (bk?.total_budget as number) || 0,
-                          periodMonths: (bk?.period_months as number) || 0,
-                          allocations: allocs,
-                          kpis,
-                          timeline,
-                        })
-                      }}
-                      style={{
-                        flex: 1, height: 40, border: '1px solid var(--border)',
-                        borderRadius: 8, background: 'var(--bg)',
-                        color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
-                        fontFamily: 'var(--ff)',
-                      }}
-                    >
-                      预览预算
-                    </button>
+                    {isAr && (
+                      <button
+                        type="button"
+                        className="bk-btn"
+                        onClick={onOpenActionPreview}
+                        style={{
+                          flex: 1, height: 40, border: '1px solid var(--border)',
+                          borderRadius: 8, background: 'var(--bg)',
+                          color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          fontFamily: 'var(--ff)',
+                        }}
+                      >
+                        👁 行动预览
+                      </button>
+                    )}
+                    {isBk && (
+                      <button
+                        type="button"
+                        className="bk-btn"
+                        onClick={() => {
+                          const allocs = (bk?.allocations as Array<{category: string; percentage: number; amount: number}> | undefined) || []
+                          const kpis = (bk?.kpis as Record<string, string>) || {}
+                          const timeline = (bk?.timeline as string[]) || []
+                          onOpenBudgetPreview({
+                            totalBudget: (bk?.total_budget as number) || 0,
+                            periodMonths: (bk?.period_months as number) || 0,
+                            allocations: allocs,
+                            kpis,
+                            timeline,
+                          })
+                        }}
+                        style={{
+                          flex: 1, height: 40, border: '1px solid var(--border)',
+                          borderRadius: 8, background: 'var(--bg)',
+                          color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          fontFamily: 'var(--ff)',
+                        }}
+                      >
+                        预览预算
+                      </button>
+                    )}
                     <button
                       type="button"
                       disabled={isLoading || isConnected}
@@ -533,6 +566,6 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
           100% { box-shadow: 0 0 0 0 rgba(22, 119, 255, 0); }
         }
       `}</style>
-    </>
+    </div>
   )
 }

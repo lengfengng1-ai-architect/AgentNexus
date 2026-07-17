@@ -5,9 +5,9 @@
     {
       "name": "frontend",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev", "--", "--port", "5178"],
+      "runtimeArgs": ["run", "dev"],
       "cwd": "${workspaceFolder}/frontend",
-      "port": 5178
+      "port": 5173
     },
     {
       "name": "backend",
@@ -21,6 +21,12 @@
       "runtimeExecutable": "python3",
       "runtimeArgs": ["-m", "http.server", "3458", "--bind", "127.0.0.1"],
       "port": 3458
+    },
+    {
+      "name": "frontend5174",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": ["serve", "${workspaceFolder}/frontend/dist", "-p", "5174", "-s", "--no-clipboard"],
+      "port": 5174
     }
   ]
 }
