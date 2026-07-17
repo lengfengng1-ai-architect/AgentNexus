@@ -575,3 +575,91 @@ def test_load_prompt__empty_captions__no_caption_block():
         {"image_urls": ["/uploads/shoe.png"], "image_captions": ["", ""]},
     )
     assert "附件图片内容描述" not in prompt
+
+
+# ── 序号快捷回复规则（image-clarify-option-reply）─────────────────────────────
+
+
+def test_load_prompt__with_image_urls__renders_option_reply_rule():
+    """有 image_urls 时，prompt 包含序号快捷回复规则及 ①②③ 分流映射。"""
+    prompt = intent_recognition_agent._load_system_prompt(
+        "3",
+        {
+            "image_urls": ["/uploads/shoe.png"],
+            "conversation_history": [
+                "用户: ",
+                "AI: 收到图片！想让我帮你生成哪种内容？\n① 电商产品参数介绍图\n② 好看的宣传图\n③ 产品宣传短片",
+            ],
+        },
+    )
+    assert "序号快捷回复规则" in prompt
+    assert "generate_video" in prompt
+    assert "电商产品参数介绍图" in prompt
+    # 上文反问也在 prompt 中（LLM 具备分流的全部信息）
+    assert "① 电商产品参数介绍图" in prompt
+
+
+def test_load_prompt__option_rule__forbids_number_field_extraction():
+    """序号规则明确禁止把序号提取为预算/周期字段。"""
+    prompt = intent_recognition_agent._load_system_prompt(
+        "3",
+        {"image_urls": ["/uploads/shoe.png"]},
+    )
+    assert "不是预算/周期数字" in prompt
+
+
+def test_load_prompt__no_image_urls__no_option_reply_rule():
+    """无 image_urls 时不渲染序号快捷回复规则（其他数字场景行为不变）。"""
+    prompt = intent_recognition_agent._load_system_prompt("3", {})
+    assert "序号快捷回复规则" not in prompt
+
+
+def test_normalize__generate_video_without_video_prompt__backfills_from_caption():
+    """generate_video 有 caption 但 LLM 未产出 video_prompt 时，normalize 基于 caption 预填。"""
+    output = IntentRecognitionOutput(
+        intent="generate_video",
+        confidence=0.9,
+        reply="好的",
+        image_url="http://localhost:8000/uploads/a.png",
+        video_prompt=None,
+    )
+    normalized = intent_recognition_agent._normalize_intent_output(
+        output,
+        image_urls=["http://localhost:8000/uploads/a.png"],
+        image_captions=["一双黑绿色渐变跑鞋，城市跑道背景"],
+    )
+    assert normalized.video_prompt is not None
+    assert "黑绿色渐变跑鞋" in normalized.video_prompt
+
+
+def test_normalize__generate_video_llm_prompt_kept_over_caption_backfill():
+    """LLM 已产出 video_prompt 时不覆盖。"""
+    output = IntentRecognitionOutput(
+        intent="generate_video",
+        confidence=0.9,
+        reply="好的",
+        image_url="http://localhost:8000/uploads/a.png",
+        video_prompt="海边夕阳慢镜头",
+    )
+    normalized = intent_recognition_agent._normalize_intent_output(
+        output,
+        image_urls=["http://localhost:8000/uploads/a.png"],
+        image_captions=["一双跑鞋"],
+    )
+    assert normalized.video_prompt == "海边夕阳慢镜头"
+
+
+def test_normalize__generate_video_no_caption__video_prompt_stays_null():
+    """无 caption 时不编造 video_prompt（行为不变）。"""
+    output = IntentRecognitionOutput(
+        intent="generate_video",
+        confidence=0.9,
+        reply="好的",
+        image_url="http://localhost:8000/uploads/a.png",
+        video_prompt=None,
+    )
+    normalized = intent_recognition_agent._normalize_intent_output(
+        output,
+        image_urls=["http://localhost:8000/uploads/a.png"],
+    )
+    assert normalized.video_prompt is None

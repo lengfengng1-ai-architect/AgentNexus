@@ -137,6 +137,7 @@ def _normalize_intent_output(
     output: IntentRecognitionOutput,
     *,
     image_urls: list[str] | None = None,
+    image_captions: list[str] | None = None,
 ) -> IntentRecognitionOutput:
     """Correct intent based on field completeness.
 
@@ -205,6 +206,14 @@ def _normalize_intent_output(
     elif output.intent == "generate_video" and output.image_url:
         if "image_url" in output.missing_fields:
             output.missing_fields = [f for f in output.missing_fields if f != "image_url"]
+
+    # generate_video: 有参考图但 LLM 未产出 video_prompt 时，基于 caption 生成默认文案，
+    # 保证卡片描述预填（caption 是 VL 对用户图片的客观描述，非编造数据）
+    if output.intent == "generate_video" and not output.video_prompt and image_captions:
+        output.video_prompt = (
+            f"{image_captions[0]}，产品在画面中动态展示，"
+            "镜头环绕主体旋转，背景虚化突出产品，电商广告风格"
+        )
 
     # text_to_image（以图生图 image2image）：有参考图上下文但 LLM 未回填 image_url 时补齐
     if output.intent == "text_to_image" and not output.image_url and image_urls:
@@ -327,8 +336,13 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
     image_urls = context.get("image_urls")
     if not isinstance(image_urls, list):
         image_urls = None
+    image_captions = context.get("image_captions")
+    if isinstance(image_captions, list):
+        image_captions = [c for c in image_captions if isinstance(c, str) and c] or None
+    else:
+        image_captions = None
 
-    result = _normalize_intent_output(result, image_urls=image_urls)
+    result = _normalize_intent_output(result, image_urls=image_urls, image_captions=image_captions)
 
     logger.info(
         "Intent recognized: %s (confidence=%.2f)",
@@ -437,8 +451,13 @@ async def stream_intent_recognition(
     image_urls = context.get("image_urls")
     if not isinstance(image_urls, list):
         image_urls = None
+    image_captions = context.get("image_captions")
+    if isinstance(image_captions, list):
+        image_captions = [c for c in image_captions if isinstance(c, str) and c] or None
+    else:
+        image_captions = None
 
-    result = _normalize_intent_output(result, image_urls=image_urls)
+    result = _normalize_intent_output(result, image_urls=image_urls, image_captions=image_captions)
 
     logger.info("Intent recognized: %s (confidence=%.2f)", result.intent, result.confidence)
     yield ("", result.model_dump())
