@@ -46,6 +46,8 @@ frontend/test-results/
 backend/mock_data/**/utest_*.json
 backend/mock_data/audience_insight/*.json
 backend/mock_data/market_analysis/*.json
+# 调研结果运行时持久化（research_id 文件）
+backend/mock_data/market_analysis/results/
 backend/mock_data/user_persona/*.json
 backend/mock_data/product_info/跑力狮.json
 backend/mock_data/product_info/**/*.json

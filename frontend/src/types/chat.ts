@@ -60,6 +60,8 @@ export interface ChatMessage {
   marketResearchProgressLogs?: string[]
   /** 市场分析完成后的完整结构化结果 */
   marketResearchResult?: Record<string, unknown>
+  /** 调研结果 ID（mr-<8位hex>），结果页按此 ID 从后端拉取完整报告，刷新后仍可用 */
+  researchId?: string
 }
 
 export type FieldKey = keyof BrandInput

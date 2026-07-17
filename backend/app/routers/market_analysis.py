@@ -50,3 +50,26 @@ async def market_analysis_stream(request: MarketAnalysisRequest):
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=APIError(detail=str(exc), code="analysis_stream_error", errors=None).model_dump(),
         )
+
+
+@router.get("/market-analysis/results/{research_id}")
+def market_analysis_result_get(research_id: str):
+    """按 research_id 拉取已持久化的调研结果（供移动端结果页刷新后重新获取）。
+
+    同步 def（非 async）：内部是文件 IO，FastAPI 会放进线程池执行，不阻塞事件循环。
+    """
+    try:
+        result = market_analysis_service.get_research_result(research_id)
+        if result is None:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=APIError(detail="调研结果不存在或已过期", code="result_not_found", errors=None).model_dump(),
+            )
+        return result
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=APIError(detail=str(exc), code="result_read_error", errors=None).model_dump(),
+        )

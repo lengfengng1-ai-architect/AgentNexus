@@ -9,6 +9,9 @@ Corresponding in_scope ID: market-analysis
 
 import asyncio
 import json
+import logging
+import re
+import uuid
 from collections.abc import AsyncGenerator, Callable
 from pathlib import Path
 from typing import Any
@@ -31,6 +34,38 @@ from app.config.cache_paths import MARKET_ANALYSIS_DIR, market_analysis_path
 from app.schemas.market_analysis import (
     MarketResearchResponse,
 )
+
+logger = logging.getLogger(__name__)
+
+# ── 调研结果持久化（按 research_id）──
+# ponytail: JSON 文件存储，与 _save_cache 同款惯例。天花板：单实例部署（多实例不共享
+# 文件系统）、无 TTL 清理；升级路径：换 Redis/DB 时只需改 save/get 两个函数，接口契约不变。
+_RESEARCH_RESULTS_DIR = MARKET_ANALYSIS_DIR / "results"
+_RESEARCH_ID_RE = re.compile(r"^mr-[0-9a-f]{8}$")
+
+
+def save_research_result(response: MarketResearchResponse) -> str:
+    """持久化调研结果，返回 research_id（mr-<8位hex>）。落盘失败仅记日志，仍返回 ID。"""
+    research_id = f"mr-{uuid.uuid4().hex[:8]}"
+    try:
+        _RESEARCH_RESULTS_DIR.mkdir(parents=True, exist_ok=True)
+        (_RESEARCH_RESULTS_DIR / f"{research_id}.json").write_text(
+            response.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8"
+        )
+    except OSError:
+        logger.exception("调研结果落盘失败 research_id=%s", research_id)
+    return research_id
+
+
+def get_research_result(research_id: str) -> MarketResearchResponse | None:
+    """按 ID 读取已持久化的调研结果；ID 格式非法或文件不存在返回 None。"""
+    if not _RESEARCH_ID_RE.match(research_id):
+        return None
+    path = _RESEARCH_RESULTS_DIR / f"{research_id}.json"
+    if not path.exists():
+        return None
+    data = json.loads(path.read_text(encoding="utf-8"))
+    return MarketResearchResponse.model_validate(data)
 
 
 def _load_cache(market_name: str) -> MarketResearchResponse | None:
@@ -144,7 +179,8 @@ async def analyze_stream(market_name: str, category: str) -> AsyncGenerator[str,
             })
             report = await call_node_synthesize(market_name, d1, d2, d3, d4, d5, d6, emit=emit)
             response = assemble_result(market_name, category, d1, d2, d3, d4, d5, d6, report)
-            emit("result", response.model_dump())
+            research_id = save_research_result(response)
+            emit("result", {**response.model_dump(), "research_id": research_id})
         except Exception as exc:
             emit("node_end", {
                 "node": "synthesize",

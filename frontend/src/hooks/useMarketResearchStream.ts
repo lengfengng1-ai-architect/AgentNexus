@@ -22,7 +22,7 @@ interface DispatchMethods {
   setMarketResearchDone: (messageId: string) => void
   appendMarketResearchSources: (messageId: string, sources: { url: string; title: string }[]) => void
   appendMarketResearchLog: (messageId: string, log: string) => void
-  setMarketResearchResult: (messageId: string, result: Record<string, unknown>) => void
+  setMarketResearchResult: (messageId: string, result: Record<string, unknown>, researchId?: string) => void
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -236,7 +236,8 @@ export function useMarketResearchStream(dispatch: DispatchMethods) {
                 // ── 最终结果 ──
                 case 'result': {
                   const resultData = parsed.result || parsed
-                  dispatch.setMarketResearchResult(msgId, resultData)
+                  const researchId = (parsed.research_id as string) || undefined
+                  dispatch.setMarketResearchResult(msgId, resultData, researchId)
                   const report = resultData.full_report || ''
                   if (report) {
                     dispatch.updateMessageContent(msgId, report)

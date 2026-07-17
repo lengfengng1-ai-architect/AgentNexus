@@ -45,6 +45,8 @@ paths:
       description: |
         接收品牌名称和品类，以 Server-Sent Events 方式逐步推送分析进度。
         每次完成一个维度搜索后 push progress 事件，最后 push result 事件。
+        result 事件 payload 为完整调研结果，顶层附带 research_id 字段（格式 mr-<8位小写hex>），
+        服务端已将结果持久化，可通过 GET /market-analysis/results/{research_id} 重新拉取。
         支持 mock 模式（USE_MOCK_DATA=true）。
       requestBody:
         required: true
@@ -75,6 +77,40 @@ paths:
                 example: "no"
         "422":
           $ref: "#/components/responses/ValidationError"
+        "500":
+          $ref: "#/components/responses/InternalError"
+
+  /market-analysis/results/{research_id}:
+    get:
+      operationId: "market_analysis_result_get"
+      summary: "按 ID 拉取调研结果"
+      description: |
+        按 research_id 返回 SSE 流式分析完成时持久化的完整调研结果。
+        research_id 由 SSE result 事件下发（格式 mr-<8位小写hex>）。
+        用于移动端调研结果页刷新后重新拉取报告数据。
+      parameters:
+        - name: research_id
+          in: path
+          required: true
+          description: "调研结果 ID（mr- 前缀 + 8 位小写 hex）"
+          schema:
+            type: string
+            pattern: "^mr-[0-9a-f]{8}$"
+            example: "mr-3f8a2b1c"
+      responses:
+        "200":
+          description: "成功返回调研结果"
+          content:
+            application/json:
+              schema:
+                type: object
+                description: "完整调研结果（MarketResearchResponse：result + confidence）"
+        "404":
+          description: "结果不存在或 research_id 格式非法"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
         "500":
           $ref: "#/components/responses/InternalError"
 

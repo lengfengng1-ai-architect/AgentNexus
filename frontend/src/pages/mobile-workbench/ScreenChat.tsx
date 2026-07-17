@@ -13,10 +13,10 @@ import type { SuggestedPrompt } from './screen-chat/types'
 import './screen-chat/screen-chat.css'
 import type { BrandInput } from '../../types/chat'
 
-export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview'
+export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview' | 'research-report'
 
 interface ScreenChatProps {
-  onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => void
+  onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string) => void
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -349,6 +349,14 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     return null
   }, [showActionPanel, showFocusChips, suggestedPrompts, handleChipClick])
 
+  // ── 调研结果页入口 ──────────────────────────────────────────────────
+  const handleOpenResearchReport = useCallback((msgId: string) => {
+    const msg = messages.find(m => m.id === msgId)
+    if (!msg?.researchId) return  // 兜底：无 researchId 不跳转
+    // inputText 位置复用传 marketName 作覆盖屏顶栏兜底标题
+    onNavigate('research-report', msg.marketName || '', undefined, msg.researchId)
+  }, [messages, onNavigate])
+
   const chatContent = useMemo(() => (
     <>
       {messages.map(m => (
@@ -362,13 +370,14 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
           }
           onRetry={m.retryable ? handleRetry : undefined}
           onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
+          onOpenResearchReport={m.researchId ? handleOpenResearchReport : undefined}
           onVideoResult={updateVideoResult}
           onImageResult={updateImageResult}
         />
       ))}
       <div ref={bottomRef} />
     </>
-  ), [messages, marketResearchActiveIds, activeSearches, handleRetry, handleGeneratePlan, updateVideoResult, updateImageResult])
+  ), [messages, marketResearchActiveIds, activeSearches, handleRetry, handleGeneratePlan, handleOpenResearchReport, updateVideoResult, updateImageResult])
 
   return (
     <div className="chat-screen">

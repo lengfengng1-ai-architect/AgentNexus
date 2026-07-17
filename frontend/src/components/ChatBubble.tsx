@@ -4,6 +4,7 @@ import type { ChatMessage } from '../types/chat'
 import { InlineVideoCard } from './InlineVideoCard'
 import { InlineImageCard } from './InlineImageCard'
 import { MarketResearchProgressCard } from './MarketResearchProgressCard'
+import { ResearchReportEntryCard } from './ResearchReportEntryCard'
 
 function isSafeImageUrl(url: string): boolean {
   try {
@@ -98,11 +99,12 @@ interface ChatBubbleProps {
   variant?: 'mobile'
   onRetry?: (messageId: string) => void
   onGeneratePlan?: (messageId: string) => void
+  onOpenResearchReport?: (messageId: string) => void
   onVideoResult?: (messageId: string, result: NonNullable<ChatMessage['videoResult']>) => void
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function ChatBubble({ message, isMarketResearchActive = false, activeSearches, variant, onRetry, onGeneratePlan, onVideoResult, onImageResult }: ChatBubbleProps) {
+export function ChatBubble({ message, isMarketResearchActive = false, activeSearches, variant, onRetry, onGeneratePlan, onOpenResearchReport, onVideoResult, onImageResult }: ChatBubbleProps) {
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
   const isVideoIntent = message.intent === 'generate_video' || message.intent === 'text_to_video'
@@ -125,18 +127,26 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
       >
         {/* 市场分析：流式进行中 → 进度卡片 */}
         {isMarketResearch && message.marketResearchResult ? (
-          /* 完成态：渲染 full_report markdown（PC/移动端统一） */
-          <div
-            className={variant === 'mobile' ? 'market-report-mobile' : 'market-report text-sm leading-relaxed sm:text-base'}
-            style={{ whiteSpace: 'normal' }}
-            dangerouslySetInnerHTML={{
-              __html: marked.parse(
-                (message.marketResearchResult as Record<string, unknown>)?.full_report as string ||
-                  message.content ||
-                  '',
-              ),
-            }}
-          />
+          variant === 'mobile' && message.researchId && onOpenResearchReport ? (
+            /* 移动端完成态（有 researchId）：摘要卡片 + 结果页入口 */
+            <ResearchReportEntryCard
+              result={message.marketResearchResult}
+              onOpen={() => onOpenResearchReport(message.id)}
+            />
+          ) : (
+            /* 完成态：渲染 full_report markdown（PC 端统一 / 移动端历史消息无 researchId 兼容） */
+            <div
+              className={variant === 'mobile' ? 'market-report-mobile' : 'market-report text-sm leading-relaxed sm:text-base'}
+              style={{ whiteSpace: 'normal' }}
+              dangerouslySetInnerHTML={{
+                __html: marked.parse(
+                  (message.marketResearchResult as Record<string, unknown>)?.full_report as string ||
+                    message.content ||
+                    '',
+                ),
+              }}
+            />
+          )
         ) : isMarketResearch && (message.marketResearchSources?.length || message.marketResearchProgressLogs?.length) ? (
           /* 进度态：搜索来源 + 进度日志双窗口（可滚动） */
           <MarketResearchProgressCard

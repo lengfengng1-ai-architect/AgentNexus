@@ -11,6 +11,7 @@ import { ScreenActions } from './ScreenActions'
 import { ScreenDispatch } from './ScreenDispatch'
 import { ScreenBudgetPreview, type BudgetAllocation } from './ScreenBudgetPreview'
 import { ScreenActionPreview } from './ScreenActionPreview'
+import { ScreenResearchReport } from './ScreenResearchReport'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import { exportPlanPdf, exportPlanXlsx } from '../../api/plan'
 import type { BrandInput } from '../../types/chat'
@@ -25,7 +26,7 @@ const TABS: { key: MobileScreen; label: string }[] = [
 ]
 
 // 隐藏 Tab 栏的屏
-const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview']
+const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview', 'research-report']
 
 const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   chat: { t: '营销方案助手', sub: 'AllyGo Agent' },
@@ -35,6 +36,8 @@ const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   actions: { t: '下一步行动建议', sub: '魅力系列 · 共 6 项' },
   dispatch: { t: '下发与转发达成', sub: '统一发声 · 跨盟下发' },
   'budget-preview': { t: '预算分配与预览', sub: '' },
+  'action-preview': { t: '行动预览', sub: '' },
+  'research-report': { t: '调研结果', sub: '' },
 }
 
 // 从 pendingChatData 的 inputText 中提取 product_label 用于 topbar
@@ -70,6 +73,12 @@ export function MobileWorkbenchPage() {
 
   // Action preview state
   const [actionPreviewLoading, setActionPreviewLoading] = useState(false)
+
+  // Research report overlay state：查看的 researchId + 退出动画标记
+  const [researchReportId, setResearchReportId] = useState<string | null>(null)
+  const [isRrAnimatingOut, setIsRrAnimatingOut] = useState(false)
+  // 打开覆盖屏时缓存 marketName 作顶栏兜底（拉取成功后被 result.market_name 覆盖）
+  const [researchReportTitle, setResearchReportTitle] = useState('')
 
   // Action preview data — extracted from pausedSnapshot
   const [actionPreviewData, setActionPreviewData] = useState<{
@@ -258,7 +267,15 @@ export function MobileWorkbenchPage() {
   }, [actionPreviewLoading, planRun.pausedSnapshot])
 
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
-  const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => {
+  const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string) => {
+    if (s === 'research-report') {
+      // 调研结果页：记录 researchId，覆盖屏自行拉取数据；inputText 位置是 marketName 兜底标题
+      if (!researchId) return  // 兜底：无 researchId 不跳转
+      setResearchReportId(researchId)
+      setResearchReportTitle(inputText || '')
+      setScreen('research-report')
+      return
+    }
     if (inputText || brandInput) {
       setPendingChatData({ inputText, brandInput })
     } else {
@@ -283,6 +300,7 @@ export function MobileWorkbenchPage() {
       preview: 'generate',
       'budget-preview': 'generate',
       'action-preview': 'generate',
+      'research-report': 'chat',
       actions: 'generate',
       dispatch: 'actions',
     }
@@ -307,9 +325,19 @@ export function MobileWorkbenchPage() {
   const meta = topbarText[screen]
   const isExportReady = (screen === 'generate' || screen === 'preview') && status === 'completed'
 
+  // 调研结果页返回：触发滑出动画 → 300ms 后卸载覆盖层回到聊天屏（与 budget-preview 同构）
+  const handleResearchReportBack = () => {
+    setIsRrAnimatingOut(true)
+    setTimeout(() => {
+      setIsRrAnimatingOut(false)
+      setResearchReportId(null)
+      setScreen('chat')
+    }, 300)
+  }
+
   // 预算预览页在手机框内展示，使用自己的顶栏，隐藏 PhoneFrame 顶栏
   // 动画退出中也不显示 topbar（保持视觉连贯）
-  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview'
+  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview' || screen === 'research-report'
 
   // 预算预览正在展示中：包括正在展示 slide-in 或已展示
   const showingBudgetPreview = screen === 'budget-preview' || isBpAnimatingOut
@@ -324,6 +352,9 @@ export function MobileWorkbenchPage() {
 
   // action-preview 与 budget-preview 共享 hideTopbar 和 showing 逻辑
   const showingActionPreview = screen === 'action-preview'
+
+  // 调研结果覆盖屏展示中（含滑出动画期间）
+  const showingResearchReport = screen === 'research-report' || isRrAnimatingOut
 
   // 方案生成活跃状态：running / paused 时简报页按钮应显示生成中并禁用
   const isPlanGenerating = status === 'running' || status === 'paused'
@@ -449,6 +480,23 @@ export function MobileWorkbenchPage() {
                 onReject={handleActionRegen}
                 onBack={handleActionPreviewBack}
                 loading={actionPreviewLoading}
+              />
+            </div>
+          )}
+          {/* 调研结果覆盖层：手机框内绝对定位，从右往左滑入/滑出 */}
+          {showingResearchReport && researchReportId && (
+            <div
+              className={isRrAnimatingOut ? 'rr-slide-out' : 'rr-slide-in'}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column',
+                background: 'var(--bg)', overflow: 'hidden',
+              }}
+            >
+              <ScreenResearchReport
+                researchId={researchReportId}
+                fallbackTitle={researchReportTitle}
+                onBack={handleResearchReportBack}
               />
             </div>
           )}
