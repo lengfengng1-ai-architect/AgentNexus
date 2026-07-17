@@ -150,8 +150,16 @@
   overflow: hidden;
   position: relative;
 }
-.mw .screen::-webkit-scrollbar {
-  display: none;
+/* 强制隐藏所有内部滚动器的滚动条 */
+.mw-generate-scroll {
+  scrollbar-width: none !important;
+  -ms-overflow-style: none !important;
+}
+.mw-generate-scroll::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
 }
 
 /* —— 状态栏 / 顶栏 —— */
@@ -702,9 +710,15 @@
   animation: slide-out-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
+/* —— 行动预览覆盖层 —— */
+.mw .ap-overlay {
+  animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .mw .bp-slide-in,
-  .mw .bp-slide-out {
+  .mw .bp-slide-out,
+  .mw .ap-overlay {
     animation: none;
   }
   .mw .bp-slide-out {
