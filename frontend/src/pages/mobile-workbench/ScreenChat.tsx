@@ -68,6 +68,16 @@ const FOCUS_CHIP_ICONS: Record<string, () => JSX.Element> = {
   ),
 }
 
+// ponytail: 聚焦态 chips 的示例开场白。与药丸 displayPrompts 解耦——4 条 send-text 示例，
+// 每条带 payload，点击走 sendMessage(payload) → 意图路由（避免旧 chips 对无 payload 胶囊的"填 label"死路）。
+// 注意：action 字段在此仅作 FOCUS_CHIP_ICONS 的图标索引，不代表真实动作（真实动作统一是发送 payload）。
+const FOCUS_CHIP_EXAMPLES: SuggestedPrompt[] = [
+  { id: 'example-market', icon: '', label: '帮我调研一下智能手表', action: 'prefill-market-analysis', payload: '帮我调研一下智能手表' },
+  { id: 'example-image', icon: '', label: '帮我生成一张运动产品海报', action: 'virtual-image', payload: '帮我生成一张运动产品海报' },
+  { id: 'example-video', icon: '', label: '帮我做一条产品宣传片', action: 'virtual-video', payload: '帮我做一条产品宣传片' },
+  { id: 'example-query', icon: '', label: '上海有哪些运动赛事', action: 'send-text', payload: '上海有哪些运动赛事' },
+]
+
 // ponytail: 简单随机打乱；天花板是伪随机分布不均，升级路径可引入加权或后端推荐
 function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
@@ -329,7 +339,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     if (showFocusChips) {
       return (
         <div className="focus-chips visible">
-          {displayPrompts.map(p => (
+          {FOCUS_CHIP_EXAMPLES.map(p => (
             <button
               key={p.id}
               type="button"
@@ -347,7 +357,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
       )
     }
     return null
-  }, [showActionPanel, showFocusChips, suggestedPrompts, handleChipClick])
+  }, [showActionPanel, showFocusChips, handleChipClick])
 
   // ── 调研结果页入口 ──────────────────────────────────────────────────
   const handleOpenResearchReport = useCallback((msgId: string) => {
