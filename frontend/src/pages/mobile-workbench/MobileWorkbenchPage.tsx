@@ -13,6 +13,7 @@ import { ScreenBudgetPreview, type BudgetAllocation } from './ScreenBudgetPrevie
 import { ScreenActionPreview } from './ScreenActionPreview'
 import { ScreenResearchReport } from './ScreenResearchReport'
 import { ScreenDraftList } from './ScreenDraftList'
+import { ScreenBudgetAssessment } from './ScreenBudgetAssessment'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import { exportPlanPdf, exportPlanXlsx } from '../../api/plan'
 import type { BrandInput } from '../../types/chat'
@@ -28,7 +29,7 @@ const TABS: { key: MobileScreen; label: string }[] = [
 ]
 
 // 隐藏 Tab 栏的屏（草稿列表作为 Tab 本身，保持 Tab 栏可见）
-const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview', 'research-report']
+const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview', 'research-report', 'budget-assessment']
 
 const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   chat: { t: '营销方案助手', sub: 'AllyGo Agent' },
@@ -40,6 +41,7 @@ const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   'budget-preview': { t: '预算分配与预览', sub: '' },
   'action-preview': { t: '行动预览', sub: '' },
   'research-report': { t: '调研结果', sub: '' },
+  'budget-assessment': { t: '预算评估', sub: '' },
   'draft-list': { t: '方案草稿', sub: '' },
 }
 
@@ -82,6 +84,11 @@ export function MobileWorkbenchPage() {
   const [isRrAnimatingOut, setIsRrAnimatingOut] = useState(false)
   // 打开覆盖屏时缓存 marketName 作顶栏兜底（拉取成功后被 result.market_name 覆盖）
   const [researchReportTitle, setResearchReportTitle] = useState('')
+
+  // Budget assessment overlay state：查看的 budgetAssessmentId + 退出动画标记 + 兜底标题
+  const [budgetAssessmentId, setBudgetAssessmentId] = useState<string | null>(null)
+  const [isBuAnimatingOut, setIsBuAnimatingOut] = useState(false)
+  const [budgetAssessmentTitle, setBudgetAssessmentTitle] = useState('')
 
   // Action preview data — extracted from pausedSnapshot
   const [actionPreviewData, setActionPreviewData] = useState<{
@@ -270,13 +277,21 @@ export function MobileWorkbenchPage() {
   }, [actionPreviewLoading, planRun.pausedSnapshot])
 
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
-  const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string) => {
+  const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string, budgetAssessmentIdParam?: string) => {
     if (s === 'research-report') {
       // 调研结果页：记录 researchId，覆盖屏自行拉取数据；inputText 位置是 marketName 兜底标题
       if (!researchId) return  // 兜底：无 researchId 不跳转
       setResearchReportId(researchId)
       setResearchReportTitle(inputText || '')
       setScreen('research-report')
+      return
+    }
+    if (s === 'budget-assessment') {
+      // 预算评估详情页：记录 budgetAssessmentId，覆盖屏自行拉取；inputText 是兜底标题
+      if (!budgetAssessmentIdParam) return
+      setBudgetAssessmentId(budgetAssessmentIdParam)
+      setBudgetAssessmentTitle(inputText || '')
+      setScreen('budget-assessment')
       return
     }
     if (inputText || brandInput) {
@@ -304,6 +319,7 @@ export function MobileWorkbenchPage() {
       'budget-preview': 'generate',
       'action-preview': 'generate',
       'research-report': 'chat',
+      'budget-assessment': 'chat',
       'draft-list': 'chat',
       actions: 'generate',
       dispatch: 'actions',
@@ -339,6 +355,16 @@ export function MobileWorkbenchPage() {
     }, 300)
   }
 
+  // 预算评估详情页返回：滑出动画 → 300ms 后卸载回聊天屏
+  const handleBudgetBack = () => {
+    setIsBuAnimatingOut(true)
+    setTimeout(() => {
+      setIsBuAnimatingOut(false)
+      setBudgetAssessmentId(null)
+      setScreen('chat')
+    }, 300)
+  }
+
   // 草稿详情跳转：恢复 run_id → 切到目标 Tab（preview/actions）
   const handleDraftRestorePlan = async (runId: string, target: 'preview' | 'actions') => {
     // 写入 run_id 供 ScreenGenerate 后续刷新/恢复使用
@@ -349,7 +375,7 @@ export function MobileWorkbenchPage() {
 
   // 预算预览页在手机框内展示，使用自己的顶栏，隐藏 PhoneFrame 顶栏
   // 动画退出中也不显示 topbar（保持视觉连贯）
-  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview' || screen === 'research-report' || screen === 'draft-list'
+  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview' || screen === 'research-report' || screen === 'draft-list' || screen === 'budget-assessment'
 
   // 预算预览正在展示中：包括正在展示 slide-in 或已展示
   const showingBudgetPreview = screen === 'budget-preview' || isBpAnimatingOut
@@ -367,6 +393,9 @@ export function MobileWorkbenchPage() {
 
   // 调研结果覆盖屏展示中（含滑出动画期间）
   const showingResearchReport = screen === 'research-report' || isRrAnimatingOut
+
+  // 预算评估覆盖屏展示中（含滑出动画期间）
+  const showingBudgetAssessment = screen === 'budget-assessment' || isBuAnimatingOut
 
   // 方案生成活跃状态：running / paused 时简报页按钮应显示生成中并禁用
   const isPlanGenerating = status === 'running' || status === 'paused'
@@ -512,6 +541,23 @@ export function MobileWorkbenchPage() {
                 researchId={researchReportId}
                 fallbackTitle={researchReportTitle}
                 onBack={handleResearchReportBack}
+              />
+            </div>
+          )}
+          {/* 预算评估详情覆盖层：手机框内绝对定位，从右往左滑入/滑出 */}
+          {showingBudgetAssessment && budgetAssessmentId && (
+            <div
+              className={isBuAnimatingOut ? 'budget-slide-out' : 'budget-slide-in'}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column',
+                background: 'var(--bg)', overflow: 'hidden',
+              }}
+            >
+              <ScreenBudgetAssessment
+                budgetId={budgetAssessmentId}
+                fallbackTitle={budgetAssessmentTitle}
+                onBack={handleBudgetBack}
               />
             </div>
           )}

@@ -5,6 +5,7 @@ import { InlineVideoCard } from './InlineVideoCard'
 import { InlineImageCard } from './InlineImageCard'
 import { MarketResearchProgressCard } from './MarketResearchProgressCard'
 import { ResearchReportEntryCard } from './ResearchReportEntryCard'
+import { BudgetAssessmentEntryCard } from './BudgetAssessmentEntryCard'
 
 function isSafeImageUrl(url: string): boolean {
   try {
@@ -100,17 +101,19 @@ interface ChatBubbleProps {
   onRetry?: (messageId: string) => void
   onGeneratePlan?: (messageId: string) => void
   onOpenResearchReport?: (messageId: string) => void
+  onOpenBudgetAssessment?: (messageId: string) => void
   onVideoResult?: (messageId: string, result: NonNullable<ChatMessage['videoResult']>) => void
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function ChatBubble({ message, isMarketResearchActive = false, activeSearches, variant, onRetry, onGeneratePlan, onOpenResearchReport, onVideoResult, onImageResult }: ChatBubbleProps) {
+export function ChatBubble({ message, isMarketResearchActive = false, activeSearches, variant, onRetry, onGeneratePlan, onOpenResearchReport, onOpenBudgetAssessment, onVideoResult, onImageResult }: ChatBubbleProps) {
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
   const isVideoIntent = message.intent === 'generate_video' || message.intent === 'text_to_video'
   const videoPrompt = message.intent === 'generate_video' ? message.videoPrompt : message.generationPrompt
   const isImageIntent = message.intent === 'text_to_image'
   const isMarketResearch = !isUser && message.intent === 'market_research'
+  const isBudgetAssessment = !isUser && message.intent === 'budget_assessment'
   // ponytail: isMarketResearchActive 由父级传入但当前组件未使用，保留以保持 props 兼容
   void isMarketResearchActive
 
@@ -125,8 +128,13 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
           message.isError ? 'ring-2 ring-start/50' : '',
         ].join(' ')}
       >
-        {/* 市场分析：流式进行中 → 进度卡片 */}
-        {isMarketResearch && message.marketResearchResult ? (
+        {/* 预算评估：完成态（有 budgetAssessmentId）→ 摘要卡片 + 详情页入口 */}
+        {isBudgetAssessment && message.budgetAssessmentResult && variant === 'mobile' && message.budgetAssessmentId && onOpenBudgetAssessment ? (
+          <BudgetAssessmentEntryCard
+            result={message.budgetAssessmentResult}
+            onOpen={() => onOpenBudgetAssessment(message.id)}
+          />
+        ) : isMarketResearch && message.marketResearchResult ? (
           variant === 'mobile' && message.researchId && onOpenResearchReport ? (
             /* 移动端完成态（有 researchId）：摘要卡片 + 结果页入口 */
             <ResearchReportEntryCard

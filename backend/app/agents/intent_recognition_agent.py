@@ -96,6 +96,7 @@ def _parse_brand_input(data: dict[str, Any]) -> BrandInput:
 _CATEGORY_PATTERNS = (
     re.compile(r'属于(.+?)品类'),
     re.compile(r'品类[是为：:]\s*(.+?)(?=[，。、\n]|$)'),
+    re.compile(r'([一-龥]{2,8})品类'),  # "运动鞋品类" → 运动鞋
 )
 
 
@@ -155,9 +156,9 @@ def _normalize_intent_output(
         if getattr(output.brand_input, field) is None
     ]
 
-    INDEPENDENT = ("chat", "query_data", "clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research")
+    INDEPENDENT = ("chat", "query_data", "clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment")
 
-    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image", "market_research"):
+    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment"):
         output.intent = "generate_plan"
         output.confidence = max(output.confidence, 0.95)
     elif missing and output.intent not in INDEPENDENT:
@@ -193,6 +194,24 @@ def _normalize_intent_output(
             output.missing_fields = []
             if not output.reply:
                 output.reply = f"好的！我已了解研究目标：{output.market_name}（{output.brand_input.category}）。请点击「开始分析」按钮进行市场分析。"
+
+    # budget_assessment: 需要 category/budget/period/city 四字段；缺则保持意图 + 反问
+    # （镜像 market_research：缺字段时不翻转为 clarify，避免被后面的 clarify 回复覆盖；
+    #  前端据 missing_fields 空否决定触发评估流或显示反问）
+    if output.intent == "budget_assessment":
+        ba_required = ("category", "budget", "period", "city")
+        ba_missing = [f for f in ba_required if getattr(output.brand_input, f) is None]
+        if ba_missing:
+            output.missing_fields = ba_missing
+            _ba_labels = {"category": "品类", "budget": "预算（万元）", "period": "周期（月）", "city": "城市"}
+            cn_ba = [_ba_labels.get(f, f) for f in ba_missing]
+            if not output.reply:
+                output.reply = f"好的，为您做预算评估。还需要了解：{'、'.join(cn_ba)}"
+        else:
+            output.missing_fields = []
+            bi = output.brand_input
+            if not output.reply:
+                output.reply = f"好的！为您评估 {bi.category} 在 {bi.city} 的预算方案（{bi.budget}万 / {bi.period}个月），请点击「开始评估」按钮。"
 
     # generate_video: image_url 检查，支持从 context.image_urls 回填
     if output.intent == "generate_video" and not output.image_url:
@@ -319,8 +338,15 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
         if result.reply and "品类" in result.reply:
             result.brand_input.category = None
 
-    # LLM 直接返回 market_research 时也可能同时设置 category 并反问"品类"
-    if result.reply and "品类" in result.reply and result.brand_input.category is not None:
+    # LLM 直接返回 market_research 时也可能同时设置 category 并反问"品类"。
+    # 仅对 market_research 生效——budget_assessment 的回复会合法地提到"品类"
+    # （如"运动鞋品类，上海…"），不应清除其 category。
+    if (
+        result.intent == "market_research"
+        and result.reply
+        and "品类" in result.reply
+        and result.brand_input.category is not None
+    ):
         result.brand_input.category = None
 
     # Fill market_name from context

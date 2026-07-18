@@ -17,7 +17,7 @@ class IntentRecognitionOutput(BaseModel):
     intent: str = Field(
         ...,
         description="用户意图",
-        pattern="^(generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research)$",
+        pattern="^(generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research|budget_assessment)$",
     )
     confidence: float = Field(..., ge=0.0, le=1.0, description="意图置信度")
     reply: str = Field(..., description="给用户的直接回复文案")

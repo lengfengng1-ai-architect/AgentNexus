@@ -44,6 +44,17 @@ capabilities:
         数据引用必须来自搜索或 mock，LLM 不可编造厂商/赛事/达人名称。
         MVP 阶段支持 mock 模式（USE_MOCK_DATA=true）。
 
+    - id: "budget-analysis"
+      name: "预算评估"
+      description: "基于品类/预算/周期/城市，结合 mock 平台数据给出预算分配建议（达人/内容/活动/投放/运营）、KPI 预估、时间线和一句话建议，多轮澄清收集需求，结果在聊天入口卡 + 独立详情页展示"
+      constraints: |
+        SSE 流式推送评估进度，结果持久化到 mock_data/budget_analysis/results/（ba-<uuid8>.json），按 ID 拉取。
+        allocations 数据（百分比/金额）必须来自 mock 预算模板（plan_budget_kpi.json），LLM 不可编造分配数值。
+        KPI 预估按 mock base KPI × 预算比例缩放，不可编造数值。
+        一句话建议由 LLM 基于已有 allocations/KPI 数据推理生成，不可编造厂商/赛事/达人名称。
+        MVP 阶段 allocations 用固定模板百分比，不按品类/城市调权（预留升级）。
+        仅输出规划建议，不自动花钱/下单/执行。
+
     - id: "audience-insight"
       name: "人群洞察"
       description: "基于产品名称，搜索并提取目标人群的原始数据（人口统计/购买行为/使用场景），综合生成用户画像"

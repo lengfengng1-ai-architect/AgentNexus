@@ -1,0 +1,129 @@
+/* in_scope: budget-analysis
+   OpenSpec: openspec/changes/budget-analysis
+   移动端预算评估摘要卡片（BudgetAssessmentEntryCard）。
+   仅 .mw 作用域；沿用 rre-card 卡片语言（白底/细边框/16px 圆角/轻阴影）。 */
+
+.mw .bae-card {
+  margin-top: 10px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  box-shadow: 0 2px 12px rgba(10, 36, 80, 0.06);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--fg);
+}
+
+/* ── 标题行 ─────────────────────────────────────────── */
+.mw .bae-title-row { display: flex; align-items: center; gap: 10px; }
+
+.mw .bae-title-icon {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-softer);
+  font-size: 15px;
+}
+
+.mw .bae-title { font-weight: 600; font-size: 14px; line-height: 1.3; }
+.mw .bae-sub { color: var(--muted); font-size: 11px; margin-top: 2px; }
+
+/* ── 预算分配迷你条形图 ─────────────────────────────── */
+.mw .bae-allocs { display: flex; flex-direction: column; gap: 7px; }
+
+.mw .bae-alloc-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 3px;
+}
+
+.mw .bae-alloc-cat { font-size: 11px; color: var(--fg-soft); font-weight: 500; }
+.mw .bae-alloc-pct { font-size: 11px; color: var(--accent); font-weight: 700; font-variant-numeric: tabular-nums; }
+
+.mw .bae-alloc-track {
+  height: 6px;
+  border-radius: 3px;
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.mw .bae-alloc-bar {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* ── KPI 栅格 ───────────────────────────────────────── */
+.mw .bae-kpis {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
+
+.mw .bae-kpi {
+  background: var(--surface);
+  border-radius: var(--r-md);
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.mw .bae-kpi-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--accent);
+  font-variant-numeric: tabular-nums;
+  line-height: 1.2;
+}
+
+.mw .bae-kpi-label { font-size: 10px; color: var(--muted); }
+
+/* ── 一句话建议 ─────────────────────────────────────── */
+.mw .bae-suggestion {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  padding: 9px 11px;
+  border-radius: var(--r-md);
+  background: var(--accent-softer);
+  border: 1px solid var(--accent-border);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--fg-soft);
+}
+
+.mw .bae-suggestion-icon { flex: none; font-size: 13px; }
+
+/* ── 入口按钮（毛玻璃 accent） ──────────────────────── */
+.mw .bae-cta {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: 100%;
+  padding: 11px 0;
+  border: none;
+  border-radius: 999px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #fff;
+  cursor: pointer;
+  background: var(--accent);
+  box-shadow: 0 2px 14px var(--accent-soft);
+  -webkit-backdrop-filter: blur(8px);
+  backdrop-filter: blur(8px);
+  transition: transform 0.12s ease, background 0.12s ease;
+  font-family: var(--ff);
+}
+
+.mw .bae-cta:active { background: var(--accent-deep); transform: scale(0.98); }
+.mw .bae-cta-arrow { font-size: 17px; line-height: 1; margin-top: -1px; }

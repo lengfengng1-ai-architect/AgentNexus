@@ -21,7 +21,7 @@ export interface ChatMessage {
   role: 'user' | 'ai'
   content: string
   brandInput?: BrandInput
-  intent?: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context' | 'generate_video' | 'text_to_video' | 'text_to_image' | 'market_research'
+  intent?: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context' | 'generate_video' | 'text_to_video' | 'text_to_image' | 'market_research' | 'budget_assessment'
   isComplete?: boolean
   isError?: boolean
   isLoading?: boolean
@@ -52,6 +52,12 @@ export interface ChatMessage {
   }
   /** 市场调研：字段齐全时可开始分析 */
   canStartMarketResearch?: boolean
+  /** 预算评估：字段齐全（category/budget/period/city）时可开始评估 */
+  canStartBudgetAssessment?: boolean
+  /** 预算评估完成后的结构化结果（allocations/kpis/timeline/suggestion） */
+  budgetAssessmentResult?: Record<string, unknown>
+  /** 预算评估结果 ID（ba-<8位hex>），详情页按此 ID 从后端拉取，刷新后仍可用 */
+  budgetAssessmentId?: string
   /** 市场调研目标名称（品牌名/赛道名） */
   marketName?: string
   /** 市场分析搜索来源 URL 列表（流式进行中实时追加） */

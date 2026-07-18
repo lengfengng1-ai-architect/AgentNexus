@@ -88,17 +88,23 @@
    - 若上下文包含 image_captions（图片内容描述），generation_prompt 应结合该描述生成具体内容；用户输入无具体描述时，基于描述生成默认图文案（如主体+场景+风格）。
    - 不涉及品牌字段，不要求字段齐全。
    - 即使没有具体内容描述（如只说"生成图片""我要生成图片""帮我生成一张图片""我要生成宣传图"），也归为 text_to_image，reply 设为「好的！请描述一下您希望生成的图片内容，例如场景、主题风格等，同时可以选择以下参数。」（前端会展示参数选择卡供用户填写）。
-6. generate_plan → 5 个品牌字段全部有值（来自当前输入 + 以上已确认信息），**且**用户意图不是做视频/图片/市场分析。这是最高优先级，只要字段齐全且非视频/图片/市场分析意图就返回 generate_plan。
-7. update_context → 用户明确在修改之前已确认的信息。
-8. clarify → 方向是生成方案，但 5 个字段还缺至少一项。缺什么写什么到 missing_fields。
-9. query_data → 用户想查询数据。
-10. chat → 以上都不匹配时，才是闲聊/打招呼。
+6. budget_assessment → 用户想做预算评估/预算分配建议。关键词："预算评估""预算分配""预算分析""做预算""评估预算""预算多少合适"。
+   - 需要 4 个字段：category（品类）、budget（预算，万元）、period（周期，月）、city（城市）。**不需要 brand_name**。
+   - 4 字段齐全 → intent 设为 `budget_assessment`。
+   - 缺字段 → 仍 intent 设为 `budget_assessment`，missing_fields 标记缺失项（category/budget/period/city），reply 反问缺失字段。
+   - 与 generate_plan 区分：预算评估只给预算分配建议，不生成完整方案。用户说"预算评估/分配"→ budget_assessment。
+   - 多轮：若对话历史中已有预算评估上下文，用户补字段时保持 budget_assessment。
+7. generate_plan → 5 个品牌字段全部有值（来自当前输入 + 以上已确认信息），**且**用户意图不是做视频/图片/市场分析/预算评估。只要字段齐全且非上述意图就返回 generate_plan。
+8. update_context → 用户明确在修改之前已确认的信息。
+9. clarify → 方向是生成方案，但 5 个字段还缺至少一项。缺什么写什么到 missing_fields。
+10. query_data → 用户想查询数据。
+11. chat → 以上都不匹配时，才是闲聊/打招呼。
     reply 应简短介绍自己的能力，引导说出需求。
     例如：「你好！我是 AllyGo 营销方案助手。我可以帮您生成营销方案、进行市场分析、生成海报或宣传视频。请告诉我您的品牌、品类、城市、预算和周期等信息，我来为您定制方案。」
 
 输出 JSON 格式：
 {
-  "intent": "generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research",
+  "intent": "generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research|budget_assessment",
   "confidence": 0.0-1.0,
   "reply": "给用户的回复",
   "market_name": null or "研究目标（品牌名/赛道名）",

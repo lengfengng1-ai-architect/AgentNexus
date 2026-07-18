@@ -4,6 +4,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'react'
 import { useChat } from '../../hooks/useChat'
 import { useMarketResearchStream } from '../../hooks/useMarketResearchStream'
+import { useBudgetAssessmentStream } from '../../hooks/useBudgetAssessmentStream'
 import { ChatBubble } from '../../components/ChatBubble'
 import { ErrorBar } from '../../components/ErrorBar'
 import { ChatSuggestionHeader } from './screen-chat/ChatSuggestionHeader'
@@ -13,10 +14,10 @@ import type { SuggestedPrompt } from './screen-chat/types'
 import './screen-chat/screen-chat.css'
 import type { BrandInput } from '../../types/chat'
 
-export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview' | 'research-report' | 'draft-list'
+export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview' | 'research-report' | 'draft-list' | 'budget-assessment'
 
 interface ScreenChatProps {
-  onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string) => void
+  onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string, budgetAssessmentId?: string) => void
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -26,7 +27,7 @@ const BACKEND_ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, '')
 const PINNED_PROMPT: SuggestedPrompt = { id: 'nav-brief', icon: '📝', label: '推荐方案生成', action: 'navigate-brief' }
 
 const REFRESHABLE_POOL: SuggestedPrompt[] = [
-  { id: 'prefill-brand', icon: '💰', label: '预算评估', action: 'prefill-brand-template' },
+  { id: 'prefill-brand', icon: '💰', label: '预算评估', action: 'send-text', payload: '帮我做预算评估' },
   { id: 'prefill-market', icon: '📊', label: '市场分析', action: 'prefill-market-analysis' },
   { id: 'send-alliance', icon: '🤝', label: '创建盟域', action: 'send-text', payload: '帮我创建一个盟域活动方案' },
   { id: 'send-activity', icon: '🎯', label: '创建活动', action: 'send-text', payload: '帮我策划一个品牌营销活动' },
@@ -100,6 +101,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     appendMarketResearchSources,
     appendMarketResearchLog,
     setMarketResearchResult,
+    setBudgetAssessmentResult,
   } = useChat()
 
   const {
@@ -112,6 +114,11 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     appendMarketResearchSources,
     appendMarketResearchLog,
     setMarketResearchResult,
+  })
+
+  const { startBudgetAssessment, activeIds: budgetActiveIds } = useBudgetAssessmentStream({
+    updateMessageContent,
+    setBudgetAssessmentResult,
   })
 
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -307,6 +314,18 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     }
   }, [messages, marketResearchActiveIds, startMarketResearch])
 
+  // ── 预算评估：自动触发（字段齐全时） ──────────────────────────────────────
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.canStartBudgetAssessment && !budgetActiveIds.has(m.id) && m.brandInput) {
+        const bi = m.brandInput
+        if (bi.category && bi.budget && bi.period && bi.city) {
+          startBudgetAssessment(m.id, bi.category, bi.budget, bi.period, bi.city)
+        }
+      }
+    }
+  }, [messages, budgetActiveIds, startBudgetAssessment])
+
   // 清理语音识别
   useEffect(() => {
     return () => {
@@ -367,6 +386,14 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     onNavigate('research-report', msg.marketName || '', undefined, msg.researchId)
   }, [messages, onNavigate])
 
+  // ── 预算评估详情页入口 ──────────────────────────────────────────────
+  const handleOpenBudgetAssessment = useCallback((msgId: string) => {
+    const msg = messages.find(m => m.id === msgId)
+    if (!msg?.budgetAssessmentId) return  // 兜底：无 budgetAssessmentId 不跳转
+    const title = msg.brandInput?.category ? `${msg.brandInput.category}预算评估` : '预算评估'
+    onNavigate('budget-assessment', title, undefined, undefined, msg.budgetAssessmentId)
+  }, [messages, onNavigate])
+
   const chatContent = useMemo(() => (
     <>
       {messages.map(m => (
@@ -381,13 +408,14 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
           onRetry={m.retryable ? handleRetry : undefined}
           onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
           onOpenResearchReport={m.researchId ? handleOpenResearchReport : undefined}
+          onOpenBudgetAssessment={m.budgetAssessmentId ? handleOpenBudgetAssessment : undefined}
           onVideoResult={updateVideoResult}
           onImageResult={updateImageResult}
         />
       ))}
       <div ref={bottomRef} />
     </>
-  ), [messages, marketResearchActiveIds, activeSearches, handleRetry, handleGeneratePlan, handleOpenResearchReport, updateVideoResult, updateImageResult])
+  ), [messages, marketResearchActiveIds, activeSearches, handleRetry, handleGeneratePlan, handleOpenResearchReport, handleOpenBudgetAssessment, updateVideoResult, updateImageResult])
 
   return (
     <div className="chat-screen">

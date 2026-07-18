@@ -45,6 +45,7 @@ type ChatAction =
   | { type: 'APPEND_MARKET_RESEARCH_SOURCES'; messageId: string; sources: { url: string; title: string }[] }
   | { type: 'APPEND_MARKET_RESEARCH_LOG'; messageId: string; log: string }
   | { type: 'SET_MARKET_RESEARCH_RESULT'; messageId: string; result: Record<string, unknown>; researchId?: string }
+  | { type: 'SET_BUDGET_ASSESSMENT_RESULT'; messageId: string; result: Record<string, unknown>; budgetAssessmentId?: string }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
   return {
@@ -135,6 +136,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       const msgs = state.messages.filter(m => !m.id.startsWith('stream-'))
       const canGeneratePlan = action.intent === 'generate_plan' && action.missingFields.length === 0
       const canStartMarketResearch = action.intent === 'market_research' && action.missingFields.length === 0
+      const canStartBudgetAssessment = action.intent === 'budget_assessment' && action.missingFields.length === 0
       const msgId = action.messageId || `ai-${Date.now()}`
       const aiMessage: ChatMessage = {
         id: msgId,
@@ -145,6 +147,7 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         intent: action.intent as ChatMessage['intent'],
         canGeneratePlan,
         canStartMarketResearch,
+        canStartBudgetAssessment,
         marketName: action.marketName ?? undefined,
         missingFields: action.missingFields.length > 0 ? action.missingFields : undefined,
         gate: action.gate,
@@ -254,6 +257,20 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       const next = state.messages.map(m =>
         m.id === action.messageId
           ? { ...m, marketResearchResult: action.result, researchId: action.researchId ?? m.researchId }
+          : m,
+      )
+      return { ...state, messages: next }
+    }
+
+    case 'SET_BUDGET_ASSESSMENT_RESULT': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId
+          ? {
+              ...m,
+              budgetAssessmentResult: action.result,
+              budgetAssessmentId: action.budgetAssessmentId ?? m.budgetAssessmentId,
+              canStartBudgetAssessment: false,
+            }
           : m,
       )
       return { ...state, messages: next }
@@ -431,6 +448,10 @@ export function useChat() {
     dispatch({ type: 'SET_MARKET_RESEARCH_RESULT', messageId, result, researchId })
   }, [])
 
+  const setBudgetAssessmentResult = useCallback((messageId: string, result: Record<string, unknown>, budgetAssessmentId?: string) => {
+    dispatch({ type: 'SET_BUDGET_ASSESSMENT_RESULT', messageId, result, budgetAssessmentId })
+  }, [])
+
   const latestBrandInput = getLatestBrandInput(state.messages)
   return {
     messages: state.messages,
@@ -450,6 +471,7 @@ export function useChat() {
     appendMarketResearchSources,
     appendMarketResearchLog,
     setMarketResearchResult,
+    setBudgetAssessmentResult,
   }
 }
 

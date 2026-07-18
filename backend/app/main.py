@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config.settings import settings
 from app.routers import (
     audience_insight,
+    budget_analysis,
     chat,
     health,
     image_generation,
@@ -87,6 +88,7 @@ def create_app() -> FastAPI:
     app.include_router(chat.router, prefix="/api/v1")
     app.include_router(image_generation.router, prefix="/api/v1")
     app.include_router(market_analysis.router, prefix="/api/v1")
+    app.include_router(budget_analysis.router, prefix="/api/v1")
     app.include_router(plan.router, prefix="/api/v1")
     app.include_router(product_info.router, prefix="/api/v1")
     app.include_router(audience_insight.router, prefix="/api/v1")

@@ -1,0 +1,155 @@
+# OpenSpec: 预算评估
+# in_scope id: budget-analysis
+# 字段语义/枚举值待人工确认（AI 草拟，镜像 market-analysis.yaml）
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "预算评估"
+  description: "基于品类/预算/周期/城市，结合 mock 平台数据给出预算分配建议、KPI 预估、时间线和一句话建议。SSE 流式推送进度，结果按 ID 持久化供详情页拉取。"
+  version: "v0.1"
+  x-in-scope-ref: "budget-analysis"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /budget-analysis/stream:
+    post:
+      operationId: "budget_analysis_stream"
+      summary: "SSE 流式预算评估"
+      description: |
+        接收品类/预算/周期/城市，SSE 流式推送预算评估进度（progress）和最终结果（result）。
+        result 事件携带 budget_assessment_id，供详情页按 ID 拉取。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/BudgetAssessmentRequest"
+      responses:
+        "200":
+          description: "SSE 流"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "500":
+          description: "服务异常"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+  /budget-analysis/results/{budget_id}:
+    get:
+      operationId: "budget_analysis_result_get"
+      summary: "按 ID 拉取预算评估结果"
+      description: |
+        供移动端预算详情页按 budget_assessment_id 拉取已持久化的评估结果，刷新后仍可用。
+        budget_id 格式：ba-<8位小写hex>。
+      parameters:
+        - name: budget_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^ba-[0-9a-f]{8}$"
+          description: "预算评估结果 ID"
+      responses:
+        "200":
+          description: "预算评估结果"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/BudgetAssessmentResult"
+        "404":
+          description: "结果不存在或 ID 非法"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        "500":
+          description: "服务异常"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+components:
+  schemas:
+    BudgetAssessmentRequest:
+      type: object
+      required: [category, budget, period, city]
+      properties:
+        category:
+          type: string
+          description: "品类/产品，如运动鞋、饮料"
+        budget:
+          type: integer
+          minimum: 1
+          description: "预算（万元）"
+        period:
+          type: integer
+          minimum: 1
+          description: "周期（月）"
+        city:
+          type: string
+          description: "目标城市"
+
+    BudgetAllocation:
+      type: object
+      required: [category, amount, percentage]
+      properties:
+        category:
+          type: string
+          description: "预算类别：达人合作/内容制作/活动执行/平台投放/运营资源"
+        amount:
+          type: integer
+          description: "金额（万元）"
+        percentage:
+          type: integer
+          description: "占比（%，整数）"
+
+    BudgetAssessmentResult:
+      type: object
+      required: [category, city, total_budget, period_months, allocations, kpis, timeline, suggestion]
+      properties:
+        category:
+          type: string
+        city:
+          type: string
+        total_budget:
+          type: integer
+          description: "总预算（万元）"
+        period_months:
+          type: integer
+          description: "周期（月）"
+        allocations:
+          type: array
+          items:
+            $ref: "#/components/schemas/BudgetAllocation"
+        kpis:
+          type: object
+          additionalProperties:
+            type: string
+          description: "KPI 预估，如 {曝光量: 500万+}"
+        timeline:
+          type: array
+          items:
+            type: string
+          description: "按月的时间线"
+        suggestion:
+          type: string
+          description: "一句话建议（LLM 基于数据生成）"
+
+    APIError:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          type: string
+        errors:
+          type: object
+          nullable: true
