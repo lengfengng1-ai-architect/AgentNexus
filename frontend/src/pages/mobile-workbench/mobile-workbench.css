@@ -192,9 +192,9 @@
   z-index: 10;
 }
 .mw .topbar .ico {
-  color: var(--muted);
+  color: var(--fg);
   font-size: 18px;
-  font-weight: 400;
+  font-weight: 700;
   cursor: pointer;
 }
 .mw .topbar .t {
@@ -861,3 +861,236 @@
   box-shadow: 0 4px 18px rgba(10, 36, 80, 0.07) !important;
   border-radius: var(--r-lg) !important;
 }
+
+/* ══════════════════════════════════════════════════════════════════
+   方案草稿覆盖屏（ScreenDraftList）
+   OpenSpec: openspec/changes/mobile-plan-draft
+   in_scope: plan-generation
+   列表视图（底层）+ 详情视图（滑入覆盖列表），转场同 bp/rr。
+   ══════════════════════════════════════════════════════════════════ */
+
+/* —— 转场：复用 slide-in-right / slide-out-right keyframes —— */
+.mw .draft-slide-in {
+  animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mw .draft-slide-out {
+  animation: slide-out-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mw .draft-slide-in,
+  .mw .draft-slide-out { animation: none; }
+  .mw .draft-slide-out { display: none; }
+}
+
+/* —— 屏容器：相对定位，详情视图绝对定位覆盖其上 —— */
+.mw .mrd-screen {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: linear-gradient(160deg, #eef3fb 0%, #f7f8fa 45%, #fdf8f3 100%);
+  overflow: hidden;
+}
+
+/* —— 毛玻璃 sticky 顶栏（列表态与详情态共用） —— */
+.mw .mrd-topbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  backdrop-filter: blur(20px) saturate(1.5);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.6);
+}
+.mw .mrd-back {
+  flex-shrink: 0;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+  background: rgba(255, 255, 255, 0.5);
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--fg);
+  cursor: pointer;
+  font-family: var(--ff);
+}
+.mw .mrd-back:active { background: rgba(255, 255, 255, 0.85); }
+/* 列表态顶栏无返回按钮，用等宽 spacer 让标题居中 */
+.mw .mrd-topbar-spacer { width: 32px; flex-shrink: 0; }
+.mw .mrd-topbar-text { flex: 1; min-width: 0; }
+.mw .mrd-topbar-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mw .mrd-topbar-sub { font-size: 11px; color: var(--muted); margin-top: 1px; }
+
+/* —— 3个点导出菜单容器（详情顶栏） —— */
+.mw .mrd-more-wrap { position: relative; flex-shrink: 0; }
+.mw .mrd-more {
+  display: inline-flex;
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--fg);
+  cursor: pointer;
+  user-select: none;
+}
+.mw .mrd-export-menu {
+  position: absolute;
+  top: 36px;
+  right: 0;
+  z-index: 99;
+  min-width: 124px;
+  background: #fff;
+  border-radius: 10px;
+  box-shadow: 0 6px 20px rgba(10, 36, 80, 0.14), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  padding: 4px 0;
+  overflow: hidden;
+}
+.mw .mrd-export-menu button {
+  display: block;
+  width: 100%;
+  border: none;
+  background: none;
+  padding: 10px 16px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #111;
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--ff);
+}
+.mw .mrd-export-menu button:disabled { color: #9ca3af; cursor: not-allowed; }
+.mw .mrd-export-menu button:not(:disabled):active { background: var(--surface); }
+
+/* —— 内容区：长滚动 —— */
+.mw .mrd-body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 12px 12px calc(20px + env(safe-area-inset-bottom));
+}
+
+/* —— 骨架屏（复用 shimmer） —— */
+.mw .mrd-skeleton-wrap { display: flex; flex-direction: column; gap: 12px; }
+.mw .mrd-skeleton {
+  border-radius: var(--r-lg);
+  background: linear-gradient(90deg, rgba(255,255,255,0.6) 25%, rgba(255,255,255,0.92) 50%, rgba(255,255,255,0.6) 75%);
+  background-size: 200% 100%;
+  animation: mrr-shimmer 1.4s infinite;
+  border: 1px solid rgba(255, 255, 255, 0.65);
+}
+@media (prefers-reduced-motion: reduce) {
+  .mw .mrd-skeleton { animation: none; }
+}
+
+/* —— 空态/错误占位 —— */
+.mw .mrd-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+  padding: 64px 24px;
+  text-align: center;
+}
+.mw .mrd-empty-icon { font-size: 36px; opacity: 0.5; }
+.mw .mrd-empty-text { font-size: 13px; color: var(--fg-soft); line-height: 1.6; font-weight: 600; }
+.mw .mrd-empty-hint { font-size: 12px; color: var(--muted); line-height: 1.6; }
+
+/* —— 草稿列表项 —— */
+.mw .mrd-list { display: flex; flex-direction: column; gap: 10px; }
+.mw .mrd-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border: none;
+  background: rgba(255, 255, 255, 0.72);
+  -webkit-backdrop-filter: blur(12px) saturate(1.3);
+  backdrop-filter: blur(12px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.7);
+  border-radius: var(--r-lg);
+  box-shadow: 0 2px 10px rgba(10, 36, 80, 0.05);
+  cursor: pointer;
+  text-align: left;
+  font-family: var(--ff);
+  transition: transform 0.15s, box-shadow 0.15s;
+}
+.mw .mrd-item:active {
+  transform: scale(0.985);
+  box-shadow: 0 4px 16px rgba(10, 36, 80, 0.1);
+}
+.mw .mrd-item-main { min-width: 0; flex: 1; }
+.mw .mrd-item-brand {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--fg);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mw .mrd-item-product {
+  font-size: 12px;
+  color: var(--muted);
+  margin-top: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.mw .mrd-item-time {
+  flex-shrink: 0;
+  font-size: 11px;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+/* —— 详情视图：绝对定位覆盖列表，内部滑入/滑出 —— */
+.mw .mrd-detail {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  background: linear-gradient(160deg, #eef3fb 0%, #f7f8fa 45%, #fdf8f3 100%);
+  overflow: hidden;
+}
+.mw .mrd-detail.mrd-slide-in {
+  animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.mw .mrd-detail.mrd-slide-out {
+  animation: slide-out-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .mw .mrd-detail.mrd-slide-in,
+  .mw .mrd-detail.mrd-slide-out { animation: none; }
+}
+
+/* —— 详情摘要卡片毛玻璃皮肤：覆盖 plancard 白底 —— */
+.mw .mrd-detail-body { display: flex; flex-direction: column; gap: 12px; }
+.mw .mrd-detail-body .plancard {
+  background: rgba(255, 255, 255, 0.7) !important;
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.72) !important;
+  box-shadow: 0 3px 14px rgba(10, 36, 80, 0.06) !important;
+}
+

@@ -12,6 +12,7 @@ import { ScreenDispatch } from './ScreenDispatch'
 import { ScreenBudgetPreview, type BudgetAllocation } from './ScreenBudgetPreview'
 import { ScreenActionPreview } from './ScreenActionPreview'
 import { ScreenResearchReport } from './ScreenResearchReport'
+import { ScreenDraftList } from './ScreenDraftList'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import { exportPlanPdf, exportPlanXlsx } from '../../api/plan'
 import type { BrandInput } from '../../types/chat'
@@ -23,9 +24,10 @@ const TABS: { key: MobileScreen; label: string }[] = [
   { key: 'generate', label: '③ 方案生成' },
   { key: 'actions', label: '④ 行动建议' },
   { key: 'dispatch', label: '⑤ 下发转达' },
+  { key: 'draft-list', label: '⑥ 方案草稿' },
 ]
 
-// 隐藏 Tab 栏的屏
+// 隐藏 Tab 栏的屏（草稿列表作为 Tab 本身，保持 Tab 栏可见）
 const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview', 'research-report']
 
 const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
@@ -38,6 +40,7 @@ const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   'budget-preview': { t: '预算分配与预览', sub: '' },
   'action-preview': { t: '行动预览', sub: '' },
   'research-report': { t: '调研结果', sub: '' },
+  'draft-list': { t: '方案草稿', sub: '' },
 }
 
 // 从 pendingChatData 的 inputText 中提取 product_label 用于 topbar
@@ -301,6 +304,7 @@ export function MobileWorkbenchPage() {
       'budget-preview': 'generate',
       'action-preview': 'generate',
       'research-report': 'chat',
+      'draft-list': 'chat',
       actions: 'generate',
       dispatch: 'actions',
     }
@@ -335,9 +339,17 @@ export function MobileWorkbenchPage() {
     }, 300)
   }
 
+  // 草稿详情跳转：恢复 run_id → 切到目标 Tab（preview/actions）
+  const handleDraftRestorePlan = async (runId: string, target: 'preview' | 'actions') => {
+    // 写入 run_id 供 ScreenGenerate 后续刷新/恢复使用
+    try { localStorage.setItem('allygo_mobile_plan_run_id', runId) } catch { /* ignore */ }
+    await planRun.restoreFromRunId(runId)
+    setScreen(target)
+  }
+
   // 预算预览页在手机框内展示，使用自己的顶栏，隐藏 PhoneFrame 顶栏
   // 动画退出中也不显示 topbar（保持视觉连贯）
-  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview' || screen === 'research-report'
+  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview' || screen === 'research-report' || screen === 'draft-list'
 
   // 预算预览正在展示中：包括正在展示 slide-in 或已展示
   const showingBudgetPreview = screen === 'budget-preview' || isBpAnimatingOut
@@ -373,9 +385,12 @@ export function MobileWorkbenchPage() {
         <span
           className="ico"
           onClick={() => isExportReady && setShowExportMenu(v => !v)}
-          style={{ opacity: isExportReady ? 1 : 0.3, cursor: isExportReady ? 'pointer' : 'default' }}
+          style={{ cursor: isExportReady ? 'pointer' : 'default' }}
+          role="button"
+          tabIndex={0}
+          aria-label="更多"
         >⋯</span>
-        {showExportMenu && (
+        {showExportMenu && isExportReady && (
           <div
             style={{
               position: 'absolute', top: 32, right: 0, zIndex: 999,
@@ -538,6 +553,9 @@ export function MobileWorkbenchPage() {
           </div>
           <div style={{ display: screen === 'dispatch' ? '' : 'none' }}>
             <ScreenDispatch outputs={outputs} briefData={briefData} />
+          </div>
+          <div style={{ display: screen === 'draft-list' ? 'flex' : 'none', flex: screen === 'draft-list' ? 1 : '', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+            <ScreenDraftList onRestorePlan={handleDraftRestorePlan} />
           </div>
         </PhoneFrame>
       </div>

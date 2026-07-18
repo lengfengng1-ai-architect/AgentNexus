@@ -214,7 +214,19 @@ export async function optimizeStrategy(input: OptimizeStrategyInput): Promise<st
   return body.data?.strategy ?? ''
 }
 
-export async function listPlanRuns(limit: number = 5): Promise<{ run_id: string; status: string; created_at: string }[]> {
+export interface PlanRunRecord {
+  run_id: string
+  status: string
+  created_at: string
+  /** 后端 list_runs 返回的 brand_input（含 brand_name/category/product_matrix 等）；向后兼容，旧调用方可不读 */
+  brand_input?: {
+    brand_name?: string
+    category?: string
+    product_matrix?: string
+  }
+}
+
+export async function listPlanRuns(limit: number = 5): Promise<PlanRunRecord[]> {
   const response = await fetch(`${API_BASE_URL}/plan/runs?limit=${limit}`)
 
   if (!response.ok) {
@@ -223,7 +235,7 @@ export async function listPlanRuns(limit: number = 5): Promise<{ run_id: string;
   }
 
   const body = await response.json()
-  return (body.data || []) as { run_id: string; status: string; created_at: string }[]
+  return (body.data || []) as PlanRunRecord[]
 }
 
 export interface PlanSummary {
