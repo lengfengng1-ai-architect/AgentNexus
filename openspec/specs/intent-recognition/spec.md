@@ -128,7 +128,7 @@ TBD - created by archiving change add-intent-recognition-agent. Update Purpose a
 #### Scenario: 输出结构校验
 - **WHEN** `intent_recognition` 节点返回结果
 - **THEN** 结果 SHALL 能通过 `IntentRecognitionOutput` 校验
-- **AND** `intent` SHALL 为 `generate_plan`、`query_data`、`chat`、`clarify`、`update_context`、`generate_video`、`text_to_video`、`text_to_image` 之一
+- **AND** `intent` SHALL 为 `generate_plan`、`query_data`、`chat`、`clarify`、`update_context`、`generate_video`、`text_to_video`、`text_to_image`、`activity_planning`、`budget_assessment`、`alliance_planning` 之一
 - **AND** `confidence` SHALL 在 0.0 到 1.0 之间
 
 ### Requirement: 意图识别 Prompt 模板使用 Jinja2 且不可运行时自修改
@@ -244,4 +244,48 @@ TBD - created by archiving change add-intent-recognition-agent. Update Purpose a
 - **WHEN** 意图识别处理
 - **AND** 五字段齐全
 - **THEN** intent SHALL 为 generate_plan（不受 budget_assessment 影响）
+
+### Requirement: 意图识别 SHALL 支持 activity_planning 意图与 sport_type 字段
+
+意图识别 SHALL 新增 `activity_planning` 意图（关键词"创建活动/策划活动/办活动/做活动"）。SHALL 新增 `sport_type` 字段（LLM 从用户输入提取运动类型）。字段齐全（sport_type + city）→ activity_planning；缺 → 保持意图 + 反问。完整方案请求仍走 generate_plan。
+
+#### Scenario: 活动关键词触发 activity_planning
+- **GIVEN** 用户消息含"创建活动"等关键词
+- **WHEN** 意图识别且 sport_type + city 齐全
+- **THEN** intent SHALL 为 activity_planning
+
+#### Scenario: sport_type 由 LLM 提取
+- **GIVEN** 用户消息含运动类型描述
+- **WHEN** 意图识别
+- **THEN** sport_type SHALL 由 LLM 提取（如"羽毛球"）
+- **AND** sport_type SHALL 随 intent 输出返回
+
+#### Scenario: 字段缺失走多轮反问
+- **GIVEN** 触发活动规划但 sport_type 或 city 缺失
+- **WHEN** 意图识别
+- **THEN** intent SHALL 为 activity_planning
+- **AND** missing_fields SHALL 标记缺失项
+
+#### Scenario: 与 generate_plan 区分
+- **GIVEN** 用户请求完整营销方案（非活动关键词）
+- **WHEN** 五字段齐全
+- **THEN** intent SHALL 为 generate_plan（不受 activity_planning 影响）
+
+### Requirement: 意图识别 SHALL 支持 alliance_planning 意图
+
+意图识别 SHALL 新增 `alliance_planning` 意图（关键词"创建盟域/盟域合作/建盟域/加入盟域"）。字段齐全（category + city）→ alliance_planning；缺 → 保持意图 + 反问。完整方案请求仍走 generate_plan。
+
+#### Scenario: 盟域关键词触发
+- **GIVEN** 用户消息含"创建盟域"等关键词且 category+city 齐全
+- **THEN** intent SHALL 为 alliance_planning
+
+#### Scenario: 字段缺失走多轮反问
+- **GIVEN** 触发盟域规划但 category 或 city 缺失
+- **THEN** intent SHALL 为 alliance_planning
+- **AND** missing_fields SHALL 标记缺失项
+
+#### Scenario: 与 generate_plan 区分
+- **GIVEN** 用户请求完整方案（非盟域关键词）
+- **WHEN** 五字段齐全
+- **THEN** intent SHALL 为 generate_plan
 

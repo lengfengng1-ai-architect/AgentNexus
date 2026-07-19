@@ -179,3 +179,42 @@ description: 移动端工作台①对话屏的对话会话能力，包含语音�
 - **WHEN** ChatBubble 渲染
 - **THEN** SHALL 渲染 BudgetAssessmentEntryCard
 - **AND** 点击查看按钮 SHALL 打开 ScreenBudgetAssessment 覆盖屏
+
+### Requirement: 创建活动药丸 SHALL 发送种子消息触发多轮活动规划
+
+移动端药丸"创建活动"SHALL 从原 send-text 全量触发改为发送种子消息"帮我规划一个活动"，触发 activity_planning 多轮流。
+
+#### Scenario: 点击药丸发送种子消息
+- **GIVEN** 用户点击创建活动药丸
+- **WHEN** 触发
+- **THEN** SHALL sendMessage("帮我规划一个活动")
+
+### Requirement: ChatBubble SHALL 渲染活动规划入口卡
+
+当消息携带 activity_planning_id 时，ChatBubble SHALL 渲染 ActivityPlanningEntryCard（候选赛事摘要 + 建议 + 按钮），与预算评估入口卡模式一致。
+
+#### Scenario: 活动规划完成显示入口卡
+- **GIVEN** 消息携带 activity_planning_id 且为移动端
+- **WHEN** ChatBubble 渲染
+- **THEN** SHALL 渲染 ActivityPlanningEntryCard
+- **AND** 点击按钮 SHALL 打开 ScreenActivityPlanning 覆盖屏
+
+### Requirement: 创建盟域药丸 SHALL 发送种子消息触发多轮流
+
+移动端药丸"创建盟域"SHALL 从原 send-text 全量触发改为发送种子消息"帮我创建一个盟域"，触发 alliance_planning 多轮流。
+
+#### Scenario: 点击药丸发送种子消息
+- **GIVEN** 用户点击创建盟域药丸
+- **WHEN** 触发
+- **THEN** SHALL sendMessage("帮我创建一个盟域")
+
+### Requirement: ChatBubble SHALL 渲染盟域规划入口卡
+
+当消息携带 alliance_planning_id 时，ChatBubble SHALL 渲染 AlliancePlanningEntryCard（盟域摘要 + 建议 + 按钮），与活动规划入口卡模式一致。
+
+#### Scenario: 盟域规划完成显示入口卡
+- **GIVEN** 消息携带 alliance_planning_id 且为移动端
+- **WHEN** ChatBubble 渲染
+- **THEN** SHALL 渲染 AlliancePlanningEntryCard
+- **AND** 点击按钮 SHALL 打开 ScreenAlliancePlanning 覆盖屏
+
