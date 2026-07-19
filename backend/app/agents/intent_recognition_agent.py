@@ -156,9 +156,9 @@ def _normalize_intent_output(
         if getattr(output.brand_input, field) is None
     ]
 
-    INDEPENDENT = ("chat", "query_data", "clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment")
+    INDEPENDENT = ("chat", "query_data", "clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment", "activity_planning", "alliance_planning")
 
-    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment"):
+    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment", "activity_planning", "alliance_planning"):
         output.intent = "generate_plan"
         output.confidence = max(output.confidence, 0.95)
     elif missing and output.intent not in INDEPENDENT:
@@ -212,6 +212,42 @@ def _normalize_intent_output(
             bi = output.brand_input
             if not output.reply:
                 output.reply = f"好的！为您评估 {bi.category} 在 {bi.city} 的预算方案（{bi.budget}万 / {bi.period}个月），请点击「开始评估」按钮。"
+
+    # activity_planning: 需要 sport_type + city；缺则保持意图 + 反问（镜像 budget_assessment）
+    if output.intent == "activity_planning":
+        ap_missing = []
+        if not output.sport_type:
+            ap_missing.append("sport_type")
+        if not output.brand_input.city:
+            ap_missing.append("city")
+        if ap_missing:
+            output.missing_fields = ap_missing
+            _ap_labels = {"sport_type": "运动类型", "city": "城市"}
+            cn_ap = [_ap_labels.get(f, f) for f in ap_missing]
+            if not output.reply:
+                output.reply = f"好的，帮您规划活动。还需要了解：{'、'.join(cn_ap)}"
+        else:
+            output.missing_fields = []
+            if not output.reply:
+                output.reply = f"好的！为您规划 {output.sport_type} 活动（{output.brand_input.city}），请点击「开始规划」按钮。"
+
+    # alliance_planning: 需要 category + city；缺则保持意图 + 反问（镜像 activity/budget）
+    if output.intent == "alliance_planning":
+        al_missing = []
+        if not output.brand_input.category:
+            al_missing.append("category")
+        if not output.brand_input.city:
+            al_missing.append("city")
+        if al_missing:
+            output.missing_fields = al_missing
+            _al_labels = {"category": "品类", "city": "城市"}
+            cn_al = [_al_labels.get(f, f) for f in al_missing]
+            if not output.reply:
+                output.reply = f"好的，帮您创建盟域。还需要了解：{'、'.join(cn_al)}"
+        else:
+            output.missing_fields = []
+            if not output.reply:
+                output.reply = f"好的！为您规划 {output.brand_input.category} 盟域（{output.brand_input.city}），请点击「开始规划」按钮。"
 
     # generate_video: image_url 检查，支持从 context.image_urls 回填
     if output.intent == "generate_video" and not output.image_url:
@@ -353,6 +389,10 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
     # (needed for update_context → market_research promotion downstream)
     if not result.market_name and context.get("market_name"):
         result.market_name = context["market_name"]
+
+    # Fill sport_type from context（activity_planning 多轮持续）
+    if not result.sport_type and context.get("sport_type"):
+        result.sport_type = context["sport_type"]
 
     # 正则兜底：LLM 未提取 category 时从用户输入中提取
     fallback = _extract_category_fallback(message, result.brand_input.category)

@@ -21,7 +21,7 @@ export interface ChatMessage {
   role: 'user' | 'ai'
   content: string
   brandInput?: BrandInput
-  intent?: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context' | 'generate_video' | 'text_to_video' | 'text_to_image' | 'market_research' | 'budget_assessment'
+  intent?: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context' | 'generate_video' | 'text_to_video' | 'text_to_image' | 'market_research' | 'budget_assessment' | 'activity_planning' | 'alliance_planning'
   isComplete?: boolean
   isError?: boolean
   isLoading?: boolean
@@ -58,6 +58,20 @@ export interface ChatMessage {
   budgetAssessmentResult?: Record<string, unknown>
   /** 预算评估结果 ID（ba-<8位hex>），详情页按此 ID 从后端拉取，刷新后仍可用 */
   budgetAssessmentId?: string
+  /** 活动规划：sport_type+city 齐全时可开始规划 */
+  canStartActivityPlanning?: boolean
+  /** 活动规划完成后的结构化结果（candidates/events/venues/suggestion） */
+  activityPlanningResult?: Record<string, unknown>
+  /** 活动规划结果 ID（ap-<8位hex>），详情页按此 ID 拉取，刷新后仍可用 */
+  activityPlanningId?: string
+  /** 盟域规划：category+city 齐全时可开始规划 */
+  canStartAlliancePlanning?: boolean
+  /** 盟域规划完成后的结构化结果 */
+  alliancePlanningResult?: Record<string, unknown>
+  /** 盟域规划结果 ID（al-<8位hex>），详情页按此 ID 拉取 */
+  alliancePlanningId?: string
+  /** 活动规划的运动类型（多轮间持续） */
+  sportType?: string
   /** 市场调研目标名称（品牌名/赛道名） */
   marketName?: string
   /** 市场分析搜索来源 URL 列表（流式进行中实时追加） */

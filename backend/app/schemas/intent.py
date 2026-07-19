@@ -17,13 +17,17 @@ class IntentRecognitionOutput(BaseModel):
     intent: str = Field(
         ...,
         description="用户意图",
-        pattern="^(generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research|budget_assessment)$",
+        pattern="^(generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research|budget_assessment|activity_planning|alliance_planning)$",
     )
     confidence: float = Field(..., ge=0.0, le=1.0, description="意图置信度")
     reply: str = Field(..., description="给用户的直接回复文案")
     market_name: str | None = Field(
         default=None,
         description="市场调研的研究目标（品牌名/赛道名），仅在 market_research 意图时使用",
+    )
+    sport_type: str | None = Field(
+        default=None,
+        description="活动规划的运动类型（如羽毛球/跑步/瑜伽），仅在 activity_planning 意图时使用，LLM 从用户输入提取",
     )
     brand_input: BrandInput = Field(
         default_factory=BrandInput, description="提取或更新后的品牌需求字段"  # type: ignore[arg-type]

@@ -94,20 +94,33 @@
    - 缺字段 → 仍 intent 设为 `budget_assessment`，missing_fields 标记缺失项（category/budget/period/city），reply 反问缺失字段。
    - 与 generate_plan 区分：预算评估只给预算分配建议，不生成完整方案。用户说"预算评估/分配"→ budget_assessment。
    - 多轮：若对话历史中已有预算评估上下文，用户补字段时保持 budget_assessment。
-7. generate_plan → 5 个品牌字段全部有值（来自当前输入 + 以上已确认信息），**且**用户意图不是做视频/图片/市场分析/预算评估。只要字段齐全且非上述意图就返回 generate_plan。
-8. update_context → 用户明确在修改之前已确认的信息。
-9. clarify → 方向是生成方案，但 5 个字段还缺至少一项。缺什么写什么到 missing_fields。
-10. query_data → 用户想查询数据。
-11. chat → 以上都不匹配时，才是闲聊/打招呼。
+7. activity_planning → 用户想创建/策划/举办活动。关键词："创建活动""策划活动""办活动""做活动""组织活动"。
+   - 需要 2 个字段：sport_type（运动类型，如羽毛球/跑步/瑜伽/篮球/骑行，从用户输入提取）+ city（城市）。
+   - 字段齐全 → intent 设为 `activity_planning`，sport_type 字段填入提取的运动类型。
+   - 缺字段 → 仍 intent 设为 `activity_planning`，missing_fields 标记缺失项（sport_type/city），reply 反问。
+   - 与 generate_plan 区分：活动规划只给候选赛事+场馆建议，不生成完整方案。
+   - 多轮：若对话历史中已有活动规划上下文，用户补字段时保持 activity_planning。
+8. alliance_planning → 用户想创建盟域/盟域合作。关键词："创建盟域""盟域合作""建盟域""加入盟域"。
+   - 需要 2 个字段：category（品类）+ city（城市）。
+   - 字段齐全 → intent 设为 `alliance_planning`。
+   - 缺字段 → 仍 intent 设为 `alliance_planning`，missing_fields 标记缺失项，reply 反问。
+   - 与 generate_plan 区分：盟域规划只给盟域/招募建议，不生成完整方案。
+   - 多轮：若对话历史中已有盟域上下文，用户补字段时保持 alliance_planning。
+9. generate_plan → 5 个品牌字段全部有值（来自当前输入 + 以上已确认信息），**且**用户意图不是做视频/图片/市场分析/预算评估/活动规划/盟域规划。只要字段齐全且非上述意图就返回 generate_plan。
+9. update_context → 用户明确在修改之前已确认的信息。
+10. clarify → 方向是生成方案，但 5 个字段还缺至少一项。缺什么写什么到 missing_fields。
+11. query_data → 用户想查询数据。
+12. chat → 以上都不匹配时，才是闲聊/打招呼。
     reply 应简短介绍自己的能力，引导说出需求。
     例如：「你好！我是 AllyGo 营销方案助手。我可以帮您生成营销方案、进行市场分析、生成海报或宣传视频。请告诉我您的品牌、品类、城市、预算和周期等信息，我来为您定制方案。」
 
 输出 JSON 格式：
 {
-  "intent": "generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research|budget_assessment",
+  "intent": "generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research|budget_assessment|activity_planning|alliance_planning",
   "confidence": 0.0-1.0,
   "reply": "给用户的回复",
   "market_name": null or "研究目标（品牌名/赛道名）",
+  "sport_type": null or "运动类型，如羽毛球/跑步/瑜伽",
   "brand_input": {
     "brand_name": null or "值",
     "category": null or "值",

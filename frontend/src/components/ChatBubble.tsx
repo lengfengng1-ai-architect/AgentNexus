@@ -6,6 +6,8 @@ import { InlineImageCard } from './InlineImageCard'
 import { MarketResearchProgressCard } from './MarketResearchProgressCard'
 import { ResearchReportEntryCard } from './ResearchReportEntryCard'
 import { BudgetAssessmentEntryCard } from './BudgetAssessmentEntryCard'
+import { ActivityPlanningEntryCard } from './ActivityPlanningEntryCard'
+import { AlliancePlanningEntryCard } from './AlliancePlanningEntryCard'
 
 function isSafeImageUrl(url: string): boolean {
   try {
@@ -102,11 +104,13 @@ interface ChatBubbleProps {
   onGeneratePlan?: (messageId: string) => void
   onOpenResearchReport?: (messageId: string) => void
   onOpenBudgetAssessment?: (messageId: string) => void
+  onOpenActivityPlanning?: (messageId: string) => void
+  onOpenAlliancePlanning?: (messageId: string) => void
   onVideoResult?: (messageId: string, result: NonNullable<ChatMessage['videoResult']>) => void
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function ChatBubble({ message, isMarketResearchActive = false, activeSearches, variant, onRetry, onGeneratePlan, onOpenResearchReport, onOpenBudgetAssessment, onVideoResult, onImageResult }: ChatBubbleProps) {
+export function ChatBubble({ message, isMarketResearchActive = false, activeSearches, variant, onRetry, onGeneratePlan, onOpenResearchReport, onOpenBudgetAssessment, onOpenActivityPlanning, onOpenAlliancePlanning, onVideoResult, onImageResult }: ChatBubbleProps) {
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
   const isVideoIntent = message.intent === 'generate_video' || message.intent === 'text_to_video'
@@ -114,6 +118,8 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
   const isImageIntent = message.intent === 'text_to_image'
   const isMarketResearch = !isUser && message.intent === 'market_research'
   const isBudgetAssessment = !isUser && message.intent === 'budget_assessment'
+  const isActivityPlanning = !isUser && message.intent === 'activity_planning'
+  const isAlliancePlanning = !isUser && message.intent === 'alliance_planning'
   // ponytail: isMarketResearchActive 由父级传入但当前组件未使用，保留以保持 props 兼容
   void isMarketResearchActive
 
@@ -128,8 +134,15 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
           message.isError ? 'ring-2 ring-start/50' : '',
         ].join(' ')}
       >
-        {/* 预算评估：完成态（有 budgetAssessmentId）→ 摘要卡片 + 详情页入口 */}
-        {isBudgetAssessment && message.budgetAssessmentResult && variant === 'mobile' && message.budgetAssessmentId && onOpenBudgetAssessment ? (
+        {/* 盟域规划：完成态（有 alliancePlanningId）→ 摘要卡片 + 详情页入口 */}
+        {isAlliancePlanning && message.alliancePlanningResult && variant === 'mobile' && message.alliancePlanningId && onOpenAlliancePlanning ? (
+          <AlliancePlanningEntryCard result={message.alliancePlanningResult} onOpen={() => onOpenAlliancePlanning(message.id)} />
+        ) : isActivityPlanning && message.activityPlanningResult && variant === 'mobile' && message.activityPlanningId && onOpenActivityPlanning ? (
+          <ActivityPlanningEntryCard
+            result={message.activityPlanningResult}
+            onOpen={() => onOpenActivityPlanning(message.id)}
+          />
+        ) : isBudgetAssessment && message.budgetAssessmentResult && variant === 'mobile' && message.budgetAssessmentId && onOpenBudgetAssessment ? (
           <BudgetAssessmentEntryCard
             result={message.budgetAssessmentResult}
             onOpen={() => onOpenBudgetAssessment(message.id)}

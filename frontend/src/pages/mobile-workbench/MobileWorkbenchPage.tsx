@@ -14,6 +14,8 @@ import { ScreenActionPreview } from './ScreenActionPreview'
 import { ScreenResearchReport } from './ScreenResearchReport'
 import { ScreenDraftList } from './ScreenDraftList'
 import { ScreenBudgetAssessment } from './ScreenBudgetAssessment'
+import { ScreenActivityPlanning } from './ScreenActivityPlanning'
+import { ScreenAlliancePlanning } from './ScreenAlliancePlanning'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import { exportPlanPdf, exportPlanXlsx } from '../../api/plan'
 import type { BrandInput } from '../../types/chat'
@@ -29,7 +31,7 @@ const TABS: { key: MobileScreen; label: string }[] = [
 ]
 
 // 隐藏 Tab 栏的屏（草稿列表作为 Tab 本身，保持 Tab 栏可见）
-const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview', 'research-report', 'budget-assessment']
+const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview', 'research-report', 'budget-assessment', 'activity-planning', 'alliance-planning']
 
 const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   chat: { t: '营销方案助手', sub: 'AllyGo Agent' },
@@ -42,6 +44,8 @@ const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   'action-preview': { t: '行动预览', sub: '' },
   'research-report': { t: '调研结果', sub: '' },
   'budget-assessment': { t: '预算评估', sub: '' },
+  'activity-planning': { t: '活动规划', sub: '' },
+  'alliance-planning': { t: '盟域规划', sub: '' },
   'draft-list': { t: '方案草稿', sub: '' },
 }
 
@@ -89,6 +93,16 @@ export function MobileWorkbenchPage() {
   const [budgetAssessmentId, setBudgetAssessmentId] = useState<string | null>(null)
   const [isBuAnimatingOut, setIsBuAnimatingOut] = useState(false)
   const [budgetAssessmentTitle, setBudgetAssessmentTitle] = useState('')
+
+  // Activity planning overlay state
+  const [activityPlanningId, setActivityPlanningId] = useState<string | null>(null)
+  const [isApAnimatingOut, setIsApAnimatingOut] = useState(false)
+  const [activityPlanningTitle, setActivityPlanningTitle] = useState('')
+
+  // Alliance planning overlay state
+  const [alliancePlanningId, setAlliancePlanningId] = useState<string | null>(null)
+  const [isAlAnimatingOut, setIsAlAnimatingOut] = useState(false)
+  const [alliancePlanningTitle, setAlliancePlanningTitle] = useState('')
 
   // Action preview data — extracted from pausedSnapshot
   const [actionPreviewData, setActionPreviewData] = useState<{
@@ -277,7 +291,7 @@ export function MobileWorkbenchPage() {
   }, [actionPreviewLoading, planRun.pausedSnapshot])
 
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
-  const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string, budgetAssessmentIdParam?: string) => {
+  const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string, budgetAssessmentIdParam?: string, activityPlanningIdParam?: string, alliancePlanningIdParam?: string) => {
     if (s === 'research-report') {
       // 调研结果页：记录 researchId，覆盖屏自行拉取数据；inputText 位置是 marketName 兜底标题
       if (!researchId) return  // 兜底：无 researchId 不跳转
@@ -292,6 +306,20 @@ export function MobileWorkbenchPage() {
       setBudgetAssessmentId(budgetAssessmentIdParam)
       setBudgetAssessmentTitle(inputText || '')
       setScreen('budget-assessment')
+      return
+    }
+    if (s === 'activity-planning') {
+      if (!activityPlanningIdParam) return
+      setActivityPlanningId(activityPlanningIdParam)
+      setActivityPlanningTitle(inputText || '')
+      setScreen('activity-planning')
+      return
+    }
+    if (s === 'alliance-planning') {
+      if (!alliancePlanningIdParam) return
+      setAlliancePlanningId(alliancePlanningIdParam)
+      setAlliancePlanningTitle(inputText || '')
+      setScreen('alliance-planning')
       return
     }
     if (inputText || brandInput) {
@@ -320,6 +348,8 @@ export function MobileWorkbenchPage() {
       'action-preview': 'generate',
       'research-report': 'chat',
       'budget-assessment': 'chat',
+      'activity-planning': 'chat',
+      'alliance-planning': 'chat',
       'draft-list': 'chat',
       actions: 'generate',
       dispatch: 'actions',
@@ -365,6 +395,26 @@ export function MobileWorkbenchPage() {
     }, 300)
   }
 
+  // 活动规划详情页返回：滑出动画 → 300ms 后卸载回聊天屏
+  const handleActivityBack = () => {
+    setIsApAnimatingOut(true)
+    setTimeout(() => {
+      setIsApAnimatingOut(false)
+      setActivityPlanningId(null)
+      setScreen('chat')
+    }, 300)
+  }
+
+  // 盟域规划详情页返回：滑出动画 → 300ms 后卸载回聊天屏
+  const handleAllianceBack = () => {
+    setIsAlAnimatingOut(true)
+    setTimeout(() => {
+      setIsAlAnimatingOut(false)
+      setAlliancePlanningId(null)
+      setScreen('chat')
+    }, 300)
+  }
+
   // 草稿详情跳转：恢复 run_id → 切到目标 Tab（preview/actions）
   const handleDraftRestorePlan = async (runId: string, target: 'preview' | 'actions') => {
     // 写入 run_id 供 ScreenGenerate 后续刷新/恢复使用
@@ -375,7 +425,7 @@ export function MobileWorkbenchPage() {
 
   // 预算预览页在手机框内展示，使用自己的顶栏，隐藏 PhoneFrame 顶栏
   // 动画退出中也不显示 topbar（保持视觉连贯）
-  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview' || screen === 'research-report' || screen === 'draft-list' || screen === 'budget-assessment'
+  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview' || screen === 'research-report' || screen === 'draft-list' || screen === 'budget-assessment' || screen === 'activity-planning' || screen === 'alliance-planning'
 
   // 预算预览正在展示中：包括正在展示 slide-in 或已展示
   const showingBudgetPreview = screen === 'budget-preview' || isBpAnimatingOut
@@ -396,6 +446,12 @@ export function MobileWorkbenchPage() {
 
   // 预算评估覆盖屏展示中（含滑出动画期间）
   const showingBudgetAssessment = screen === 'budget-assessment' || isBuAnimatingOut
+
+  // 活动规划覆盖屏展示中（含滑出动画期间）
+  const showingActivityPlanning = screen === 'activity-planning' || isApAnimatingOut
+
+  // 盟域规划覆盖屏展示中（含滑出动画期间）
+  const showingAlliancePlanning = screen === 'alliance-planning' || isAlAnimatingOut
 
   // 方案生成活跃状态：running / paused 时简报页按钮应显示生成中并禁用
   const isPlanGenerating = status === 'running' || status === 'paused'
@@ -558,6 +614,40 @@ export function MobileWorkbenchPage() {
                 budgetId={budgetAssessmentId}
                 fallbackTitle={budgetAssessmentTitle}
                 onBack={handleBudgetBack}
+              />
+            </div>
+          )}
+          {/* 活动规划详情覆盖层：手机框内绝对定位，从右往左滑入/滑出 */}
+          {showingActivityPlanning && activityPlanningId && (
+            <div
+              className={isApAnimatingOut ? 'activity-slide-out' : 'activity-slide-in'}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column',
+                background: 'var(--bg)', overflow: 'hidden',
+              }}
+            >
+              <ScreenActivityPlanning
+                activityId={activityPlanningId}
+                fallbackTitle={activityPlanningTitle}
+                onBack={handleActivityBack}
+              />
+            </div>
+          )}
+          {/* 盟域规划详情覆盖层 */}
+          {showingAlliancePlanning && alliancePlanningId && (
+            <div
+              className={isAlAnimatingOut ? 'alliance-slide-out' : 'alliance-slide-in'}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column',
+                background: 'var(--bg)', overflow: 'hidden',
+              }}
+            >
+              <ScreenAlliancePlanning
+                allianceId={alliancePlanningId}
+                fallbackTitle={alliancePlanningTitle}
+                onBack={handleAllianceBack}
               />
             </div>
           )}

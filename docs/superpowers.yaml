@@ -55,6 +55,27 @@ capabilities:
         MVP 阶段 allocations 用固定模板百分比，不按品类/城市调权（预留升级）。
         仅输出规划建议，不自动花钱/下单/执行。
 
+    - id: "activity-planning"
+      name: "创建活动规划"
+      description: "基于运动类型/城市，结合 mock 赛事/场馆/活动热度数据，给出活动规划建议（候选赛事 + 赞助权益 + 场馆），多轮澄清收集需求，结果在聊天入口卡 + 独立详情页展示"
+      constraints: |
+        SSE 流式推送进度，结果持久化到 mock_data/activity_planning/results/（ap-<uuid8>.json），按 ID 拉取。
+        赛事/场馆/活动数据必须来自 allygo_city_data.json 的 mock，LLM 不可编造赛事名称/数据数值。
+        候选赛事按 sport_type + available_cities 过滤匹配，不可编造不存在的赛事。
+        一句话建议由 LLM 基于已匹配赛事数据推理生成。
+        sport_type（运动类型）由 LLM 从用户输入提取。
+        仅输出规划建议，不自动创建活动/下单/执行。
+
+    - id: "alliance-planning"
+      name: "创建盟域规划"
+      description: "基于品类/城市，结合 mock 盟域/招募/达人数据，给出盟域合作规划建议（盟域推荐 + 招募计划 + 达人矩阵），多轮澄清收集需求，结果在聊天入口卡 + 独立详情页展示"
+      constraints: |
+        SSE 流式推送进度，结果持久化到 mock_data/alliance_planning/results/（al-<uuid8>.json），按 ID 拉取。
+        盟域/招募/达人数据必须来自 allygo_city_data.json 的 mock，LLM 不可编造盟域/达人名称/数据数值。
+        招募计划（target_count/requirements）直接引用 mock，不可编造。
+        一句话建议由 LLM 基于已有盟域/招募数据推理生成。
+        仅输出规划建议，不自动建盟域/发邀约/执行。
+
     - id: "audience-insight"
       name: "人群洞察"
       description: "基于产品名称，搜索并提取目标人群的原始数据（人口统计/购买行为/使用场景），综合生成用户画像"

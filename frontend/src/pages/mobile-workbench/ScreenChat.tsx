@@ -5,6 +5,8 @@ import { useCallback, useEffect, useMemo, useRef, useState, type JSX } from 'rea
 import { useChat } from '../../hooks/useChat'
 import { useMarketResearchStream } from '../../hooks/useMarketResearchStream'
 import { useBudgetAssessmentStream } from '../../hooks/useBudgetAssessmentStream'
+import { useActivityPlanningStream } from '../../hooks/useActivityPlanningStream'
+import { useAlliancePlanningStream } from '../../hooks/useAlliancePlanningStream'
 import { ChatBubble } from '../../components/ChatBubble'
 import { ErrorBar } from '../../components/ErrorBar'
 import { ChatSuggestionHeader } from './screen-chat/ChatSuggestionHeader'
@@ -14,10 +16,10 @@ import type { SuggestedPrompt } from './screen-chat/types'
 import './screen-chat/screen-chat.css'
 import type { BrandInput } from '../../types/chat'
 
-export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview' | 'research-report' | 'draft-list' | 'budget-assessment'
+export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview' | 'research-report' | 'draft-list' | 'budget-assessment' | 'activity-planning' | 'alliance-planning'
 
 interface ScreenChatProps {
-  onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string, budgetAssessmentId?: string) => void
+  onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string, budgetAssessmentId?: string, activityPlanningId?: string, alliancePlanningId?: string) => void
 }
 
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
@@ -29,8 +31,8 @@ const PINNED_PROMPT: SuggestedPrompt = { id: 'nav-brief', icon: '📝', label: '
 const REFRESHABLE_POOL: SuggestedPrompt[] = [
   { id: 'prefill-brand', icon: '💰', label: '预算评估', action: 'send-text', payload: '帮我做预算评估' },
   { id: 'prefill-market', icon: '📊', label: '市场分析', action: 'prefill-market-analysis' },
-  { id: 'send-alliance', icon: '🤝', label: '创建盟域', action: 'send-text', payload: '帮我创建一个盟域活动方案' },
-  { id: 'send-activity', icon: '🎯', label: '创建活动', action: 'send-text', payload: '帮我策划一个品牌营销活动' },
+  { id: 'send-alliance', icon: '🤝', label: '创建盟域', action: 'send-text', payload: '帮我创建一个盟域' },
+  { id: 'send-activity', icon: '🎯', label: '创建活动', action: 'send-text', payload: '帮我规划一个活动' },
   { id: 'virtual-image', icon: '🖼️', label: '产品海报', action: 'virtual-image' },
   { id: 'virtual-video', icon: '🎬', label: '产品视频', action: 'virtual-video' },
 ]
@@ -102,6 +104,8 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     appendMarketResearchLog,
     setMarketResearchResult,
     setBudgetAssessmentResult,
+    setActivityPlanningResult,
+    setAlliancePlanningResult,
   } = useChat()
 
   const {
@@ -119,6 +123,16 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
   const { startBudgetAssessment, activeIds: budgetActiveIds } = useBudgetAssessmentStream({
     updateMessageContent,
     setBudgetAssessmentResult,
+  })
+
+  const { startActivityPlanning, activeIds: activityActiveIds } = useActivityPlanningStream({
+    updateMessageContent,
+    setActivityPlanningResult,
+  })
+
+  const { startAlliancePlanning, activeIds: allianceActiveIds } = useAlliancePlanningStream({
+    updateMessageContent,
+    setAlliancePlanningResult,
   })
 
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -326,6 +340,24 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     }
   }, [messages, budgetActiveIds, startBudgetAssessment])
 
+  // ── 活动规划：自动触发（sport_type + city 齐全时） ────────────────────────
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.canStartActivityPlanning && !activityActiveIds.has(m.id) && m.sportType && m.brandInput?.city) {
+        startActivityPlanning(m.id, m.sportType, m.brandInput.city)
+      }
+    }
+  }, [messages, activityActiveIds, startActivityPlanning])
+
+  // ── 盟域规划：自动触发（category + city 齐全时） ──────────────────────────
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.canStartAlliancePlanning && !allianceActiveIds.has(m.id) && m.brandInput?.category && m.brandInput?.city) {
+        startAlliancePlanning(m.id, m.brandInput.category, m.brandInput.city)
+      }
+    }
+  }, [messages, allianceActiveIds, startAlliancePlanning])
+
   // 清理语音识别
   useEffect(() => {
     return () => {
@@ -389,9 +421,25 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
   // ── 预算评估详情页入口 ──────────────────────────────────────────────
   const handleOpenBudgetAssessment = useCallback((msgId: string) => {
     const msg = messages.find(m => m.id === msgId)
-    if (!msg?.budgetAssessmentId) return  // 兜底：无 budgetAssessmentId 不跳转
+    if (!msg?.budgetAssessmentId) return
     const title = msg.brandInput?.category ? `${msg.brandInput.category}预算评估` : '预算评估'
     onNavigate('budget-assessment', title, undefined, undefined, msg.budgetAssessmentId)
+  }, [messages, onNavigate])
+
+  // ── 活动规划详情页入口 ──────────────────────────────────────────────
+  const handleOpenActivityPlanning = useCallback((msgId: string) => {
+    const msg = messages.find(m => m.id === msgId)
+    if (!msg?.activityPlanningId) return
+    const title = msg.sportType ? `${msg.sportType}活动规划` : '活动规划'
+    onNavigate('activity-planning', title, undefined, undefined, undefined, msg.activityPlanningId)
+  }, [messages, onNavigate])
+
+  // ── 盟域规划详情页入口 ──────────────────────────────────────────────
+  const handleOpenAlliancePlanning = useCallback((msgId: string) => {
+    const msg = messages.find(m => m.id === msgId)
+    if (!msg?.alliancePlanningId) return
+    const title = msg.brandInput?.category ? `${msg.brandInput.category}盟域规划` : '盟域规划'
+    onNavigate('alliance-planning', title, undefined, undefined, undefined, undefined, msg.alliancePlanningId)
   }, [messages, onNavigate])
 
   const chatContent = useMemo(() => (
@@ -409,13 +457,15 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
           onGeneratePlan={m.canGeneratePlan ? handleGeneratePlan : undefined}
           onOpenResearchReport={m.researchId ? handleOpenResearchReport : undefined}
           onOpenBudgetAssessment={m.budgetAssessmentId ? handleOpenBudgetAssessment : undefined}
+          onOpenActivityPlanning={m.activityPlanningId ? handleOpenActivityPlanning : undefined}
+          onOpenAlliancePlanning={m.alliancePlanningId ? handleOpenAlliancePlanning : undefined}
           onVideoResult={updateVideoResult}
           onImageResult={updateImageResult}
         />
       ))}
       <div ref={bottomRef} />
     </>
-  ), [messages, marketResearchActiveIds, activeSearches, handleRetry, handleGeneratePlan, handleOpenResearchReport, handleOpenBudgetAssessment, updateVideoResult, updateImageResult])
+  ), [messages, marketResearchActiveIds, activeSearches, handleRetry, handleGeneratePlan, handleOpenResearchReport, handleOpenBudgetAssessment, handleOpenActivityPlanning, handleOpenAlliancePlanning, updateVideoResult, updateImageResult])
 
   return (
     <div className="chat-screen">

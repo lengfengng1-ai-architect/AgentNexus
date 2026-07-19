@@ -32,7 +32,7 @@ type ChatAction =
   | { type: 'SEND_MESSAGE'; content: string; imageUrls?: string[]; imageCaptions?: string[] }
   | { type: 'STREAM_START' }
   | { type: 'STREAM_REASONING'; text: string }
-  | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null; imageUrls?: string[]; videoPrompt?: string | null; generationPrompt?: string | null; messageId?: string; marketName?: string | null }
+  | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null; imageUrls?: string[]; videoPrompt?: string | null; generationPrompt?: string | null; messageId?: string; marketName?: string | null; sportType?: string | null }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
   | { type: 'RETRY_MESSAGE'; messageId: string }
@@ -46,6 +46,8 @@ type ChatAction =
   | { type: 'APPEND_MARKET_RESEARCH_LOG'; messageId: string; log: string }
   | { type: 'SET_MARKET_RESEARCH_RESULT'; messageId: string; result: Record<string, unknown>; researchId?: string }
   | { type: 'SET_BUDGET_ASSESSMENT_RESULT'; messageId: string; result: Record<string, unknown>; budgetAssessmentId?: string }
+  | { type: 'SET_ACTIVITY_PLANNING_RESULT'; messageId: string; result: Record<string, unknown>; activityPlanningId?: string }
+  | { type: 'SET_ALLIANCE_PLANNING_RESULT'; messageId: string; result: Record<string, unknown>; alliancePlanningId?: string }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
   return {
@@ -137,6 +139,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       const canGeneratePlan = action.intent === 'generate_plan' && action.missingFields.length === 0
       const canStartMarketResearch = action.intent === 'market_research' && action.missingFields.length === 0
       const canStartBudgetAssessment = action.intent === 'budget_assessment' && action.missingFields.length === 0
+      const canStartActivityPlanning = action.intent === 'activity_planning' && action.missingFields.length === 0
+      const canStartAlliancePlanning = action.intent === 'alliance_planning' && action.missingFields.length === 0
       const msgId = action.messageId || `ai-${Date.now()}`
       const aiMessage: ChatMessage = {
         id: msgId,
@@ -148,7 +152,10 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         canGeneratePlan,
         canStartMarketResearch,
         canStartBudgetAssessment,
+        canStartActivityPlanning,
+        canStartAlliancePlanning,
         marketName: action.marketName ?? undefined,
+        sportType: action.sportType ?? undefined,
         missingFields: action.missingFields.length > 0 ? action.missingFields : undefined,
         gate: action.gate,
         imageUrls: action.imageUrls,
@@ -276,6 +283,24 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       return { ...state, messages: next }
     }
 
+    case 'SET_ACTIVITY_PLANNING_RESULT': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId
+          ? { ...m, activityPlanningResult: action.result, activityPlanningId: action.activityPlanningId ?? m.activityPlanningId, canStartActivityPlanning: false }
+          : m,
+      )
+      return { ...state, messages: next }
+    }
+
+    case 'SET_ALLIANCE_PLANNING_RESULT': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId
+          ? { ...m, alliancePlanningResult: action.result, alliancePlanningId: action.alliancePlanningId ?? m.alliancePlanningId, canStartAlliancePlanning: false }
+          : m,
+      )
+      return { ...state, messages: next }
+    }
+
     default:
       return state
   }
@@ -337,6 +362,12 @@ export function useChat() {
       context.market_name = lastMsgWithMarket.marketName
     }
 
+    // Pass latest sport_type for activity_planning context（多轮持续）
+    const lastMsgWithSport = messagesRef.current.slice().reverse().find(m => m.sportType)
+    if (lastMsgWithSport?.sportType) {
+      context.sport_type = lastMsgWithSport.sportType
+    }
+
     try {
       let intentReceived = false
       let reasoningBuffer = ''
@@ -360,6 +391,7 @@ export function useChat() {
             videoPrompt: chunk.intent.video_prompt,
             generationPrompt: chunk.intent.generation_prompt,
             marketName: chunk.intent.market_name,
+            sportType: chunk.intent.sport_type,
           })
         }
       }
@@ -405,6 +437,7 @@ export function useChat() {
             videoPrompt: chunk.intent.video_prompt,
             generationPrompt: chunk.intent.generation_prompt,
             marketName: chunk.intent.market_name,
+            sportType: chunk.intent.sport_type,
           })
         }
       }
@@ -452,6 +485,14 @@ export function useChat() {
     dispatch({ type: 'SET_BUDGET_ASSESSMENT_RESULT', messageId, result, budgetAssessmentId })
   }, [])
 
+  const setActivityPlanningResult = useCallback((messageId: string, result: Record<string, unknown>, activityPlanningId?: string) => {
+    dispatch({ type: 'SET_ACTIVITY_PLANNING_RESULT', messageId, result, activityPlanningId })
+  }, [])
+
+  const setAlliancePlanningResult = useCallback((messageId: string, result: Record<string, unknown>, alliancePlanningId?: string) => {
+    dispatch({ type: 'SET_ALLIANCE_PLANNING_RESULT', messageId, result, alliancePlanningId })
+  }, [])
+
   const latestBrandInput = getLatestBrandInput(state.messages)
   return {
     messages: state.messages,
@@ -472,6 +513,8 @@ export function useChat() {
     appendMarketResearchLog,
     setMarketResearchResult,
     setBudgetAssessmentResult,
+    setActivityPlanningResult,
+    setAlliancePlanningResult,
   }
 }
 
