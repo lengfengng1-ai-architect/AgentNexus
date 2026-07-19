@@ -24,9 +24,11 @@ interface ScreenGenerateProps {
     timeline: string[]
   }) => void
   onOpenActionPreview: () => void
+  /** 从流水线步骤中打开只读的行动建议预览 */
+  onViewActionResult?: () => void
 }
 
-export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpointNodeId, onOpenBudgetPreview, onOpenActionPreview }: ScreenGenerateProps) {
+export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpointNodeId, onOpenBudgetPreview, onOpenActionPreview, onViewActionResult }: ScreenGenerateProps) {
   const {
     status,
     steps,
@@ -209,6 +211,23 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
                     {s.logs.map((log, i) => (
                       <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{log}</div>
                     ))}
+                    {s.id === 'action_recommendations' && (
+                      <div style={{ marginTop: 6 }}>
+                        <button
+                          type="button"
+                          disabled={s.status !== 'complete'}
+                          onClick={onViewActionResult}
+                          style={{
+                            fontSize: 11, padding: '3px 10px', borderRadius: 6,
+                            border: '1px solid var(--border)', background: s.status === 'complete' ? 'var(--accent)' : 'var(--surface)',
+                            color: s.status === 'complete' ? '#fff' : 'var(--muted)',
+                            cursor: s.status === 'complete' ? 'pointer' : 'not-allowed',
+                            fontFamily: 'var(--ff)', fontWeight: 500,
+                            transition: 'all 0.15s',
+                          }}
+                        >查看结果</button>
+                      </div>
+                    )}
                     <div ref={logEndRef} />
                   </div>
                 )}

@@ -4,6 +4,7 @@ Corresponding OpenSpec: openspec/changes/add-plan-generation-workbench/specs/pla
 Corresponding in_scope ID: plan-generation
 """
 
+import logging
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +14,8 @@ from app.agents.llm_utils import write_log,  invoke_json
 from app.agents.registry import register
 from app.schemas.plan_generation import ActionRecommendationsOutput
 from app.utils import parse_budget, parse_period
+
+logger = logging.getLogger(__name__)
 
 _PROMPT_DIR = Path(__file__).parent.parent / "prompt_templates"
 
@@ -73,7 +76,8 @@ async def run_action_recommendations(state: dict[str, Any]) -> dict[str, Any]:
     )
 
     if reject_reason_all:
-        logger.info("[action_recommendations] 用户驳回后完整提示词：\n%s", prompt)
+        logger.info("[action_recommendations] 用户修改原因：%s", reject_reason_all)
+        logger.info("[action_recommendations] 重新运行完整提示词：\n%s", prompt)
 
     result = await invoke_json(
         prompt,

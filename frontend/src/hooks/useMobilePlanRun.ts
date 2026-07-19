@@ -143,14 +143,27 @@ function reducer(state: MobilePlanRunState, action: Action): MobilePlanRunState 
       )
       return { ...state, status: 'failed', steps, error: action.message, isConnected: false }
     }
-    case 'WORKFLOW_PAUSED':
+    case 'WORKFLOW_PAUSED': {
+      // 确认所有前置节点已完成。当 paused 节点为 is_after 时（如 budget_kpi/
+      // action_recommendations 执行完毕后的结果弹窗），该节点本身也已完成。
+      // 在 SSE 实时流场景下前置节点早已通过 node.complete 标记为 complete，
+      // 但在 restoreFromRunId 恢复场景下没有 replay node.complete 事件，
+      // 前驱节点仍为 pending，需要向前补齐。
+      const pauseIdx = PIPELINE_NODES.findIndex(n => n.id === action.snapshot.node_id)
       return {
         ...state,
         status: 'paused',
         isLoading: false,
         pausedSnapshot: action.snapshot,
         steps: state.steps.map((s) => {
-          // is_after=true: 该节点已执行完毕（如 budget_kpi 结果弹窗），不应改为 waiting
+          const idx = PIPELINE_NODES.findIndex(n => n.id === s.id)
+          // 前置节点补齐：所有排在暂停节点之前的节点都应已完成
+          // 注意：这里用 s.status !== 'complete' 而非 s.status === 'pending'
+          // 是因为 SSE replay 可能先发出 node.start 将节点设为 running，
+          // 导致条件 s.status === 'pending' 失效，节点卡在 running 状态。
+          if (idx >= 0 && pauseIdx >= 0 && idx < pauseIdx && s.status !== 'complete') {
+            return { ...s, status: 'complete' as PlanNodeStatus, summary: s.desc }
+          }
           if (s.id === action.snapshot.node_id) {
             if (action.snapshot.is_after) {
               return s.status === 'running' || s.status === 'pending' ? { ...s, status: 'complete' as PlanNodeStatus, summary: '执行完成' } : s
@@ -160,6 +173,7 @@ function reducer(state: MobilePlanRunState, action: Action): MobilePlanRunState 
           return s
         }),
       }
+    }
     case 'WORKFLOW_RESUME':
       return {
         ...state,
