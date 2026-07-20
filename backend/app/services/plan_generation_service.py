@@ -767,13 +767,24 @@ async def _stream_events(
         # 使用 next_nodes 判断：如果 next[0] 在 budget_kpi 之后，
         # 说明 budget_kpi 已经执行过 next 走到了下游，才应该 mark started。
         # 如果 next[0] == budget_kpi，说明 budget_kpi 还没执行，不要跳过。
+        # 额外处理：已存在的值即使是空 dict({})，但如果 next[0] 不指向它，也应加入 started。
+        # 因为部分 agent 可能返回空 dict（如无可用数据的情况），但这些节点确实已经执行过。
         for _nid in _NODE_ORDER:
             val = state_values.get(_nid)
-            if val and isinstance(val, dict) and len(val) > 0:
-                # 额外校验：如果 next[0] 指向此节点，说明它虽然 state 中有旧输出但即将重新执行
-                if next_nodes and next_nodes[0] == _nid:
-                    continue
-                started.add(_nid)
+            if val is not None and val != {}:
+                if not isinstance(val, dict) or len(val) > 0:
+                    # 额外校验：如果 next[0] 指向此节点，说明它虽然 state 中有旧输出但即将重新执行
+                    if next_nodes and next_nodes[0] == _nid:
+                        continue
+                    started.add(_nid)
+            elif val is not None and isinstance(val, dict) and len(val) == 0:
+                # 空 dict 但节点确实已存在 state 中：如果 next[0] 不在它之前（即它的序号小于 next[0] 的序号），
+                # 说明该节点已执行过，加入 started
+                if next_nodes and next_nodes[0] in _NODE_ORDER:
+                    this_idx = _NODE_ORDER.index(_nid)
+                    next_idx = _NODE_ORDER.index(next_nodes[0])
+                    if this_idx < next_idx:
+                        started.add(_nid)
     except Exception:
         pass
 
@@ -813,7 +824,7 @@ async def _stream_events(
     if next_nodes:
         raw_node_id = next_nodes[0]
         required = _PARALLEL_PREDECESSORS.get(raw_node_id, [])
-        if required and not all(state_values.get(p) for p in required):
+        if required and not all(state_values.get(p) is not None for p in required):
             logger.warning(
                 "[sse] workflow.paused deferred: next=%s but parallel predecessors %s not all complete",
                 raw_node_id, required,
@@ -1092,10 +1103,9 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
         )
         return
 
-    # Detect whether this is an interrupt_after pause (budget_kpi).
-    # interrupt_after means budget_kpi has already run; next points to
-    # action_recommendations. We need to clear budget_kpi's output and
-    # roll back the state so it re-executes.
+    # Detect whether this is an interrupt_after pause.
+    # interrupt_after means budget_kpi or action_recommendations has already run; next points to its successor.
+    # We need to clear the paused node's output and roll back the state so it re-executes.
     state_obj = await graph.aget_state(_thread_config(run_id))
     next_nodes = list(getattr(state_obj, "next", ()) or [])
     is_interrupt_after = False
@@ -1122,8 +1132,8 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
     channel_values["brand_input"] = brand_input
 
     # 根据暂停节点动态决定清除范围
-    logger.info("[plan] reject at node=%s reason=%s", next_nodes, reason)
     if "action_recommendations" in next_nodes or (next_nodes and next_nodes[0] == "plan_generator"):
+        logger.info("[plan] 用户驳回 action_recommendations，原因：%s", reason)
         # 暂停在 action_recommendations 之后（interrupt_after）
         # 用 `as_node="budget_kpi"` 因为 LangGraph 图的边是 budget_kpi → action_recommendations，
         # 所以 as_node="budget_kpi" 让 next = action_recommendations，重跑 action_recommendations
@@ -1136,6 +1146,7 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
             as_node="budget_kpi",
         )
     else:
+        logger.info("[plan] 用户驳回 budget_kpi，原因：%s", reason)
         # 预算场景下，回滚到 execution_planning 让 budget_kpi 重跑
         for key in ("budget_kpi", "action_recommendations", "plan_generator"):
             channel_values.pop(key, None)

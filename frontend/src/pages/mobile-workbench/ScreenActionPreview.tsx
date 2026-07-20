@@ -39,6 +39,8 @@ interface ScreenActionPreviewProps {
   onBack?: () => void
   /** 是否正在重新生成 */
   loading?: boolean
+  /** 只读模式——隐藏底部批注/反馈输入栏，仅展示内容 */
+  readonly?: boolean
 }
 
 const PRIORITY_LABELS: Record<string, { label: string; cls: string }> = {
@@ -53,7 +55,7 @@ function priorityLabel(p: string): { label: string; cls: string } {
 
 export function ScreenActionPreview({
   onNavigate,
-  actions,
+  actions: initialActions,
   brandName = '',
   category: brandCategory = '',
   totalBudget = 0,
@@ -66,14 +68,17 @@ export function ScreenActionPreview({
   onReject,
   onBack,
   loading = false,
+  readonly = false,
 }: ScreenActionPreviewProps) {
+  const [actions, setActions] = useState(initialActions)
   const [feedback, setFeedback] = useState('')
   const [lightboxUrl, setLightboxUrl] = useState<string | null>(null)
 
-  // 重新生成完成后清除输入框
+  // 当 initialActions 数据变化时（重新生成返回新数据），重置展示
   useEffect(() => {
-    if (!loading) setFeedback('')
-  }, [loading])
+    setActions(initialActions)
+    setFeedback('')
+  }, [initialActions])
 
   const handleSendFeedback = useCallback(() => {
     if (!feedback.trim()) return
@@ -254,7 +259,8 @@ export function ScreenActionPreview({
         </div>
       </div>
 
-      {/* 批准/驳回操作栏 */}
+      {/* 批准/驳回操作栏（只读模式隐藏） */}
+      {!readonly && (
       <div style={{
         borderTop: '1px solid var(--line)', background: 'var(--bg)',
         padding: '10px 14px 10px', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0,
@@ -287,6 +293,7 @@ export function ScreenActionPreview({
           }}
         >↵</button>
       </div>
+      )}
 
       {/* 海报大图预览 lightbox */}
       {lightboxUrl && (
