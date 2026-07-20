@@ -141,6 +141,7 @@ def _normalize_intent_output(
     *,
     image_urls: list[str] | None = None,
     image_captions: list[str] | None = None,
+    context_message: str | None = None,
 ) -> IntentRecognitionOutput:
     """Correct intent based on field completeness.
 
@@ -289,15 +290,15 @@ def _normalize_intent_output(
                 output.reply = f"好的！为您规划 {output.brand_input.category} 在 {output.brand_input.city} 的社群运营，请点击「开始规划」按钮。"
 
     # generate_video: image_url 检查，支持从 context.image_urls 回填
-    if output.intent == "generate_video" and not output.image_url:
+    # 强制覆盖，防止 LLM 编造占位 URL
+    if output.intent == "generate_video":
         if image_urls:
             output.image_url = image_urls[0]
-        else:
+        elif not output.image_url:
             if "image_url" not in output.missing_fields:
                 output.missing_fields = list(output.missing_fields) + ["image_url"]
             if not output.reply:
                 output.reply = "好的，请提供需要生成视频的图片。"
-    elif output.intent == "generate_video" and output.image_url:
         if "image_url" in output.missing_fields:
             output.missing_fields = [f for f in output.missing_fields if f != "image_url"]
 
@@ -309,8 +310,9 @@ def _normalize_intent_output(
             "镜头环绕主体旋转，背景虚化突出产品，电商广告风格"
         )
 
-    # text_to_image（以图生图 image2image）：有参考图上下文但 LLM 未回填 image_url 时补齐
-    if output.intent == "text_to_image" and not output.image_url and image_urls:
+    # text_to_image（以图生图 image2image）：强制从 context 取真实的 image_url，
+    # 防止 LLM 编造占位 URL（如 https://example.com/image1.jpg）
+    if output.intent == "text_to_image" and image_urls:
         output.image_url = image_urls[0]
 
     # Only set brand-related missing_fields for plan-related intents
@@ -343,7 +345,8 @@ def _normalize_intent_output(
     # 不直接判生成意图，而是反问用户想做什么（①参数介绍图 ②宣传图 ③宣传短片）。
     # 用户下轮回复后，LLM 结合 image_urls 上下文自然分流到
     # text_to_image（以图生图）或 generate_video（以图生视频）。
-    if output.intent in ("chat", "clarify") and image_urls:
+    # ponytail: 仅当 message 为空（纯图片上传）时触发，避免覆盖用户已回复的情况。
+    if output.intent in ("chat", "clarify", "query_data") and image_urls and not (context_message or "").strip():
         output.intent = "clarify"
         output.missing_fields = []
         output.confidence = max(output.confidence, 0.85)
@@ -447,8 +450,7 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
     else:
         image_captions = None
 
-    result = _normalize_intent_output(result, image_urls=image_urls, image_captions=image_captions)
-
+    result = _normalize_intent_output(result, image_urls=image_urls, image_captions=image_captions, context_message=message)
     logger.info(
         "Intent recognized: %s (confidence=%.2f)",
         result.intent,
@@ -543,16 +545,13 @@ async def stream_intent_recognition(
 
     if result.intent != "update_context" and context.get("brand_input"):
         # Always fill missing fields from context, for any intent
-        # ponytail: 纯图片上传（message 为空）时不 merge brand_input，
-        # 避免 LLM 误将上一轮的字段带到图片意图场景。
-        if context.get("message") or "":
-            ctx_bi = _parse_brand_input(context["brand_input"])
-            merged = result.brand_input.model_dump(exclude_none=True)
-            for key in ("brand_name", "category", "city", "budget", "period"):
-                if merged.get(key) is None:
-                    val = getattr(ctx_bi, key, None)
-                    if val is not None:
-                        setattr(result.brand_input, key, val)
+        ctx_bi = _parse_brand_input(context["brand_input"])
+        merged = result.brand_input.model_dump(exclude_none=True)
+        for key in ("brand_name", "category", "city", "budget", "period"):
+            if merged.get(key) is None:
+                val = getattr(ctx_bi, key, None)
+                if val is not None:
+                    setattr(result.brand_input, key, val)
 
     # Fill market_name from context
     if not result.market_name and context.get("market_name"):
@@ -572,9 +571,19 @@ async def stream_intent_recognition(
     else:
         image_captions = None
 
-    result = _normalize_intent_output(result, image_urls=image_urls, image_captions=image_captions)
-
-    logger.info("Intent recognized: %s (confidence=%.2f)", result.intent, result.confidence)
+    result = _normalize_intent_output(result, image_urls=image_urls, image_captions=image_captions, context_message=message)
+    # ponytail: 打印意图识别原始 Log，便于排查 LLM 误判问题
+    logger.info(
+        "Intent recognized | intent=%s confidence=%.2f message=%r context_brand=%s reply=%r brand_output=%s missing=%s image_urls=%s",
+        result.intent,
+        result.confidence,
+        message[:100],
+        json.dumps(context.get("brand_input", {}), ensure_ascii=False),
+        result.reply[:120],
+        result.brand_input.model_dump_json(exclude_none=True),
+        result.missing_fields,
+        bool(context.get("image_urls")),
+    )
     yield ("", result.model_dump())
 
 

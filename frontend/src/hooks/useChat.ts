@@ -375,7 +375,10 @@ export function useChat() {
       .filter(m => !m.id.startsWith('stream-') && !m.id.startsWith('virtual-'))
       .map(m => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`)
       .slice(-10) // keep last 10 exchanges
-    const context: Record<string, unknown> = { conversation_history: conversationHistory }
+    const context: Record<string, unknown> = {
+      conversation_history: conversationHistory,
+      message: content.trim(),  // ponytail: 透传原始消息给后端，用于判断纯图片上传
+    }
     if (lastBrand) context.brand_input = lastBrand
     // ponytail: 图片上下文跨轮延续。本轮上传优先，否则沿用最近一条带图消息，
     // 使「先传图→反问→用户说想法」时仍能走以图生图/生视频。

@@ -1,7 +1,7 @@
 import type { BrandInput } from '../types/chat'
 
 export interface IntentResult {
-  intent: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context' | 'generate_video' | 'text_to_video' | 'text_to_image' | 'market_research'
+  intent: 'generate_plan' | 'query_data' | 'chat' | 'clarify' | 'update_context' | 'generate_video' | 'text_to_video' | 'text_to_image' | 'market_research' | 'budget_assessment' | 'activity_planning' | 'alliance_planning' | 'competitor_analysis' | 'community_operations'
   confidence: number
   reply: string
   brand_input: BrandInput
@@ -14,6 +14,7 @@ export interface IntentResult {
   video_prompt?: string | null
   generation_prompt?: string | null
   market_name?: string | null
+  sport_type?: string | null
 }
 
 export interface StreamChunk {
