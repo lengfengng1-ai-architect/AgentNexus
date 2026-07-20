@@ -58,11 +58,14 @@
 - 达人计划：{{ influencer_plan }}
 - 内容计划：{{ content_plan }}
 - 经营社计划：{{ store_plan }}
-{% if reject_reason %}
-- ⚠️ 用户修改指令（优先级最高，以下要求覆盖输入信息中的对应值）：
-{% for line in reject_reason.split('\n') %}
-  {% if line %}  - {{ line }}{% endif %}
+{% if reject_history and reject_history|length > 1 %}
+用户修改记录：
+{% for r in reject_history %}
+- 第{{ loop.index }}次修改：{{ r }}
 {% endfor %}
+{% elif reject_reason %}
+用户修改指令：
+{{ reject_reason }}
 {% endif %}
 
 要求：

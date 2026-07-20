@@ -81,6 +81,7 @@ export function MobileWorkbenchPage() {
     rawData: Record<string, unknown>
   } | null>(null)
   const [nodePreviewAnimatingOut, setNodePreviewAnimatingOut] = useState(false)
+  const [executionPlanningLoading, setExecutionPlanningLoading] = useState(false)
 
   // Action preview data — extracted from pausedSnapshot
   const [actionPreviewData, setActionPreviewData] = useState<{
@@ -230,6 +231,84 @@ export function MobileWorkbenchPage() {
     planRun.reject(feedback)
   }
 
+  // 执行规划预览：从 checkpoint 弹窗进入
+  const handleOpenExecutionPlanningPreview = () => {
+    if (planRun.pausedSnapshot) {
+      const ep = planRun.pausedSnapshot.upstream_outputs?.execution_planning as Record<string, unknown> | undefined
+      if (ep && Object.keys(ep).length > 0) {
+        handleViewNodeResult('execution_planning', '执行规划', ep)
+      }
+    }
+  }
+
+  // 执行规划重新生成：用户发送反馈 → 驳回触发 execution_planning 重跑
+  const handleExecutionPlanningRegen = (feedback: string) => {
+    setExecutionPlanningLoading(true)
+    planRun.reject(feedback)
+  }
+
+  // 策略生成预览：从 checkpoint 弹窗进入
+  const handleOpenStrategyPreview = () => {
+    if (planRun.pausedSnapshot) {
+      const sg = planRun.pausedSnapshot.upstream_outputs?.strategy_generation as Record<string, unknown> | undefined
+      if (sg && Object.keys(sg).length > 0) {
+        handleViewNodeResult('strategy_generation', '策略生成', sg)
+      }
+    }
+  }
+
+  // 策略生成重新生成：用户发送反馈 → 驳回触发 strategy_generation 重跑
+  const [strategyLoading, setStrategyLoading] = useState(false)
+  const handleStrategyRegen = (feedback: string) => {
+    setStrategyLoading(true)
+    planRun.reject(feedback)
+  }
+
+  // 适配度分析预览：从 checkpoint 弹窗进入
+  const handleOpenFitnessPreview = () => {
+    if (planRun.pausedSnapshot) {
+      const fa = planRun.pausedSnapshot.upstream_outputs?.fitness_analysis as Record<string, unknown> | undefined
+      if (fa && Object.keys(fa).length > 0) {
+        handleViewNodeResult('fitness_analysis', '适配度分析', fa)
+      }
+    }
+  }
+
+  // 适配度分析重新生成
+  const [fitnessLoading, setFitnessLoading] = useState(false)
+  const handleFitnessRegen = (feedback: string) => {
+    setFitnessLoading(true)
+    planRun.reject(feedback)
+  }
+
+  // 数据查询预览：从 checkpoint 弹窗进入
+  const handleOpenDataQueryPreview = () => {
+    if (planRun.pausedSnapshot) {
+      const dq = planRun.pausedSnapshot.upstream_outputs?.plan_data_query as Record<string, unknown> | undefined
+      if (dq && Object.keys(dq).length > 0) {
+        handleViewNodeResult('plan_data_query', '数据查询', dq)
+      }
+    }
+  }
+
+  // 并行调研节点预览（三个调研节点结果合并展示）
+  const handleViewParallelResult = (nodeId: string) => {
+    if (planRun.pausedSnapshot) {
+      const upstream = planRun.pausedSnapshot.upstream_outputs || {}
+      // 从 upstream_outputs 中取三个调研节点的数据合并
+      const merged: Record<string, unknown> = {}
+      for (const nid of ['product_research', 'market_research', 'audience_insight']) {
+        const d = upstream[nid] as Record<string, unknown> | undefined
+        if (d && Object.keys(d).length > 0) {
+          merged[nid] = d
+        }
+      }
+      if (Object.keys(merged).length > 0) {
+        handleViewNodeResult('parallel_research', '调研结果', merged)
+      }
+    }
+  }
+
   // Action preview: 从流水线步骤"查看结果"按钮进入（只读模式，completed 状态下使用）
   const handleViewActionResult = () => {
     // workflow.complete 后 outputs 才有数据，但流水线在 plan_generator pause 时
@@ -260,9 +339,11 @@ export function MobileWorkbenchPage() {
     setScreen('node-preview')
   }
 
-  // 通用节点数据预览返回：触发滑出动画后切回 generate
+  // 通用节点数据预览返回：触发滑出动画 + 直接 approve 继续流水线
   const handleNodePreviewBack = () => {
     setNodePreviewAnimatingOut(true)
+    setSuppressedPausedNodeId(nodePreviewData?.nodeId || null)
+    planRun.approve()
     setTimeout(() => {
       setNodePreviewAnimatingOut(false)
       setNodePreviewData(null)
@@ -326,6 +407,36 @@ export function MobileWorkbenchPage() {
       setActionPreviewLoading(false)
     }
   }, [planRun.pausedSnapshot])
+
+  // 监控 execution_planning pausedSnapshot：loading 中收到新数据时刷新 preview
+  useEffect(() => {
+    if (!executionPlanningLoading) return
+    if (!planRun.pausedSnapshot) return
+    const ep = planRun.pausedSnapshot.upstream_outputs?.execution_planning as Record<string, unknown> | undefined
+    if (!ep || Object.keys(ep).length === 0) return
+    setNodePreviewData(prev => prev ? { ...prev, rawData: ep } : null)
+    setExecutionPlanningLoading(false)
+  }, [executionPlanningLoading, planRun.pausedSnapshot])
+
+  // 监控 strategy_generation pausedSnapshot：loading 中收到新数据时刷新 preview
+  useEffect(() => {
+    if (!strategyLoading) return
+    if (!planRun.pausedSnapshot) return
+    const sg = planRun.pausedSnapshot.upstream_outputs?.strategy_generation as Record<string, unknown> | undefined
+    if (!sg || Object.keys(sg).length === 0) return
+    setNodePreviewData(prev => prev ? { ...prev, rawData: sg } : null)
+    setStrategyLoading(false)
+  }, [strategyLoading, planRun.pausedSnapshot])
+
+  // 监控 fitness_analysis pausedSnapshot：loading 中收到新数据时刷新 preview
+  useEffect(() => {
+    if (!fitnessLoading) return
+    if (!planRun.pausedSnapshot) return
+    const fa = planRun.pausedSnapshot.upstream_outputs?.fitness_analysis as Record<string, unknown> | undefined
+    if (!fa || Object.keys(fa).length === 0) return
+    setNodePreviewData(prev => prev ? { ...prev, rawData: fa } : null)
+    setFitnessLoading(false)
+  }, [fitnessLoading, planRun.pausedSnapshot])
 
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
   const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => {
@@ -550,6 +661,8 @@ export function MobileWorkbenchPage() {
                 title={nodePreviewData.title}
                 rawData={nodePreviewData.rawData}
                 onBack={handleNodePreviewBack}
+                onReject={nodePreviewData.nodeId === 'execution_planning' ? handleExecutionPlanningRegen : nodePreviewData.nodeId === 'strategy_generation' ? handleStrategyRegen : null}
+                loading={nodePreviewData.nodeId === 'execution_planning' ? executionPlanningLoading : nodePreviewData.nodeId === 'strategy_generation' ? strategyLoading : false}
               />
             </div>
           )}
@@ -575,6 +688,11 @@ export function MobileWorkbenchPage() {
               }}
               onViewActionResult={handleViewActionResult}
               onViewNodeResult={handleViewNodeResult}
+              onOpenExecutionPlanningPreview={handleOpenExecutionPlanningPreview}
+              onOpenStrategyPreview={handleOpenStrategyPreview}
+              onOpenFitnessPreview={handleOpenFitnessPreview}
+              onOpenDataQueryPreview={handleOpenDataQueryPreview}
+              onViewParallelResult={handleViewParallelResult}
             />
           </div>
           <div style={{ display: screen === 'preview' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>

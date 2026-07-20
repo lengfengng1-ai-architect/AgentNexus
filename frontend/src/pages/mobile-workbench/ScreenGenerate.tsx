@@ -24,13 +24,23 @@ interface ScreenGenerateProps {
     timeline: string[]
   }) => void
   onOpenActionPreview: () => void
+  /** 从 checkpoint 弹窗打开执行规划预览 */
+  onOpenExecutionPlanningPreview?: () => void
+  /** 从 checkpoint 弹窗打开策略生成预览 */
+  onOpenStrategyPreview?: () => void
+  /** 从 checkpoint 弹窗打开适配度分析预览 */
+  onOpenFitnessPreview?: () => void
+  /** 从 checkpoint 弹窗打开数据查询预览 */
+  onOpenDataQueryPreview?: () => void
+  /** 预览并行调研节点结果 */
+  onViewParallelResult?: (nodeId: string) => void
   /** 从流水线步骤中打开只读的行动建议预览 */
   onViewActionResult?: () => void
   /** 查看任意节点结果（除 plan_generator 外的所有节点） */
   onViewNodeResult?: (nodeId: string, title: string, data: Record<string, unknown>) => void
 }
 
-export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpointNodeId, onOpenBudgetPreview, onOpenActionPreview, onViewActionResult, onViewNodeResult }: ScreenGenerateProps) {
+export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpointNodeId, onOpenBudgetPreview, onOpenActionPreview, onViewActionResult, onViewNodeResult, onOpenExecutionPlanningPreview, onOpenStrategyPreview, onOpenFitnessPreview, onOpenDataQueryPreview, onViewParallelResult }: ScreenGenerateProps) {
   const {
     status,
     steps,
@@ -393,9 +403,21 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
           {(() => {
               const isBk = pausedSnapshot!.node_id === 'budget_kpi'
               const isAr = pausedSnapshot!.node_id === 'action_recommendations'
-              const isResultNode = isBk || isAr
+              const isEp = pausedSnapshot!.node_id === 'execution_planning'
+              const isSg = pausedSnapshot!.node_id === 'strategy_generation'
+              const isFa = pausedSnapshot!.node_id === 'fitness_analysis'
+              const isDq = pausedSnapshot!.node_id === 'plan_data_query'
+              const isPr = pausedSnapshot!.node_id === 'product_research'
+              const isMr = pausedSnapshot!.node_id === 'market_research'
+              const isAi = pausedSnapshot!.node_id === 'audience_insight'
+              const isParallelResult = isPr || isMr || isAi
+              const isResultNode = isBk || isAr || isEp || isSg || isFa || isDq || isParallelResult
               let bk: Record<string, unknown> | undefined
               let ar: Record<string, unknown> | undefined
+              let ep: Record<string, unknown> | undefined
+              let sg: Record<string, unknown> | undefined
+              let fa: Record<string, unknown> | undefined
+              let dq: Record<string, unknown> | undefined
               let hasData = false
               if (isBk) {
                 bk = pausedSnapshot!.upstream_outputs.budget_kpi as Record<string, unknown> | undefined
@@ -405,8 +427,26 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
                 ar = pausedSnapshot!.upstream_outputs.action_recommendations as Record<string, unknown> | undefined
                 hasData = !!(ar && Array.isArray(ar.actions) && ar.actions.length > 0)
               }
+              if (isEp) {
+                ep = pausedSnapshot!.upstream_outputs.execution_planning as Record<string, unknown> | undefined
+                hasData = !!(ep && Object.keys(ep).length > 0)
+              }
+              if (isSg) {
+                sg = pausedSnapshot!.upstream_outputs.strategy_generation as Record<string, unknown> | undefined
+                hasData = !!(sg && Object.keys(sg).length > 0)
+              }
+              if (isFa) {
+                fa = pausedSnapshot!.upstream_outputs.fitness_analysis as Record<string, unknown> | undefined
+                hasData = !!(fa && Object.keys(fa).length > 0)
+              }
+              if (isDq) {
+                dq = pausedSnapshot!.upstream_outputs.plan_data_query as Record<string, unknown> | undefined
+                hasData = !!(dq && Object.keys(dq).length > 0)
+              }
               // 只有结果节点真正执行完（有输出数据）才展示结果弹窗
-              const showResult = isResultNode && hasData
+              // 并行节点（product_research/market_research/audience_insight）的
+              // interrupt_after 暂停时，其数据在 upstream_outputs 中可直接取
+              const showResult = isResultNode && (isParallelResult || hasData)
 
               if (!showResult) {
                 /* ── 通用弹窗（非 budget_kpi，或首次到 budget_kpi 但还没跑） ── */
@@ -510,11 +550,46 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
                   {/* 标题 */}
                   <div className="bk-section" style={{ textAlign: 'center', marginBottom: 20 }}>
                     <div style={{ fontSize: 16, fontWeight: 700, color: 'var(--fg)' }}>
-                      {isBk ? <><span style={{ fontSize: 16, marginRight: 4 }}>📊</span>预算与 KPI</> : <><span style={{ fontSize: 16, marginRight: 4 }}>💡</span>行动建议</>}
+                      {isBk ? <><span style={{ fontSize: 16, marginRight: 4 }}>📊</span>预算与 KPI</> : isAr ? <><span style={{ fontSize: 16, marginRight: 4 }}>💡</span>行动建议</> : isEp ? <><span style={{ fontSize: 16, marginRight: 4 }}>📋</span>执行规划</> : isSg ? <><span style={{ fontSize: 16, marginRight: 4 }}>🎯</span>策略生成</> : isFa ? <><span style={{ fontSize: 16, marginRight: 4 }}>📊</span>适配度分析</> : isDq ? <><span style={{ fontSize: 16, marginRight: 4 }}>🗃️</span>数据查询</> : <><span style={{ fontSize: 16, marginRight: 4 }}>📋</span>调研结果</>}
                     </div>
                     {isAr && (
                       <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
                         {ar && Array.isArray(ar.actions) ? `共 ${ar.actions.length} 项行动建议` : ''}，点击预览查看详情
+                      </div>
+                    )}
+                    {isEp && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        执行规划已生成，点击预览查看详情
+                      </div>
+                    )}
+                    {isSg && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        策略已生成，点击预览查看详情
+                      </div>
+                    )}
+                    {isFa && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        适配度分析已完成，点击预览查看详情
+                      </div>
+                    )}
+                    {isDq && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        数据查询已完成，点击预览查看详情
+                      </div>
+                    )}
+                    {isPr && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        产品调研已完成，点击预览查看详情
+                      </div>
+                    )}
+                    {isMr && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        市场调研已完成，点击预览查看详情
+                      </div>
+                    )}
+                    {isAi && (
+                      <div style={{ fontSize: 11, color: 'var(--muted)', marginTop: 2 }}>
+                        人群洞察已完成，点击预览查看详情
                       </div>
                     )}
                   </div>
@@ -533,7 +608,91 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
                           fontFamily: 'var(--ff)',
                         }}
                       >
-                        👁 行动预览
+                        行动预览
+                      </button>
+                    )}
+                    {isEp && (
+                      <button
+                        type="button"
+                        className="bk-btn"
+                        onClick={() => {
+                          onOpenExecutionPlanningPreview?.()
+                        }}
+                        style={{
+                          flex: 1, height: 40, border: '1px solid var(--border)',
+                          borderRadius: 8, background: 'var(--bg)',
+                          color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          fontFamily: 'var(--ff)',
+                        }}
+                      >
+                        预览执行规划
+                      </button>
+                    )}
+                    {isSg && (
+                      <button
+                        type="button"
+                        className="bk-btn"
+                        onClick={() => {
+                          onOpenStrategyPreview?.()
+                        }}
+                        style={{
+                          flex: 1, height: 40, border: '1px solid var(--border)',
+                          borderRadius: 8, background: 'var(--bg)',
+                          color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          fontFamily: 'var(--ff)',
+                        }}
+                      >
+                        预览策略
+                      </button>
+                    )}
+                    {isFa && (
+                      <button
+                        type="button"
+                        className="bk-btn"
+                        onClick={() => {
+                          onOpenFitnessPreview?.()
+                        }}
+                        style={{
+                          flex: 1, height: 40, border: '1px solid var(--border)',
+                          borderRadius: 8, background: 'var(--bg)',
+                          color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          fontFamily: 'var(--ff)',
+                        }}
+                      >
+                        预览适配度
+                      </button>
+                    )}
+                    {isDq && (
+                      <button
+                        type="button"
+                        className="bk-btn"
+                        onClick={() => {
+                          onOpenDataQueryPreview?.()
+                        }}
+                        style={{
+                          flex: 1, height: 40, border: '1px solid var(--border)',
+                          borderRadius: 8, background: 'var(--bg)',
+                          color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          fontFamily: 'var(--ff)',
+                        }}
+                      >
+                        预览数据
+                      </button>
+                    )}
+                    {/* 并行调研节点预览按钮 */}
+                    {(isPr || isMr || isAi) && (
+                      <button
+                        type="button"
+                        className="bk-btn"
+                        onClick={() => onViewParallelResult?.(pausedSnapshot!.node_id)}
+                        style={{
+                          flex: 1, height: 40, border: '1px solid var(--border)',
+                          borderRadius: 8, background: 'var(--bg)',
+                          color: 'var(--muted)', fontSize: 13, fontWeight: 600, cursor: 'pointer',
+                          fontFamily: 'var(--ff)',
+                        }}
+                      >
+                        预览结果
                       </button>
                     )}
                     {isBk && (

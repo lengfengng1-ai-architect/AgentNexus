@@ -3,13 +3,17 @@
 //
 // Design: native iOS-style — clean cards, generous spacing, subtle chroma, no raw JSON anywhere
 
-import { useMemo } from 'react'
+import { useCallback, useMemo, useState } from 'react'
 
 interface ScreenNodePreviewProps {
   nodeId: string
   title: string
   rawData: Record<string, unknown>
   onBack: () => void
+  /** 重新生成回调（传 null 或不传则不显示底部输入栏） */
+  onReject?: ((reason: string) => void) | null
+  /** 是否正在重新生成 */
+  loading?: boolean
 }
 
 // ── 共享设计常量 ──────────────────────────────────────────
@@ -137,14 +141,14 @@ function ProductResearchView({ data }: { data: Record<string, unknown> }) {
       {/* 产品标识 */}
       {identityFields.length > 0 && (
         <Card title="产品标识" icon="🏷️">
-          {identityFields.map(([k, v]) => <Row key={k} label={k} value={v} />)}
+          {identityFields.map(([, v]) => <div key={v} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{v}</div>)}
         </Card>
       )}
 
       {/* 官方描述 */}
       {descFields.length > 0 && (
         <Card title="官方描述" icon="📝">
-          {descFields.map(([k, v]) => <Row key={k} label={k} value={v} />)}
+          {descFields.map(([, v]) => <div key={v} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{v}</div>)}
         </Card>
       )}
 
@@ -173,29 +177,28 @@ function ProductResearchView({ data }: { data: Record<string, unknown> }) {
       {/* 规格参数（优雅键值对，拒绝 raw JSON） */}
       {specs?.value && typeof specs.value === 'object' && (
         <Card title="规格参数" icon="📏">
-          {Object.entries(specs.value as Record<string, unknown>).map(([k, v]) => (
-            <Row key={k} label={k} value={String(v)} />
+          {Object.entries(specs.value as Record<string, unknown>).map(([, v]) => (
+            <div key={String(v)} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{String(v)}</div>
           ))}
         </Card>
       )}
 
       {/* 上市信息 */}
       {avail && (() => {
-        const items = Object.entries(avail)
+        const vals = Object.entries(avail)
           .filter(([k]) => !['sources', 'method', 'quote'].includes(k))
-          .map(([k, v]) => {
-            let val: string | undefined
+          .map(([, v]) => {
             if (v && typeof v === 'object' && 'value' in (v as object)) {
-              val = idVal(v)
+              return idVal(v)
             } else if (Array.isArray(v)) {
-              val = v.length > 0 ? v.join('、') : undefined
+              return v.length > 0 ? v.join('、') : undefined
             } else if (v) {
-              val = String(v)
+              return String(v)
             }
-            return [k, val] as const
+            return undefined
           })
-          .filter(([, v]) => v)
-        return items.length > 0 ? <Card title="上市信息" icon="📦">{items.map(([k, v]) => <Row key={k} label={k} value={v} />)}</Card> : null
+          .filter(Boolean)
+        return vals.length > 0 ? <Card title="上市信息" icon="📦">{vals.map((v, i) => <div key={i} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{v}</div>)}</Card> : null
       })()}
     </>
   )
@@ -250,58 +253,76 @@ function MarketResearchView({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-/** 人群洞察 */
+/** 人群洞察：{audience_data: {demographics, purchase_motivations, decision_factors, usage_scenarios, descriptions}, persona: {profile_summary, typical_user, demographics, ...}} */
 function AudienceInsightView({ data }: { data: Record<string, unknown> }) {
-  const topSports = data.top_sports as string[] | undefined
-  const traits = data.traits as string[] | undefined
+  const persona = data.persona as Record<string, unknown> | undefined
+  const audienceData = data.audience_data as Record<string, unknown> | undefined
+  const profileSummary = persona?.profile_summary as Record<string, unknown> | undefined
+
+  const summaryText: string | undefined =
+    (profileSummary?.value as string) || (persona?.profile_summary_text as string) || undefined
+
+  const extractField = (obj: unknown): string | undefined => {
+    if (obj && typeof obj === 'object' && 'value' in (obj as object)) {
+      return ((obj as Record<string, unknown>).value as string) || undefined
+    }
+    return obj ? String(obj) : undefined
+  }
 
   return (
     <>
-      <Card title="人群概览" icon="👥" accent>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <div style={{ textAlign: 'center', padding: '8px 4px', background: 'var(--surface)', borderRadius: 'var(--r-sm)' }}>
-            <div style={{ fontSize: 18, fontWeight: 700, color: 'var(--accent)' }}>{data.sport_index ?? '-'}</div>
-            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>运动人群指数</div>
-          </div>
-          <div style={{ textAlign: 'center', padding: '8px 4px', background: 'var(--surface)', borderRadius: 'var(--r-sm)' }}>
-            <div style={{ fontSize: 14, fontWeight: 600, color: 'var(--fg)' }}>{data.peak_hours as string || '-'}</div>
-            <div style={{ fontSize: 10, color: 'var(--muted)', marginTop: 2 }}>活跃高峰</div>
-          </div>
-        </div>
-        <Row label="城市" value={data.city as string} />
-      </Card>
-
-      {data.persona_summary && (
-        <Card title="人群画像" icon="📋">
-          <div style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--fg-soft)' }}>{data.persona_summary as string}</div>
+      {summaryText && (
+        <Card title="人群画像摘要" icon="📋" accent>
+          <div style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--fg-soft)' }}>{summaryText}</div>
         </Card>
       )}
 
-      {topSports && topSports.length > 0 && (
-        <Card title="Top 运动项目" icon="🏅">
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {topSports.map((s, i) => (
-              <Tag key={i} label={s} />
-            ))}
-          </div>
+      {persona?.product_fit && (
+        <Card title="产品契合度" icon="🎯">
+          {extractField((persona.product_fit as Record<string, unknown>)?.reason_this_product) && (
+            <div style={{ fontSize: 11, lineHeight: 1.6, color: 'var(--fg-soft)', marginBottom: 4 }}>
+              <strong style={{ color: 'var(--fg)' }}>选择理由：</strong>
+              {extractField((persona.product_fit as Record<string, unknown>)?.reason_this_product)}
+            </div>
+          )}
+          {extractField((persona.product_fit as Record<string, unknown>)?.valued_features) && (
+            <div style={{ fontSize: 11, lineHeight: 1.6, color: 'var(--fg-soft)', marginBottom: 4 }}>
+              <strong style={{ color: 'var(--fg)' }}>关注功能：</strong>
+              {extractField((persona.product_fit as Record<string, unknown>)?.valued_features)}
+            </div>
+          )}
         </Card>
       )}
 
-      {traits && traits.length > 0 && (
-        <Card title="特征标签" icon="🔖">
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-            {traits.map((t, i) => (
-              <span key={i} style={{
-                fontSize: 10,
-                fontWeight: 500,
-                padding: '4px 10px',
-                borderRadius: 20,
-                background: 'var(--surface)',
-                color: 'var(--muted)',
-                border: '1px solid var(--border)',
-              }}>{t}</span>
-            ))}
-          </div>
+      {persona?.demographics && (
+        <Card title="人口统计" icon="👤">
+          <GenericFallbackView data={persona.demographics as Record<string, unknown>} />
+        </Card>
+      )}
+
+      {audienceData?.purchase_motivations && Array.isArray(audienceData.purchase_motivations) && (
+        <Card title="购买动机" icon="💡">
+          {(audienceData.purchase_motivations as Array<Record<string, unknown>>).map((item, i) => (
+            <div key={i} style={{ padding: '5px 0', borderBottom: '1px solid var(--line)', fontSize: 12, color: 'var(--fg-soft)', lineHeight: 1.5 }}>
+              {item.text as string}
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {audienceData?.usage_scenarios && Array.isArray(audienceData.usage_scenarios) && (
+        <Card title="使用场景" icon="🏃">
+          {(audienceData.usage_scenarios as Array<Record<string, unknown>>).map((item, i) => (
+            <div key={i} style={{ padding: '5px 0', borderBottom: '1px solid var(--line)', fontSize: 12, color: 'var(--fg-soft)', lineHeight: 1.5 }}>
+              {item.text as string}
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {persona?.lifestyle && (
+        <Card title="生活方式" icon="🎭">
+          <GenericFallbackView data={persona.lifestyle as Record<string, unknown>} />
         </Card>
       )}
     </>
@@ -363,10 +384,10 @@ function renderSubCard(title: string, icon: string, data: Record<string, unknown
     const v = data[k]
     if (!v) return null
     const val = Array.isArray(v) ? v.join('、') : String(v)
-    return { label: k, value: val }
-  }).filter(Boolean) as { label: string; value: string }[]
+    return { value: val }
+  }).filter(Boolean) as { value: string }[]
   if (entries.length === 0) return null
-  return <Card title={title} icon={icon}>{entries.map(e => <Row key={e.label} label={e.label} value={e.value} />)}</Card>
+  return <Card title={title} icon={icon}>{entries.map((e, i) => <div key={i} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{e.value}</div>)}</Card>
 }
 
 /** 适配度分析 */
@@ -491,21 +512,27 @@ function StrategyGenerationView({ data }: { data: Record<string, unknown> }) {
 
 /** 执行规划 */
 function ExecutionPlanningView({ data }: { data: Record<string, unknown> }) {
-  const plans: { key: string; label: string; icon: string }[] = [
-    { key: 'leagues_plan', label: '盟域共建计划', icon: '🏟️' },
-    { key: 'events_plan', label: '赛事活动计划', icon: '🏆' },
-    { key: 'influencer_plan', label: '达人合作矩阵', icon: '⭐' },
-    { key: 'content_plan', label: '内容运营计划', icon: '📝' },
-    { key: 'store_plan', label: '经营社联动计划', icon: '🏪' },
+  const plans: { key: string; label: string; icon: string; sublabel: string }[] = [
+    { key: 'leagues_plan', label: '盟域共建计划', icon: '🏟️', sublabel: '盟域' },
+    { key: 'events_plan', label: '赛事活动计划', icon: '🏆', sublabel: '赛事' },
+    { key: 'influencer_plan', label: '达人合作矩阵', icon: '⭐', sublabel: '达人' },
+    { key: 'content_plan', label: '内容运营计划', icon: '📝', sublabel: '内容' },
+    { key: 'store_plan', label: '经营社联动计划', icon: '🏪', sublabel: '经营社' },
   ]
 
   return (
     <>
-      {plans.map(({ key, label, icon }) => {
+      {plans.map(({ key, label, icon, sublabel }) => {
         const content = data[key] as string | undefined
         if (!content) return null
         return (
           <Card key={key} title={label} icon={icon}>
+            <div style={{
+              fontSize: 13, fontWeight: 700, color: 'var(--fg)', marginBottom: 8,
+              paddingBottom: 6, borderBottom: '1px solid var(--line)',
+            }}>
+              {sublabel}
+            </div>
             <div style={{ fontSize: 12, lineHeight: 1.8, color: 'var(--fg-soft)', whiteSpace: 'pre-wrap', fontFamily: 'var(--ff)' }}>
               {content}
             </div>
@@ -521,10 +548,10 @@ function GenericFallbackView({ data }: { data: Record<string, unknown> }) {
   const entries = useMemo(() => Object.entries(data), [data])
 
   const renderValue = (value: unknown, key: string): React.ReactNode => {
-    if (['method', 'sources', 'quote', 'source'].includes(key)) return null
+    if (['method', 'sources', 'quote', 'source', 'search_results', 'fetched_pages', 'seen_urls', 'exclude_urls', 'initial_pages'].includes(key)) return null
     if (value === null || value === undefined) return null
     if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
-      return <Row label={key} value={String(value)} />
+      return <div key={key} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{String(value)}</div>
     }
     if (Array.isArray(value)) {
       if (value.length === 0) return null
@@ -558,7 +585,7 @@ function GenericFallbackView({ data }: { data: Record<string, unknown> }) {
       if (allSimple) {
         return (
           <Card title={key}>
-            {filtered.map(([k, v]) => <Row key={k} label={k} value={String(v)} />)}
+            {filtered.map(([, v]) => <div key={String(v)} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{String(v)}</div>)}
           </Card>
         )
       }
@@ -597,6 +624,37 @@ function GenericFallbackView({ data }: { data: Record<string, unknown> }) {
 
 // ── 节点类型 → 渲染器映射 ────────────────────────────────
 
+/** 并行调研结果合并展示（产品调研 + 市场调研 + 人群洞察） */
+function ParallelResearchView({ data }: { data: Record<string, unknown> }) {
+  const sections: { key: string; title: string; icon: string; renderer: React.ComponentType<{ data: Record<string, unknown> }> }[] = [
+    { key: 'product_research', title: '产品调研', icon: '🏷️', renderer: ProductResearchView },
+    { key: 'market_research', title: '市场调研', icon: '📈', renderer: MarketResearchView },
+    { key: 'audience_insight', title: '人群洞察', icon: '👥', renderer: AudienceInsightView },
+  ]
+
+  return (
+    <>
+      {sections.map(({ key, title, icon, renderer: Renderer }) => {
+        const sectionData = data[key] as Record<string, unknown> | undefined
+        if (!sectionData || Object.keys(sectionData).length === 0) return null
+        return (
+          <div key={key}>
+            <div style={{
+              fontSize: 13, fontWeight: 700, color: 'var(--accent)',
+              padding: '12px 0 6px', borderBottom: '1px solid var(--line)',
+              marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6,
+            }}>
+              <span>{icon}</span>
+              <span>{title}</span>
+            </div>
+            <Renderer data={sectionData} />
+          </div>
+        )
+      })}
+    </>
+  )
+}
+
 const RENDERERS: Record<string, React.ComponentType<{ data: Record<string, unknown> }>> = {
   product_research: ProductResearchView,
   market_research: MarketResearchView,
@@ -605,13 +663,21 @@ const RENDERERS: Record<string, React.ComponentType<{ data: Record<string, unkno
   fitness_analysis: FitnessAnalysisView,
   strategy_generation: StrategyGenerationView,
   execution_planning: ExecutionPlanningView,
+  parallel_research: ParallelResearchView,
 }
 
 // ── 主组件 ────────────────────────────────────────────────
 
-export function ScreenNodePreview({ nodeId, title, rawData, onBack }: ScreenNodePreviewProps) {
+export function ScreenNodePreview({ nodeId, title, rawData, onBack, onReject, loading = false }: ScreenNodePreviewProps) {
   const Renderer = RENDERERS[nodeId]
   const hasData = rawData && Object.keys(rawData).length > 0
+  const [feedback, setFeedback] = useState('')
+
+  const handleSendFeedback = useCallback(() => {
+    if (!feedback.trim() || !onReject) return
+    onReject(feedback.trim())
+    setFeedback('')
+  }, [feedback, onReject])
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
@@ -676,6 +742,42 @@ export function ScreenNodePreview({ nodeId, title, rawData, onBack }: ScreenNode
           </div>
         )}
       </div>
+
+      {/* 底部输入栏（仅在 onReject 存在时显示，与 ScreenActionPreview 一致） */}
+      {onReject && (
+        <div style={{
+          borderTop: '1px solid var(--line)', background: 'var(--bg)',
+          padding: '10px 14px 10px', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0,
+        }}>
+          <input
+            type="text"
+            placeholder="输入修改意见后发送，重新生成节点数据…"
+            value={feedback}
+            disabled={loading}
+            onChange={e => setFeedback(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') handleSendFeedback() }}
+            style={{
+              flex: 1, height: 36, border: '1px solid var(--border)', borderRadius: 'var(--r-sm)',
+              padding: '0 10px', fontSize: 12, fontFamily: 'var(--ff)', outline: 'none',
+              background: loading ? 'var(--surface)' : 'var(--surface)', color: 'var(--fg)',
+              opacity: loading ? 0.5 : 1,
+            }}
+          />
+          <button
+            type="button"
+            disabled={loading || !feedback.trim()}
+            onClick={handleSendFeedback}
+            style={{
+              width: 36, height: 36, border: 'none', borderRadius: 'var(--r-sm)',
+              background: loading || !feedback.trim() ? 'var(--border)' : 'var(--accent)',
+              color: '#fff', fontSize: 16,
+              cursor: loading || !feedback.trim() ? 'not-allowed' : 'pointer',
+              display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              fontFamily: 'var(--ff)',
+            }}
+          >↵</button>
+        </div>
+      )}
     </div>
   )
 }
