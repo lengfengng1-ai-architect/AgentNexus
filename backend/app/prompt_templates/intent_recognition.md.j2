@@ -18,21 +18,25 @@
 ---
 ## 最高优先级规则（任何情况下绝对优先于 Step 1）
 
-### 用户未输入文字但上传了图片
-**当 message 为空且 context.image_urls 有值时：用户上传了图片但未输入文字。这是图片上传场景，意图必须是 clarify，绝对不能返回其他意图。**
-- context.image_urls 有值 = 用户上传了图片，context.image_captions 是视觉模型对图片的**客观描述**
-- intent **必须**设为 `clarify`
-- brand_input 中所有字段必须为 null（禁止从 image_captions 中推断品牌/品类/城市等信息）
+### 用户上传了图片
+**当 context.image_urls 有值时（用户上传了至少一张图片），无论 message 是否有文字：**
+
+**情况 A — 用户未输入文字（message 内容为"【用户上传了图片，未输入文字】图片内容：..."）**
+- 这是纯图片上传，意图**必须**设为 `clarify`
+- brand_input 中所有字段必须为 null
 - missing_fields 设为空列表
 - reply 反问用户想生成哪种内容（①电商产品参数介绍图 ②好看的宣传图 ③产品宣传短片）
-- **禁止**返回 `market_research`、`query_data`、`budget_assessment`、`generate_plan` 或任何非图片相关意图
+- **严禁**返回 `market_research`、`query_data`、`budget_assessment`、`generate_plan` 或任何非图片相关意图
 
-### 用户输入序号（图片反问后的回复）
-**当 context.image_urls 有值且用户输入是序号（"1"、"2"、"3"、"①"、"②"、"③"、"选1"、"第一个"等）时：**
-- 这是用户在回复上一轮的图片选项反问，**必须**按序号分流，不能再次反问"想生成哪种内容"，也不能返回 `query_data`、`market_research` 等非图片意图
-- "1"/"①"/"选1"/"第一个" → intent 设为 `text_to_image`，generation_prompt 生成电商产品参数介绍图文案
-- "2"/"②"/"选2" → intent 设为 `text_to_image`，generation_prompt 生成宣传海报文案
-- "3"/"③"/"选3" → intent 设为 `generate_video`，image_url 赋值为第一张 URL，video_prompt 生成视频文案
+**情况 B — 用户输入了序号（"1"、"2"、"3"、"①"、"②"、"③"、"选1"、"第一个"等）**
+- 这是用户在回复上一轮的图片选项反问，**必须**按序号分流
+- "1"/"①"/"选1"/"第一个" → intent 设为 `text_to_image`（电商产品参数介绍图）
+- "2"/"②"/"选2" → intent 设为 `text_to_image`（宣传海报）
+- "3"/"③"/"选3" → intent 设为 `generate_video`
+- **不能**再次反问"想生成哪种内容"，**不能**返回 `query_data`、`market_research` 等
+
+**情况 C — 用户输入了其他文字（如"做视频""生成海报"）**
+- 优先分流到 `text_to_image` / `generate_video` / `text_to_video`
 
 **输出示例（正确）：**
 ```json
