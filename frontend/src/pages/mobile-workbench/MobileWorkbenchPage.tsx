@@ -11,6 +11,7 @@ import { ScreenActions } from './ScreenActions'
 import { ScreenDispatch } from './ScreenDispatch'
 import { ScreenBudgetPreview, type BudgetAllocation } from './ScreenBudgetPreview'
 import { ScreenActionPreview } from './ScreenActionPreview'
+import { ScreenNodePreview } from './ScreenNodePreview'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import { exportPlanPdf, exportPlanXlsx } from '../../api/plan'
 import type { BrandInput } from '../../types/chat'
@@ -25,7 +26,7 @@ const TABS: { key: MobileScreen; label: string }[] = [
 ]
 
 // 隐藏 Tab 栏的屏
-const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview']
+const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview', 'node-preview']
 
 const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   chat: { t: '营销方案助手', sub: 'AllyGo Agent' },
@@ -72,6 +73,15 @@ export function MobileWorkbenchPage() {
   const [actionPreviewLoading, setActionPreviewLoading] = useState(false)
   // true = 从流水线完成状态查看结果（只读）；false = 从 checkpoint 弹窗进入（可反馈）
   const [actionPreviewReadonly, setActionPreviewReadonly] = useState(false)
+
+  // Node preview state (通用节点数据预览)
+  const [nodePreviewData, setNodePreviewData] = useState<{
+    nodeId: string
+    title: string
+    rawData: Record<string, unknown>
+  } | null>(null)
+  const [nodePreviewAnimatingOut, setNodePreviewAnimatingOut] = useState(false)
+  const [executionPlanningLoading, setExecutionPlanningLoading] = useState(false)
 
   // Action preview data — extracted from pausedSnapshot
   const [actionPreviewData, setActionPreviewData] = useState<{
@@ -221,6 +231,84 @@ export function MobileWorkbenchPage() {
     planRun.reject(feedback)
   }
 
+  // 执行规划预览：从 checkpoint 弹窗进入
+  const handleOpenExecutionPlanningPreview = () => {
+    if (planRun.pausedSnapshot) {
+      const ep = planRun.pausedSnapshot.upstream_outputs?.execution_planning as Record<string, unknown> | undefined
+      if (ep && Object.keys(ep).length > 0) {
+        handleViewNodeResult('execution_planning', '执行规划', ep)
+      }
+    }
+  }
+
+  // 执行规划重新生成：用户发送反馈 → 驳回触发 execution_planning 重跑
+  const handleExecutionPlanningRegen = (feedback: string) => {
+    setExecutionPlanningLoading(true)
+    planRun.reject(feedback)
+  }
+
+  // 策略生成预览：从 checkpoint 弹窗进入
+  const handleOpenStrategyPreview = () => {
+    if (planRun.pausedSnapshot) {
+      const sg = planRun.pausedSnapshot.upstream_outputs?.strategy_generation as Record<string, unknown> | undefined
+      if (sg && Object.keys(sg).length > 0) {
+        handleViewNodeResult('strategy_generation', '策略生成', sg)
+      }
+    }
+  }
+
+  // 策略生成重新生成：用户发送反馈 → 驳回触发 strategy_generation 重跑
+  const [strategyLoading, setStrategyLoading] = useState(false)
+  const handleStrategyRegen = (feedback: string) => {
+    setStrategyLoading(true)
+    planRun.reject(feedback)
+  }
+
+  // 适配度分析预览：从 checkpoint 弹窗进入
+  const handleOpenFitnessPreview = () => {
+    if (planRun.pausedSnapshot) {
+      const fa = planRun.pausedSnapshot.upstream_outputs?.fitness_analysis as Record<string, unknown> | undefined
+      if (fa && Object.keys(fa).length > 0) {
+        handleViewNodeResult('fitness_analysis', '适配度分析', fa)
+      }
+    }
+  }
+
+  // 适配度分析重新生成
+  const [fitnessLoading, setFitnessLoading] = useState(false)
+  const handleFitnessRegen = (feedback: string) => {
+    setFitnessLoading(true)
+    planRun.reject(feedback)
+  }
+
+  // 数据查询预览：从 checkpoint 弹窗进入
+  const handleOpenDataQueryPreview = () => {
+    if (planRun.pausedSnapshot) {
+      const dq = planRun.pausedSnapshot.upstream_outputs?.plan_data_query as Record<string, unknown> | undefined
+      if (dq && Object.keys(dq).length > 0) {
+        handleViewNodeResult('plan_data_query', '数据查询', dq)
+      }
+    }
+  }
+
+  // 并行调研节点预览（三个调研节点结果合并展示）
+  const handleViewParallelResult = (nodeId: string) => {
+    if (planRun.pausedSnapshot) {
+      const upstream = planRun.pausedSnapshot.upstream_outputs || {}
+      // 从 upstream_outputs 中取三个调研节点的数据合并
+      const merged: Record<string, unknown> = {}
+      for (const nid of ['product_research', 'market_research', 'audience_insight']) {
+        const d = upstream[nid] as Record<string, unknown> | undefined
+        if (d && Object.keys(d).length > 0) {
+          merged[nid] = d
+        }
+      }
+      if (Object.keys(merged).length > 0) {
+        handleViewNodeResult('parallel_research', '调研结果', merged)
+      }
+    }
+  }
+
   // Action preview: 从流水线步骤"查看结果"按钮进入（只读模式，completed 状态下使用）
   const handleViewActionResult = () => {
     // workflow.complete 后 outputs 才有数据，但流水线在 plan_generator pause 时
@@ -242,6 +330,25 @@ export function MobileWorkbenchPage() {
       setActionPreviewReadonly(true)
       setScreen('action-preview')
     }
+  }
+
+  // 通用节点数据预览：从流水线步骤展开日志区的"查看结果"按钮进入
+  const handleViewNodeResult = (nodeId: string, title: string, data: Record<string, unknown>) => {
+    setNodePreviewData({ nodeId, title, rawData: data })
+    setNodePreviewAnimatingOut(false)
+    setScreen('node-preview')
+  }
+
+  // 通用节点数据预览返回：触发滑出动画 + 直接 approve 继续流水线
+  const handleNodePreviewBack = () => {
+    setNodePreviewAnimatingOut(true)
+    setSuppressedPausedNodeId(nodePreviewData?.nodeId || null)
+    planRun.approve()
+    setTimeout(() => {
+      setNodePreviewAnimatingOut(false)
+      setNodePreviewData(null)
+      setScreen('generate')
+    }, 300)
   }
 
   // 监控 pausedSnapshot 更新：当预算预览 loading 中且收到新的 budget_kpi paused 数据时刷新
@@ -301,6 +408,36 @@ export function MobileWorkbenchPage() {
     }
   }, [planRun.pausedSnapshot])
 
+  // 监控 execution_planning pausedSnapshot：loading 中收到新数据时刷新 preview
+  useEffect(() => {
+    if (!executionPlanningLoading) return
+    if (!planRun.pausedSnapshot) return
+    const ep = planRun.pausedSnapshot.upstream_outputs?.execution_planning as Record<string, unknown> | undefined
+    if (!ep || Object.keys(ep).length === 0) return
+    setNodePreviewData(prev => prev ? { ...prev, rawData: ep } : null)
+    setExecutionPlanningLoading(false)
+  }, [executionPlanningLoading, planRun.pausedSnapshot])
+
+  // 监控 strategy_generation pausedSnapshot：loading 中收到新数据时刷新 preview
+  useEffect(() => {
+    if (!strategyLoading) return
+    if (!planRun.pausedSnapshot) return
+    const sg = planRun.pausedSnapshot.upstream_outputs?.strategy_generation as Record<string, unknown> | undefined
+    if (!sg || Object.keys(sg).length === 0) return
+    setNodePreviewData(prev => prev ? { ...prev, rawData: sg } : null)
+    setStrategyLoading(false)
+  }, [strategyLoading, planRun.pausedSnapshot])
+
+  // 监控 fitness_analysis pausedSnapshot：loading 中收到新数据时刷新 preview
+  useEffect(() => {
+    if (!fitnessLoading) return
+    if (!planRun.pausedSnapshot) return
+    const fa = planRun.pausedSnapshot.upstream_outputs?.fitness_analysis as Record<string, unknown> | undefined
+    if (!fa || Object.keys(fa).length === 0) return
+    setNodePreviewData(prev => prev ? { ...prev, rawData: fa } : null)
+    setFitnessLoading(false)
+  }, [fitnessLoading, planRun.pausedSnapshot])
+
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
   const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput) => {
     if (inputText || brandInput) {
@@ -327,6 +464,7 @@ export function MobileWorkbenchPage() {
       preview: 'generate',
       'budget-preview': 'generate',
       'action-preview': 'generate',
+      'node-preview': 'generate',
       actions: 'generate',
       dispatch: 'actions',
     }
@@ -347,16 +485,20 @@ export function MobileWorkbenchPage() {
     dispatch: { t: '下发与转发达成', sub: `${brandLabel} · 跨盟下发` },
     'budget-preview': { t: '预算分配与预览', sub: `${productLabel}` },
     'action-preview': { t: '行动预览', sub: `${productLabel}` },
+    'node-preview': { t: '节点数据', sub: `${nodePreviewData?.title || ''}` },
   }
   const meta = topbarText[screen]
   const isExportReady = (screen === 'generate' || screen === 'preview') && status === 'completed'
 
   // 预算预览页在手机框内展示，使用自己的顶栏，隐藏 PhoneFrame 顶栏
   // 动画退出中也不显示 topbar（保持视觉连贯）
-  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview'
+  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview' || screen === 'node-preview' || nodePreviewAnimatingOut
 
   // 预算预览正在展示中：包括正在展示 slide-in 或已展示
   const showingBudgetPreview = screen === 'budget-preview' || isBpAnimatingOut
+
+  // 通用节点预览覆盖层
+  const showingNodePreview = screen === 'node-preview' || nodePreviewAnimatingOut
 
   // action-preview 返回时 approve 继续流水线（同 budget-preview 模式）
   const handleActionPreviewBack = () => {
@@ -505,6 +647,25 @@ export function MobileWorkbenchPage() {
               />
             </div>
           )}
+          {/* 通用节点数据预览覆盖层（除 plan_generator 外的所有节点） */}
+          {showingNodePreview && nodePreviewData && (
+            <div
+              className={nodePreviewAnimatingOut ? 'bp-slide-out' : 'bp-slide-in'}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column',
+                background: 'var(--bg)', overflow: 'hidden',
+              }}
+            >
+              <ScreenNodePreview
+                title={nodePreviewData.title}
+                rawData={nodePreviewData.rawData}
+                onBack={handleNodePreviewBack}
+                onReject={nodePreviewData.nodeId === 'execution_planning' ? handleExecutionPlanningRegen : nodePreviewData.nodeId === 'strategy_generation' ? handleStrategyRegen : null}
+                loading={nodePreviewData.nodeId === 'execution_planning' ? executionPlanningLoading : nodePreviewData.nodeId === 'strategy_generation' ? strategyLoading : false}
+              />
+            </div>
+          )}
           <div style={{ display: screen === 'chat' ? 'flex' : 'none', flex: screen === 'chat' ? 1 : '', flexDirection: 'column', overflow: 'visible', position: 'relative' }}>
             <ScreenChat onNavigate={handleChatNavigate} />
           </div>
@@ -526,15 +687,21 @@ export function MobileWorkbenchPage() {
                 handleOpenActionPreview()
               }}
               onViewActionResult={handleViewActionResult}
+              onViewNodeResult={handleViewNodeResult}
+              onOpenExecutionPlanningPreview={handleOpenExecutionPlanningPreview}
+              onOpenStrategyPreview={handleOpenStrategyPreview}
+              onOpenFitnessPreview={handleOpenFitnessPreview}
+              onOpenDataQueryPreview={handleOpenDataQueryPreview}
+              onViewParallelResult={handleViewParallelResult}
             />
           </div>
-          <div style={{ display: screen === 'preview' ? '' : 'none' }}>
+          <div style={{ display: screen === 'preview' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <ScreenPreview
               onNavigate={handleNavigate}
               chapters={planRun.chapters}
             />
           </div>
-          <div style={{ display: screen === 'actions' ? '' : 'none' }}>
+          <div style={{ display: screen === 'actions' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <ScreenActions
               onNavigate={handleNavigate}
               outputs={outputs}

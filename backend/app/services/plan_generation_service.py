@@ -48,7 +48,7 @@ _INTERRUPT_BEFORE = [
     "action_recommendations",
     "plan_generator",
 ]
-_INTERRUPT_AFTER = ["budget_kpi", "action_recommendations"]
+_INTERRUPT_AFTER = ["product_research", "market_research", "audience_insight", "plan_data_query", "fitness_analysis", "strategy_generation", "execution_planning", "budget_kpi", "action_recommendations"]
 _PARALLEL_NODES = ["product_research", "market_research", "audience_insight"]
 
 
@@ -1132,7 +1132,75 @@ async def reject_run(run_id: str, *, reason: str) -> AsyncGenerator[str, None]:
     channel_values["brand_input"] = brand_input
 
     # 根据暂停节点动态决定清除范围
-    if "action_recommendations" in next_nodes or (next_nodes and next_nodes[0] == "plan_generator"):
+    # 检测 plan_data_query interrupt_after：next 指向 fitness_analysis（plan_data_query 后继）
+    is_plan_data_query_after = False
+    if next_nodes and _NODE_ORDER.index("plan_data_query") + 1 < len(_NODE_ORDER):
+        pdq_successor = _NODE_ORDER[_NODE_ORDER.index("plan_data_query") + 1]
+        if next_nodes[0] == pdq_successor:
+            is_plan_data_query_after = True
+
+    # 检测 fitness_analysis interrupt_after：next 指向 strategy_generation（fitness_analysis 后继）
+    is_fitness_analysis_after = False
+    if next_nodes and _NODE_ORDER.index("fitness_analysis") + 1 < len(_NODE_ORDER):
+        fa_successor = _NODE_ORDER[_NODE_ORDER.index("fitness_analysis") + 1]
+        if next_nodes[0] == fa_successor:
+            is_fitness_analysis_after = True
+
+    # 检测 strategy_generation interrupt_after：next 指向 execution_planning（strategy_generation 后继）
+    is_strategy_generation_after = False
+    if next_nodes and _NODE_ORDER.index("strategy_generation") + 1 < len(_NODE_ORDER):
+        sg_successor = _NODE_ORDER[_NODE_ORDER.index("strategy_generation") + 1]
+        if next_nodes[0] == sg_successor:
+            is_strategy_generation_after = True
+
+    # 检测 execution_planning interrupt_after
+    is_execution_planning_after = False
+    if next_nodes and _NODE_ORDER.index("execution_planning") + 1 < len(_NODE_ORDER):
+        ep_successor = _NODE_ORDER[_NODE_ORDER.index("execution_planning") + 1]
+        if next_nodes[0] == ep_successor:
+            is_execution_planning_after = True
+
+    if is_plan_data_query_after:
+        logger.info("[plan] 用户驳回 plan_data_query（interrupt_after），原因：%s", reason)
+        # plan_data_query 之后暂停，回滚到上游并行节点让 plan_data_query 重跑
+        for key in ("plan_data_query", "fitness_analysis", "strategy_generation", "execution_planning", "budget_kpi", "action_recommendations", "plan_generator"):
+            channel_values.pop(key, None)
+        await graph.aupdate_state(
+            _thread_config(run_id),
+            values=channel_values,
+            as_node="plan_data_query",
+        )
+    elif is_fitness_analysis_after:
+        logger.info("[plan] 用户驳回 fitness_analysis（interrupt_after），原因：%s", reason)
+        # fitness_analysis 之后暂停，回滚到 plan_data_query 让 fitness_analysis 重跑
+        for key in ("fitness_analysis", "strategy_generation", "execution_planning", "budget_kpi", "action_recommendations", "plan_generator"):
+            channel_values.pop(key, None)
+        await graph.aupdate_state(
+            _thread_config(run_id),
+            values=channel_values,
+            as_node="plan_data_query",
+        )
+    elif is_strategy_generation_after:
+        logger.info("[plan] 用户驳回 strategy_generation（interrupt_after），原因：%s", reason)
+        # strategy_generation 之后暂停，回滚到 fitness_analysis 让 strategy_generation 重跑
+        for key in ("strategy_generation", "execution_planning", "budget_kpi", "action_recommendations", "plan_generator"):
+            channel_values.pop(key, None)
+        await graph.aupdate_state(
+            _thread_config(run_id),
+            values=channel_values,
+            as_node="fitness_analysis",
+        )
+    elif is_execution_planning_after:
+        logger.info("[plan] 用户驳回 execution_planning（interrupt_after），原因：%s", reason)
+        # execution_planning 之后暂停，回滚到 strategy_generation 让 execution_planning 重跑
+        for key in ("execution_planning", "budget_kpi", "action_recommendations", "plan_generator"):
+            channel_values.pop(key, None)
+        await graph.aupdate_state(
+            _thread_config(run_id),
+            values=channel_values,
+            as_node="strategy_generation",
+        )
+    elif "action_recommendations" in next_nodes or (next_nodes and next_nodes[0] == "plan_generator"):
         logger.info("[plan] 用户驳回 action_recommendations，原因：%s", reason)
         # 暂停在 action_recommendations 之后（interrupt_after）
         # 用 `as_node="budget_kpi"` 因为 LangGraph 图的边是 budget_kpi → action_recommendations，

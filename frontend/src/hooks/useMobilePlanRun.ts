@@ -64,7 +64,7 @@ type Action =
   | { type: 'SET_LOADING'; loading: boolean }
   | { type: 'NODE_START'; nodeId: string }
   | { type: 'NODE_LOG'; nodeId: string; message: string }
-  | { type: 'NODE_COMPLETE'; nodeId: string }
+  | { type: 'NODE_COMPLETE'; nodeId: string; output?: Record<string, unknown> }
   | { type: 'NODE_FAILED'; nodeId: string; message: string }
   | { type: 'WORKFLOW_PAUSED'; snapshot: MobilePausedSnapshot }
   | { type: 'WORKFLOW_RESUME'; nodeId: string }
@@ -133,7 +133,12 @@ function reducer(state: MobilePlanRunState, action: Action): MobilePlanRunState 
       const steps = state.steps.map((s) =>
         s.id === action.nodeId ? { ...s, status: 'complete' as PlanNodeStatus, summary: s.logs[s.logs.length - 1] || s.desc } : s,
       )
-      return { ...state, steps }
+      // 按节点累加输出：node.complete 事件可能携带该节点的输出数据
+      const outputs = { ...state.outputs }
+      if (action.output) {
+        (outputs as Record<string, unknown>)[action.nodeId] = action.output
+      }
+      return { ...state, steps, outputs: outputs as PlanOutputs }
     }
     case 'NODE_FAILED': {
       const steps = state.steps.map((s) =>
@@ -318,9 +323,12 @@ export function useMobilePlanRun() {
               dispatch({ type: 'NODE_LOG', nodeId: event.nodeId, message: event.message })
             }
             break
-          case 'node.complete':
-            if (event.nodeId) dispatch({ type: 'NODE_COMPLETE', nodeId: event.nodeId })
+          case 'node.complete': {
+            // node.complete 事件可能携带该节点的输出数据（output 字段）
+            const nodeOutput = event.data?.output as Record<string, unknown> | undefined
+            if (event.nodeId) dispatch({ type: 'NODE_COMPLETE', nodeId: event.nodeId, output: nodeOutput?.[event.nodeId] as Record<string, unknown> | undefined })
             break
+          }
           case 'node.failed':
             if (event.nodeId) dispatch({ type: 'NODE_FAILED', nodeId: event.nodeId, message: event.message || '节点执行失败' })
             break

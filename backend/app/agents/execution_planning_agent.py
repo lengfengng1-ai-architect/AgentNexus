@@ -33,6 +33,10 @@ async def run_execution_planning(state: dict[str, Any]) -> dict[str, Any]:
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
+    # 注入用户驳回反馈
+    reject_reason = brand_input.get("_reject_reason", "")
+    reject_history = brand_input.get("_reject_history", [])
+
     write_log("execution_planning", f"📊 正在为 {brand_name} 规划执行方案…")
     result = await invoke_json(
         _render(
@@ -49,6 +53,8 @@ async def run_execution_planning(state: dict[str, Any]) -> dict[str, Any]:
             influencers_count=city_data.get("influencers", {}).get("count", 0),
             stores_count=city_data.get("stores", {}).get("count", 0),
             venues_count=city_data.get("venues", {}).get("count", 0),
+            reject_reason=reject_reason,
+            reject_history=reject_history,
         ),
         f"请为 {brand_name} 生成执行规划。",
     )
