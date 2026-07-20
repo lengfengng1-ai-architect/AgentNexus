@@ -341,22 +341,27 @@ def _normalize_intent_output(
         cn_missing = [_field_labels.get(f, f) for f in missing]
         output.reply = f"为了生成营销方案，我还需要了解：{'、'.join(cn_missing)}"
 
-    # 图片上传澄清分支：用户上传图片但 LLM 返回 chat/clarify 时，
-    # 不直接判生成意图，而是反问用户想做什么（①参数介绍图 ②宣传图 ③宣传短片）。
-    # 用户下轮回复后，LLM 结合 image_urls 上下文自然分流到
-    # text_to_image（以图生图）或 generate_video（以图生视频）。
-    # ponytail: 仅当 message 为空（纯图片上传）时触发，避免覆盖用户已回复的情况。
-    if output.intent in ("chat", "clarify", "query_data") and image_urls and not (context_message or "").strip():
-        output.intent = "clarify"
-        output.missing_fields = []
-        output.confidence = max(output.confidence, 0.85)
-        output.reply = (
-            "收到图片！想让我帮你生成哪种内容？\n"
-            "① 电商产品参数介绍图\n"
-            "② 好看的宣传图\n"
-            "③ 产品宣传短片\n"
-            "或者直接说出你的想法，我来帮你实现。"
-        )
+    # 图片上传澄清分支：用户上传图片但 LLM 返回非图片相关意图时，
+    # 强制重定向为 clarify + 清空品牌字段，防止 LLM 从对话历史推断出字段。
+    # ponytail: 仅当 message 为空（纯图片上传）时触发，不覆盖用户已回复的情况。
+    if image_urls and not (context_message or "").strip():
+        if output.intent not in ("text_to_image", "generate_video", "text_to_video", "clarify"):
+            output.intent = "clarify"
+            output.brand_input.brand_name = None
+            output.brand_input.category = None
+            output.brand_input.city = None
+            output.brand_input.budget = None
+            output.brand_input.period = None
+            output.missing_fields = []
+            output.confidence = max(output.confidence, 0.85)
+            if not output.reply:
+                output.reply = (
+                    "收到图片！想让我帮你生成哪种内容？\n"
+                    "① 电商产品参数介绍图\n"
+                    "② 好看的宣传图\n"
+                    "③ 产品宣传短片\n"
+                    "或者直接说出你的想法，我来帮你实现。"
+                )
 
     return output
 
@@ -542,6 +547,11 @@ async def stream_intent_recognition(
         and result.brand_input.category is not None
     ):
         result.brand_input.category = None
+
+    if not message.strip():
+        # 早返回：纯图片上传，跳过后续所有逻辑（LLM 从历史 conversation_history 推断）
+        yield ("", result.model_dump())
+        return
 
     if result.intent != "update_context" and context.get("brand_input"):
         # Always fill missing fields from context, for any intent
