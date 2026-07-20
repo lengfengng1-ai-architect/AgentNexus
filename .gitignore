@@ -58,4 +58,4 @@ backend/mock_data/user_persona/*.json
 backend/mock_data/product_info/跑力狮.json
 backend/mock_data/product_info/**/*.json
 backend/generated_xlsx
-
+backend/mock_data/*
