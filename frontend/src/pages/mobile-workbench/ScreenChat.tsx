@@ -112,6 +112,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     setAlliancePlanningResult,
     setCompetitorAnalysisResult,
     setCommunityOperationsResult,
+    clearHistory,
   } = useChat()
 
   const {
@@ -249,6 +250,11 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     const lastImgMsg = messages.slice().reverse().find(m => m.imageUrls?.length)
     addVirtualMessage('generate_video', '帮我生成一条宣传视频', lastImgMsg?.imageUrls?.[0], lastImgMsg?.imageCaptions?.[0] || undefined)
   }, [addVirtualMessage, messages])
+
+  // ── 清空聊天历史 ───────────────────────────────────────────────────────────
+  const handleClearHistory = useCallback(() => {
+    clearHistory()
+  }, [clearHistory])
 
   // ── 语音输入 ───────────────────────────────────────────────────────────
   const handleVoice = useCallback(() => {
@@ -393,12 +399,15 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     }
   }, [messages, communityActiveIds, startCommunityOperations])
 
-  // 清理语音识别
+  // 清理语音识别 + 监听清空历史事件
   useEffect(() => {
+    const handler = () => clearHistory()
+    window.addEventListener('clear-chat-history', handler)
     return () => {
       recognitionRef.current?.stop()
+      window.removeEventListener('clear-chat-history', handler)
     }
-  }, [])
+  }, [clearHistory])
 
   // ── 聚焦 chips 点击：填充输入框 ─────────────────────────────────────────
   const handleChipClick = useCallback((prompt: SuggestedPrompt) => {
@@ -419,6 +428,7 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
           onUpload={handleUploadClick}
           onCreateImage={handleCreateImage}
           onCreateVideo={handleCreateVideo}
+          onClearHistory={handleClearHistory}
         />
       )
     }

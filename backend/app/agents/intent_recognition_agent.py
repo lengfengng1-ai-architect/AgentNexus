@@ -543,13 +543,16 @@ async def stream_intent_recognition(
 
     if result.intent != "update_context" and context.get("brand_input"):
         # Always fill missing fields from context, for any intent
-        ctx_bi = _parse_brand_input(context["brand_input"])
-        merged = result.brand_input.model_dump(exclude_none=True)
-        for key in ("brand_name", "category", "city", "budget", "period"):
-            if merged.get(key) is None:
-                val = getattr(ctx_bi, key, None)
-                if val is not None:
-                    setattr(result.brand_input, key, val)
+        # ponytail: 纯图片上传（message 为空）时不 merge brand_input，
+        # 避免 LLM 误将上一轮的字段带到图片意图场景。
+        if context.get("message") or "":
+            ctx_bi = _parse_brand_input(context["brand_input"])
+            merged = result.brand_input.model_dump(exclude_none=True)
+            for key in ("brand_name", "category", "city", "budget", "period"):
+                if merged.get(key) is None:
+                    val = getattr(ctx_bi, key, None)
+                    if val is not None:
+                        setattr(result.brand_input, key, val)
 
     # Fill market_name from context
     if not result.market_name and context.get("market_name"):

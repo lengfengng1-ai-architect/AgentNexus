@@ -35,6 +35,7 @@ type ChatAction =
   | { type: 'INTENT_RECEIVED'; intent: string; reply: string; brandInput: BrandInput; missingFields: string[]; gate?: string | null; imageUrls?: string[]; videoPrompt?: string | null; generationPrompt?: string | null; messageId?: string; marketName?: string | null; sportType?: string | null }
   | { type: 'SET_ERROR'; error: string }
   | { type: 'CLEAR_ERROR' }
+  | { type: 'CLEAR_HISTORY' }
   | { type: 'RETRY_MESSAGE'; messageId: string }
   | { type: 'LOAD_HISTORY'; messages: ChatMessage[] }
   | { type: 'VIDEO_RESULT'; messageId: string; videoResult: VideoResultData }
@@ -183,6 +184,9 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
 
     case 'CLEAR_ERROR':
       return { ...state, error: null }
+
+    case 'CLEAR_HISTORY':
+      return { ...state, messages: [], inputValue: '' }
 
     case 'RETRY_MESSAGE': {
       const updatedMessages = state.messages.map(m =>
@@ -363,8 +367,11 @@ export function useChat() {
     dispatch({ type: 'STREAM_START' })
 
     // Build full context: conversation history + merged brand_input
-    const lastBrand = getLatestBrandInput(messagesRef.current)
-    const conversationHistory = messagesRef.current
+    // ponytail: 纯图片上传（无文字）时不带入 conversation_history 和 brand_input，
+    // 避免 LLM 从历史对话中读到品牌字段，错判为 generate_plan。
+    const isImageOnly = !content.trim() && imageUrls && imageUrls.length > 0
+    const lastBrand = isImageOnly ? undefined : getLatestBrandInput(messagesRef.current)
+    const conversationHistory = isImageOnly ? [] : messagesRef.current
       .filter(m => !m.id.startsWith('stream-') && !m.id.startsWith('virtual-'))
       .map(m => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`)
       .slice(-10) // keep last 10 exchanges
@@ -549,6 +556,7 @@ export function useChat() {
     setAlliancePlanningResult,
     setCompetitorAnalysisResult,
     setCommunityOperationsResult,
+    clearHistory: () => dispatch({ type: 'CLEAR_HISTORY' }),
   }
 }
 

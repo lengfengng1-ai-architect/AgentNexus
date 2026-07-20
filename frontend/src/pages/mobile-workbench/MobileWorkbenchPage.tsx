@@ -207,6 +207,7 @@ export function MobileWorkbenchPage() {
     setScreen(s)
   }
 
+
   // 预算预览返回时：触发滑出动画 → 完成后切回 generate 屏并提交数据
   const handleBudgetPreviewBack = (allocations: BudgetAllocation[]) => {
     // 1. 触发滑出动画的同时开始提交流程（SSE 在动画期间即可启动）
