@@ -398,6 +398,16 @@
 .mw .sec h3 .more { margin-left: auto; font-size: 11px; color: var(--muted); font-weight: 400; cursor: pointer; }
 .mw .sec h3 .pv-actions { margin-left: auto; display: flex; gap: 6px; }
 
+.mw .form-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  padding-bottom: 76px;
+}
+.mw .form-scroll::-webkit-scrollbar { display: none; }
+
 .mw .form { padding: 6px 16px 10px; display: flex; flex-direction: column; gap: 12px; }
 .mw .field label { display: block; margin-bottom: 5px; font-size: 11px; font-weight: 600; color: var(--fg-soft); }
 .mw .field label .req { color: var(--accent); }
@@ -1279,6 +1289,17 @@
 .mw .alliance-slide-in { animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
 .mw .alliance-slide-out { animation: slide-out-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
 @media (prefers-reduced-motion: reduce) { .mw .alliance-slide-in, .mw .alliance-slide-out { animation: none; } .mw .alliance-slide-out { display: none; } }
+
+/* 竞品分析覆盖屏 — 复用了 mbu-* 样式名，只附加 slide 动画 */
+.mw .ca-slide-in { animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.mw .ca-slide-out { animation: slide-out-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .mw .ca-slide-in, .mw .ca-slide-out { animation: none; } .mw .ca-slide-out { display: none; } }
+
+/* 社群运营覆盖屏 — 复用 mbu-* 样式名 */
+.mw .co-slide-in { animation: slide-in-right 0.35s cubic-bezier(0.16, 1, 0.3, 1) both; }
+.mw .co-slide-out { animation: slide-out-right 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+@media (prefers-reduced-motion: reduce) { .mw .co-slide-in, .mw .co-slide-out { animation: none; } .mw .co-slide-out { display: none; } }
+
 .mw .mal-screen { position: relative; display: flex; flex-direction: column; flex: 1; min-height: 0; background: linear-gradient(160deg, #eef3fb 0%, #f7f8fa 45%, #fdf8f3 100%); overflow: hidden; }
 .mw .mal-topbar { position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 10px 12px; background: rgba(255,255,255,0.72); -webkit-backdrop-filter: blur(20px) saturate(1.5); backdrop-filter: blur(20px) saturate(1.5); border-bottom: 1px solid rgba(255,255,255,0.6); }
 .mw .mal-back { flex-shrink: 0; width: 32px; height: 32px; display: flex; align-items: center; justify-content: center; border: none; background: rgba(255,255,255,0.5); border-radius: 50%; font-size: 20px; font-weight: 600; color: var(--fg); cursor: pointer; font-family: var(--ff); }

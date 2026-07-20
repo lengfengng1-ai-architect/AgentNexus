@@ -97,6 +97,8 @@ _CATEGORY_PATTERNS = (
     re.compile(r'属于(.+?)品类'),
     re.compile(r'品类[是为：:]\s*(.+?)(?=[，。、\n]|$)'),
     re.compile(r'([一-龥]{2,8})品类'),  # "运动鞋品类" → 运动鞋
+    re.compile(r'做(.+?)的竞品'),       # "做运动鞋的竞品分析" → 运动鞋
+    re.compile(r'[，,]\s*([一-龥]{2,8})\s*$'),  # "上海，运动鞋" → 运动鞋
 )
 
 
@@ -156,9 +158,9 @@ def _normalize_intent_output(
         if getattr(output.brand_input, field) is None
     ]
 
-    INDEPENDENT = ("chat", "query_data", "clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment", "activity_planning", "alliance_planning")
+    INDEPENDENT = ("chat", "query_data", "clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment", "activity_planning", "alliance_planning", "competitor_analysis", "community_operations")
 
-    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment", "activity_planning", "alliance_planning"):
+    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment", "activity_planning", "alliance_planning", "competitor_analysis", "community_operations"):
         output.intent = "generate_plan"
         output.confidence = max(output.confidence, 0.95)
     elif missing and output.intent not in INDEPENDENT:
@@ -248,6 +250,43 @@ def _normalize_intent_output(
             output.missing_fields = []
             if not output.reply:
                 output.reply = f"好的！为您规划 {output.brand_input.category} 盟域（{output.brand_input.city}），请点击「开始规划」按钮。"
+
+    # competitor_analysis: 需要 category（必填）+ brand_name（可选）
+    if output.intent == "competitor_analysis":
+        ca_missing = []
+        if not output.brand_input.category:
+            ca_missing.append("category")
+        if ca_missing:
+            output.missing_fields = ca_missing
+            if not output.reply:
+                output.reply = "好的，为您做竞品分析。请问您想分析哪个品类？例如：运动鞋、智能手表等。"
+        else:
+            output.missing_fields = []
+            bn = output.brand_input.brand_name
+            if bn:
+                if not output.reply:
+                    output.reply = f"好的！为您分析 {bn}（{output.brand_input.category}）的竞品，请点击「开始分析」按钮。"
+            else:
+                if not output.reply:
+                    output.reply = f"好的！为您分析 {output.brand_input.category} 品类的竞争格局，请点击「开始分析」按钮。"
+
+    # community_operations: 需要 category + city
+    if output.intent == "community_operations":
+        co_missing = []
+        if not output.brand_input.category:
+            co_missing.append("category")
+        if not output.brand_input.city:
+            co_missing.append("city")
+        if co_missing:
+            output.missing_fields = co_missing
+            _co_labels = {"category": "品类", "city": "城市"}
+            cn_co = [_co_labels.get(f, f) for f in co_missing]
+            if not output.reply:
+                output.reply = f"好的，帮您规划社群运营。还需要了解：{'、'.join(cn_co)}"
+        else:
+            output.missing_fields = []
+            if not output.reply:
+                output.reply = f"好的！为您规划 {output.brand_input.category} 在 {output.brand_input.city} 的社群运营，请点击「开始规划」按钮。"
 
     # generate_video: image_url 检查，支持从 context.image_urls 回填
     if output.intent == "generate_video" and not output.image_url:
@@ -491,8 +530,15 @@ async def stream_intent_recognition(
         if result.reply and "品类" in result.reply:
             result.brand_input.category = None
 
-    # LLM 直接返回 market_research 时也可能同时设置 category 并反问"品类"
-    if result.reply and "品类" in result.reply and result.brand_input.category is not None:
+    # LLM 直接返回 market_research 时也可能同时设置 category 并反问"品类"。
+    # 仅对 market_research 生效——clarify/generate_plan 的 reply 含"品类"是合理的字段确认，
+    # 不应清除其 category。
+    if (
+        result.intent == "market_research"
+        and result.reply
+        and "品类" in result.reply
+        and result.brand_input.category is not None
+    ):
         result.brand_input.category = None
 
     if result.intent != "update_context" and context.get("brand_input"):

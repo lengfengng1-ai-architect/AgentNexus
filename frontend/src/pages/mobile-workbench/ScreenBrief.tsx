@@ -148,6 +148,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData, isGene
           <div>{period}</div>
         </div>
       </div>
+      <div className="form-scroll">
       <div className="sec"><h3>方案简报 <span className="more">存草稿</span></h3></div>
       <div className="form">
         <div className="field">
@@ -229,6 +230,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData, isGene
             <div style={{ fontSize: 11, color: '#dc2626', marginTop: 4 }}>{optError}</div>
           )}
         </div>
+      </div>
       </div>
       <div className="dock">
         <button className="gen" onClick={handleGenerate} disabled={genBusy}>

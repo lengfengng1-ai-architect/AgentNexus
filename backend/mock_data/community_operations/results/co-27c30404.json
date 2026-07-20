@@ -1,0 +1,51 @@
+{
+  "category": "上海",
+  "city": "上海",
+  "community_positioning": "上海运动生活方式社群，整合品牌产品与本地达人资源，打造专业、有活力的运动社交圈",
+  "target_members": "上海地区热爱跑步、瑜伽、骑行、篮球等运动的年轻人及运动爱好者，具有消费升级需求",
+  "content_plan": [
+    {
+      "content_type": "运动技巧图文",
+      "description": "邀请至尊/大师级达人分享专业运动技巧与训练方法，结合品牌产品使用场景",
+      "frequency": "每周2次"
+    },
+    {
+      "content_type": "产品测评短视频",
+      "description": "联合明星/精英达人制作品牌运动装备、健康食品等开箱及使用体验短视频",
+      "frequency": "每周1次"
+    },
+    {
+      "content_type": "用户故事分享",
+      "description": "从沪跑团、上海瑜伽联盟等社团中挖掘真实用户运动故事，展现品牌陪伴",
+      "frequency": "每两周1次"
+    },
+    {
+      "content_type": "活动预告海报",
+      "description": "预告线下体验活动、KOL直播及打卡挑战，附报名入口",
+      "frequency": "每周1次"
+    }
+  ],
+  "operation_activities": [
+    {
+      "activity_name": "21天运动打卡挑战",
+      "goal": "提升社群活跃度与粘性，促进品牌产品使用",
+      "description": "社群成员每日运动打卡累积积分，可兑换品牌周边或优惠券，联合沪跑团、魔都骑行社等社团推广"
+    },
+    {
+      "activity_name": "KOL直播带练",
+      "goal": "利用达人影响力吸引新用户，直接转化销售",
+      "description": "邀请至尊/大师级达人进行在线带练（如瑜伽、跑步技巧），同时讲解品牌产品推荐，直播间设置专属优惠"
+    },
+    {
+      "activity_name": "线下门店体验日",
+      "goal": "增强用户与品牌实体接触，提升转化率",
+      "description": "在上海门店举办运动康复体验、潮流服饰试穿等活动，邀请社团成员和达人参与，现场发放社群福利"
+    }
+  ],
+  "kpi_targets": {
+    "active_rate": "40%",
+    "retention_30d": "65%",
+    "conversion_rate": "6%"
+  },
+  "suggestion": "利用本地达人策划高互动活动，提升活跃与留存。"
+}

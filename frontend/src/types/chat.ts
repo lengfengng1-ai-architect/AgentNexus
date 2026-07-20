@@ -70,6 +70,18 @@ export interface ChatMessage {
   alliancePlanningResult?: Record<string, unknown>
   /** 盟域规划结果 ID（al-<8位hex>），详情页按此 ID 拉取 */
   alliancePlanningId?: string
+  /** 竞品分析：category 齐全时可开始分析 */
+  canStartCompetitorAnalysis?: boolean
+  /** 竞品分析完成后的结构化结果 */
+  competitorAnalysisResult?: Record<string, unknown>
+  /** 竞品分析结果 ID（ca-<8位hex>），详情页按此 ID 拉取 */
+  competitorAnalysisId?: string
+  /** 社群运营：category+city 齐全时可开始规划 */
+  canStartCommunityOperations?: boolean
+  /** 社群运营完成后的结构化结果 */
+  communityOperationsResult?: Record<string, unknown>
+  /** 社群运营结果 ID（co-<8位hex>），详情页按此 ID 拉取 */
+  communityOperationsId?: string
   /** 活动规划的运动类型（多轮间持续） */
   sportType?: string
   /** 市场调研目标名称（品牌名/赛道名） */

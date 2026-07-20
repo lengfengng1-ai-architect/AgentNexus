@@ -7,6 +7,8 @@ import { useMarketResearchStream } from '../../hooks/useMarketResearchStream'
 import { useBudgetAssessmentStream } from '../../hooks/useBudgetAssessmentStream'
 import { useActivityPlanningStream } from '../../hooks/useActivityPlanningStream'
 import { useAlliancePlanningStream } from '../../hooks/useAlliancePlanningStream'
+import { useCompetitorAnalysisStream } from '../../hooks/useCompetitorAnalysisStream'
+import { useCommunityOperationsStream } from '../../hooks/useCommunityOperationsStream'
 import { ChatBubble } from '../../components/ChatBubble'
 import { ErrorBar } from '../../components/ErrorBar'
 import { ChatSuggestionHeader } from './screen-chat/ChatSuggestionHeader'
@@ -16,7 +18,7 @@ import type { SuggestedPrompt } from './screen-chat/types'
 import './screen-chat/screen-chat.css'
 import type { BrandInput } from '../../types/chat'
 
-export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview' | 'research-report' | 'draft-list' | 'budget-assessment' | 'activity-planning' | 'alliance-planning'
+export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview' | 'research-report' | 'draft-list' | 'budget-assessment' | 'activity-planning' | 'alliance-planning' | 'competitor-analysis' | 'community-operations'
 
 interface ScreenChatProps {
   onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string, budgetAssessmentId?: string, activityPlanningId?: string, alliancePlanningId?: string) => void
@@ -25,14 +27,16 @@ interface ScreenChatProps {
 const API_BASE = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api/v1'
 const BACKEND_ORIGIN = API_BASE.replace(/\/api\/v1\/?$/, '')
 
-// ponytail: 推荐方案生成固定显示，其余 4 个胶囊从池中随机刷新
-const PINNED_PROMPT: SuggestedPrompt = { id: 'nav-brief', icon: '📝', label: '推荐方案生成', action: 'navigate-brief' }
+// ponytail: 推荐方案生成是种子消息 → 意图识别多轮 → 5 字段齐后出按钮 → 跳简报
+const PINNED_PROMPT: SuggestedPrompt = { id: 'nav-brief', icon: '📝', label: '推荐方案生成', action: 'send-text', payload: '我需要生成一份营销方案' }
 
 const REFRESHABLE_POOL: SuggestedPrompt[] = [
   { id: 'prefill-brand', icon: '💰', label: '预算评估', action: 'send-text', payload: '帮我做预算评估' },
   { id: 'prefill-market', icon: '📊', label: '市场分析', action: 'prefill-market-analysis' },
   { id: 'send-alliance', icon: '🤝', label: '创建盟域', action: 'send-text', payload: '帮我创建一个盟域' },
   { id: 'send-activity', icon: '🎯', label: '创建活动', action: 'send-text', payload: '帮我规划一个活动' },
+  { id: 'competitor-analysis', icon: '🔍', label: '竞品分析', action: 'send-text', payload: '帮我做竞品分析' },
+  { id: 'community-operations', icon: '👥', label: '社群运营', action: 'send-text', payload: '帮我规划社群运营' },
   { id: 'virtual-image', icon: '🖼️', label: '产品海报', action: 'virtual-image' },
   { id: 'virtual-video', icon: '🎬', label: '产品视频', action: 'virtual-video' },
 ]
@@ -78,7 +82,7 @@ const FOCUS_CHIP_EXAMPLES: SuggestedPrompt[] = [
   { id: 'example-market', icon: '', label: '帮我调研一下智能手表', action: 'prefill-market-analysis', payload: '帮我调研一下智能手表' },
   { id: 'example-image', icon: '', label: '帮我生成一张运动产品海报', action: 'virtual-image', payload: '帮我生成一张运动产品海报' },
   { id: 'example-video', icon: '', label: '帮我做一条产品宣传片', action: 'virtual-video', payload: '帮我做一条产品宣传片' },
-  { id: 'example-query', icon: '', label: '上海有哪些运动赛事', action: 'send-text', payload: '上海有哪些运动赛事' },
+  { id: 'example-competitor', icon: '', label: '帮我做运动鞋的竞品分析', action: 'send-text', payload: '帮我做运动鞋的竞品分析' },
 ]
 
 // ponytail: 简单随机打乱；天花板是伪随机分布不均，升级路径可引入加权或后端推荐
@@ -106,6 +110,8 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     setBudgetAssessmentResult,
     setActivityPlanningResult,
     setAlliancePlanningResult,
+    setCompetitorAnalysisResult,
+    setCommunityOperationsResult,
   } = useChat()
 
   const {
@@ -133,6 +139,16 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
   const { startAlliancePlanning, activeIds: allianceActiveIds } = useAlliancePlanningStream({
     updateMessageContent,
     setAlliancePlanningResult,
+  })
+
+  const { startCompetitorAnalysis, activeIds: competitorActiveIds } = useCompetitorAnalysisStream({
+    updateMessageContent,
+    setCompetitorAnalysisResult,
+  })
+
+  const { startCommunityOperations, activeIds: communityActiveIds } = useCommunityOperationsStream({
+    updateMessageContent,
+    setCommunityOperationsResult,
   })
 
   const bottomRef = useRef<HTMLDivElement>(null)
@@ -358,6 +374,25 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     }
   }, [messages, allianceActiveIds, startAlliancePlanning])
 
+  // ── 竞品分析：自动触发（category 齐全时） ──────────────────────────────────
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.canStartCompetitorAnalysis && !competitorActiveIds.has(m.id) && m.brandInput?.category) {
+        const brandName = m.brandInput?.brand_name || null
+        startCompetitorAnalysis(m.id, m.brandInput.category, brandName)
+      }
+    }
+  }, [messages, competitorActiveIds, startCompetitorAnalysis])
+
+  // ── 社群运营：自动触发（category + city 齐全时） ───────────────────────────
+  useEffect(() => {
+    for (const m of messages) {
+      if (m.canStartCommunityOperations && !communityActiveIds.has(m.id) && m.brandInput?.category && m.brandInput?.city) {
+        startCommunityOperations(m.id, m.brandInput.category, m.brandInput.city)
+      }
+    }
+  }, [messages, communityActiveIds, startCommunityOperations])
+
   // 清理语音识别
   useEffect(() => {
     return () => {
@@ -442,6 +477,22 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
     onNavigate('alliance-planning', title, undefined, undefined, undefined, undefined, msg.alliancePlanningId)
   }, [messages, onNavigate])
 
+  // ── 竞品分析详情页入口 ──────────────────────────────────────────────
+  const handleOpenCompetitorAnalysis = useCallback((msgId: string) => {
+    const msg = messages.find(m => m.id === msgId)
+    if (!msg?.competitorAnalysisId) return
+    const title = msg.brandInput?.category ? `${msg.brandInput.category}竞品分析` : '竞品分析'
+    onNavigate('competitor-analysis', title, undefined, undefined, undefined, undefined, undefined, msg.competitorAnalysisId)
+  }, [messages, onNavigate])
+
+  // ── 社群运营详情页入口 ──────────────────────────────────────────────
+  const handleOpenCommunityOperations = useCallback((msgId: string) => {
+    const msg = messages.find(m => m.id === msgId)
+    if (!msg?.communityOperationsId) return
+    const title = msg.brandInput?.category ? `${msg.brandInput.category}社群运营` : '社群运营'
+    onNavigate('community-operations', title, undefined, undefined, undefined, undefined, undefined, undefined, msg.communityOperationsId)
+  }, [messages, onNavigate])
+
   const chatContent = useMemo(() => (
     <>
       {messages.map(m => (
@@ -459,13 +510,15 @@ export function ScreenChat({ onNavigate }: ScreenChatProps) {
           onOpenBudgetAssessment={m.budgetAssessmentId ? handleOpenBudgetAssessment : undefined}
           onOpenActivityPlanning={m.activityPlanningId ? handleOpenActivityPlanning : undefined}
           onOpenAlliancePlanning={m.alliancePlanningId ? handleOpenAlliancePlanning : undefined}
+          onOpenCompetitorAnalysis={m.competitorAnalysisId ? handleOpenCompetitorAnalysis : undefined}
+          onOpenCommunityOperations={m.communityOperationsId ? handleOpenCommunityOperations : undefined}
           onVideoResult={updateVideoResult}
           onImageResult={updateImageResult}
         />
       ))}
       <div ref={bottomRef} />
     </>
-  ), [messages, marketResearchActiveIds, activeSearches, handleRetry, handleGeneratePlan, handleOpenResearchReport, handleOpenBudgetAssessment, handleOpenActivityPlanning, handleOpenAlliancePlanning, updateVideoResult, updateImageResult])
+  ), [messages, marketResearchActiveIds, activeSearches, handleRetry, handleGeneratePlan, handleOpenResearchReport, handleOpenBudgetAssessment, handleOpenActivityPlanning, handleOpenAlliancePlanning, handleOpenCompetitorAnalysis, handleOpenCommunityOperations, updateVideoResult, updateImageResult])
 
   return (
     <div className="chat-screen">

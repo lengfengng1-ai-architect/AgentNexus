@@ -1,0 +1,158 @@
+# OpenSpec: 社群运营规划
+# in_scope id: community-operations
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "社群运营规划"
+  description: "基于品类/城市，结合 mock 经营社数据，给出社群运营建议（社群定位 + 内容规划 + 运营活动 + KPI 目标）。SSE 流式推送进度，结果按 ID 持久化供详情页拉取。"
+  version: "v0.1"
+  x-in-scope-ref: "community-operations"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /community-operations/stream:
+    post:
+      operationId: "community_operations_stream"
+      summary: "SSE 流式社群运营规划"
+      description: |
+        接收品类和城市，SSE 流式推送社群运营规划进度（progress）和最终结果（result）。
+        result 事件携带 community_operations_id，供详情页按 ID 拉取。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CommunityOperationsRequest"
+      responses:
+        "200":
+          description: "SSE 流"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "500":
+          description: "服务异常"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+  /community-operations/results/{co_id}:
+    get:
+      operationId: "community_operations_result_get"
+      summary: "按 ID 拉取社群运营规划结果"
+      description: |
+        供移动端社群运营详情页按 community_operations_id 拉取已持久化的结果，刷新后仍可用。
+        co_id 格式：co-<8位小写hex>。
+      parameters:
+        - name: co_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^co-[0-9a-f]{8}$"
+      responses:
+        "200":
+          description: "社群运营规划结果"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CommunityOperationsResult"
+        "404":
+          description: "结果不存在或已过期"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        "500":
+          description: "读取异常"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+components:
+  schemas:
+    CommunityOperationsRequest:
+      type: object
+      required:
+        - category
+        - city
+      properties:
+        category:
+          type: string
+          description: "品类"
+        city:
+          type: string
+          description: "目标城市"
+
+    ContentPlanItem:
+      type: object
+      properties:
+        content_type:
+          type: string
+          description: "内容类型"
+        description:
+          type: string
+          description: "内容描述"
+        frequency:
+          type: string
+          description: "发布频次"
+
+    OperationActivity:
+      type: object
+      properties:
+        activity_name:
+          type: string
+          description: "活动名称"
+        goal:
+          type: string
+          description: "活动目标"
+        description:
+          type: string
+          description: "活动说明"
+
+    CommunityOperationsResult:
+      type: object
+      properties:
+        category:
+          type: string
+          description: "品类"
+        city:
+          type: string
+          description: "城市"
+        community_positioning:
+          type: string
+          description: "社群定位"
+        target_members:
+          type: string
+          description: "目标人群"
+        content_plan:
+          type: array
+          items:
+            $ref: "#/components/schemas/ContentPlanItem"
+          description: "内容规划"
+        operation_activities:
+          type: array
+          items:
+            $ref: "#/components/schemas/OperationActivity"
+          description: "运营活动"
+        kpi_targets:
+          type: object
+          additionalProperties:
+            type: string
+          description: "KPI 目标"
+        suggestion:
+          type: string
+          description: "一句话建议"
+
+    APIError:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          type: string

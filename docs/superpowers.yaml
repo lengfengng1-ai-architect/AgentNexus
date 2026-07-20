@@ -106,6 +106,26 @@ capabilities:
         同一产品调研结果缓存到 mock_data/product_info/。
         不编造不确定的字段，留空处理。
 
+    - id: "competitor-analysis"
+      name: "竞品分析"
+      description: "基于品类/品牌名称，通过 Web 搜索获取竞品名单、产品矩阵、市场定位、营销策略等信息，结构化输出竞品对比报告"
+      constraints: |
+        数据必须来自 Web 搜索（searxng_search + web_fetch tool），LLM 不可编造竞品名称或数据数值。
+        每个字段标注 method（quoted/extracted/inferred）和 sources 实现可追溯。
+        同一品类竞品结果缓存到 mock_data/competitor_analysis/。
+        不编造不确定的字段，留空处理。
+        SSE 流式推送分析进度，结果持久化并支持详情页展示。
+        仅输出分析报告，不自动执行任何操作。
+
+    - id: "community-operations"
+      name: "社群运营规划"
+      description: "基于品类/城市，结合 mock 经营社数据，给出社群运营建议（社群定位 + 内容规划 + 运营活动 + KOL 合作），多轮澄清收集需求，结果在聊天入口卡 + 独立详情页展示"
+      constraints: |
+        数据必须来自平台 mock 数据（allygo_city_data.json 经营社等），LLM 不可编造经营社名称或数据数值。
+        SSE 流式推送进度，结果持久化到 mock_data/community_operations/results/（co-<uuid8>.json），按 ID 拉取。
+        社群知识/内容规划/运营活动建议由 LLM 基于 mock 数据和品类特征推理生成。
+        仅输出规划建议，不自动建群/发消息/执行。
+
     - id: "web-search-tool"
       name: "Web 搜索工具"
       description: "将 searxng_search 封装为 LangChain Tool，供所有 Agent 调用以搜索 Web 获取页面列表"
@@ -128,10 +148,6 @@ capabilities:
     - id: "kpi-attribution"
       name: "效果归因系统"
       reason: "需要完整 Campaign 跟踪系统，P2 能力"
-
-    - id: "competitor-analysis"
-      name: "竞品分析功能"
-      reason: "竞品运动场景数据不在 AllyGo 体系内"
 
     - id: "non-sport-brands"
       name: "非运动类品牌支持"

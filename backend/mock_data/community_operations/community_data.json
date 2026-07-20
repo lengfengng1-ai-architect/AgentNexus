@@ -1,0 +1,28 @@
+{
+  "community_types": [
+    {"name": "品牌粉丝群", "description": "品牌忠实用户的交流群，侧重品牌活动与产品体验"},
+    {"name": "运动兴趣群", "description": "以某项运动为纽带的兴趣社群，侧重运动技巧与打卡"},
+    {"name": "会员福利群", "description": "品牌会员专属群，侧重优惠券/积分兑换/新品试用"},
+    {"name": "活动打卡群", "description": "以线下活动为周期的临时社群，侧重活动组织与复盘"}
+  ],
+  "content_formats": [
+    {"type": "运动技巧图文", "description": "专业运动知识/技巧分享图文"},
+    {"type": "产品测评短视频", "description": "品牌产品开箱/使用体验短视频"},
+    {"type": "用户故事分享", "description": "社群成员的真实运动故事/产品故事"},
+    {"type": "活动预告海报", "description": "线下/线上活动预告与报名海报"}
+  ],
+  "engagement_methods": [
+    {"name": "打卡挑战", "description": "21天运动打卡累积积分，可兑换品牌周边"},
+    {"name": "积分兑换", "description": "社群积分兑换品牌优惠券/体验券/周边"},
+    {"name": "线下体验", "description": "品牌门店或合作场地线下体验活动"},
+    {"name": "KOL 直播", "description": "邀请运动达人在线直播带练/产品讲解"},
+    {"name": "用户共创", "description": "邀请核心用户参与产品测评/内容共创"}
+  ],
+  "kpi_reference": {
+    "active_rate": "35-50%",
+    "retention_30d": "60-70%",
+    "conversion_rate": "5-8%",
+    "avg_daily_posts": "20-50条",
+    "member_growth_monthly": "15-25%"
+  }
+}

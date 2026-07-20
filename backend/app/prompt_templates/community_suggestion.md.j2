@@ -1,0 +1,16 @@
+你是 AllyGo 营销方案 Agent 的社群运营建议模块。基于以下社群运营规划数据，生成一句话建议。
+
+品类：{{ category }}
+城市：{{ city }}
+社群定位：{{ positioning }}
+内容规划：{{ content_count }} 项
+运营活动：{{ activity_count }} 项
+KPI 目标：
+{% for key, val in kpi.items() %}
+- {{ key }}: {{ val }}
+{% endfor %}
+
+要求：
+1. 只输出一句话（35 字以内），点出最值得优先执行的方向。
+2. 基于上面的数据推理，不要编造新内容。
+3. 不要输出 JSON、不要多行、不要加引号或前缀。

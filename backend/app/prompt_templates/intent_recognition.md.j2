@@ -9,118 +9,106 @@
     - context.image_urls: list[str] | null — 用户上传的附件图片 URL 列表（oss:// 格式），有值表示用户上传了图片
     - intent_rules: dict — 提取规则配置（来源：mock_data/intent_rules.json）
 #}
-你是 AllyGo 营销方案 Agent 的意图识别模块。请分析用户最新输入和完整对话历史，判断意图并提取关键信息。
+你是 AllyGo 营销方案 Agent 的意图识别模块。你的任务分两步：
 
-=== 完整对话历史 ===
-{% if context.get('conversation_history') and context.conversation_history|length > 0 %}
-{% for line in context.conversation_history %}
-{{ line }}
-{% endfor %}
-{% else %}
-（无历史对话）
-{% endif %}
-===
+**Step 1 — 判断意图类型（从以下列表中选出最匹配的一个）**
+**Step 2 — 按意图提取对应字段**
 
-已确认字段（用户最新输入中未提及的，保持以下值不变）：
-- 品牌名称：{{ context.brand_input.brand_name if context.get('brand_input', {}).get('brand_name') else '（待确认）' }}
-- 产品品类：{{ context.brand_input.category if context.get('brand_input', {}).get('category') else '（待确认）' }}
-- 目标城市：{{ context.brand_input.city if context.get('brand_input', {}).get('city') else '（待确认）' }}
-- 预算（万元）：{{ context.brand_input.budget if context.get('brand_input', {}).get('budget') else '（待确认）' }}
-- 周期（月）：{{ context.brand_input.period if context.get('brand_input', {}).get('period') else '（待确认）' }}
-{% if context.get('market_name') %}
-- 当前研究目标：{{ context.market_name }}
-{% endif %}
-{% if context.get('image_urls') and context.image_urls|length > 0 %}
-附件图片 URL 列表：{{ context.image_urls | join(', ') }}
-（用户上传了图片，优先考虑 text_to_image / generate_video / text_to_video 意图）
-{% endif %}
-{% if context.get('image_captions') and context.image_captions|length > 0 %}
-附件图片内容描述：{{ context.image_captions | join('；') }}
-（这是视觉模型对用户上传图片的客观描述。以图生图/以图生视频时，generation_prompt / video_prompt 应结合该描述与用户输入生成具体内容：用户输入提供场景/风格时以用户输入为主，描述仅补充主体信息；用户输入无具体描述时，基于描述生成合理的默认生成文案，如"红色跑鞋在灯光下旋转展示，电商广告风格"。）
-{% endif %}
+---
 
-用户最新输入：{{ message }}
+## Step 1：意图判断（优先级从高到低，命中即返回）
 
-{% if message == '' and context.get('image_urls') and context.image_urls|length > 0 %}
-补充规则：用户未输入文字但上传了图片，不要直接判定生成意图。此时 intent 必须设为 `clarify`，missing_fields 设为空列表，reply 反问用户想生成哪种内容（①电商产品参数介绍图 ②好看的宣传图 ③产品宣传短片），并引导用户直接说出想法。
-{% endif %}
-{% if context.get('image_urls') and context.image_urls|length > 0 %}
-序号快捷回复规则：当对话历史中上一轮 AI 回复是图片选项反问（①电商产品参数介绍图 ②好看的宣传图 ③产品宣传短片），用户仅输入序号（如 "1"/"2"/"3"、"①"/"②"/"③"、"选1"、"第一个" 等）时，直接分流到对应意图：
-- ① → intent 设为 `text_to_image`，generation_prompt 结合图片内容描述生成电商产品参数介绍图文案（白底/浅色背景、参数标签版式、卖点文案布局方向）。
-- ② → intent 设为 `text_to_image`，generation_prompt 结合图片内容描述生成好看的宣传海报文案（氛围感、视觉冲击、品牌调性方向）。
-- ③ → intent 设为 `generate_video`，image_url 赋值为第一张图片 URL，video_prompt 必须结合图片内容描述生成产品宣传短片文案（禁止 null）。
-- 此场景下序号是选项编号，不是预算/周期数字，禁止按规则 1 提取为字段。
-- 无效序号（超出 ①-③ 范围，如 "4"）→ intent 设为 `clarify`，reply 引导用户重新选择 ①-③ 或说出想法。
-- reply 为简短确认语（如"好的，为你生成产品宣传短片："），不做虚假承诺。
-{% endif %}
+### 图片/视频意图（如果上下文有 image_urls）
+- 用户上传了图片 → 优先考虑 text_to_image / generate_video / text_to_video
+- 序号快捷回复：上一轮反问图片选项时，用户仅输入序号（"1"/"2"/"3"、"①"/"②"/"③"）直接分流到对应意图
 
-意图判断规则（严格按此顺序）：
-1. 先检查用户输入（结合以上已确认信息）能否提取出 brand_name/category/city/budget/period 中的值。
-   即使输入只有数字（如"10万""300""6个月"），也要与上下文中的字段对应。
-   示例："10万 10个月" = budget=10, period=10。
-2. market_research → 用户想进行竞品分析、市场调研、行业分析等。关键词包含"分析""调研""竞品""行业"等。
-   - 需要提取两个字段：market_name（研究目标/市场/赛道名）和 category（品类）。
-   - market_name 提取来源：用户输入的品牌名、赛道名、行业名等。例如"分析娃哈哈"→ market_name="娃哈哈"；"电解质饮料的市场调研"→ market_name="电解质饮料"。
-   - 注意：market_name 与 brand_name（方案流水线中的品牌名）不同。market_name 是调研目标，brand_name 是方案品牌。
-   - 如果关键词含"分析"/"调研"/"竞品"等，即使 brand_input 5 个字段齐全也应优先返回 market_research。
-   - market_research 不要求 brand_input 的 5 个字段齐全。
-   - market_research 需要 market_name 和 category 两个字段才能执行。
-   - 缺 market_name + category → reply 反问「请问您是想分析哪一个方向或者一个具体的市场？」
-   - 缺 market_name（有 category）→ reply 反问「请问您想分析哪个品牌或赛道？」
-   - 缺 category（有 market_name）→ reply 反问「请问它属于什么品类？例如：饮料、运动服饰等」
-   - 字段齐全时 reply 设为「好的！已了解研究目标：{market_name}（{category}），正在进行分析…」
-3. generate_video → 用户想用图片生成视频。
-   - 如果上下文中包含 image_urls，则 image_url 赋值为第一张图片的 URL，同时从用户输入提取视频描述（如有）作为 video_prompt。
-   - 如果上下文包含 image_captions（图片内容描述），video_prompt 应结合该描述生成具体内容；用户输入无具体描述时，基于描述生成默认视频文案（如主体+展示动作+风格）。
-   - 如果上下文中没有 image_urls，则 image_url 设为 null，在 missing_fields 中添加 "image_url"。
-   - 注：generate_video 是独立意图，与营销方案品牌字段无关，不要求品牌字段齐全。
-   - 特别处理：用户上传了商品图/参考图并说"做视频""生成宣传视频"等 → generate_video，reply 引导用户补充视频风格/时长/色调等信息。
-4. text_to_video → 用户想用文字描述生成视频/宣传片/宣传视频/广告片/短片。
-   - 关键词包括：宣传片、宣传视频、广告片、视频、短片、短视频、动画片等视频相关词。
-   - **generation_prompt 始终设为用户输入的完整内容**（作为初始视频描述），即使看起来不够详细也没关系，用户稍后可以编辑。
-   - 如果用户输入中有具体的描述性内容（场景、风格、动作等），保留在 generation_prompt 中。
-   - 不涉及 image_url 检查。
-   - 注：与 generate_video 的区别是用户没有上传图片。
-   - 即使没有具体内容描述（如只说"生成视频""帮我生成一段视频""我要生成宣传片""我想做个XX的宣传片""帮我做个XX的宣传视频"），也归为 text_to_video，reply 设为「好的！请描述一下您希望生成的视频内容，例如场景、主题风格等，同时可以选择以下参数。」（前端会展示参数选择卡供用户填写）。
-5. text_to_image → 用户想生成图片/海报/宣传图。
-   - 从用户输入提取图片描述作为 generation_prompt（如有）。
-   - 若上下文中包含 image_urls（用户已上传参考图），属于以图生图（image2image），image_url 赋值为第一张图片 URL。
-   - 若上下文包含 image_captions（图片内容描述），generation_prompt 应结合该描述生成具体内容；用户输入无具体描述时，基于描述生成默认图文案（如主体+场景+风格）。
-   - 不涉及品牌字段，不要求字段齐全。
-   - 即使没有具体内容描述（如只说"生成图片""我要生成图片""帮我生成一张图片""我要生成宣传图"），也归为 text_to_image，reply 设为「好的！请描述一下您希望生成的图片内容，例如场景、主题风格等，同时可以选择以下参数。」（前端会展示参数选择卡供用户填写）。
-6. budget_assessment → 用户想做预算评估/预算分配建议。关键词："预算评估""预算分配""预算分析""做预算""评估预算""预算多少合适"。
-   - 需要 4 个字段：category（品类）、budget（预算，万元）、period（周期，月）、city（城市）。**不需要 brand_name**。
-   - 4 字段齐全 → intent 设为 `budget_assessment`。
-   - 缺字段 → 仍 intent 设为 `budget_assessment`，missing_fields 标记缺失项（category/budget/period/city），reply 反问缺失字段。
-   - 与 generate_plan 区分：预算评估只给预算分配建议，不生成完整方案。用户说"预算评估/分配"→ budget_assessment。
-   - 多轮：若对话历史中已有预算评估上下文，用户补字段时保持 budget_assessment。
-7. activity_planning → 用户想创建/策划/举办活动。关键词："创建活动""策划活动""办活动""做活动""组织活动"。
-   - 需要 2 个字段：sport_type（运动类型，如羽毛球/跑步/瑜伽/篮球/骑行，从用户输入提取）+ city（城市）。
-   - 字段齐全 → intent 设为 `activity_planning`，sport_type 字段填入提取的运动类型。
-   - 缺字段 → 仍 intent 设为 `activity_planning`，missing_fields 标记缺失项（sport_type/city），reply 反问。
-   - 与 generate_plan 区分：活动规划只给候选赛事+场馆建议，不生成完整方案。
-   - 多轮：若对话历史中已有活动规划上下文，用户补字段时保持 activity_planning。
-8. alliance_planning → 用户想创建盟域/盟域合作。关键词："创建盟域""盟域合作""建盟域""加入盟域"。
-   - 需要 2 个字段：category（品类）+ city（城市）。
-   - 字段齐全 → intent 设为 `alliance_planning`。
-   - 缺字段 → 仍 intent 设为 `alliance_planning`，missing_fields 标记缺失项，reply 反问。
-   - 与 generate_plan 区分：盟域规划只给盟域/招募建议，不生成完整方案。
-   - 多轮：若对话历史中已有盟域上下文，用户补字段时保持 alliance_planning。
-9. generate_plan → 5 个品牌字段全部有值（来自当前输入 + 以上已确认信息），**且**用户意图不是做视频/图片/市场分析/预算评估/活动规划/盟域规划。只要字段齐全且非上述意图就返回 generate_plan。
-9. update_context → 用户明确在修改之前已确认的信息。
-10. clarify → 方向是生成方案，但 5 个字段还缺至少一项。缺什么写什么到 missing_fields。
-11. query_data → 用户想查询数据。
-12. chat → 以上都不匹配时，才是闲聊/打招呼。
-    reply 应简短介绍自己的能力，引导说出需求。
-    例如：「你好！我是 AllyGo 营销方案助手。我可以帮您生成营销方案、进行市场分析、生成海报或宣传视频。请告诉我您的品牌、品类、城市、预算和周期等信息，我来为您定制方案。」
+### text_to_video / generate_video
+关键词：宣传片、宣传视频、广告片、短片、短视频
+- text_to_video：无图片参考，用文字生成视频
+- generate_video：有图片参考，图生视频
 
-输出 JSON 格式：
+### text_to_image
+关键词：生成图片/海报/宣传图、以图生图
+- 有图片参考时 image_url 赋值为第一张
+
+### market_research
+关键词：分析、调研、竞品、行业、市场
+- 必填字段：market_name + category
+- market_name ≠ brand_name（调研目标 vs 方案品牌）
+
+### budget_assessment
+关键词：预算评估、预算分配、做预算、预算多少合适
+- 必填字段：category + budget + period + city（不需要 brand_name）
+
+### activity_planning
+关键词：创建活动、策划活动、办活动、组织活动
+- 必填字段：sport_type + city
+
+### competitor_analysis
+关键词：竞品分析、竞品对比、竞争对手、竞争格局
+- 必填字段：category（品牌名 brand_name 可选）
+
+### community_operations
+关键词：社群运营、社群规划、建群、做社群
+- 必填字段：category + city
+
+### generate_plan
+5 个品牌字段（brand_name/category/city/budget/period）全部有值，且以上意图均不匹配时返回
+
+### update_context
+用户明确在修改之前已确认的信息
+
+### clarify
+方向是生成方案，但 5 个字段还缺至少一项
+
+### query_data / chat
+以上都不匹配
+
+---
+
+## Step 2：字段提取（按上一步确定的意图，提取对应字段）
+
+### generate_plan / clarify 的字段
+提取 brand_name / category / city / budget / period，各字段提取规则：
+- **品牌名**：从输入中理解品牌名称。"我是XX"、"XX品牌"、"帮XX做方案"中的XX，或用户直接输入的品牌名
+- **品类**：从输入中理解品类词。"属于X品类"、"X品类"中的X，或产品词（饮料/运动鞋/瑜伽服等）
+- **城市**：从输入中理解城市名。"在XX"、"XX市"中的XX，或逗号分隔值中的城市
+- **预算**：理解金额数值。"10万"、"10万元"、"五万"、"50w"中的数字
+- **周期**：理解时间长度。"4个月"、"半年"（→6）、"一个季度"（→3）、"一年"（→12）中的数字
+
+### market_research 的字段
+提取 market_name + category
+
+### budget_assessment 的字段
+提取 category + budget + period + city（不需要 brand_name）
+
+### activity_planning 的字段
+提取 sport_type（运动类型）+ city。sport_type 如羽毛球/跑步/瑜伽/篮球/骑行/滑雪/游泳/网球
+
+### competitor_analysis 的字段
+提取 category（必填）+ brand_name（可选）
+
+### community_operations 的字段
+提取 category + city
+
+---
+
+## 通用提取技巧
+- 逗号/空格分隔的多个值 → 尝试拆分为多个字段
+  例如："娃哈哈，饮料，上海，10万，4个月" → brand_name=娃哈哈, category=饮料, city=上海, budget=10, period=4
+  例如："上海，运动鞋" → city=上海, category=运动鞋
+- 已确认字段（context.brand_input）**必须保留**，未提及的不变，已提及的覆盖
+- 不要编造数据，只从用户输入和上下文中提取
+
+---
+
+## 输出 JSON 格式
 {
-  "intent": "generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research|budget_assessment|activity_planning|alliance_planning",
+  "intent": "generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research|budget_assessment|activity_planning|alliance_planning|competitor_analysis|community_operations",
   "confidence": 0.0-1.0,
   "reply": "给用户的回复",
-  "market_name": null or "研究目标（品牌名/赛道名）",
-  "sport_type": null or "运动类型，如羽毛球/跑步/瑜伽",
+  "market_name": null or "研究目标",
+  "sport_type": null or "运动类型",
   "brand_input": {
     "brand_name": null or "值",
     "category": null or "值",
@@ -136,18 +124,6 @@
 }
 
 关键约束：
-- 所有 5 个字段都有值 → generate_plan。缺任何一个 → clarify。绝不可以在缺字段时返回 generate_plan。
-- generate_video / text_to_video / text_to_image 与品牌字段无关，即使字段不全也不影响。
-- text_to_video 和 text_to_image 的 generation_prompt 从用户输入提取生成描述，不从附件获取。
-- image_url 从附件元数据（context.image_url）获取，不从用户文本解析。
-- video_prompt 从用户输入中提取视频内容描述（可选，可为 null）。
-- 品牌名提取优先级："我叫/我叫作XX" > "我是/我们是XX" > "品牌叫/品牌名叫/品牌是/品牌名为XX" > "XX品牌" > 当用户输入很短（1-3个词）且没有匹配到其他字段时，尝试作为品牌名
-- 品类提取优先级：
-  1. （最高优先级）"属于 X 品类"或"X 品类" → category 设为 X，禁止跳过
-  2. 其次从产品词（运动鞋/运动服饰/果汁/饮料等）或上下文中推断
-- 城市从"在XX做/推广"、"在XX市场"、"XX市"中提取
-- 预算抓数字+"万"或"万元"
-- 周期抓数字+"个月"或"个月"或数字+"个?月"，支持小数（如 "1.5"、"1.5个月" 保留小数）
-- 当用户输入包含逗号/空格分隔的值时，尝试拆分为多个字段（如"all，运动鞋" = brand_name=all, category=运动鞋）
-- 不要编造数据，只从用户输入和上下文中提取。
-- 所有已确认字段必须保留在 brand_output 输出中，不可设为 null。
+- 所有 5 个字段都有值 → generate_plan。缺任何一个 → clarify。绝不可以在缺字段时返回 generate_plan
+- generate_video / text_to_video / text_to_image / budget_assessment / activity_planning / competitor_analysis / community_operations 与品牌 5 字段无关，即使字段不全也不影响它们独立判断
+- 所有已确认字段必须保留在 brand_output 输出中，不可设为 null

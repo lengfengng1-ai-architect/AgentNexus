@@ -48,6 +48,8 @@ type ChatAction =
   | { type: 'SET_BUDGET_ASSESSMENT_RESULT'; messageId: string; result: Record<string, unknown>; budgetAssessmentId?: string }
   | { type: 'SET_ACTIVITY_PLANNING_RESULT'; messageId: string; result: Record<string, unknown>; activityPlanningId?: string }
   | { type: 'SET_ALLIANCE_PLANNING_RESULT'; messageId: string; result: Record<string, unknown>; alliancePlanningId?: string }
+  | { type: 'SET_COMPETITOR_ANALYSIS_RESULT'; messageId: string; result: Record<string, unknown>; competitorAnalysisId?: string }
+  | { type: 'SET_COMMUNITY_OPERATIONS_RESULT'; messageId: string; result: Record<string, unknown>; communityOperationsId?: string }
 
 function createMessage(content: string, role: ChatMessage['role']): ChatMessage {
   return {
@@ -141,6 +143,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       const canStartBudgetAssessment = action.intent === 'budget_assessment' && action.missingFields.length === 0
       const canStartActivityPlanning = action.intent === 'activity_planning' && action.missingFields.length === 0
       const canStartAlliancePlanning = action.intent === 'alliance_planning' && action.missingFields.length === 0
+      const canStartCompetitorAnalysis = action.intent === 'competitor_analysis' && action.missingFields.length === 0
+      const canStartCommunityOperations = action.intent === 'community_operations' && action.missingFields.length === 0
       const msgId = action.messageId || `ai-${Date.now()}`
       const aiMessage: ChatMessage = {
         id: msgId,
@@ -154,6 +158,8 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
         canStartBudgetAssessment,
         canStartActivityPlanning,
         canStartAlliancePlanning,
+        canStartCompetitorAnalysis,
+        canStartCommunityOperations,
         marketName: action.marketName ?? undefined,
         sportType: action.sportType ?? undefined,
         missingFields: action.missingFields.length > 0 ? action.missingFields : undefined,
@@ -296,6 +302,24 @@ function chatReducer(state: ChatState, action: ChatAction): ChatState {
       const next = state.messages.map(m =>
         m.id === action.messageId
           ? { ...m, alliancePlanningResult: action.result, alliancePlanningId: action.alliancePlanningId ?? m.alliancePlanningId, canStartAlliancePlanning: false }
+          : m,
+      )
+      return { ...state, messages: next }
+    }
+
+    case 'SET_COMPETITOR_ANALYSIS_RESULT': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId
+          ? { ...m, competitorAnalysisResult: action.result, competitorAnalysisId: action.competitorAnalysisId ?? m.competitorAnalysisId, canStartCompetitorAnalysis: false }
+          : m,
+      )
+      return { ...state, messages: next }
+    }
+
+    case 'SET_COMMUNITY_OPERATIONS_RESULT': {
+      const next = state.messages.map(m =>
+        m.id === action.messageId
+          ? { ...m, communityOperationsResult: action.result, communityOperationsId: action.communityOperationsId ?? m.communityOperationsId, canStartCommunityOperations: false }
           : m,
       )
       return { ...state, messages: next }
@@ -493,6 +517,14 @@ export function useChat() {
     dispatch({ type: 'SET_ALLIANCE_PLANNING_RESULT', messageId, result, alliancePlanningId })
   }, [])
 
+  const setCompetitorAnalysisResult = useCallback((messageId: string, result: Record<string, unknown>, competitorAnalysisId?: string) => {
+    dispatch({ type: 'SET_COMPETITOR_ANALYSIS_RESULT', messageId, result, competitorAnalysisId })
+  }, [])
+
+  const setCommunityOperationsResult = useCallback((messageId: string, result: Record<string, unknown>, communityOperationsId?: string) => {
+    dispatch({ type: 'SET_COMMUNITY_OPERATIONS_RESULT', messageId, result, communityOperationsId })
+  }, [])
+
   const latestBrandInput = getLatestBrandInput(state.messages)
   return {
     messages: state.messages,
@@ -515,6 +547,8 @@ export function useChat() {
     setBudgetAssessmentResult,
     setActivityPlanningResult,
     setAlliancePlanningResult,
+    setCompetitorAnalysisResult,
+    setCommunityOperationsResult,
   }
 }
 

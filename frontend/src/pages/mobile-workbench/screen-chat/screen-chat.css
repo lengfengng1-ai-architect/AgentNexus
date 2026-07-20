@@ -507,11 +507,14 @@
 .mw .chat-messages > .flex.justify-start > div:last-child {
   max-width: 84%;
   font-size: 13px;
-  background: var(--surface) !important;
-  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.88) !important;
+  -webkit-backdrop-filter: blur(16px) saturate(1.4);
+  backdrop-filter: blur(16px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.9);
   border-radius: 14px 14px 14px 4px !important;
   padding: 9px 12px !important;
   color: var(--fg) !important;
+  box-shadow: 0 2px 10px rgba(10, 36, 80, 0.06);
 }
 .mw .chat-messages > .flex.justify-end > div:last-child {
   max-width: 84%;

@@ -15,6 +15,8 @@ from app.routers import (
     audience_insight,
     budget_analysis,
     chat,
+    community_operations,
+    competitor_analysis,
     health,
     image_generation,
     market_analysis,
@@ -93,6 +95,8 @@ def create_app() -> FastAPI:
     app.include_router(budget_analysis.router, prefix="/api/v1")
     app.include_router(activity_planning.router, prefix="/api/v1")
     app.include_router(alliance_planning.router, prefix="/api/v1")
+    app.include_router(competitor_analysis.router, prefix="/api/v1")
+    app.include_router(community_operations.router, prefix="/api/v1")
     app.include_router(plan.router, prefix="/api/v1")
     app.include_router(product_info.router, prefix="/api/v1")
     app.include_router(audience_insight.router, prefix="/api/v1")

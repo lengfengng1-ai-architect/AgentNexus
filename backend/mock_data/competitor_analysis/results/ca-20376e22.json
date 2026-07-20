@@ -1,0 +1,57 @@
+{
+  "category": "饮料",
+  "brand_name": "娃哈哈",
+  "competitors": [
+    {
+      "name": "娃哈哈",
+      "product_matrix": [
+        "包装饮用水",
+        "AD钙奶",
+        "电解质水"
+      ],
+      "price_range": "1元-2元（纯净水零售价1元）",
+      "positioning": "国民老品牌，民族企业，公益形象",
+      "marketing_channels": [
+        "传统超市/便利店",
+        "电商平台",
+        "OTT互联网电视（小米电视开机广告）",
+        "电视广告"
+      ],
+      "recent_moves": "宗庆后之弟宗泽后支持创立‘宗师傅’AD钙奶，核心团队为娃哈哈老员工，公开质疑宗馥莉管理策略；宏胜系2022年贡献体系97%营收、99.6%净利润；杭州国资默许宏胜2026年继续使用‘娃哈哈’商标；上海工厂及浙江娃哈哈饮用水有限公司桶装水业务出现变动。",
+      "sources": []
+    },
+    {
+      "name": "宗师傅",
+      "product_matrix": [
+        "AD钙奶"
+      ],
+      "price_range": null,
+      "positioning": "对标娃哈哈AD钙奶，模仿其包装和广告语",
+      "marketing_channels": null,
+      "recent_moves": "由宗泽后支持创立，核心团队为娃哈哈老员工，公开质疑宗馥莉管理策略，反映家族内部分裂。",
+      "sources": []
+    },
+    {
+      "name": "怡宝（华润饮料）",
+      "product_matrix": [
+        "纯净水"
+      ],
+      "price_range": "2元（零售价）",
+      "positioning": "中端纯净水品牌",
+      "marketing_channels": null,
+      "recent_moves": "2025年半年报显示营收下滑，华润饮料以28%的价值跌幅位列下滑榜首位。",
+      "sources": []
+    },
+    {
+      "name": "农夫山泉",
+      "product_matrix": null,
+      "price_range": null,
+      "positioning": null,
+      "marketing_channels": null,
+      "recent_moves": null,
+      "sources": []
+    }
+  ],
+  "market_overview": "饮料市场竞争激烈，品类细分加速，消费者忠诚度固化。娃哈哈作为国民老品牌，面临品牌老化、内部家族矛盾等挑战，同时需应对宗师傅等模仿者的直接竞争。",
+  "suggestion": "娃哈哈需优先解决家族内部矛盾，稳固品牌形象，同时通过产品创新和年轻化营销应对宗师傅等模仿者的挑战，并利用现有渠道优势拓展新兴健康饮品品类。"
+}

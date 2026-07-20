@@ -1,0 +1,51 @@
+{
+  "category": "运动鞋",
+  "city": "上海",
+  "community_positioning": "上海运动鞋兴趣社群，连接运动社团与品牌，打造专业运动社交圈。",
+  "target_members": "上海地区活跃运动爱好者，特别是跑步、瑜伽、骑行、篮球等社团成员及运动达人。",
+  "content_plan": [
+    {
+      "content_type": "运动技巧图文",
+      "description": "分享专业跑步、篮球等运动技巧及装备知识，提升社群专业性。",
+      "frequency": "每周2次"
+    },
+    {
+      "content_type": "产品测评短视频",
+      "description": "邀请达人或用户对品牌运动鞋进行开箱、实测体验，展示科技与性能。",
+      "frequency": "每周1次"
+    },
+    {
+      "content_type": "用户故事分享",
+      "description": "讲述上海本地运动爱好者（如跑团成员）的真实运动故事，增强情感连接。",
+      "frequency": "每两周1次"
+    },
+    {
+      "content_type": "活动预告海报",
+      "description": "发布线下跑步活动、门店体验活动等预告，引导报名与参与。",
+      "frequency": "活动前3天发布"
+    }
+  ],
+  "operation_activities": [
+    {
+      "activity_name": "21天跑步打卡挑战",
+      "goal": "提升社群活跃度与粘性，培养运动习惯，促进品牌曝光。",
+      "description": "联合沪跑团等社团，发起21天跑步打卡，完成打卡可获品牌积分或周边奖品。"
+    },
+    {
+      "activity_name": "新品试跑线下体验",
+      "goal": "增强用户对产品的真实感受，促进转化与口碑传播。",
+      "description": "在品牌门店或合作运动场地，邀请社群成员与达人试穿新款运动鞋，并分享体验。"
+    },
+    {
+      "activity_name": "运动达人直播带练",
+      "goal": "利用达人影响力吸引新成员，强化品牌专业形象。",
+      "description": "邀请上海地区至尊/大师级运动达人，在社群内进行直播带练（如跑步、瑜伽），并穿插产品讲解。"
+    }
+  ],
+  "kpi_targets": {
+    "active_rate": "40%",
+    "retention_30d": "65%",
+    "conversion_rate": "6%"
+  },
+  "suggestion": "优先结合运动社团开展线下活动，提升转化率至6%以上。"
+}

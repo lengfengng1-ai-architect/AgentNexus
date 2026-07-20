@@ -1,0 +1,159 @@
+# OpenSpec: 竞品分析
+# in_scope id: competitor-analysis
+# ──────────────────────────────────────────────
+openapi: "3.1.0"
+info:
+  title: "竞品分析"
+  description: "基于品类/品牌名，通过 Web 搜索获取竞品名单、产品矩阵、定价策略、营销渠道等信息，结构化输出竞品对比报告。SSE 流式推送搜索进度，结果按 ID 持久化供详情页拉取。"
+  version: "v0.1"
+  x-in-scope-ref: "competitor-analysis"
+
+servers:
+  - url: "http://localhost:8000/api/v1"
+    description: "本地开发"
+
+paths:
+  /competitor-analysis/stream:
+    post:
+      operationId: "competitor_analysis_stream"
+      summary: "SSE 流式竞品分析"
+      description: |
+        接收品类（必填）和品牌名（可选），SSE 流式推送搜索进度（progress）和最终结果（result）。
+        result 事件携带 competitor_analysis_id，供详情页按 ID 拉取。
+        无 brand_name 时执行品类级竞品格局分析，有 brand_name 时执行品牌级深度竞品对比。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CompetitorAnalysisRequest"
+      responses:
+        "200":
+          description: "SSE 流"
+          content:
+            text/event-stream:
+              schema:
+                type: string
+        "500":
+          description: "服务异常"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+  /competitor-analysis/results/{ca_id}:
+    get:
+      operationId: "competitor_analysis_result_get"
+      summary: "按 ID 拉取竞品分析结果"
+      description: |
+        供移动端竞品详情页按 competitor_analysis_id 拉取已持久化的分析结果，刷新后仍可用。
+        ca_id 格式：ca-<8位小写hex>。
+      parameters:
+        - name: ca_id
+          in: path
+          required: true
+          schema:
+            type: string
+            pattern: "^ca-[0-9a-f]{8}$"
+      responses:
+        "200":
+          description: "竞品分析结果"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CompetitorAnalysisResult"
+        "404":
+          description: "结果不存在或已过期"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+        "500":
+          description: "读取异常"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/APIError"
+
+components:
+  schemas:
+    CompetitorAnalysisRequest:
+      type: object
+      required:
+        - category
+      properties:
+        category:
+          type: string
+          description: "品类，如运动鞋/智能手表"
+        brand_name:
+          type: string
+          nullable: true
+          description: "指定品牌名，为空则品类级分析"
+
+    CompetitorItem:
+      type: object
+      properties:
+        name:
+          type: string
+          description: "竞品品牌名"
+        product_matrix:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: "产品线"
+        price_range:
+          type: string
+          nullable: true
+          description: "价格区间"
+        positioning:
+          type: string
+          nullable: true
+          description: "市场定位"
+        marketing_channels:
+          type: array
+          items:
+            type: string
+          nullable: true
+          description: "营销渠道"
+        recent_moves:
+          type: string
+          nullable: true
+          description: "近半年动态"
+        sources:
+          type: array
+          items:
+            type: string
+          description: "信息来源 URL"
+
+    CompetitorAnalysisResult:
+      type: object
+      properties:
+        category:
+          type: string
+          description: "分析品类"
+        brand_name:
+          type: string
+          nullable: true
+          description: "用户指定的品牌名"
+        competitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/CompetitorItem"
+          description: "竞品列表"
+        market_overview:
+          type: string
+          nullable: true
+          description: "品类竞争格局概述"
+        suggestion:
+          type: string
+          nullable: true
+          description: "策略建议"
+
+    APIError:
+      type: object
+      properties:
+        detail:
+          type: string
+        code:
+          type: string

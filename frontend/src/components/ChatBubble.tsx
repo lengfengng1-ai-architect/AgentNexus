@@ -8,6 +8,8 @@ import { ResearchReportEntryCard } from './ResearchReportEntryCard'
 import { BudgetAssessmentEntryCard } from './BudgetAssessmentEntryCard'
 import { ActivityPlanningEntryCard } from './ActivityPlanningEntryCard'
 import { AlliancePlanningEntryCard } from './AlliancePlanningEntryCard'
+import { CompetitorAnalysisEntryCard } from './CompetitorAnalysisEntryCard'
+import { CommunityOperationsEntryCard } from './CommunityOperationsEntryCard'
 
 function isSafeImageUrl(url: string): boolean {
   try {
@@ -106,11 +108,13 @@ interface ChatBubbleProps {
   onOpenBudgetAssessment?: (messageId: string) => void
   onOpenActivityPlanning?: (messageId: string) => void
   onOpenAlliancePlanning?: (messageId: string) => void
+  onOpenCompetitorAnalysis?: (messageId: string) => void
+  onOpenCommunityOperations?: (messageId: string) => void
   onVideoResult?: (messageId: string, result: NonNullable<ChatMessage['videoResult']>) => void
   onImageResult?: (messageId: string, result: NonNullable<ChatMessage['imageResult']>) => void
 }
 
-export function ChatBubble({ message, isMarketResearchActive = false, activeSearches, variant, onRetry, onGeneratePlan, onOpenResearchReport, onOpenBudgetAssessment, onOpenActivityPlanning, onOpenAlliancePlanning, onVideoResult, onImageResult }: ChatBubbleProps) {
+export function ChatBubble({ message, isMarketResearchActive = false, activeSearches, variant, onRetry, onGeneratePlan, onOpenResearchReport, onOpenBudgetAssessment, onOpenActivityPlanning, onOpenAlliancePlanning, onOpenCompetitorAnalysis, onOpenCommunityOperations, onVideoResult, onImageResult }: ChatBubbleProps) {
   const isUser = message.role === 'user'
   const isStreaming = message.id.startsWith('stream-')
   const isVideoIntent = message.intent === 'generate_video' || message.intent === 'text_to_video'
@@ -120,6 +124,8 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
   const isBudgetAssessment = !isUser && message.intent === 'budget_assessment'
   const isActivityPlanning = !isUser && message.intent === 'activity_planning'
   const isAlliancePlanning = !isUser && message.intent === 'alliance_planning'
+  const isCompetitorAnalysis = !isUser && message.intent === 'competitor_analysis'
+  const isCommunityOperations = !isUser && message.intent === 'community_operations'
   // ponytail: isMarketResearchActive 由父级传入但当前组件未使用，保留以保持 props 兼容
   void isMarketResearchActive
 
@@ -137,6 +143,10 @@ export function ChatBubble({ message, isMarketResearchActive = false, activeSear
         {/* 盟域规划：完成态（有 alliancePlanningId）→ 摘要卡片 + 详情页入口 */}
         {isAlliancePlanning && message.alliancePlanningResult && variant === 'mobile' && message.alliancePlanningId && onOpenAlliancePlanning ? (
           <AlliancePlanningEntryCard result={message.alliancePlanningResult} onOpen={() => onOpenAlliancePlanning(message.id)} />
+        ) : isCompetitorAnalysis && message.competitorAnalysisResult && variant === 'mobile' && message.competitorAnalysisId && onOpenCompetitorAnalysis ? (
+          <CompetitorAnalysisEntryCard result={message.competitorAnalysisResult} onOpen={() => onOpenCompetitorAnalysis(message.id)} />
+        ) : isCommunityOperations && message.communityOperationsResult && variant === 'mobile' && message.communityOperationsId && onOpenCommunityOperations ? (
+          <CommunityOperationsEntryCard result={message.communityOperationsResult} onOpen={() => onOpenCommunityOperations(message.id)} />
         ) : isActivityPlanning && message.activityPlanningResult && variant === 'mobile' && message.activityPlanningId && onOpenActivityPlanning ? (
           <ActivityPlanningEntryCard
             result={message.activityPlanningResult}

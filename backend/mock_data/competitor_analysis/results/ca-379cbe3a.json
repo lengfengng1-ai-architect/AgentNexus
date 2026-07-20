@@ -1,0 +1,44 @@
+{
+  "category": "运动鞋",
+  "brand_name": null,
+  "competitors": [
+    {
+      "name": "耐克",
+      "product_matrix": null,
+      "price_range": null,
+      "positioning": "国际领先品牌，依赖时尚爆款和篮球鞋新品维持份额",
+      "marketing_channels": null,
+      "recent_moves": "近一年多来依托时尚爆款和篮球鞋新品，市场份额有所回升",
+      "sources": []
+    },
+    {
+      "name": "阿迪达斯",
+      "product_matrix": null,
+      "price_range": null,
+      "positioning": "国际品牌，在中国仍占据较大市场份额",
+      "marketing_channels": null,
+      "recent_moves": "同属两大头部国际品牌，近一年多来依托时尚爆款和篮球鞋新品，份额有所回升",
+      "sources": []
+    },
+    {
+      "name": "安踏",
+      "product_matrix": null,
+      "price_range": null,
+      "positioning": "中国领先品牌，主打高性能、高科技、高品质，以性价比专业产品助推国货崛起",
+      "marketing_channels": null,
+      "recent_moves": null,
+      "sources": []
+    },
+    {
+      "name": "李宁",
+      "product_matrix": null,
+      "price_range": null,
+      "positioning": "中国知名品牌，受益于国潮趋势",
+      "marketing_channels": null,
+      "recent_moves": null,
+      "sources": []
+    }
+  ],
+  "market_overview": "中国运动鞋行业已从国际品牌主导进入国产与国际品牌分庭抗礼的新阶段，国潮崛起、技术创新、渠道变革重塑竞争版图。过去五年量价齐升，中高端专业运动品类增长明显，行业集中度自2021年下降后，近一年多来两大头部国际品牌凭借时尚爆款和篮球鞋新品有所回升。",
+  "suggestion": "建议关注国潮与专业性能融合趋势，加强中高端专业运动品类的技术投入和差异化营销，同时警惕国际品牌通过时尚爆款和篮球鞋新品的份额回升压力。"
+}
