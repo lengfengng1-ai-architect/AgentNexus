@@ -373,7 +373,18 @@ export function useChat() {
     const lastBrand = isImageOnly ? undefined : getLatestBrandInput(messagesRef.current)
     const conversationHistory = isImageOnly ? [] : messagesRef.current
       .filter(m => !m.id.startsWith('stream-') && !m.id.startsWith('virtual-'))
-      .map(m => `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`)
+      .map(m => {
+        // ponytail: 历史中带图无文字的消息，写明上传了什么图片（含 VL caption 描述），
+        // 避免 LLM 在下一轮把序号回复误解为普通文字。
+        if (m.role === 'user' && (!m.content || !m.content.trim()) && m.imageUrls?.length) {
+          const captionTexts = (m.imageCaptions || []).filter(c => c)
+          if (captionTexts.length > 0) {
+            return `用户: 【用户上传了图片，未输入文字】图片内容：${captionTexts.join('；')}`
+          }
+          return '用户: 【用户上传了图片，未输入文字】'
+        }
+        return `${m.role === 'user' ? '用户' : 'AI'}: ${m.content}`
+      })
       .slice(-10) // keep last 10 exchanges
     const context: Record<string, unknown> = {
       conversation_history: conversationHistory,
