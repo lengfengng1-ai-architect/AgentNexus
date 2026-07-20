@@ -58,7 +58,8 @@ class TestSaveAndGet:
         def boom(*args, **kwargs):
             raise OSError("disk full")
 
-        monkeypatch.setattr(type(tmp_results_dir), "mkdir", boom)
+        monkeypatch.setattr(svc, "_RESEARCH_RESULTS_DIR", tmp_results_dir)
+        monkeypatch.setattr(tmp_results_dir, "mkdir", boom)
         rid = svc.save_research_result(_sample_response())
         assert rid.startswith("mr-")  # 不抛异常
         # 未写入文件 → get 返回 None（降级为 404）

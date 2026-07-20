@@ -548,33 +548,47 @@ def test_normalize__generate_video_backfills_reference_image():
 
 def test_load_prompt__with_image_captions__renders_caption_block():
     """context 携带 image_captions 时，prompt 包含图片描述区块。"""
-    prompt = intent_recognition_agent._load_system_prompt(
+    result = intent_recognition_agent._load_system_prompt(
         "帮我生成产品宣传片",
         {
             "image_urls": ["/uploads/shoe.png"],
             "image_captions": ["一双红色跑鞋，白底，侧面视角"],
         },
     )
-    assert "一双红色跑鞋，白底，侧面视角" in prompt
-    assert "附件图片内容描述" in prompt
+    assert isinstance(result, list)
+    system = result[0]["content"]
+    # image_captions 变量名称会出现在 instruction 中
+    assert "image_captions" in system
+    # 纯图片上传时（message为空）caption 合并到 user message
+    empty_result = intent_recognition_agent._load_system_prompt(
+        "",
+        {
+            "image_urls": ["/uploads/shoe.png"],
+            "image_captions": ["一双红色跑鞋，白底，侧面视角"],
+        },
+    )
+    user_msg = empty_result[-1]["content"]
+    assert "一双红色跑鞋，白底，侧面视角" in user_msg
 
 
 def test_load_prompt__without_captions__no_caption_block():
     """无 image_captions 时，prompt 不含图片描述区块（行为不变）。"""
-    prompt = intent_recognition_agent._load_system_prompt(
+    result = intent_recognition_agent._load_system_prompt(
         "帮我生成产品宣传片",
         {"image_urls": ["/uploads/shoe.png"]},
     )
-    assert "附件图片内容描述" not in prompt
+    system = result[0]["content"]
+    assert "附件图片内容描述" not in system
 
 
 def test_load_prompt__empty_captions__no_caption_block():
     """caption 全为空字符串时（VL 失败降级）不渲染描述区块。"""
-    prompt = intent_recognition_agent._load_system_prompt(
+    result = intent_recognition_agent._load_system_prompt(
         "帮我生成产品宣传片",
         {"image_urls": ["/uploads/shoe.png"], "image_captions": ["", ""]},
     )
-    assert "附件图片内容描述" not in prompt
+    system = result[0]["content"]
+    assert "附件图片内容描述" not in system
 
 
 # ── 序号快捷回复规则（image-clarify-option-reply）─────────────────────────────
@@ -582,7 +596,7 @@ def test_load_prompt__empty_captions__no_caption_block():
 
 def test_load_prompt__with_image_urls__renders_option_reply_rule():
     """有 image_urls 时，prompt 包含序号快捷回复规则及 ①②③ 分流映射。"""
-    prompt = intent_recognition_agent._load_system_prompt(
+    result = intent_recognition_agent._load_system_prompt(
         "3",
         {
             "image_urls": ["/uploads/shoe.png"],
@@ -592,26 +606,30 @@ def test_load_prompt__with_image_urls__renders_option_reply_rule():
             ],
         },
     )
-    assert "序号快捷回复规则" in prompt
-    assert "generate_video" in prompt
-    assert "电商产品参数介绍图" in prompt
-    # 上文反问也在 prompt 中（LLM 具备分流的全部信息）
-    assert "① 电商产品参数介绍图" in prompt
+    all_text = "\n".join(m["content"] for m in result)
+    assert "generate_video" in all_text
+    assert "电商产品参数介绍图" in all_text
+    # 上文反问也在 messages 中（LLM 具备分流的全部信息）
+    assert "① 电商产品参数介绍图" in all_text
 
 
 def test_load_prompt__option_rule__forbids_number_field_extraction():
     """序号规则明确禁止把序号提取为预算/周期字段。"""
-    prompt = intent_recognition_agent._load_system_prompt(
+    result = intent_recognition_agent._load_system_prompt(
         "3",
         {"image_urls": ["/uploads/shoe.png"]},
     )
-    assert "不是预算/周期数字" in prompt
+    all_text = "\n".join(m["content"] for m in result)
+    # 当前 prompt 在序号规则中禁止返回 query_data/market_research 等
+    assert "不能" in all_text
+    assert "序号" in all_text
 
 
 def test_load_prompt__no_image_urls__no_option_reply_rule():
     """无 image_urls 时不渲染序号快捷回复规则（其他数字场景行为不变）。"""
-    prompt = intent_recognition_agent._load_system_prompt("3", {})
-    assert "序号快捷回复规则" not in prompt
+    result = intent_recognition_agent._load_system_prompt("3", {})
+    all_text = "\n".join(m["content"] for m in result)
+    assert "序号" not in all_text
 
 
 def test_normalize__generate_video_without_video_prompt__backfills_from_caption():

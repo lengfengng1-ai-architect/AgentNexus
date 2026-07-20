@@ -77,7 +77,8 @@ class TestSaveAndGet:
     def test_save_failure_still_returns_id(self, tmp_results_dir, monkeypatch):
         def boom(*a, **k):
             raise OSError("disk full")
-        monkeypatch.setattr(type(tmp_results_dir), "mkdir", boom)
+        monkeypatch.setattr(svc, "_BUDGET_RESULTS_DIR", tmp_results_dir)
+        monkeypatch.setattr(tmp_results_dir, "mkdir", boom)
         bid = svc.save_budget_result(_sample_result())
         assert bid.startswith("ba-")
         assert svc.get_budget_result(bid) is None

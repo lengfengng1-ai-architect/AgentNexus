@@ -19,8 +19,8 @@ class IntentRecognitionOutput(BaseModel):
         description="用户意图",
         pattern="^(generate_plan|query_data|chat|clarify|update_context|generate_video|text_to_video|text_to_image|market_research|budget_assessment|activity_planning|alliance_planning|competitor_analysis|community_operations)$",
     )
-    confidence: float = Field(..., ge=0.0, le=1.0, description="意图置信度")
-    reply: str = Field(..., description="给用户的直接回复文案")
+    confidence: float = Field(default=0.0, ge=0.0, le=1.0, description="意图置信度")
+    reply: str = Field(default="", description="给用户的直接回复文案")
     market_name: str | None = Field(
         default=None,
         description="市场调研的研究目标（品牌名/赛道名），仅在 market_research 意图时使用",
@@ -35,17 +35,21 @@ class IntentRecognitionOutput(BaseModel):
     missing_fields: list[str] = Field(
         default_factory=list, description="缺失字段列表，用于 clarify / generate_video 反问"
     )
+    ask_for: list[str] = Field(
+        default_factory=list,
+        description="LLM 明确声明本次在反问的字段名（如 ['category', 'city']）。"
+        "用于替代靠 reply 文本关键词猜意图的脆弱逻辑。无反问时为空列表",
+    )
     updated_fields: dict[str, Any] = Field(
         default_factory=dict, description="update_context 时更新的字段"
     )
     reasoning: str = Field(
         default="", description="模型思考过程，用于聊天框展示"
     )
-    confirmed: bool = Field(
-        default=False, description="用户是否已确认该操作"
-    )
+    # gate 字段前端 useChat 会透传到 message state，但当前无 UI 消费。
+    # 保留字段避免前端 TypeScript 类型报错；后端不主动赋值。
     gate: str | None = Field(
-        default=None, description="需要确认的门类型，如 'generate_plan'"
+        default=None, description="预留门类型字段，当前后端未使用"
     )
     image_url: str | None = Field(
         default=None,

@@ -22,7 +22,7 @@ from app.schemas.intent import IntentRecognitionOutput
 logger = logging.getLogger(__name__)
 
 
-def _load_system_prompt(message: str, context: dict[str, Any]) -> str:
+def _load_system_prompt(message: str, context: dict[str, Any]) -> list[dict[str, str]]:
     """Load and render the intent recognition prompt, cleaning context for Jinja2."""
     clean_ctx: dict[str, Any] = {"brand_input": {}, "conversation_history": []}
 
@@ -105,15 +105,38 @@ def _parse_brand_input(data: dict[str, Any]) -> BrandInput:
     brand_name = data.get("brand_name") or data.get("brandName") or None
     category = data.get("category") or None
     city = data.get("city") or None
-    budget = data.get("budget")
-    period = data.get("period")
+    budget = _safe_int(data.get("budget"))
+    period = _safe_int(data.get("period"))
     return BrandInput(
         brand_name=brand_name,
         category=category,
         city=city,
-        budget=int(budget) if budget is not None else None,
-        period=int(period) if period is not None else None,
+        budget=budget,
+        period=period,
     )
+
+
+def _safe_int(value: Any) -> int | None:
+    """容错地把 LLM/前端传来的值转成 int。
+
+    LLM 常见输出：50 / 50.0 / "50" / "50万" / "50.5万" / "3个月"。
+    直接 int() 遇到字符串会崩，这里先抽数字再转。
+    """
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        # bool 是 int 子类，但要排除
+        return None
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float):
+        return int(value)
+    if isinstance(value, str):
+        m = re.search(r"\d+(?:\.\d+)?", value)
+        if m:
+            return int(float(m.group(0)))
+        return None
+    return None
 
 
 # ── 正则兜底：LLM 未提取 category 时，从用户原始输入中按优先级匹配 ──────────
@@ -166,16 +189,15 @@ def _normalize_intent_output(
     image_urls: list[str] | None = None,
     image_captions: list[str] | None = None,
     context_message: str | None = None,
+    context: dict[str, Any] | None = None,
 ) -> IntentRecognitionOutput:
-    """Correct intent based on field completeness.
+    """Correct intent based on field completeness and image presence.
 
-    LLM sometimes returns clarify despite all fields being present, or
-    generate_plan despite missing fields. Enforce the rule:
-    - all 5 fields present -> generate_plan
-    - any field missing and intent is not update_context -> clarify
-
-    Independent intents (generate_video, text_to_video, text_to_image) are
-    excluded from brand-field completeness checks.
+    修复历史问题：
+    - B1: 白名单不再误把 update_context/query_data/chat 强翻成 generate_plan
+    - B2: generate_plan + 缺字段 → 翻 clarify（原是死代码什么都不做）
+    - B3: generate_video 缺图时 missing_fields 保留 image_url（原是加完又删）
+    - B4: video_prompt 不再用固定模板覆盖 LLM 输出
     """
     required = ("brand_name", "category", "city", "budget", "period")
     missing = [
@@ -183,18 +205,27 @@ def _normalize_intent_output(
         if getattr(output.brand_input, field) is None
     ]
 
-    INDEPENDENT = ("chat", "query_data", "clarify", "update_context", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment", "activity_planning", "alliance_planning", "competitor_analysis", "community_operations")
-
-    if not missing and output.intent not in ("generate_plan", "generate_video", "text_to_video", "text_to_image", "market_research", "budget_assessment", "activity_planning", "alliance_planning", "competitor_analysis", "community_operations"):
+    # B1 修复：只有 clarify + 5字段齐全 才翻 generate_plan。
+    # update_context/query_data/chat 即使 5 字段齐全也保持原意图（用户明确想做别的）。
+    if not missing and output.intent == "clarify":
         output.intent = "generate_plan"
         output.confidence = max(output.confidence, 0.95)
-    elif missing and output.intent not in INDEPENDENT:
+
+    # B2 修复：generate_plan + 缺字段 → 翻 clarify + 反问
+    if missing and output.intent == "generate_plan":
         output.intent = "clarify"
+        output.ask_for = list(missing)
         if not output.reply:
-            output.reply = f"为了生成营销方案，我还需要了解：{', '.join(missing)}"
+            _set_clarify_reply(output, missing)
 
     # update_context 补全 category 后 → 提升为 market_research
-    if output.intent == "update_context" and output.market_name and output.brand_input.category:
+    # 仅当 LLM 明确不在反问 category 时才提升（B5：用 ask_for 判断，不靠 reply 文本）
+    if (
+        output.intent == "update_context"
+        and output.market_name
+        and output.brand_input.category
+        and "category" not in output.ask_for
+    ):
         output.intent = "market_research"
         output.missing_fields = []
         if not output.reply:
@@ -210,6 +241,7 @@ def _normalize_intent_output(
 
         if mr_missing:
             output.missing_fields = mr_missing
+            output.ask_for = mr_missing
             if not output.reply:
                 if "market_name" in mr_missing and "category" in mr_missing:
                     output.reply = "好的，我来帮您做市场分析。请问您是想分析哪一个方向或者一个具体的市场？"
@@ -219,29 +251,38 @@ def _normalize_intent_output(
                     output.reply = "请问它属于什么品类？例如：饮料、运动服饰等"
         else:
             output.missing_fields = []
+            output.ask_for = []
             if not output.reply:
                 output.reply = f"好的！我已了解研究目标：{output.market_name}（{output.brand_input.category}）。请点击「开始分析」按钮进行市场分析。"
 
-    # budget_assessment: 需要 category/budget/period/city 四字段；缺则保持意图 + 反问
-    # （镜像 market_research：缺字段时不翻转为 clarify，避免被后面的 clarify 回复覆盖；
-    #  前端据 missing_fields 空否决定触发评估流或显示反问）
+    # budget_assessment: 需要 category/budget/period/city 四字段
     if output.intent == "budget_assessment":
         ba_required = ("category", "budget", "period", "city")
         ba_missing = [f for f in ba_required if getattr(output.brand_input, f) is None]
         if ba_missing:
             output.missing_fields = ba_missing
+            output.ask_for = ba_missing
             _ba_labels = {"category": "品类", "budget": "预算（万元）", "period": "周期（月）", "city": "城市"}
             cn_ba = [_ba_labels.get(f, f) for f in ba_missing]
             if not output.reply:
                 output.reply = f"好的，为您做预算评估。还需要了解：{'、'.join(cn_ba)}"
         else:
             output.missing_fields = []
+            output.ask_for = []
             bi = output.brand_input
             if not output.reply:
                 output.reply = f"好的！为您评估 {bi.category} 在 {bi.city} 的预算方案（{bi.budget}万 / {bi.period}个月），请点击「开始评估」按钮。"
 
-    # activity_planning: 需要 sport_type + city；缺则保持意图 + 反问（镜像 budget_assessment）
+    # activity_planning: 需要 sport_type + city
     if output.intent == "activity_planning":
+        # 多轮对话中 LLM 可能丢 sport_type，从 context 恢复
+        if not output.sport_type and context and context.get("sport_type"):
+            output.sport_type = context["sport_type"]
+        # activity_planning 不使用 category 字段；LLM 常把城市误放 category，
+        # 当 city 为空且 category 有值时 → 挪到 city
+        if not output.brand_input.city and output.brand_input.category:
+            output.brand_input.city = output.brand_input.category
+            output.brand_input.category = None
         ap_missing = []
         if not output.sport_type:
             ap_missing.append("sport_type")
@@ -249,16 +290,18 @@ def _normalize_intent_output(
             ap_missing.append("city")
         if ap_missing:
             output.missing_fields = ap_missing
+            output.ask_for = ap_missing
             _ap_labels = {"sport_type": "运动类型", "city": "城市"}
             cn_ap = [_ap_labels.get(f, f) for f in ap_missing]
             if not output.reply:
                 output.reply = f"好的，帮您规划活动。还需要了解：{'、'.join(cn_ap)}"
         else:
             output.missing_fields = []
+            output.ask_for = []
             if not output.reply:
                 output.reply = f"好的！为您规划 {output.sport_type} 活动（{output.brand_input.city}），请点击「开始规划」按钮。"
 
-    # alliance_planning: 需要 category + city；缺则保持意图 + 反问（镜像 activity/budget）
+    # alliance_planning: 需要 category + city
     if output.intent == "alliance_planning":
         al_missing = []
         if not output.brand_input.category:
@@ -267,12 +310,14 @@ def _normalize_intent_output(
             al_missing.append("city")
         if al_missing:
             output.missing_fields = al_missing
+            output.ask_for = al_missing
             _al_labels = {"category": "品类", "city": "城市"}
             cn_al = [_al_labels.get(f, f) for f in al_missing]
             if not output.reply:
                 output.reply = f"好的，帮您创建盟域。还需要了解：{'、'.join(cn_al)}"
         else:
             output.missing_fields = []
+            output.ask_for = []
             if not output.reply:
                 output.reply = f"好的！为您规划 {output.brand_input.category} 盟域（{output.brand_input.city}），请点击「开始规划」按钮。"
 
@@ -283,10 +328,12 @@ def _normalize_intent_output(
             ca_missing.append("category")
         if ca_missing:
             output.missing_fields = ca_missing
+            output.ask_for = ca_missing
             if not output.reply:
                 output.reply = "好的，为您做竞品分析。请问您想分析哪个品类？例如：运动鞋、智能手表等。"
         else:
             output.missing_fields = []
+            output.ask_for = []
             bn = output.brand_input.brand_name
             if bn:
                 if not output.reply:
@@ -304,70 +351,74 @@ def _normalize_intent_output(
             co_missing.append("city")
         if co_missing:
             output.missing_fields = co_missing
+            output.ask_for = co_missing
             _co_labels = {"category": "品类", "city": "城市"}
             cn_co = [_co_labels.get(f, f) for f in co_missing]
             if not output.reply:
                 output.reply = f"好的，帮您规划社群运营。还需要了解：{'、'.join(cn_co)}"
         else:
             output.missing_fields = []
+            output.ask_for = []
             if not output.reply:
                 output.reply = f"好的！为您规划 {output.brand_input.category} 在 {output.brand_input.city} 的社群运营，请点击「开始规划」按钮。"
 
-    # generate_video: image_url 检查，支持从 context.image_urls 回填
-    # 强制覆盖，防止 LLM 编造占位 URL
+    # generate_video: image_url 检查
+    # B3 修复：有 image_urls → 用；没有 → missing_fields 保留 image_url + 反问
+    # （原代码刚加进 missing_fields 又立刻删掉，导致前端拿不到缺图信号）
     if output.intent == "generate_video":
         if image_urls:
             output.image_url = image_urls[0]
+            # 有图时如果 missing_fields 里有 image_url（LLM 误填），清掉
+            output.missing_fields = [f for f in output.missing_fields if f != "image_url"]
+            if "image_url" in output.ask_for:
+                output.ask_for = [f for f in output.ask_for if f != "image_url"]
         elif not output.image_url:
+            # 没图且 LLM 也没填 → 加进 missing_fields 让前端知道缺图
             if "image_url" not in output.missing_fields:
                 output.missing_fields = list(output.missing_fields) + ["image_url"]
+            if "image_url" not in output.ask_for:
+                output.ask_for = list(output.ask_for) + ["image_url"]
             if not output.reply:
                 output.reply = "好的，请提供需要生成视频的图片。"
-        if "image_url" in output.missing_fields:
-            output.missing_fields = [f for f in output.missing_fields if f != "image_url"]
 
-    # generate_video: 有参考图但 LLM 未产出 video_prompt 时，基于 caption 生成默认文案，
-    # 保证卡片描述预填（caption 是 VL 对用户图片的客观描述，非编造数据）
-    if output.intent == "generate_video" and not output.video_prompt and image_captions:
-        output.video_prompt = (
-            f"{image_captions[0]}，产品在画面中动态展示，"
-            "镜头环绕主体旋转，背景虚化突出产品，电商广告风格"
-        )
+    # B4 修复：video_prompt 不再用固定模板"产品动态展示..."覆盖。
+    # caption 是 VL 对图片的客观描述，LLM 应基于 caption 在提示词侧生成贴切的 video_prompt。
+    # Python 端只在 LLM 既没填 video_prompt 且没有 caption 可参考时，给一个最小默认值，
+    # 避免 None 导致前端卡片描述空白。
+    if output.intent == "generate_video" and not output.video_prompt:
+        if image_captions:
+            # 有 caption 但 LLM 没生成 video_prompt → 用 caption 本身作为描述（客观，不编造动作）
+            output.video_prompt = image_captions[0]
+        else:
+            output.video_prompt = "基于参考图生成产品宣传视频"
 
     # text_to_image（以图生图 image2image）：强制从 context 取真实的 image_url，
     # 防止 LLM 编造占位 URL（如 https://example.com/image1.jpg）
     if output.intent == "text_to_image" and image_urls:
         output.image_url = image_urls[0]
 
-    # Only set brand-related missing_fields for plan-related intents
+    # generate_plan/clarify 的 missing_fields 用 5 字段计算结果
     if output.intent in ("generate_plan", "clarify"):
         output.missing_fields = missing
-    # For other intents, preserve their own missing_fields (e.g. image_url)
+        if output.intent == "clarify" and missing:
+            output.ask_for = list(missing)
 
-    # generate_plan: 无论 LLM 从哪条路径进入，reply 统一覆盖为字段摘要
+    # generate_plan: reply 统一覆盖为字段摘要
     if output.intent == "generate_plan":
         bi = output.brand_input
         output.reply = (
             f"品牌：{bi.brand_name} · 品类：{bi.category} · 城市：{bi.city}"
             f" · {bi.budget}万 · {bi.period}个月"
         )
+        output.ask_for = []
 
-    # clarify: 有缺失字段时 reply 强制覆盖为反问，避免 LLM 虚假承诺
-    # （图片澄清分支见下方，优先于此处，不受品牌字段缺失影响）
+    # clarify: 有缺失字段时 reply 强制覆盖为反问（非图片上传场景）
     if output.intent == "clarify" and missing and not image_urls:
-        _field_labels = {
-            "brand_name": "品牌名",
-            "category": "品类",
-            "city": "城市",
-            "budget": "预算",
-            "period": "周期",
-        }
-        cn_missing = [_field_labels.get(f, f) for f in missing]
-        output.reply = f"为了生成营销方案，我还需要了解：{'、'.join(cn_missing)}"
+        _set_clarify_reply(output, missing)
 
     # 图片上传澄清分支：用户上传图片但 LLM 返回非图片相关意图时，
     # 强制重定向为 clarify + 清空品牌字段，防止 LLM 从对话历史推断出字段。
-    # ponytail: 仅当 message 为空（纯图片上传）时触发，不覆盖用户已回复的情况。
+    # 仅当 message 为空（纯图片上传）时触发，不覆盖用户已回复的情况。
     if image_urls and not (context_message or "").strip():
         if output.intent not in ("text_to_image", "generate_video", "text_to_video", "clarify"):
             output.intent = "clarify"
@@ -377,17 +428,121 @@ def _normalize_intent_output(
             output.brand_input.budget = None
             output.brand_input.period = None
             output.missing_fields = []
+            output.ask_for = []
             output.confidence = max(output.confidence, 0.85)
-            if not output.reply:
-                output.reply = (
-                    "收到图片！想让我帮你生成哪种内容？\n"
-                    "① 电商产品参数介绍图\n"
-                    "② 好看的宣传图\n"
-                    "③ 产品宣传短片\n"
-                    "或者直接说出你的想法，我来帮你实现。"
-                )
+
+        # 纯图片上传时强制展示图片选项
+        output.reply = (
+            "收到图片！想让我帮你生成哪种内容？\n"
+            "① 电商产品参数介绍图\n"
+            "② 好看的宣传图\n"
+            "③ 产品宣传短片\n"
+            "或者直接说出你的想法，我来帮你实现。"
+        )
+
+    # 多轮对话上下文恢复：LLM 可能丢掉已有意图上下文，返回 clarify/chat
+    # activity_planning：context 中有 sport_type → 恢复意图 + sport_type 回填
+    if output.intent in ("clarify", "chat") and context and context.get("sport_type"):
+        output.intent = "activity_planning"
+        if not output.sport_type:
+            output.sport_type = context["sport_type"]
+        output.missing_fields = [f for f in output.missing_fields if f not in ("brand_name", "category", "budget", "period")]
+        output.ask_for = [f for f in output.ask_for if f not in ("brand_name", "category", "budget", "period")]
 
     return output
+
+
+def _set_clarify_reply(output: IntentRecognitionOutput, missing: list[str]) -> None:
+    """填充 clarify 的反问 reply 和 ask_for。"""
+    _field_labels = {
+        "brand_name": "品牌名",
+        "category": "品类",
+        "city": "城市",
+        "budget": "预算",
+        "period": "周期",
+    }
+    cn_missing = [_field_labels.get(f, f) for f in missing]
+    output.reply = f"为了生成营销方案，我还需要了解：{'、'.join(cn_missing)}"
+    output.ask_for = list(missing)
+
+
+def _post_process(
+    result: IntentRecognitionOutput,
+    *,
+    message: str,
+    context: dict[str, Any],
+) -> IntentRecognitionOutput:
+    """LLM 调用后的统一后处理（run 和 stream 共用，消除重复 + 行为不一致）。
+
+    顺序：
+    1. update_context: merge 旧 brand_input + 算 updated_fields
+    2. B5 根治：用 ask_for 替代 reply 关键词判断是否在反问 category
+    3. 多轮字段补全：从 context.brand_input 恢复 LLM 丢掉的字段
+       （排除 ask_for 里的字段，避免盖掉 LLM 明确要反问的字段）
+    4. 填充 market_name / sport_type from context
+    5. 正则兜底 category
+    6. 调用 _normalize_intent_output
+    """
+    # 1. update_context: merge 旧 brand_input + 算 updated_fields
+    if result.intent == "update_context":
+        result = _merge_context(context, result)
+        original = _parse_brand_input(context.get("brand_input", {}))
+        result.updated_fields = {
+            key: value
+            for key, value in result.brand_input.model_dump(exclude_none=True).items()
+            if getattr(original, key) != value
+        }
+
+    # 2. B5 根治：用 ask_for 替代 reply 关键词判断
+    # 原代码: if result.reply and "品类" in result.reply: result.brand_input.category = None
+    # 问题：reply 文本含"品类"可能是合法确认（如"运动鞋品类，上海..."），不是反问
+    # 新代码：LLM 明确在 ask_for 里声明反问 category 才清
+    if "category" in result.ask_for and result.brand_input.category is not None:
+        result.brand_input.category = None
+
+    # 3. 多轮对话字段补全（非 update_context）：
+    # LLM 可能丢字段，从 context.brand_input 恢复。
+    # 但排除 ask_for 里的字段——LLM 明确要反问的字段不要从 context 补，否则盖掉反问。
+    # （原 stream 版本有这段但放错位置——在 _normalize 之前无脑补全，导致 missing 永远为空）
+    if result.intent != "update_context" and context.get("brand_input"):
+        ctx_bi = _parse_brand_input(context["brand_input"])
+        ask_for_set = set(result.ask_for)
+        for key in ("brand_name", "category", "city", "budget", "period"):
+            current = getattr(result.brand_input, key, None)
+            if current is None and key not in ask_for_set:
+                val = getattr(ctx_bi, key, None)
+                if val is not None:
+                    setattr(result.brand_input, key, val)
+
+    # 4. 填充 market_name / sport_type from context
+    if not result.market_name and context.get("market_name"):
+        result.market_name = context["market_name"]
+    if not result.sport_type and context.get("sport_type"):
+        result.sport_type = context["sport_type"]
+
+    # 5. 正则兜底：LLM 未提取 category 时从用户输入中提取
+    fallback = _extract_category_fallback(message, result.brand_input.category)
+    if fallback:
+        result.brand_input.category = fallback
+
+    # 6. image 参数 + 调用 _normalize
+    image_urls = context.get("image_urls")
+    if not isinstance(image_urls, list):
+        image_urls = None
+    image_captions = context.get("image_captions")
+    if isinstance(image_captions, list):
+        image_captions = [c for c in image_captions if isinstance(c, str) and c] or None
+    else:
+        image_captions = None
+
+    result = _normalize_intent_output(
+        result,
+        image_urls=image_urls,
+        image_captions=image_captions,
+        context_message=message,
+        context=context,
+    )
+    return result
 
 
 async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
@@ -426,59 +581,10 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
         result.reasoning = reasoning
     else:
         llm = _build_structured_llm()
-        result = await llm.ainvoke(_load_system_prompt(message, context))
+        # C2 修复：复用上面已渲染的 llm_messages，不再重复调用 _load_system_prompt
+        result = await llm.ainvoke(llm_messages)
 
-    if result.intent == "update_context":
-        result = _merge_context(context, result)
-        # Recompute updated_fields based on the merged result vs original context.
-        original = _parse_brand_input(context.get("brand_input", {}))
-        result.updated_fields = {
-            key: value
-            for key, value in result.brand_input.model_dump(exclude_none=True).items()
-            if getattr(original, key) != value
-        }
-
-        # LLM reply 含"品类"时，说明 LLM 实际在问品类，
-        # 但 _merge_context 从旧上下文中带入了 catgeory，
-        # 清除它避免 update_context → market_research 错误提升
-        if result.reply and "品类" in result.reply:
-            result.brand_input.category = None
-
-    # LLM 直接返回 market_research 时也可能同时设置 category 并反问"品类"。
-    # 仅对 market_research 生效——budget_assessment 的回复会合法地提到"品类"
-    # （如"运动鞋品类，上海…"），不应清除其 category。
-    if (
-        result.intent == "market_research"
-        and result.reply
-        and "品类" in result.reply
-        and result.brand_input.category is not None
-    ):
-        result.brand_input.category = None
-
-    # Fill market_name from context
-    # (needed for update_context → market_research promotion downstream)
-    if not result.market_name and context.get("market_name"):
-        result.market_name = context["market_name"]
-
-    # Fill sport_type from context（activity_planning 多轮持续）
-    if not result.sport_type and context.get("sport_type"):
-        result.sport_type = context["sport_type"]
-
-    # 正则兜底：LLM 未提取 category 时从用户输入中提取
-    fallback = _extract_category_fallback(message, result.brand_input.category)
-    if fallback:
-        result.brand_input.category = fallback
-
-    image_urls = context.get("image_urls")
-    if not isinstance(image_urls, list):
-        image_urls = None
-    image_captions = context.get("image_captions")
-    if isinstance(image_captions, list):
-        image_captions = [c for c in image_captions if isinstance(c, str) and c] or None
-    else:
-        image_captions = None
-
-    result = _normalize_intent_output(result, image_urls=image_urls, image_captions=image_captions, context_message=message)
+    result = _post_process(result, message=message, context=context)
     logger.info(
         "Intent recognized: %s (confidence=%.2f)",
         result.intent,
@@ -552,63 +658,10 @@ async def stream_intent_recognition(
         if result.reasoning:
             yield (result.reasoning, None)
 
-    if result.intent == "update_context":
-        result = _merge_context(context, result)
-        original = _parse_brand_input(context.get("brand_input", {}))
-        result.updated_fields = {
-            key: value
-            for key, value in result.brand_input.model_dump(exclude_none=True).items()
-            if getattr(original, key) != value
-        }
-
-        # LLM reply 含"品类"时，清除从旧上下文 merge 来的 category
-        if result.reply and "品类" in result.reply:
-            result.brand_input.category = None
-
-    # LLM 直接返回 market_research 时也可能同时设置 category 并反问"品类"。
-    # 仅对 market_research 生效——clarify/generate_plan 的 reply 含"品类"是合理的字段确认，
-    # 不应清除其 category。
-    if (
-        result.intent == "market_research"
-        and result.reply
-        and "品类" in result.reply
-        and result.brand_input.category is not None
-    ):
-        result.brand_input.category = None
-
-
-    if result.intent != "update_context" and context.get("brand_input"):
-        # Always fill missing fields from context, for any intent
-        ctx_bi = _parse_brand_input(context["brand_input"])
-        merged = result.brand_input.model_dump(exclude_none=True)
-        for key in ("brand_name", "category", "city", "budget", "period"):
-            if merged.get(key) is None:
-                val = getattr(ctx_bi, key, None)
-                if val is not None:
-                    setattr(result.brand_input, key, val)
-
-    # Fill market_name from context
-    if not result.market_name and context.get("market_name"):
-        result.market_name = context["market_name"]
-
-    # 正则兜底：LLM 未提取 category 时从用户输入中提取
-    fallback = _extract_category_fallback(message, result.brand_input.category)
-    if fallback:
-        result.brand_input.category = fallback
-
-    image_urls = context.get("image_urls")
-    if not isinstance(image_urls, list):
-        image_urls = None
-    image_captions = context.get("image_captions")
-    if isinstance(image_captions, list):
-        image_captions = [c for c in image_captions if isinstance(c, str) and c] or None
-    else:
-        image_captions = None
-
-    result = _normalize_intent_output(result, image_urls=image_urls, image_captions=image_captions, context_message=message)
+    result = _post_process(result, message=message, context=context)
     # ponytail: 打印意图识别原始 Log，便于排查 LLM 误判问题
     logger.info(
-        "Intent recognized | intent=%s confidence=%.2f message=%r context_brand=%s reply=%r brand_output=%s missing=%s image_urls=%s",
+        "Intent recognized | intent=%s confidence=%.2f message=%r context_brand=%s reply=%r brand_output=%s missing=%s ask_for=%s image_urls=%s",
         result.intent,
         result.confidence,
         message[:100],
@@ -616,6 +669,7 @@ async def stream_intent_recognition(
         result.reply[:120],
         result.brand_input.model_dump_json(exclude_none=True),
         result.missing_fields,
+        result.ask_for,
         bool(context.get("image_urls")),
     )
     yield ("", result.model_dump())
