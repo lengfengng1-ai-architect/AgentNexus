@@ -12,7 +12,6 @@ from typing import Any, AsyncGenerator
 
 import openai
 from jinja2 import Environment, FileSystemLoader
-from langchain_core.messages import HumanMessage, SystemMessage
 
 from app.agents.llm_utils import build_chat_model
 from app.agents.registry import register
@@ -72,7 +71,24 @@ def _load_system_prompt(message: str, context: dict[str, Any]) -> str:
         intent_rules = {}
     env = Environment(loader=FileSystemLoader("app/prompt_templates"))
     template = env.get_template("intent_recognition.md.j2")
-    return template.render(message=message, context=clean_ctx, intent_rules=intent_rules)
+    system_prompt = template.render(message=message, context=clean_ctx, intent_rules=intent_rules)
+
+    # ponytail: 把 message 和 conversation_history 组装成 messages 格式，
+    # 而不是全部塞进 system prompt。让 LLM 看到清晰的 role 分配。
+    messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
+
+    # 历史对话作为 user/assistant 消息
+    conversation_history = clean_ctx.get("conversation_history") or []
+    for line in conversation_history:
+        if line.startswith("用户:"):
+            messages.append({"role": "user", "content": line[3:].strip()})
+        elif line.startswith("AI:"):
+            messages.append({"role": "assistant", "content": line[3:].strip()})
+
+    # 当前用户输入
+    messages.append({"role": "user", "content": message or ""})
+
+    return messages
 
 
 def _build_model():
@@ -387,19 +403,19 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
 
     context = state.get("context") or {}
 
-    prompt = _load_system_prompt(message, context)
+    llm_messages = _load_system_prompt(message, context)
     logger.debug(
-        "Intent recognition prompt for message=%r context=%r:\n%s",
+        "Intent recognition messages count=%d message=%r context=%r",
+        len(llm_messages),
         message,
         context,
-        prompt,
     )
 
     if settings.enable_thinking:
         client = openai.OpenAI(api_key=settings.myself_api_key, base_url=settings.myself_base_url)
         resp = client.chat.completions.create(
             model=settings.myself_model,
-            messages=[{"role": "system", "content": prompt}, {"role": "user", "content": message}],
+            messages=llm_messages,
             extra_body={"enable_thinking": True},
             response_format={"type": "json_object"},
         )
@@ -410,8 +426,7 @@ async def run_intent_recognition(state: dict[str, Any]) -> dict[str, Any]:
         result.reasoning = reasoning
     else:
         llm = _build_structured_llm()
-        result = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=message)])
-        logger.debug("Intent recognition structured result: %s", result.model_dump_json(ensure_ascii=False))
+        result = await llm.ainvoke(_load_system_prompt(message, context))
 
     if result.intent == "update_context":
         result = _merge_context(context, result)
@@ -489,19 +504,20 @@ async def stream_intent_recognition(
 
     context = state.get("context") or {}
 
-    prompt = _load_system_prompt(message, context)
+    # _load_system_prompt 现在返回 messages list（system + 历史对话 + 当前输入）
+    llm_messages = _load_system_prompt(message, context)
     logger.debug(
-        "Streaming intent recognition prompt for message=%r context=%r:\n%s",
+        "Streaming intent recognition messages count=%d message=%r context=%r",
+        len(llm_messages),
         message,
         context,
-        prompt,
     )
 
     if settings.enable_thinking:
         client = openai.OpenAI(api_key=settings.myself_api_key, base_url=settings.myself_base_url)
         stream = client.chat.completions.create(
             model=settings.myself_model,
-            messages=[{"role": "system", "content": prompt}, {"role": "user", "content": message}],
+            messages=llm_messages,
             extra_body={"enable_thinking": True},
             response_format={"type": "json_object"},
             stream=True,
@@ -527,7 +543,8 @@ async def stream_intent_recognition(
         result.reasoning = reasoning
     else:
         llm = _build_structured_llm()
-        result = await llm.ainvoke([SystemMessage(content=prompt), HumanMessage(content=message)])
+        # 非 streaming 路径也改用 messages 格式
+        result = await llm.ainvoke(llm_messages)
         logger.debug("Streaming intent recognition structured result: %s", result.model_dump_json(ensure_ascii=False))
         if result.reasoning:
             yield (result.reasoning, None)
