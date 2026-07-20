@@ -9,23 +9,8 @@ from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.config.settings import settings
-from app.routers import (
-    activity_planning,
-    alliance_planning,
-    audience_insight,
-    budget_analysis,
-    chat,
-    community_operations,
-    competitor_analysis,
-    health,
-    image_generation,
-    market_analysis,
-    plan,
-    product_info,
-    prompt_optimizer,
-    upload,
-    video,
-)
+from app.warning_handlers import install_pydantic_serialization_warning_handler as _install_warning_handler
+from app.routers import activity_planning, alliance_planning, audience_insight, budget_analysis, chat, community_operations, competitor_analysis, health, image_generation, market_analysis, plan, product_info, prompt_optimizer, upload, video
 from app.schemas.common import APIError, APIResponse, ErrorCode
 
 logger = logging.getLogger(__name__)
@@ -59,6 +44,7 @@ def _configure_logging() -> None:
 
 def create_app() -> FastAPI:
     _configure_logging()
+    _install_warning_handler()
     app = FastAPI(
         title=settings.app_name,
         version=settings.app_version,

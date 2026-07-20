@@ -924,7 +924,12 @@ def _status_for_state(
     # 已完成节点 = 输出非空的节点(仅用于展示,不决定 status)
     completed = [nid for nid in _NODE_ORDER if state.get(nid)]
     # 返回所有 channel_values，包括 plan_generator.chapters 和各 agent 的结构化输出
-    outputs = dict(state)  # type: ignore[arg-type]
+    # ponytail: 过滤掉非 JSON 可序列化的 langgraph 内部类型（如 Command、Send），
+    # 避免 get_status 端点报 "Unable to serialize unknown type: <class 'langgraph.types.Send'>"
+    outputs = {
+        k: v for k, v in state.items()
+        if not isinstance(v, type) and not type(v).__module__.startswith("langgraph")
+    }  # type: ignore[arg-type]
 
     if error:
         return {
