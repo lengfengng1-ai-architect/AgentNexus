@@ -21,6 +21,7 @@ interface ScreenBudgetPreviewProps {
   onBack: (allocations: BudgetAllocation[]) => void
   /** 是否正在重新生成（后端执行中，显示转圈） */
   loading?: boolean
+  /** 只读模式——隐藏底部反馈输入栏 */
   /** 用户输入反馈后触发重新生成 */
   onRegenerate?: (feedback: string) => void
 }
@@ -468,7 +469,10 @@ export function ScreenBudgetPreview({
             color: 'var(--fg)', fontSize: 18, fontFamily: 'var(--ff)',
           }}
         >‹</button>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: 14, fontWeight: 600 }}>预算分配与预览</span>
+        <span style={{
+          flex: 1, textAlign: 'center', fontSize: 14, fontWeight: 600,
+          color: 'var(--fg)', fontFamily: 'var(--ff)',
+        }}>预算分配与预览</span>
         <div style={{ width: 32 }} />
       </div>
 
@@ -602,6 +606,7 @@ export function ScreenBudgetPreview({
       </div>
 
       {/* Bottom bar */}
+      {onRegenerate && (
       <div style={{
         background: 'var(--bg)', borderTop: '1px solid var(--line)',
         padding: '10px 14px', display: 'flex', gap: 8, alignItems: 'center', flexShrink: 0,
@@ -634,6 +639,7 @@ export function ScreenBudgetPreview({
           }}
         >↵</button>
       </div>
+      )}
 
       {/* Drag tooltip */}
       <div ref={dragIndicatorRef} style={{

@@ -21,7 +21,51 @@ const CARD_GAP = 10
 const CONTENT_PAD = 14
 const SECTION_GAP = 6
 
+// ── 字段名 → 中文映射 ────────────────────────────────────
+const FIELD_LABELS: Record<string, string> = {
+  product_name: '产品名称',
+  brand: '品牌',
+  manufacturer: '厂商',
+  industry: '行业',
+  category: '品类',
+  description: '描述',
+  tagline: '标语',
+  statement: '声明',
+  details: '详情',
+  status: '状态',
+  pricing: '定价',
+  available_regions: '可用地区',
+  access_model: '获取方式',
+  design: '设计',
+  material: '材质',
+  color: '颜色',
+  weight: '重量',
+  dimensions: '尺寸',
+  power: '功率',
+  battery: '电池',
+  warranty: '保修',
+  item_model: '型号',
+}
+
+function fieldLabel(k: string): string {
+  return FIELD_LABELS[k] || k
+}
+
 // ── 通用 UI 原语 ──────────────────────────────────────────
+
+function SectionTitle({ icon, title }: { icon?: string; title: string }) {
+  return (
+    <div style={{
+      fontSize: 13, fontWeight: 700, color: 'var(--accent)',
+      padding: '12px 0 6px', borderBottom: '1px solid var(--line)',
+      marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6,
+      marginTop: 4,
+    }}>
+      {icon && <span>{icon}</span>}
+      <span>{title}</span>
+    </div>
+  )
+}
 
 function Card({ title, icon, children, accent }: { title: string; icon?: string; children: React.ReactNode; accent?: boolean }) {
   return (
@@ -80,22 +124,6 @@ function Row({ label, value }: { label: string; value?: string | number | null }
   )
 }
 
-function Tag({ label, color, bg }: { label: string; color?: string; bg?: string }) {
-  return (
-    <span style={{
-      display: 'inline-block',
-      fontSize: 11,
-      fontWeight: 600,
-      padding: '3px 10px',
-      borderRadius: 20,
-      background: bg || 'var(--accent-softer)',
-      color: color || 'var(--accent)',
-    }}>
-      {label}
-    </span>
-  )
-}
-
 function EmptyState({ message }: { message: string }) {
   return (
     <div style={{
@@ -138,67 +166,66 @@ function ProductResearchView({ data }: { data: Record<string, unknown> }) {
 
   return (
     <>
-      {/* 产品标识 */}
+      <SectionTitle icon="🏷️" title="产品调研" />
       {identityFields.length > 0 && (
-        <Card title="产品标识" icon="🏷️">
-          {identityFields.map(([, v]) => <div key={v} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{v}</div>)}
+        <Card title="产品标识" icon="🏷️" accent>
+          {identityFields.map(([k, v]) => <Row key={k} label={fieldLabel(k)} value={v} />)}
         </Card>
       )}
 
-      {/* 官方描述 */}
       {descFields.length > 0 && (
         <Card title="官方描述" icon="📝">
-          {descFields.map(([, v]) => <div key={v} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{v}</div>)}
+          {descFields.map(([k, v]) => <Row key={k} label={fieldLabel(k)} value={v} />)}
         </Card>
       )}
 
-      {/* 功能特性 */}
       {features && features.length > 0 && (
-        <Card title={`功能特性`} icon="⚡">
+        <Card title="功能特性" icon="⚡">
           {features.map((f, i) => (
             <div key={i} style={{
-              padding: '7px 0',
+              display: 'flex', alignItems: 'flex-start', gap: 8, padding: '7px 0',
               borderBottom: i < features.length - 1 ? '1px solid var(--line)' : 'none',
             }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 2 }}>
-                <Tag label={String(f.name || `特性 ${i + 1}`)} />
-                {f.category && <span style={{ fontSize: 10, color: 'var(--muted)' }}>{String(f.category)}</span>}
-              </div>
-              {f.description && (
-                <div style={{ fontSize: 11, color: 'var(--fg-soft)', lineHeight: 1.6, marginTop: 4 }}>
-                  {String(f.description)}
+              <div style={{
+                width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)',
+                color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+              }}>{i + 1}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', marginBottom: 2 }}>
+                  {String(f.name || `特性 ${i + 1}`)}
                 </div>
-              )}
+                {f.description ? (
+                  <div style={{ fontSize: 11, color: 'var(--fg-soft)', lineHeight: 1.6 }}>
+                    {String(f.description)}
+                  </div>
+                ) : null}
+              </div>
             </div>
           ))}
         </Card>
       )}
 
-      {/* 规格参数（优雅键值对，拒绝 raw JSON） */}
       {specs?.value && typeof specs.value === 'object' && (
         <Card title="规格参数" icon="📏">
-          {Object.entries(specs.value as Record<string, unknown>).map(([, v]) => (
-            <div key={String(v)} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{String(v)}</div>
+          {Object.entries(specs.value as Record<string, unknown>).map(([k, v]) => (
+            <Row key={k} label={fieldLabel(k)} value={String(v)} />
           ))}
         </Card>
       )}
 
-      {/* 上市信息 */}
       {avail && (() => {
-        const vals = Object.entries(avail)
+        const items = Object.entries(avail)
           .filter(([k]) => !['sources', 'method', 'quote'].includes(k))
-          .map(([, v]) => {
-            if (v && typeof v === 'object' && 'value' in (v as object)) {
-              return idVal(v)
-            } else if (Array.isArray(v)) {
-              return v.length > 0 ? v.join('、') : undefined
-            } else if (v) {
-              return String(v)
-            }
-            return undefined
+          .map(([k, v]) => {
+            let val: string | undefined
+            if (v && typeof v === 'object' && 'value' in (v as object)) val = idVal(v)
+            else if (Array.isArray(v)) val = v.length > 0 ? v.join('、') : undefined
+            else if (v) val = String(v)
+            return val ? { label: k, value: val } : null
           })
-          .filter(Boolean)
-        return vals.length > 0 ? <Card title="上市信息" icon="📦">{vals.map((v, i) => <div key={i} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{v}</div>)}</Card> : null
+          .filter(Boolean) as { label: string; value: string }[]
+        return items.length > 0 ? <Card title="上市信息" icon="📦">{items.map(e => <Row key={e.label} label={fieldLabel(e.label)} value={e.value} />)}</Card> : null
       })()}
     </>
   )
@@ -211,6 +238,7 @@ function MarketResearchView({ data }: { data: Record<string, unknown> }) {
 
   return (
     <>
+      <SectionTitle icon="📈" title="市场调研" />
       {data.market_summary && (
         <Card title="市场分析摘要" icon="📊" accent>
           <div style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--fg-soft)' }}>{data.market_summary as string}</div>
@@ -218,14 +246,22 @@ function MarketResearchView({ data }: { data: Record<string, unknown> }) {
       )}
 
       {trends && trends.length > 0 && (
-        <Card title={`行业趋势`} icon="📈">
+        <Card title="行业趋势" icon="📈">
           {trends.map((t, i) => (
             <div key={i} style={{
-              padding: '8px 0',
+              display: 'flex', alignItems: 'flex-start', gap: 8, padding: '8px 0',
               borderBottom: i < trends.length - 1 ? '1px solid var(--line)' : 'none',
             }}>
-              <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', marginBottom: 2 }}>{String(t.title || '')}</div>
-              <div style={{ fontSize: 11, color: 'var(--fg-soft)', lineHeight: 1.6 }}>{String(t.description || '')}</div>
+              <div style={{
+                width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)',
+                color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex',
+                alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                marginTop: 1,
+              }}>{i + 1}</div>
+              <div style={{ flex: 1 }}>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', marginBottom: 2 }}>{String(t.title || '')}</div>
+                <div style={{ fontSize: 11, color: 'var(--fg-soft)', lineHeight: 1.6 }}>{String(t.description || '')}</div>
+              </div>
             </div>
           ))}
         </Card>
@@ -235,13 +271,8 @@ function MarketResearchView({ data }: { data: Record<string, unknown> }) {
         <Card title="机会点" icon="🎯">
           {opportunities.map((o, i) => (
             <div key={i} style={{
-              padding: '5px 0',
-              borderBottom: i < opportunities.length - 1 ? '1px solid var(--line)' : 'none',
-              display: 'flex',
-              gap: 8,
-              fontSize: 12,
-              color: 'var(--fg-soft)',
-              lineHeight: 1.5,
+              padding: '5px 0', borderBottom: i < opportunities.length - 1 ? '1px solid var(--line)' : 'none',
+              display: 'flex', gap: 8, fontSize: 12, color: 'var(--fg-soft)', lineHeight: 1.5,
             }}>
               <span style={{ color: 'var(--accent)', fontWeight: 700, flexShrink: 0 }}>{i + 1}.</span>
               <span>{o}</span>
@@ -271,6 +302,7 @@ function AudienceInsightView({ data }: { data: Record<string, unknown> }) {
 
   return (
     <>
+      <SectionTitle icon="👥" title="人群洞察" />
       {summaryText && (
         <Card title="人群画像摘要" icon="📋" accent>
           <div style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--fg-soft)' }}>{summaryText}</div>
@@ -280,31 +312,39 @@ function AudienceInsightView({ data }: { data: Record<string, unknown> }) {
       {persona?.product_fit && (
         <Card title="产品契合度" icon="🎯">
           {extractField((persona.product_fit as Record<string, unknown>)?.reason_this_product) && (
-            <div style={{ fontSize: 11, lineHeight: 1.6, color: 'var(--fg-soft)', marginBottom: 4 }}>
-              <strong style={{ color: 'var(--fg)' }}>选择理由：</strong>
+            <div style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--fg-soft)', marginBottom: 6 }}>
+              <strong style={{ color: 'var(--fg)', fontSize: 11 }}>选择理由：</strong>
               {extractField((persona.product_fit as Record<string, unknown>)?.reason_this_product)}
             </div>
           )}
           {extractField((persona.product_fit as Record<string, unknown>)?.valued_features) && (
-            <div style={{ fontSize: 11, lineHeight: 1.6, color: 'var(--fg-soft)', marginBottom: 4 }}>
-              <strong style={{ color: 'var(--fg)' }}>关注功能：</strong>
+            <div style={{ fontSize: 12, lineHeight: 1.6, color: 'var(--fg-soft)' }}>
+              <strong style={{ color: 'var(--fg)', fontSize: 11 }}>关注功能：</strong>
               {extractField((persona.product_fit as Record<string, unknown>)?.valued_features)}
             </div>
           )}
         </Card>
       )}
 
-      {persona?.demographics && (
-        <Card title="人口统计" icon="👤">
-          <GenericFallbackView data={persona.demographics as Record<string, unknown>} />
-        </Card>
-      )}
+      {persona?.demographics && (() => {
+        const demo = persona.demographics as Record<string, unknown>
+        const entries = Object.entries(demo).filter(([, v]) => v)
+        if (entries.length === 0) return null
+        return <Card title="人口统计" icon="👤">{entries.map(([k, v]) => {
+          const val = typeof v === 'object' && v && 'value' in (v as object) ? String((v as Record<string, unknown>).value ?? '') : String(v ?? '')
+          return val ? <Row key={k} label={fieldLabel(k)} value={val} /> : null
+        })}</Card>
+      })()}
 
       {audienceData?.purchase_motivations && Array.isArray(audienceData.purchase_motivations) && (
         <Card title="购买动机" icon="💡">
           {(audienceData.purchase_motivations as Array<Record<string, unknown>>).map((item, i) => (
-            <div key={i} style={{ padding: '5px 0', borderBottom: '1px solid var(--line)', fontSize: 12, color: 'var(--fg-soft)', lineHeight: 1.5 }}>
-              {item.text as string}
+            <div key={i} style={{
+              padding: '5px 0', borderBottom: i < (audienceData.purchase_motivations as Array<unknown>).length - 1 ? '1px solid var(--line)' : 'none',
+              fontSize: 12, color: 'var(--fg-soft)', lineHeight: 1.5, display: 'flex', gap: 6,
+            }}>
+              <span style={{ color: 'var(--accent)' }}>•</span>
+              <span>{item.text as string}</span>
             </div>
           ))}
         </Card>
@@ -313,18 +353,26 @@ function AudienceInsightView({ data }: { data: Record<string, unknown> }) {
       {audienceData?.usage_scenarios && Array.isArray(audienceData.usage_scenarios) && (
         <Card title="使用场景" icon="🏃">
           {(audienceData.usage_scenarios as Array<Record<string, unknown>>).map((item, i) => (
-            <div key={i} style={{ padding: '5px 0', borderBottom: '1px solid var(--line)', fontSize: 12, color: 'var(--fg-soft)', lineHeight: 1.5 }}>
-              {item.text as string}
+            <div key={i} style={{
+              padding: '5px 0', borderBottom: i < (audienceData.usage_scenarios as Array<unknown>).length - 1 ? '1px solid var(--line)' : 'none',
+              fontSize: 12, color: 'var(--fg-soft)', lineHeight: 1.5, display: 'flex', gap: 6,
+            }}>
+              <span style={{ color: 'var(--accent)' }}>•</span>
+              <span>{item.text as string}</span>
             </div>
           ))}
         </Card>
       )}
 
-      {persona?.lifestyle && (
-        <Card title="生活方式" icon="🎭">
-          <GenericFallbackView data={persona.lifestyle as Record<string, unknown>} />
-        </Card>
-      )}
+      {persona?.lifestyle && (() => {
+        const ls = persona.lifestyle as Record<string, unknown>
+        const entries = Object.entries(ls).filter(([, v]) => v)
+        if (entries.length === 0) return null
+        return <Card title="生活方式" icon="🎭">{entries.map(([k, v]) => {
+          const val = typeof v === 'object' && v && 'value' in (v as object) ? String((v as Record<string, unknown>).value ?? '') : String(v ?? '')
+          return val ? <Row key={k} label={fieldLabel(k)} value={val} /> : null
+        })}</Card>
+      })()}
     </>
   )
 }
@@ -339,6 +387,7 @@ function PlanDataQueryView({ data }: { data: Record<string, unknown> }) {
 
   return (
     <>
+      <SectionTitle icon="📍" title="数据查询" />
       <Card title="城市概况" icon="📍" accent>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
           <StatTile value={String(data.population || '-')} label="常住人口" />
@@ -355,7 +404,6 @@ function PlanDataQueryView({ data }: { data: Record<string, unknown> }) {
       {stores && <SimpleStatCard icon="🏪" title="经营社" rows={[['数量', String(stores.count ?? '')]]} />}
       {venues && <SimpleStatCard icon="🏛️" title="场馆" rows={[['数量', String(venues.count ?? '')], ['容量', venues.capacity as string]]} />}
 
-      {/* 隐藏的详细信息（超出摘要展示范围的以摘要卡片展示） */}
       {data.tournament && renderSubCard('赛事资源', '🏆', data.tournament as Record<string, unknown>, ['available_tournaments'])}
       {data.trophy && renderSubCard('奖杯定制', '🥇', data.trophy as Record<string, unknown>, ['trophy_types', 'avg_lead_time_days'])}
     </>
@@ -371,23 +419,51 @@ function StatTile({ value, label }: { value: string; label: string }) {
   )
 }
 
+const STAT_CARD_LABELS: Record<string, string> = {
+  '数量': '数量',
+  '平均成员': '平均成员',
+  '月均活动': '月均活动',
+  '平均参与': '平均参与',
+  '总数': '总数',
+  '平均报价': '平均报价',
+  '容量': '容量',
+}
+
 function SimpleStatCard({ icon, title, rows }: { icon: string; title: string; rows: [string, string][] }) {
   return (
     <Card title={title} icon={icon}>
-      {rows.map(([label, value]) => <Row key={label} label={label} value={value} />)}
+      {rows.map(([label, value]) => <Row key={label} label={STAT_CARD_LABELS[label] || label} value={value} />)}
     </Card>
   )
+}
+
+const SUB_CARD_LABELS: Record<string, string> = {
+  available_tournaments: '可用赛事',
+  trophy_types: '奖杯类型',
+  avg_lead_time_days: '定制提前期',
 }
 
 function renderSubCard(title: string, icon: string, data: Record<string, unknown>, keys: string[]) {
   const entries = keys.map(k => {
     const v = data[k]
     if (!v) return null
-    const val = Array.isArray(v) ? v.join('、') : String(v)
-    return { value: val }
-  }).filter(Boolean) as { value: string }[]
+    let val: string
+    if (Array.isArray(v)) {
+      // 对象数组 → 格式化展示
+      if (v.length > 0 && typeof v[0] === 'object') {
+        val = v.map((item: Record<string, unknown>, i: number) =>
+          `${i + 1}. ${item.name || item.title || ''}（${item.sport_type || item.description || ''}）`
+        ).join('\n')
+      } else {
+        val = v.join('、')
+      }
+    } else {
+      val = String(v)
+    }
+    return { label: SUB_CARD_LABELS[k] || k, value: val }
+  }).filter(Boolean) as { label: string; value: string }[]
   if (entries.length === 0) return null
-  return <Card title={title} icon={icon}>{entries.map((e, i) => <div key={i} style={{ fontSize: 12, color: 'var(--fg-soft)', padding: '2px 0' }}>{e.value}</div>)}</Card>
+  return <Card title={title} icon={icon}>{entries.map(e => <Row key={e.label} label={fieldLabel(e.label)} value={e.value} />)}</Card>
 }
 
 /** 适配度分析 */
@@ -396,6 +472,7 @@ function FitnessAnalysisView({ data }: { data: Record<string, unknown> }) {
 
   return (
     <>
+      <SectionTitle icon="🎯" title="适配度分析" />
       <Card title="分析概览" icon="🎯" accent>
         <Row label="品牌品类" value={data.category as string} />
         <Row label="目标城市" value={data.city as string} />
@@ -408,36 +485,25 @@ function FitnessAnalysisView({ data }: { data: Record<string, unknown> }) {
           <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
             {scores.map((s, i) => {
               const sc = s.score as number || 0
-              const barColor = sc >= 80 ? '#22c55e' : sc >= 60 ? '#eab308' : '#f97316'
-              const barBg = sc >= 80 ? '#dcfce7' : sc >= 60 ? '#fef9c3' : '#ffedd5'
+              const barColor = '#1677ff'
+              const barBg = '#e8f0fe'
               return (
                 <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
                   <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', minWidth: 56, textAlign: 'right' }}>
                     {s.sport as string}
                   </span>
                   <div style={{
-                    flex: 1,
-                    height: 22,
-                    background: barBg,
-                    borderRadius: 11,
-                    overflow: 'hidden',
-                    position: 'relative',
+                    flex: 1, height: 22, background: barBg, borderRadius: 11,
+                    overflow: 'hidden', position: 'relative',
                   }}>
                     <div style={{
-                      width: `${Math.min(sc, 100)}%`,
-                      height: '100%',
-                      borderRadius: 11,
+                      width: `${Math.min(sc, 100)}%`, height: '100%', borderRadius: 11,
                       background: `linear-gradient(90deg, ${barColor}88, ${barColor})`,
                       transition: 'width 0.4s ease',
                     }} />
                     <span style={{
-                      position: 'absolute',
-                      right: 8,
-                      top: '50%',
-                      transform: 'translateY(-50%)',
-                      fontSize: 10,
-                      fontWeight: 700,
-                      color: sc >= 50 ? '#fff' : 'var(--fg-soft)',
+                      position: 'absolute', right: 8, top: '50%', transform: 'translateY(-50%)',
+                      fontSize: 10, fontWeight: 700, color: 'var(--fg)',
                     }}>{sc}分</span>
                   </div>
                 </div>
@@ -447,16 +513,12 @@ function FitnessAnalysisView({ data }: { data: Record<string, unknown> }) {
         </Card>
       )}
 
-      {/* 具体适配理由 */}
       {scores && scores.some(s => s.reason) && (
         <Card title="适配理由" icon="📌">
           {scores.filter(s => s.reason).map((s, i) => (
             <div key={i} style={{
-              padding: '6px 0',
-              borderBottom: i < scores.length - 1 ? '1px solid var(--line)' : 'none',
-              fontSize: 11,
-              lineHeight: 1.6,
-              color: 'var(--fg-soft)',
+              padding: '6px 0', borderBottom: i < scores.length - 1 ? '1px solid var(--line)' : 'none',
+              fontSize: 11, lineHeight: 1.6, color: 'var(--fg-soft)',
             }}>
               <strong style={{ color: 'var(--fg)' }}>{s.sport as string}:</strong> {s.reason as string}
             </div>
@@ -473,12 +535,13 @@ function StrategyGenerationView({ data }: { data: Record<string, unknown> }) {
 
   return (
     <>
-      <Card title="核心策略" icon="💡" accent>
-        {data.positioning && (
+      <SectionTitle icon="💡" title="核心策略" />
+      <Card title="核心主张" icon="💡" accent>
+        {data.positioning ? (
           <div style={{ fontSize: 13, fontWeight: 700, color: 'var(--accent)', lineHeight: 1.5, marginBottom: 8 }}>
-            {data.positioning as string}
+            {String(data.positioning)}
           </div>
-        )}
+        ) : null}
         <Row label="营销目标" value={data.marketing_goal as string} />
       </Card>
 
@@ -489,7 +552,7 @@ function StrategyGenerationView({ data }: { data: Record<string, unknown> }) {
       )}
 
       {msgs && msgs.length > 0 && (
-        <Card title="传播信息" icon="📢">
+        <Card title={`核心传播信息（${msgs.length}条）`} icon="📢">
           {msgs.map((m, i) => (
             <div key={i} style={{
               padding: '6px 0',
@@ -522,11 +585,12 @@ function ExecutionPlanningView({ data }: { data: Record<string, unknown> }) {
 
   return (
     <>
+      <SectionTitle icon="📋" title="执行规划" />
       {plans.map(({ key, label, icon, sublabel }) => {
         const content = data[key] as string | undefined
         if (!content) return null
         return (
-          <Card key={key} title={label} icon={icon}>
+          <Card key={key} title={`${icon} ${label}`}>
             <div style={{
               fontSize: 13, fontWeight: 700, color: 'var(--fg)', marginBottom: 8,
               paddingBottom: 6, borderBottom: '1px solid var(--line)',
@@ -624,35 +688,107 @@ function GenericFallbackView({ data }: { data: Record<string, unknown> }) {
 
 // ── 节点类型 → 渲染器映射 ────────────────────────────────
 
-/** 并行调研结果合并展示（产品调研 + 市场调研 + 人群洞察） */
-function ParallelResearchView({ data }: { data: Record<string, unknown> }) {
-  const sections: { key: string; title: string; icon: string; renderer: React.ComponentType<{ data: Record<string, unknown> }> }[] = [
-    { key: 'product_research', title: '产品调研', icon: '🏷️', renderer: ProductResearchView },
-    { key: 'market_research', title: '市场调研', icon: '📈', renderer: MarketResearchView },
-    { key: 'audience_insight', title: '人群洞察', icon: '👥', renderer: AudienceInsightView },
-  ]
+/** 并行调研结果 Tab 栏 + 内容（放在顶栏和滚动区之间） */
+function ParallelResearchTabs({ data }: { data: Record<string, unknown> }) {
+  const [activeTab, setActiveTab] = useState(0)
+  const tabs = ['概览', '产品调研', '市场调研', '人群洞察']
+
+  const productData = data.product_research as Record<string, unknown> | undefined
+  const marketData = data.market_research as Record<string, unknown> | undefined
+  const audienceData = data.audience_insight as Record<string, unknown> | undefined
 
   return (
-    <>
-      {sections.map(({ key, title, icon, renderer: Renderer }) => {
-        const sectionData = data[key] as Record<string, unknown> | undefined
-        if (!sectionData || Object.keys(sectionData).length === 0) return null
-        return (
-          <div key={key}>
-            <div style={{
-              fontSize: 13, fontWeight: 700, color: 'var(--accent)',
-              padding: '12px 0 6px', borderBottom: '1px solid var(--line)',
-              marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6,
-            }}>
-              <span>{icon}</span>
-              <span>{title}</span>
-            </div>
-            <Renderer data={sectionData} />
-          </div>
-        )
-      })}
-    </>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, overflow: 'hidden' }}>
+      {/* Tab 栏 */}
+      <div style={{
+        display: 'flex', gap: 6, padding: '10px 14px 6px', flexShrink: 0,
+        overflowX: 'auto', scrollbarWidth: 'none',
+        borderBottom: '1px solid var(--line)',
+      }}>
+        {tabs.map((tab, i) => (
+          <span
+            key={tab}
+            onClick={() => setActiveTab(i)}
+            style={{
+              flex: 'none', fontSize: 11, padding: '5px 12px',
+              borderRadius: 20, border: '1px solid var(--border)',
+              color: activeTab === i ? 'var(--accent)' : 'var(--muted)',
+              background: activeTab === i ? 'var(--accent-soft)' : 'var(--bg)',
+              borderColor: activeTab === i ? 'var(--accent-border)' : 'var(--border)',
+              fontWeight: activeTab === i ? 600 : 500,
+              cursor: 'pointer', fontFamily: 'var(--ff)',
+            }}
+          >{tab}</span>
+        ))}
+      </div>
+
+      {/* 滚动内容 */}
+      <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '14px 14px 0' }}>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: CARD_GAP, paddingBottom: 28 }}>
+          {activeTab === 0 && (
+            <>
+              <Card title="调研概览" icon="📋" accent>
+                <div style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--fg-soft)' }}>
+                  本次调研覆盖了品牌产品信息、行业市场趋势和核心人群画像三个维度，为策略制定提供数据支撑。
+                </div>
+              </Card>
+              {productData?.identity && (
+                <Card title="产品标识" icon="🏷️">
+                  {(() => {
+                    const id = productData.identity as Record<string, unknown>
+                    return Object.entries(id)
+                      .filter(([k]) => !['sources', 'method', 'quote'].includes(k))
+                      .map(([k, v]) => {
+                        const val = typeof v === 'object' && v && 'value' in (v as object) ? (v as Record<string, unknown>).value : v
+                        return val ? <Row key={k} label={fieldLabel(k)} value={String(val)} /> : null
+                      })
+                  })()}
+                </Card>
+              )}
+              {marketData?.trends && Array.isArray(marketData.trends) && (
+                <Card title="行业趋势" icon="📈">
+                  {(marketData.trends as Array<Record<string, unknown>>).slice(0, 2).map((t, i) => (
+                    <div key={i} style={{
+                      display: 'flex', alignItems: 'flex-start', gap: 8, padding: '6px 0',
+                      borderBottom: i < 1 ? '1px solid var(--line)' : 'none',
+                    }}>
+                      <div style={{
+                        width: 20, height: 20, borderRadius: '50%', background: 'var(--accent)',
+                        color: '#fff', fontSize: 10, fontWeight: 700, display: 'flex',
+                        alignItems: 'center', justifyContent: 'center', flexShrink: 0,
+                      }}>{i + 1}</div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 600, color: 'var(--fg)', marginBottom: 2 }}>{t.title as string}</div>
+                        <div style={{ fontSize: 11, color: 'var(--fg-soft)', lineHeight: 1.5 }}>{t.description as string}</div>
+                      </div>
+                    </div>
+                  ))}
+                </Card>
+              )}
+              {audienceData && (
+                <Card title="人群画像" icon="👥">
+                  {(() => {
+                    const persona = audienceData?.persona as Record<string, unknown> | undefined
+                    const profile = persona?.profile_summary as Record<string, unknown> | undefined
+                    const summary = (profile?.value as string) || ''
+                    return summary ? <div style={{ fontSize: 12, lineHeight: 1.7, color: 'var(--fg-soft)' }}>{summary}</div> : <div style={{ fontSize: 12, color: 'var(--muted)', fontStyle: 'italic' }}>暂无人群画像数据</div>
+                  })()}
+                </Card>
+              )}
+            </>
+          )}
+          {activeTab === 1 && productData && <ProductResearchView data={productData} />}
+          {activeTab === 2 && marketData && <MarketResearchView data={marketData} />}
+          {activeTab === 3 && audienceData && <AudienceInsightView data={audienceData} />}
+        </div>
+      </div>
+    </div>
   )
+}
+
+/** 并行调研结果渲染器（Render 空内容，Tab 已在 ParallelResearchTabs 中处理） */
+function ParallelResearchView({ data: _data }: { data: Record<string, unknown> }) {
+  return null
 }
 
 const RENDERERS: Record<string, React.ComponentType<{ data: Record<string, unknown> }>> = {
@@ -673,6 +809,8 @@ export function ScreenNodePreview({ nodeId, title, rawData, onBack, onReject, lo
   const hasData = rawData && Object.keys(rawData).length > 0
   const [feedback, setFeedback] = useState('')
 
+  const isParallel = nodeId === 'parallel_research'
+
   const handleSendFeedback = useCallback(() => {
     if (!feedback.trim() || !onReject) return
     onReject(feedback.trim())
@@ -681,67 +819,53 @@ export function ScreenNodePreview({ nodeId, title, rawData, onBack, onReject, lo
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', height: '100%', overflow: 'hidden' }}>
-      {/* Top bar — 精确匹配 ScreenActionPreview */}
+      {/* Top bar */}
       <div style={{
-        display: 'flex',
-        alignItems: 'center',
-        padding: '8px 14px',
-        borderBottom: '1px solid var(--line)',
-        background: 'var(--bg)',
-        flexShrink: 0,
+        display: 'flex', alignItems: 'center', padding: '8px 14px',
+        borderBottom: '1px solid var(--line)', background: 'var(--bg)', flexShrink: 0,
       }}>
         <button
           type="button"
           onClick={onBack}
           style={{
-            width: 32,
-            height: 32,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            border: 'none',
-            background: 'none',
-            cursor: 'pointer',
-            borderRadius: 8,
-            color: 'var(--fg)',
-            fontSize: 18,
-            fontFamily: 'var(--ff)',
+            width: 32, height: 32, display: 'flex', alignItems: 'center', justifyContent: 'center',
+            border: 'none', background: 'none', cursor: 'pointer', borderRadius: 8,
+            color: 'var(--fg)', fontSize: 18, fontFamily: 'var(--ff)',
             transition: 'background 0.15s',
           }}
           onMouseEnter={e => { (e.target as HTMLElement).style.background = 'var(--surface)' }}
           onMouseLeave={e => { (e.target as HTMLElement).style.background = 'none' }}
         >‹</button>
         <span style={{
-          flex: 1,
-          textAlign: 'center',
-          fontSize: 14,
-          fontWeight: 600,
-          color: 'var(--fg)',
-          fontFamily: 'var(--ff)',
+          flex: 1, textAlign: 'center', fontSize: 14, fontWeight: 600,
+          color: 'var(--fg)', fontFamily: 'var(--ff)',
         }}>{title}</span>
         <div style={{ width: 32 }} />
       </div>
 
-      {/* Scrollable content */}
-      <div style={{
-        flex: 1,
-        overflowY: 'auto',
-        overflowX: 'hidden',
-        padding: `${CONTENT_PAD}px ${CONTENT_PAD}px 0`,
-      }}>
-        {!hasData ? (
-          <EmptyState message="暂无节点数据" />
-        ) : (
-          <div style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: CARD_GAP,
-            paddingBottom: CONTENT_PAD * 2,
-          }}>
-            {Renderer ? <Renderer data={rawData} /> : <GenericFallbackView data={rawData} />}
-          </div>
-        )}
-      </div>
+      {/* Tab bar — 仅并行调研结果显示 */}
+      {isParallel && (
+        <ParallelResearchTabs data={rawData} />
+      )}
+
+      {/* 非并行调研节点的滚动区 */}
+      {!isParallel && (
+        <div style={{
+          flex: 1, overflowY: 'auto', overflowX: 'hidden',
+          padding: `${CONTENT_PAD}px ${CONTENT_PAD}px 0`,
+        }}>
+          {!hasData ? (
+            <EmptyState message="暂无节点数据" />
+          ) : (
+            <div style={{
+              display: 'flex', flexDirection: 'column', gap: CARD_GAP,
+              paddingBottom: CONTENT_PAD * 2,
+            }}>
+              {Renderer ? <Renderer data={rawData} /> : <GenericFallbackView data={rawData} />}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* 底部输入栏（仅在 onReject 存在时显示，与 ScreenActionPreview 一致） */}
       {onReject && (

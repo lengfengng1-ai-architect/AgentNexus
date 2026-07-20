@@ -22,6 +22,7 @@ interface ScreenGenerateProps {
     allocations: BudgetAllocation[]
     kpis: Record<string, string>
     timeline: string[]
+    readonly?: boolean
   }) => void
   onOpenActionPreview: () => void
   /** 从 checkpoint 弹窗打开执行规划预览 */
@@ -235,6 +236,26 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
                           type="button"
                           onClick={() => {
                             const raw = (outputs as Record<string, unknown>)[s.id]
+                            // 预算与 KPI → 走预算预览
+                            if (s.id === 'budget_kpi') {
+                              const bk = raw as Record<string, unknown> | undefined
+                              if (bk && typeof bk.total_budget !== 'undefined') {
+                                onOpenBudgetPreview({
+                                  totalBudget: (bk.total_budget as number) || 0,
+                                  periodMonths: (bk.period_months as number) || 0,
+                                  allocations: (bk.allocations as Array<{category: string; percentage: number; amount: number}> | undefined) || [],
+                                  kpis: (bk.kpis as Record<string, string>) || {},
+                                  timeline: (bk.timeline as string[]) || [],
+                                  readonly: true,
+                                })
+                              }
+                              return
+                            }
+                            // 行动建议 → 走行动预览
+                            if (s.id === 'action_recommendations') {
+                              onViewActionResult?.()
+                              return
+                            }
                             const data = (raw && typeof raw === 'object' && !Array.isArray(raw))
                               ? raw as Record<string, unknown>
                               : {}
