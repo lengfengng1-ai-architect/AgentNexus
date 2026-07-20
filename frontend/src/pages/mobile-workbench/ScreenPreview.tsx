@@ -43,7 +43,7 @@ export function ScreenPreview({ onNavigate, chapters }: ScreenPreviewProps) {
   }
 
   return (
-    <>
+    <div className="mw-generate-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 20 }}>
       <div className="sec">
         <h3>📋 营销方案预览
           <span className="pv-actions">
@@ -96,7 +96,7 @@ export function ScreenPreview({ onNavigate, chapters }: ScreenPreviewProps) {
           ‹ 返回方案
         </button>
       </div>
-    </>
+    </div>
   )
 }
 

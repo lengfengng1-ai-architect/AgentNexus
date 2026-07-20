@@ -42,6 +42,9 @@ async def run_strategy_generation(state: dict[str, Any]) -> dict[str, Any]:
     if not all([brand_name, category, city]):
         raise ValueError("Missing required brand inputs")
 
+    reject_reason = brand_input.get("_reject_reason", "")
+    reject_history = brand_input.get("_reject_history", [])
+
     write_log("strategy_generation", f"🤖 正在为 {brand_name} 制定营销策略…")
     result = await invoke_json(
         _render(
@@ -55,6 +58,8 @@ async def run_strategy_generation(state: dict[str, Any]) -> dict[str, Any]:
             persona_summary=audience.get("persona_summary", ""),
             fitness_scores=_fitness_scores_text(fitness),
             core_strategy=brand_input.get("core_strategy", ""),
+            reject_reason=reject_reason,
+            reject_history=reject_history,
         ),
         f"请为 {brand_name} 生成营销策略。",
     )

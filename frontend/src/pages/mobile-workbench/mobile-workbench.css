@@ -603,6 +603,10 @@
 .mw .mobile-chapter-content strong {
   font-weight: 600;
 }
+.mw .mobile-chapter-content strong::before {
+  content: '';
+  display: block;
+}
 .mw .mobile-chapter-content em {
   font-style: italic;
 }

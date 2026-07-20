@@ -18,7 +18,7 @@ import type { SuggestedPrompt } from './screen-chat/types'
 import './screen-chat/screen-chat.css'
 import type { BrandInput } from '../../types/chat'
 
-export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview' | 'research-report' | 'draft-list' | 'budget-assessment' | 'activity-planning' | 'alliance-planning' | 'competitor-analysis' | 'community-operations'
+export type MobileScreen = 'chat' | 'brief' | 'generate' | 'actions' | 'dispatch' | 'preview' | 'budget-preview' | 'action-preview' | 'research-report' | 'draft-list' | 'budget-assessment' | 'activity-planning' | 'alliance-planning' | 'competitor-analysis' | 'community-operations' | 'node-preview'
 
 interface ScreenChatProps {
   onNavigate: (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string, budgetAssessmentId?: string, activityPlanningId?: string, alliancePlanningId?: string) => void
