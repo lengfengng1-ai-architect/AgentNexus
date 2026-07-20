@@ -11,6 +11,7 @@ import { ScreenActions } from './ScreenActions'
 import { ScreenDispatch } from './ScreenDispatch'
 import { ScreenBudgetPreview, type BudgetAllocation } from './ScreenBudgetPreview'
 import { ScreenActionPreview } from './ScreenActionPreview'
+import { ScreenNodePreview } from './ScreenNodePreview'
 import { useMobilePlanRun } from '../../hooks/useMobilePlanRun'
 import { exportPlanPdf, exportPlanXlsx } from '../../api/plan'
 import type { BrandInput } from '../../types/chat'
@@ -25,7 +26,7 @@ const TABS: { key: MobileScreen; label: string }[] = [
 ]
 
 // 隐藏 Tab 栏的屏
-const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview']
+const HIDE_TABS: MobileScreen[] = ['preview', 'budget-preview', 'action-preview', 'node-preview']
 
 const DEFAULT_TOPBAR: Record<string, { t: string; sub: string }> = {
   chat: { t: '营销方案助手', sub: 'AllyGo Agent' },
@@ -72,6 +73,14 @@ export function MobileWorkbenchPage() {
   const [actionPreviewLoading, setActionPreviewLoading] = useState(false)
   // true = 从流水线完成状态查看结果（只读）；false = 从 checkpoint 弹窗进入（可反馈）
   const [actionPreviewReadonly, setActionPreviewReadonly] = useState(false)
+
+  // Node preview state (通用节点数据预览)
+  const [nodePreviewData, setNodePreviewData] = useState<{
+    nodeId: string
+    title: string
+    rawData: Record<string, unknown>
+  } | null>(null)
+  const [nodePreviewAnimatingOut, setNodePreviewAnimatingOut] = useState(false)
 
   // Action preview data — extracted from pausedSnapshot
   const [actionPreviewData, setActionPreviewData] = useState<{
@@ -244,6 +253,23 @@ export function MobileWorkbenchPage() {
     }
   }
 
+  // 通用节点数据预览：从流水线步骤展开日志区的"查看结果"按钮进入
+  const handleViewNodeResult = (nodeId: string, title: string, data: Record<string, unknown>) => {
+    setNodePreviewData({ nodeId, title, rawData: data })
+    setNodePreviewAnimatingOut(false)
+    setScreen('node-preview')
+  }
+
+  // 通用节点数据预览返回：触发滑出动画后切回 generate
+  const handleNodePreviewBack = () => {
+    setNodePreviewAnimatingOut(true)
+    setTimeout(() => {
+      setNodePreviewAnimatingOut(false)
+      setNodePreviewData(null)
+      setScreen('generate')
+    }, 300)
+  }
+
   // 监控 pausedSnapshot 更新：当预算预览 loading 中且收到新的 budget_kpi paused 数据时刷新
   useEffect(() => {
     if (!budgetPreviewLoading) return
@@ -327,6 +353,7 @@ export function MobileWorkbenchPage() {
       preview: 'generate',
       'budget-preview': 'generate',
       'action-preview': 'generate',
+      'node-preview': 'generate',
       actions: 'generate',
       dispatch: 'actions',
     }
@@ -347,16 +374,20 @@ export function MobileWorkbenchPage() {
     dispatch: { t: '下发与转发达成', sub: `${brandLabel} · 跨盟下发` },
     'budget-preview': { t: '预算分配与预览', sub: `${productLabel}` },
     'action-preview': { t: '行动预览', sub: `${productLabel}` },
+    'node-preview': { t: '节点数据', sub: `${nodePreviewData?.title || ''}` },
   }
   const meta = topbarText[screen]
   const isExportReady = (screen === 'generate' || screen === 'preview') && status === 'completed'
 
   // 预算预览页在手机框内展示，使用自己的顶栏，隐藏 PhoneFrame 顶栏
   // 动画退出中也不显示 topbar（保持视觉连贯）
-  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview'
+  const hideTopbar = screen === 'budget-preview' || isBpAnimatingOut || screen === 'action-preview' || screen === 'node-preview' || nodePreviewAnimatingOut
 
   // 预算预览正在展示中：包括正在展示 slide-in 或已展示
   const showingBudgetPreview = screen === 'budget-preview' || isBpAnimatingOut
+
+  // 通用节点预览覆盖层
+  const showingNodePreview = screen === 'node-preview' || nodePreviewAnimatingOut
 
   // action-preview 返回时 approve 继续流水线（同 budget-preview 模式）
   const handleActionPreviewBack = () => {
@@ -505,6 +536,23 @@ export function MobileWorkbenchPage() {
               />
             </div>
           )}
+          {/* 通用节点数据预览覆盖层（除 plan_generator 外的所有节点） */}
+          {showingNodePreview && nodePreviewData && (
+            <div
+              className={nodePreviewAnimatingOut ? 'bp-slide-out' : 'bp-slide-in'}
+              style={{
+                position: 'absolute', inset: 0, zIndex: 40,
+                display: 'flex', flexDirection: 'column',
+                background: 'var(--bg)', overflow: 'hidden',
+              }}
+            >
+              <ScreenNodePreview
+                title={nodePreviewData.title}
+                rawData={nodePreviewData.rawData}
+                onBack={handleNodePreviewBack}
+              />
+            </div>
+          )}
           <div style={{ display: screen === 'chat' ? 'flex' : 'none', flex: screen === 'chat' ? 1 : '', flexDirection: 'column', overflow: 'visible', position: 'relative' }}>
             <ScreenChat onNavigate={handleChatNavigate} />
           </div>
@@ -526,6 +574,7 @@ export function MobileWorkbenchPage() {
                 handleOpenActionPreview()
               }}
               onViewActionResult={handleViewActionResult}
+              onViewNodeResult={handleViewNodeResult}
             />
           </div>
           <div style={{ display: screen === 'preview' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>

@@ -26,9 +26,11 @@ interface ScreenGenerateProps {
   onOpenActionPreview: () => void
   /** 从流水线步骤中打开只读的行动建议预览 */
   onViewActionResult?: () => void
+  /** 查看任意节点结果（除 plan_generator 外的所有节点） */
+  onViewNodeResult?: (nodeId: string, title: string, data: Record<string, unknown>) => void
 }
 
-export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpointNodeId, onOpenBudgetPreview, onOpenActionPreview, onViewActionResult }: ScreenGenerateProps) {
+export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpointNodeId, onOpenBudgetPreview, onOpenActionPreview, onViewActionResult, onViewNodeResult }: ScreenGenerateProps) {
   const {
     status,
     steps,
@@ -37,6 +39,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
     error,
     isLoading,
     isConnected,
+    outputs,
     start,
     approve,
     reject,
@@ -198,10 +201,14 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
           return (
             <div key={s.id} className={'step' + stepClass}>
               <div className="dot">{dotContent}</div>
-              <div className="body" style={{ cursor: s.logs.length > 0 ? 'pointer' : 'default' }} onClick={() => s.logs.length > 0 && toggleExpand(s.id)}>
+              <div className="body" style={{ cursor: s.logs.length > 0 || (s.status === 'complete' && s.id !== 'plan_generator' && onViewNodeResult) ? 'pointer' : 'default' }} onClick={() => {
+                const hasLogs = s.logs.length > 0
+                const hasViewBtn = s.status === 'complete' && s.id !== 'plan_generator' && onViewNodeResult
+                if (hasLogs || hasViewBtn) toggleExpand(s.id)
+              }}>
                 <div className="st">{s.label}</div>
                 <div className="sd">{s.id === 'action_recommendations' && s.status === 'running' ? '行动建议执行中…' : s.id === 'action_recommendations' && s.status === 'complete' ? '行动建议执行完毕' : s.summary}</div>
-                {isExpanded && s.logs.length > 0 && (
+                {isExpanded && (s.logs.length > 0 || (s.status === 'complete' && s.id !== 'plan_generator' && onViewNodeResult)) && (
                   <div className="log-card" style={{
                     marginTop: 8, padding: 8, borderRadius: 'var(--r-sm)',
                     background: 'var(--surface)', border: '1px solid var(--border)',
@@ -211,17 +218,22 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
                     {s.logs.map((log, i) => (
                       <div key={i} style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{log}</div>
                     ))}
-                    {s.id === 'action_recommendations' && (
+                    {/* 通用查看结果按钮（除 plan_generator 外所有 complete 节点） */}
+                    {s.status === 'complete' && s.id !== 'plan_generator' && onViewNodeResult && (
                       <div style={{ marginTop: 6 }}>
                         <button
                           type="button"
-                          disabled={s.status !== 'complete'}
-                          onClick={onViewActionResult}
+                          onClick={() => {
+                            const raw = (outputs as Record<string, unknown>)[s.id]
+                            const data = (raw && typeof raw === 'object' && !Array.isArray(raw))
+                              ? raw as Record<string, unknown>
+                              : {}
+                            onViewNodeResult(s.id, s.label, data)
+                          }}
                           style={{
                             fontSize: 11, padding: '3px 10px', borderRadius: 6,
-                            border: '1px solid var(--border)', background: s.status === 'complete' ? 'var(--accent)' : 'var(--surface)',
-                            color: s.status === 'complete' ? '#fff' : 'var(--muted)',
-                            cursor: s.status === 'complete' ? 'pointer' : 'not-allowed',
+                            border: '1px solid var(--border)', background: 'var(--accent)',
+                            color: '#fff', cursor: 'pointer',
                             fontFamily: 'var(--ff)', fontWeight: 500,
                             transition: 'all 0.15s',
                           }}
