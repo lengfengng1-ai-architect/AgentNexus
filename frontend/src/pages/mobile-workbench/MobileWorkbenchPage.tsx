@@ -528,13 +528,13 @@ export function MobileWorkbenchPage() {
               onViewActionResult={handleViewActionResult}
             />
           </div>
-          <div style={{ display: screen === 'preview' ? '' : 'none' }}>
+          <div style={{ display: screen === 'preview' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <ScreenPreview
               onNavigate={handleNavigate}
               chapters={planRun.chapters}
             />
           </div>
-          <div style={{ display: screen === 'actions' ? '' : 'none' }}>
+          <div style={{ display: screen === 'actions' ? 'flex' : 'none', flexDirection: 'column', overflow: 'hidden' }}>
             <ScreenActions
               onNavigate={handleNavigate}
               outputs={outputs}

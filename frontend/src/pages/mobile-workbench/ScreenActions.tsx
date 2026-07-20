@@ -95,8 +95,8 @@ function buildCards(outputs: PlanOutputs): CardItem[] {
   const tournaments = (cityData?.tournament as Record<string, unknown> | undefined)?.available_tournaments as unknown[] | undefined
   if (tournaments && tournaments.length > 0 && primarySport) {
     const names = tournaments.slice(0, 3).map((t: unknown) => (t as Record<string, unknown>).name as string).join('、')
-    const detail = (tournaments as Record<string, unknown>[]).map((t, i) =>
-      `${i+1}. ${t.name}（${t.sport_type}）规模${t.scale}，${t.frequency}`
+    const detail = (tournaments as Record<string, unknown>[]).map((t) =>
+      `${t.name}（${t.sport_type}）规模${t.scale}，${t.frequency}`
     ).join('\n')
     cards.push({
       id: 'event_platform',
@@ -468,7 +468,7 @@ export function ScreenActions({ onNavigate, outputs, runId, checkMediaStatus }: 
   }, [checkMediaStatus])
 
   return (
-    <>
+    <div className="mw-generate-scroll" style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: 20 }}>
       {cards.length === 0 ? (
         <div className="mw-placeholder">
           <div className="ph-title">💡 暂无行动建议</div>
@@ -580,6 +580,6 @@ export function ScreenActions({ onNavigate, outputs, runId, checkMediaStatus }: 
           onRegenerated={handleRegenerated}
         />
       )}
-    </>
+    </div>
   )
 }
