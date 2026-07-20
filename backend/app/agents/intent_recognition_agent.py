@@ -56,6 +56,14 @@ def _load_system_prompt(message: str, context: dict[str, Any]) -> str:
             clean_ctx["brand_input"][key] = val if val is not None else None
     else:
         clean_ctx = context
+    # ponytail: 纯图片上传时，把 image_captions 合并到 message 字段，
+    # 让 LLM 明确知道"用户发送了一张图片，描述如下"，而不是空字符串。
+    if not message and image_urls:
+        caption_texts = clean_ctx.get("image_captions") or []
+        if caption_texts:
+            message = "【用户上传了图片，未输入文字】图片内容： " + "；".join(caption_texts)
+        else:
+            message = "【用户上传了图片，未输入文字】"
     # Load intent rules from JSON for the template
     try:
         _rules_path = Path(__file__).parent.parent.parent / "mock_data" / "intent_rules.json"
@@ -548,10 +556,6 @@ async def stream_intent_recognition(
     ):
         result.brand_input.category = None
 
-    if not message.strip():
-        # 早返回：纯图片上传，跳过后续所有逻辑（LLM 从历史 conversation_history 推断）
-        yield ("", result.model_dump())
-        return
 
     if result.intent != "update_context" and context.get("brand_input"):
         # Always fill missing fields from context, for any intent
