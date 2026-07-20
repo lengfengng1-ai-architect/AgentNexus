@@ -506,11 +506,12 @@ async def stream_intent_recognition(
 
     # _load_system_prompt 现在返回 messages list（system + 历史对话 + 当前输入）
     llm_messages = _load_system_prompt(message, context)
-    logger.debug(
-        "Streaming intent recognition messages count=%d message=%r context=%r",
+    # ponytail: 打印 LLM 原始输入，方便排查意图识别问题
+    logger.info(
+        "LLM 输入 | messages_count=%d message=%r\n%s",
         len(llm_messages),
         message,
-        context,
+        json.dumps(llm_messages, ensure_ascii=False, indent=2),
     )
 
     if settings.enable_thinking:
@@ -539,6 +540,8 @@ async def stream_intent_recognition(
         raw = "".join(content_chunks)
         reasoning = "".join(reasoning_chunks)
         logger.debug("Streaming intent recognition raw response: %s", raw)
+        # ponytail: 打印 LLM 原始输出，方便排查意图识别问题
+        logger.info("LLM 输出 | raw=%s", raw)
         result = IntentRecognitionOutput.model_validate(json.loads(raw))
         result.reasoning = reasoning
     else:
