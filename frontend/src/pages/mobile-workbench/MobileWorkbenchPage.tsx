@@ -82,6 +82,8 @@ export function MobileWorkbenchPage() {
 
   // Action preview state
   const [actionPreviewLoading, setActionPreviewLoading] = useState(false)
+  // true = 从流水线完成状态查看结果（只读）；false = 从 checkpoint 弹窗进入（可反馈）
+  const [actionPreviewReadonly, setActionPreviewReadonly] = useState(false)
 
   // Research report overlay state：查看的 researchId + 退出动画标记
   const [researchReportId, setResearchReportId] = useState<string | null>(null)
@@ -252,13 +254,35 @@ export function MobileWorkbenchPage() {
     planRun.reject(feedback)
   }
 
-  // 监控 pausedSnapshot 更新：当预算预览 loading 中且收到新的 budget_kpi paused 数据时刷新预览
+  // Action preview: 从流水线步骤"查看结果"按钮进入（只读模式，completed 状态下使用）
+  const handleViewActionResult = () => {
+    // workflow.complete 后 outputs 才有数据，但流水线在 plan_generator pause 时
+    // outputs 还没填充，需要从 pausedSnapshot 拿
+    const snapshotAr = planRun.pausedSnapshot?.upstream_outputs?.action_recommendations as Record<string, unknown> | undefined
+    const ar = (outputs.action_recommendations ?? outputs._actions ?? snapshotAr) as Record<string, unknown> | undefined
+    const snapshotBrand = planRun.pausedSnapshot?.upstream_outputs?.brand_input as Record<string, unknown> | undefined
+    const snapshotBudget = planRun.pausedSnapshot?.upstream_outputs?.budget_kpi as Record<string, unknown> | undefined
+    const brandInput = (outputs.brand_input ?? snapshotBrand) as Record<string, unknown> | undefined
+    const budgetKpi = (outputs.budget_kpi ?? outputs._budget ?? snapshotBudget) as Record<string, unknown> | undefined
+    if (ar && Array.isArray(ar.actions)) {
+      setActionPreviewData({
+        actions: ar.actions as { title: string; description: string; start_date?: string; end_date?: string; priority?: string; category?: string }[],
+        brandName: (brandInput?.brand_name as string) || '',
+        category: (brandInput?.category as string) || '',
+        totalBudget: (budgetKpi?.total_budget as number) || 0,
+        periodMonths: (budgetKpi?.period_months as number) || 0,
+      })
+      setActionPreviewReadonly(true)
+      setScreen('action-preview')
+    }
+  }
+
+  // 监控 pausedSnapshot 更新：当预算预览 loading 中且收到新的 budget_kpi paused 数据时刷新
   useEffect(() => {
     if (!budgetPreviewLoading) return
     if (!planRun.pausedSnapshot) return
     const bk = planRun.pausedSnapshot.upstream_outputs?.budget_kpi as Record<string, unknown> | undefined
     if (!bk || typeof bk.total_budget === 'undefined') return
-    // 提取新数据刷新预算预览
     const allocs = (bk.allocations as Array<{category: string; percentage: number; amount: number}> | undefined) || []
     const kpis = (bk.kpis as Record<string, string>) || {}
     const timeline = (bk.timeline as string[]) || []
@@ -272,23 +296,43 @@ export function MobileWorkbenchPage() {
     setBudgetPreviewLoading(false)
   }, [budgetPreviewLoading, planRun.pausedSnapshot])
 
-  // 监控 action_recommendations pausedSnapshot：loading 中收到新数据时刷新
+  // 监控 action_recommendations pausedSnapshot：loading 中收到新数据时刷新预览
+  // 同时也应对 action-preview 正在展示中时（非 loading），如用户发送反馈后回来看到的弹窗已更新
   useEffect(() => {
-    if (!actionPreviewLoading) return
     if (!planRun.pausedSnapshot) return
     const ar = planRun.pausedSnapshot.upstream_outputs?.action_recommendations as Record<string, unknown> | undefined
     if (!ar || !ar.actions) return
-    const brandInput = planRun.pausedSnapshot.upstream_outputs?.brand_input as Record<string, unknown> | undefined
-    const budgetKpi = planRun.pausedSnapshot.upstream_outputs?.budget_kpi as Record<string, unknown> | undefined
-    setActionPreviewData({
-      actions: (ar.actions as Array<{title: string; description: string; start_date?: string; end_date?: string; priority?: string; category?: string}>) || [],
-      brandName: (brandInput?.brand_name as string) || '',
-      category: (brandInput?.category as string) || '',
-      totalBudget: (budgetKpi?.total_budget as number) || 0,
-      periodMonths: (budgetKpi?.period_months as number) || 0,
-    })
-    setActionPreviewLoading(false)
-  }, [actionPreviewLoading, planRun.pausedSnapshot])
+    if (!actionPreviewLoading && actionPreviewData && ar) {
+      const currentTitle = actionPreviewData.actions[0]?.title
+      const newActions = ar.actions as Array<{title: string}> | undefined
+      const newTitle = newActions?.[0]?.title
+      // Only update if data actually changed (avoid re-render loop on first open)
+      if (currentTitle !== newTitle) {
+        const brandInput = planRun.pausedSnapshot.upstream_outputs?.brand_input as Record<string, unknown> | undefined
+        const budgetKpi = planRun.pausedSnapshot.upstream_outputs?.budget_kpi as Record<string, unknown> | undefined
+        setActionPreviewData({
+          actions: ar.actions as { title: string; description: string; start_date?: string; end_date?: string; priority?: string; category?: string }[],
+          brandName: (brandInput?.brand_name as string) || '',
+          category: (brandInput?.category as string) || '',
+          totalBudget: (budgetKpi?.total_budget as number) || 0,
+          periodMonths: (budgetKpi?.period_months as number) || 0,
+        })
+      }
+    }
+    // loading 模式（用户发送反馈后等待新数据）
+    if (actionPreviewLoading) {
+      const brandInput = planRun.pausedSnapshot.upstream_outputs?.brand_input as Record<string, unknown> | undefined
+      const budgetKpi = planRun.pausedSnapshot.upstream_outputs?.budget_kpi as Record<string, unknown> | undefined
+      setActionPreviewData({
+        actions: (ar.actions as Array<{title: string; description: string; start_date?: string; end_date?: string; priority?: string; category?: string}>) || [],
+        brandName: (brandInput?.brand_name as string) || '',
+        category: (brandInput?.category as string) || '',
+        totalBudget: (budgetKpi?.total_budget as number) || 0,
+        periodMonths: (budgetKpi?.period_months as number) || 0,
+      })
+      setActionPreviewLoading(false)
+    }
+  }, [planRun.pausedSnapshot])
 
   // 从 ScreenChat / ChatBubble 接收携带数据的跳转（仅跳转简报，不触发生成）
   const handleChatNavigate = (s: MobileScreen, inputText?: string, brandInput?: BrandInput, researchId?: string, budgetAssessmentIdParam?: string, activityPlanningIdParam?: string, alliancePlanningIdParam?: string) => {
@@ -432,6 +476,13 @@ export function MobileWorkbenchPage() {
 
   // action-preview 返回时 approve 继续流水线（同 budget-preview 模式）
   const handleActionPreviewBack = () => {
+    if (actionPreviewReadonly) {
+      // 只读模式：直接返回，不做 approve
+      setActionPreviewData(null)
+      setActionPreviewReadonly(false)
+      setScreen('generate')
+      return
+    }
     setSuppressedPausedNodeId('action_recommendations')
     planRun.approve()
     setActionPreviewData(null)
@@ -567,6 +618,7 @@ export function MobileWorkbenchPage() {
             >
               <ScreenActionPreview
                 onNavigate={setScreen}
+                key={actionPreviewData.actions[0]?.title || 'actions'} // force re-render on new data
                 actions={actionPreviewData.actions}
                 brandName={actionPreviewData.brandName}
                 category={actionPreviewData.category}
@@ -580,6 +632,7 @@ export function MobileWorkbenchPage() {
                 onReject={handleActionRegen}
                 onBack={handleActionPreviewBack}
                 loading={actionPreviewLoading}
+                readonly={actionPreviewReadonly}
               />
             </div>
           )}
@@ -671,6 +724,7 @@ export function MobileWorkbenchPage() {
               onOpenActionPreview={() => {
                 handleOpenActionPreview()
               }}
+              onViewActionResult={handleViewActionResult}
             />
           </div>
           <div style={{ display: screen === 'preview' ? '' : 'none' }}>
