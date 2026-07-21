@@ -84,6 +84,7 @@ export function MobileWorkbenchPage() {
   const [isBpAnimatingOut, setIsBpAnimatingOut] = useState(false)
   // 预算预览重新生成中（用户点发送 → 加载新数据）
   const [budgetPreviewLoading, setBudgetPreviewLoading] = useState(false)
+  const [budgetPreviewReadonly, setBudgetPreviewReadonly] = useState(false)
 
   // Action preview state
   const [actionPreviewLoading, setActionPreviewLoading] = useState(false)
@@ -791,7 +792,7 @@ export function MobileWorkbenchPage() {
                 initialTimeline={budgetPreviewData.timeline}
                 onBack={handleBudgetPreviewBack}
                 loading={budgetPreviewLoading}
-                onRegenerate={handleBudgetRegen}
+                onRegenerate={budgetPreviewReadonly ? undefined : handleBudgetRegen}
               />
             </div>
           )}
@@ -840,8 +841,6 @@ export function MobileWorkbenchPage() {
                 title={nodePreviewData.title}
                 rawData={nodePreviewData.rawData}
                 onBack={handleNodePreviewBack}
-                onReject={nodePreviewData.nodeId === 'execution_planning' ? handleExecutionPlanningRegen : nodePreviewData.nodeId === 'strategy_generation' ? handleStrategyRegen : null}
-                loading={nodePreviewData.nodeId === 'execution_planning' ? executionPlanningLoading : nodePreviewData.nodeId === 'strategy_generation' ? strategyLoading : false}
               />
             </div>
           )}
@@ -963,6 +962,8 @@ export function MobileWorkbenchPage() {
                 setBudgetPreviewData(data)
                 setSuppressedPausedNodeId('budget_kpi')
                 setScreen('budget-preview')
+                // 从"查看结果"进入时标记为只读
+                setBudgetPreviewReadonly(data.readonly ?? false)
               }}
               onOpenActionPreview={() => {
                 handleOpenActionPreview()

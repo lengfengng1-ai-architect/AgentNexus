@@ -53,6 +53,20 @@ function priorityLabel(p: string): { label: string; cls: string } {
   return PRIORITY_LABELS[p] || { label: p, cls: 'ar-priority-mid' }
 }
 
+/** 板块标题（与 ScreenNodePreview 的 SectionTitle 一致） */
+function SectionTitle({ icon, title }: { icon?: string; title: string }) {
+  return (
+    <div style={{
+      fontSize: 13, fontWeight: 700, color: 'var(--accent)',
+      padding: '12px 0 6px', borderBottom: '1px solid var(--line)',
+      marginBottom: 8, display: 'flex', alignItems: 'center', gap: 6,
+    }}>
+      {icon && <span>{icon}</span>}
+      <span>{title}</span>
+    </div>
+  )
+}
+
 export function ScreenActionPreview({
   onNavigate,
   actions: initialActions,
@@ -126,8 +140,13 @@ export function ScreenActionPreview({
             border: 'none', background: 'none', cursor: 'pointer', borderRadius: 8,
             color: 'var(--fg)', fontSize: 18, fontFamily: 'var(--ff)',
           }}
+          onMouseEnter={e => { (e.target as HTMLElement).style.background = 'var(--surface)' }}
+          onMouseLeave={e => { (e.target as HTMLElement).style.background = 'none' }}
         >‹</button>
-        <span style={{ flex: 1, textAlign: 'center', fontSize: 14, fontWeight: 600 }}>行动预览</span>
+        <span style={{
+          flex: 1, textAlign: 'center', fontSize: 14, fontWeight: 600,
+          color: 'var(--fg)', fontFamily: 'var(--ff)',
+        }}>行动预览</span>
         <div style={{ width: 32 }} />
       </div>
 
@@ -135,7 +154,7 @@ export function ScreenActionPreview({
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: '14px 14px 0' }}>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, paddingBottom: 16 }}>
 
-          {/* 品牌概览摘要行（简洁版） */}
+          <SectionTitle icon="📌" title="行动建议" />
           {(brandName || brandCategory || totalBudget > 0) && (
             <div style={{
               display: 'flex', gap: 6, padding: '8px 12px',
