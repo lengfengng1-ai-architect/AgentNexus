@@ -4,6 +4,9 @@
 
 ## 目标产品
 {{ product_name }}
+{% if category %}
+品类：{{ category }}
+{% endif %}
 
 ## 网页内容
 {% for page in fetched_pages %}

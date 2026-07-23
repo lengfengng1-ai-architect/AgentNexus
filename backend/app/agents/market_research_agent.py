@@ -44,10 +44,10 @@ SKIP_EXTENSIONS = {'.pdf', '.doc', '.docx', '.zip', '.jpg', '.png', '.gif', '.pp
 # 已知 403 屏蔽爬虫的域名，在搜索去重阶段跳过
 BLOCKED_DOMAINS = {"zhuanlan.zhihu.com", "baike.baidu.com", "wenku.baidu.com"}
 SEARCH_QUERIES = [
-    "{category} 产业链 上游 下游",         # market_definition
-    "{category} 市场规模 增长率",           # market_size
-    "{category} 行业趋势",                  # trends
-    "{category} 市场机会 投资 前景",         # opportunities
+    "{brand_name} {category} 产业链 上游 下游",
+    "{brand_name} {category} 市场规模 增长率",
+    "{brand_name} {category} 行业趋势",
+    "{brand_name} {category} 市场机会 投资 前景",
 ]
 
 # ── State ──
@@ -122,9 +122,9 @@ def _build_output(
 # ── Node: Search ──
 
 
-async def _search(category: str) -> list[dict[str, str]]:
+async def _search(category: str, brand_name: str = "") -> list[dict[str, str]]:
     """Run 4 keyword searches in parallel, deduplicate by URL."""
-    keywords = [q.format(category=category) for q in SEARCH_QUERIES]
+    keywords = [q.format(category=category, brand_name=brand_name) for q in SEARCH_QUERIES]
     write_log("market_research", f"🔍 正在用 {len(keywords)} 个关键词搜索市场信息…")
 
     async def search_one(kw: str) -> list[dict[str, str]]:
@@ -156,7 +156,7 @@ async def _search(category: str) -> list[dict[str, str]]:
 
 async def search_node(state: State) -> dict:
     """搜索市场信息（关键词并行）。"""
-    results = await _search(state.category)
+    results = await _search(state.category, state.brand_name)
     return {"search_results": results}
 
 

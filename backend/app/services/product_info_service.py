@@ -30,13 +30,13 @@ def _save_to_cache(product_name: str, info: ProductResearchResult) -> None:
     path.write_text(info.model_dump_json(indent=2, ensure_ascii=False), encoding="utf-8")
 
 
-async def get_product_info(product_name: str) -> ProductInfoResponse:
+async def get_product_info(product_name: str, category: str = "") -> ProductInfoResponse:
     """非流式——完整等结果。"""
     cached = _load_from_cache(product_name)
     if cached:
         return cached
 
-    info = await research_product(product_name)
+    info = await research_product(product_name, category=category)
     _save_to_cache(product_name, info)
 
     return ProductInfoResponse(product_info=info, from_cache=False)

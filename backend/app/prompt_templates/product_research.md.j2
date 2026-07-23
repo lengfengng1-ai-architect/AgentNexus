@@ -4,6 +4,9 @@
 
 ## 目标产品
 {{ product_name }}
+{% if category %}
+品类：{{ category }}
+{% endif %}
 
 ## 可用工具
 - `web_search(query, max_results)`：用新关键词搜索 Web，返回相关页面列表（标题 / URL / 摘要）。

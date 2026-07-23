@@ -91,6 +91,7 @@ class FetchedPage(BaseModel):
 
 class ProductResearchState(BaseModel):
     product_name: str
+    category: str = ""
     search_results: list[SearchResult] = Field(default_factory=list)
     fetched_pages: list[FetchedPage] = Field(default_factory=list)
     # Step 1 输出
@@ -110,10 +111,10 @@ def _build_model():
     return build_chat_model()
 
 
-def _load_prompt(product_name: str, initial_pages: list[FetchedPage]) -> str:
+def _load_prompt(product_name: str, initial_pages: list[FetchedPage], category: str = "") -> str:
     env = Environment(loader=FileSystemLoader("app/prompt_templates"))
     template = env.get_template("product_research.md.j2")
-    return template.render(product_name=product_name, initial_pages=initial_pages)
+    return template.render(product_name=product_name, initial_pages=initial_pages, category=category)
 
 
 def _domain_priority(url: str) -> int:
@@ -143,8 +144,13 @@ def _fill_sourced_fields(result: ProductResearchResult, all_urls: list[str]) -> 
 async def search_node(state: ProductResearchState) -> dict:
     """搜索产品信息（关键词并行）。"""
     product = state.product_name
+    category = state.category or ""
     all_results: list[SearchResult] = []
-    keywords = [product, f"{product} 产品规格", product]
+    # 品类信息帮助搜索聚焦，避免混合品类的结果
+    full = f"{product} {category}".strip()
+    keywords = [full, f"{product} 产品规格 {category}".strip(), f"{product} {category} 品牌 价格".strip()]
+    if not category:
+        keywords = [product, f"{product} 产品规格", product]
     seen_urls: set[str] = set(state.exclude_urls)
 
     write_log("product_research", f"🔍 正在用 {len(keywords)} 个关键词并行搜索…")
@@ -263,7 +269,7 @@ async def batch_search_fetch_node(state: ProductResearchState) -> dict:
     write_log("product_research", f"📄 批量抓取完成：有效页面 {len(valid)} 个，进入 ReAct 阶段")
 
     # 初始化 ReAct 对话：系统 prompt 注入 initial_pages 内容 + 工具说明 + 任务指令
-    sys_prompt = _load_prompt(state.product_name, valid)
+    sys_prompt = _load_prompt(state.product_name, valid, state.category)
     messages = [
         SystemMessage(content=sys_prompt),
         HumanMessage(
@@ -436,9 +442,9 @@ def _build_graph():
 _graph = _build_graph()
 
 
-async def research_product(product_name: str, exclude_urls: list[str] | None = None) -> ProductResearchResult:
+async def research_product(product_name: str, category: str = "", exclude_urls: list[str] | None = None) -> ProductResearchResult:
     """执行产品信息调研（使用内部 LangGraph，保持原有 API 签名）。"""
-    result = await _graph.ainvoke({"product_name": product_name, "exclude_urls": exclude_urls or []})
+    result = await _graph.ainvoke({"product_name": product_name, "category": category, "exclude_urls": exclude_urls or []})
     output = result.get("output")
     if output is None:
         raise ValueError("Agent did not return structured output")
@@ -457,10 +463,12 @@ async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
     if not brand_name:
         raise ValueError("Missing required input: brand_name or product_name")
 
+    category = state.get("category", "")
+
     for attempt in (1, 2):
         try:
             exclude = state.get("_exclude_urls", []) if attempt == 2 else []
-            result = await research_product(brand_name, exclude_urls=exclude)
+            result = await research_product(brand_name, category=category, exclude_urls=exclude)
             _save_to_cache(brand_name, result)
             write_log("product_research", "✓ 产品调研完成")
             return result.model_dump()

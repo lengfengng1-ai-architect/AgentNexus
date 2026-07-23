@@ -431,7 +431,10 @@ async def _get_saver() -> AsyncSqliteSaver:
 def _node_inputs(node_id: str, state: PlanState) -> dict[str, Any]:
     """Build each node's input payload from state."""
     if node_id == "product_research":
-        return {"brand_name": state["brand_input"].get("brand_name")}
+        return {
+            "brand_name": state["brand_input"].get("brand_name"),
+            "category": state["brand_input"].get("category"),
+        }
     if node_id == "market_research":
         return {
             "brand_name": state["brand_input"].get("brand_name"),
@@ -441,6 +444,7 @@ def _node_inputs(node_id: str, state: PlanState) -> dict[str, Any]:
         return {
             "city": state["brand_input"].get("city"),
             "product_name": state["brand_input"].get("brand_name"),
+            "category": state["brand_input"].get("category"),
         }
     if node_id == "fitness_analysis":
         return {

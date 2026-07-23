@@ -59,6 +59,7 @@ class FetchedPage(BaseModel):
 
 class State(BaseModel):
     product_name: str
+    category: str = ""
     product_info: dict = Field(default_factory=dict)
     market_info: dict = Field(default_factory=dict)
     search_results: list[SearchResult] = Field(default_factory=list)
@@ -88,13 +89,22 @@ def _load_template(name: str, **kwargs) -> str:
 async def search_node(state: State) -> dict:
     """搜索目标人群信息（关键词并行）。"""
     product = state.product_name
+    category = state.category or ""
     all_results: list[SearchResult] = []
+    full = f"{product} {category}".strip()
     keywords = [
-        f"{product} 用户画像",
-        f"{product} 目标人群",
-        f"{product} 消费者分析",
-        f"{product} 购买人群",
+        f"{full} 用户画像",
+        f"{full} 目标人群",
+        f"{product} {category} 消费者分析",
+        f"{product} {category} 购买人群",
     ]
+    if not category:
+        keywords = [
+            f"{product} 用户画像",
+            f"{product} 目标人群",
+            f"{product} 消费者分析",
+            f"{product} 购买人群",
+        ]
     seen: set[str] = set()
 
     write_log("audience_insight", f"🔍 正在用 {len(keywords)} 个关键词并行搜索…")
@@ -175,7 +185,7 @@ async def extract_audience_node(state: State) -> dict:
         return {"audience_data": AudienceRawData()}
 
     write_log("audience_insight", f"🤖 正在用 AI 分析 {len(valid)} 个页面的人群数据…")
-    prompt = _load_template("audience_insight.md.j2", product_name=state.product_name, fetched_pages=valid)
+    prompt = _load_template("audience_insight.md.j2", product_name=state.product_name, category=state.category, fetched_pages=valid)
     llm = build_chat_model().with_structured_output(AudienceRawData)
 
     result: AudienceRawData = await llm.ainvoke([
@@ -208,6 +218,7 @@ async def generate_persona_node(state: State) -> dict:
 
     prompt = _load_template("persona_generation.md.j2",
                             product_name=state.product_name,
+                            category=state.category,
                             product_info=product_info_str,
                             market_info=market_info_str,
                             audience_data=state.audience_data)
@@ -230,6 +241,7 @@ async def init_react_node(state: State) -> dict:
     valid = [p for p in state.fetched_pages if p.fetched and p.content]
     prompt = _load_template("audience_insight_react.md.j2",
                              product_name=state.product_name,
+                             category=state.category,
                              initial_pages=valid)
     messages = [
         SystemMessage(content=prompt),
@@ -292,12 +304,14 @@ _graph = _build_graph()
 
 async def run_audience_insight(
     product_name: str,
+    category: str = "",
     product_info: dict | None = None,
     market_info: dict | None = None,
 ) -> tuple[AudienceRawData, UserPersona]:
     """执行人群洞察，返回 (原始人群数据, 用户画像)。"""
     state = await _graph.ainvoke({
         "product_name": product_name,
+        "category": category,
         "product_info": product_info or {},
         "market_info": market_info or {},
     })
@@ -316,7 +330,8 @@ async def run_audience_search(state: dict[str, Any]) -> dict[str, Any]:
     pn = state.get("product_name")
     if not pn:
         raise ValueError("Missing required input: product_name")
-    s = await _graph.ainvoke({"product_name": pn})
+    cat = state.get("category", "")
+    s = await _graph.ainvoke({"product_name": pn, "category": cat})
     ad = s.get("audience_data")
     if ad is None:
         raise ValueError("Agent did not return audience data")
@@ -344,6 +359,7 @@ async def run_generate_persona(state: dict[str, Any]) -> dict[str, Any]:
 
     prompt = _load_template("persona_generation.md.j2",
                             product_name=pn,
+                            category=state.get("category", ""),
                             product_info=product_info_str,
                             market_info=market_info_str,
                             audience_data=ad)
@@ -379,6 +395,7 @@ async def run_audience_insight_full(state: dict[str, Any]) -> dict[str, Any]:
 
     result = await _graph.ainvoke({
         "product_name": product_name,
+        "category": state.get("category", ""),
         "product_info": state.get("product_info", {}),
         "market_info": state.get("market_info", {}),
     })
