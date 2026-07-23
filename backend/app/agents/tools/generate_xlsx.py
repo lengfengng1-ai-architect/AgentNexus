@@ -788,6 +788,16 @@ async def generate_plan_xlsx(data: str, brand_name: str) -> str:
     filename = f"{xlsx_data.brand_info.brand_name}_{today}_预算流程回报分析.xlsx"
     filepath = OUTPUT_DIR / filename
 
+    # ponytail: 如果明细汇总远超总预算，很可能 LLM 输出了重复的汇总行，需提示词修正
+    detail_sum = sum(i.amount_a for i in xlsx_data.budget_detail.items)
+    budget = xlsx_data.brand_info.version_a_budget
+    if detail_sum > budget * 1.3:
+        logger.warning(
+            "budget detail sum (%.1f) >> total budget (%.1f, ratio=%.2f), "
+            "likely LLM included summary rows. Check prompt xlsx_generation.md.j2",
+            detail_sum, budget, detail_sum / budget,
+        )
+
     try:
         wb = openpyxl.Workbook()
         _build_sheet1(wb, xlsx_data)
