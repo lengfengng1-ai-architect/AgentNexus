@@ -154,7 +154,7 @@ async def searxng_search(keyword: str, max_results: int = 10) -> list[dict[str, 
     params = {
         "q": keyword,
         "format": "json",
-        "engines": "baidu",
+        "engines": "bing,baidu",
         "language": "zh-CN",
     }
     url = f"{settings.searxng_url.rstrip('/')}/search?{urlencode(params)}"
@@ -175,9 +175,10 @@ async def searxng_search(keyword: str, max_results: int = 10) -> list[dict[str, 
             break
 
     if results:
-        logger.info("searxng_search keyword=%s urls=%s", keyword, [r["href"] for r in results])
+        logger.debug("searxng_search keyword=%s urls=%s", keyword, [r["href"] for r in results])
     else:
-        logger.warning("searxng_search keyword=%s returned 0 results from baidu", keyword)
+        logger.warning("searxng_search keyword=%s returned 0 results from baidu,bing", keyword)
+    return results
 
 
 
