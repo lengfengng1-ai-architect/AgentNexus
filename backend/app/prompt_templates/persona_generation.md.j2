@@ -2,11 +2,13 @@
 
 你的任务是根据产品信息、市场分析数据和人群调研数据，综合生成结构化的用户画像。
 
-## 目标产品
-{{ product_name }}
-{% if category %}
-品类：{{ category }}
-{% endif %}
+## 调研范围
+
+**品类（主）**：{{ category if category else "（未指定品类）" }}
+**品牌/产品（辅）**：{{ product_name }}
+
+画像以品类用户为核心。{{ product_name }} 是此品类下的具体品牌/产品。
+{% if category %}品牌资料不足时，基于品类同类产品的用户特征做合理推断。{% endif %}
 
 ## 产品基础信息
 {{ product_info }}

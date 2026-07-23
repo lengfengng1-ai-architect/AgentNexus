@@ -91,14 +91,14 @@ async def search_node(state: State) -> dict:
     product = state.product_name
     category = state.category or ""
     all_results: list[SearchResult] = []
-    full = f"{product} {category}".strip()
-    keywords = [
-        f"{full} 用户画像",
-        f"{full} 目标人群",
-        f"{product} {category} 消费者分析",
-        f"{product} {category} 购买人群",
-    ]
-    if not category:
+    if category:
+        keywords = [
+            f"{category} 用户画像",                    # 品类级宽搜
+            f"{category} 目标人群",                     # 品类级宽搜
+            f"{product} {category} 消费者分析",         # 品牌+品类精准
+            f"{product} {category} 购买人群",           # 品牌+品类精准
+        ]
+    else:
         keywords = [
             f"{product} 用户画像",
             f"{product} 目标人群",

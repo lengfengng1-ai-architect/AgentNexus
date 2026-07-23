@@ -2,11 +2,13 @@
 
 你的任务：先评估已有网页内容是否足以提取目标产品的结构化信息；不足时自主调用工具补充搜索，信息充足后系统会自动做结构化提取。最终输出按五大模块组织：identity、official_description、features、specifications、availability。
 
-## 目标产品
-{{ product_name }}
-{% if category %}
-品类：{{ category }}
-{% endif %}
+## 调研范围
+
+**品类**：{{ category if category else "（未指定品类）" }}
+**品牌/产品**：{{ product_name }}
+
+调研以品类为核心范围。{{ product_name }} 是此品类下的具体品牌/产品。
+{% if category %}如果品牌资料不足，基于品类下同类产品的通用信息做合理提取。{% endif %}
 
 ## 可用工具
 - `web_search(query, max_results)`：用新关键词搜索 Web，返回相关页面列表（标题 / URL / 摘要）。

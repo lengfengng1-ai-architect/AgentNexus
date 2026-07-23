@@ -146,10 +146,15 @@ async def search_node(state: ProductResearchState) -> dict:
     product = state.product_name
     category = state.category or ""
     all_results: list[SearchResult] = []
-    # 品类信息帮助搜索聚焦，避免混合品类的结果
-    full = f"{product} {category}".strip()
-    keywords = [full, f"{product} 产品规格 {category}".strip(), f"{product} {category} 品牌 价格".strip()]
-    if not category:
+    # 品类优先搜索：品牌小众时品类词能兜底找到足够的市场参考
+    if category:
+        keywords = [
+            category,                                     # 品类宽搜，了解行业全貌
+            f"{product} {category}",                      # 品牌+品类精准匹配
+            f"{category} 品牌 推荐",                       # 同类品牌/产品参考
+            f"{product} 规格",                             # 品牌产品细节
+        ]
+    else:
         keywords = [product, f"{product} 产品规格", product]
     seen_urls: set[str] = set(state.exclude_urls)
 
@@ -274,9 +279,10 @@ async def batch_search_fetch_node(state: ProductResearchState) -> dict:
         SystemMessage(content=sys_prompt),
         HumanMessage(
             content=(
-                f"请调研产品「{state.product_name}」的结构化信息。"
+                f"请调研品类「{state.category}」下的产品「{state.product_name}」的结构化信息。"
                 "信息充足时直接给出调研结论（不要调用工具）；"
                 "缺少关键信息时可调用 web_search / web_fetch 补充。"
+                "如品牌资料不足，基于品类通用信息做合理提取。"
             )
         ),
     ]

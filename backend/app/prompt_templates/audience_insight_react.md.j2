@@ -2,17 +2,15 @@
 
 你的任务：先评估已有网页内容是否足以提取目标产品的目标人群信息；不足时自主调用工具补充搜索，之后系统会自动做结构化提取。
 
-## 目标产品
-{{ product_name }}
+## 调研范围
 
-## 目标产品
-{{ product_name }}
-{% if category %}
-品类：{{ category }}
-{% endif %}
+**品类（主）**：{{ category if category else "（未指定品类）" }}
+**品牌/产品（辅）**：{{ product_name }}
+
+调研以品类人群为核心范围。{{ product_name }} 是此品类下的具体品牌/产品。
+{% if category %}如果品牌资料不足，基于品类下同类产品的人群特征做合理推断。{% endif %}
 
 ## 可用工具
-- `web_search(query, max_results)`：用新关键词搜索 Web，返回相关页面列表（标题 / URL / 摘要）。
 - `web_fetch(url)`：抓取指定 URL 的纯文本内容（脱 HTML，最多 4000 字符）。
 
 ## 工作方式（ReAct）

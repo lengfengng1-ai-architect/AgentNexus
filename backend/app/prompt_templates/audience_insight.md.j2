@@ -2,11 +2,13 @@
 
 你的任务是根据提供的网页内容，提取目标产品相关的人群信息（人口统计、购买行为、使用场景等）。
 
-## 目标产品
-{{ product_name }}
-{% if category %}
-品类：{{ category }}
-{% endif %}
+## 调研范围
+
+**品类（主）**：{{ category if category else "（未指定品类）" }}
+**品牌/产品（辅）**：{{ product_name }}
+
+以品类人群为核心范围。{{ product_name }} 是此品类下的具体品牌/产品。
+{% if category %}品牌资料不足时，基于品类同类产品的人群特征做合理推断。{% endif %}
 
 ## 网页内容
 {% for page in fetched_pages %}

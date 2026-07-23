@@ -44,10 +44,10 @@ SKIP_EXTENSIONS = {'.pdf', '.doc', '.docx', '.zip', '.jpg', '.png', '.gif', '.pp
 # 已知 403 屏蔽爬虫的域名，在搜索去重阶段跳过
 BLOCKED_DOMAINS = {"zhuanlan.zhihu.com", "baike.baidu.com", "wenku.baidu.com"}
 SEARCH_QUERIES = [
-    "{brand_name} {category} 产业链 上游 下游",
-    "{brand_name} {category} 市场规模 增长率",
-    "{brand_name} {category} 行业趋势",
-    "{brand_name} {category} 市场机会 投资 前景",
+    "{category} 产业链 上游 下游",                   # 品类全貌
+    "{category} 市场规模 增长率",                     # 品类市场规模
+    "{category} 行业趋势 {brand_name}",               # 品类趋势，品牌辅助
+    "{category} 市场机会 竞争 {brand_name}",           # 品类竞争格局，品牌辅助
 ]
 
 # ── State ──
@@ -233,7 +233,7 @@ async def init_react_node(state: State) -> dict:
     )
     messages = [
         SystemMessage(content=prompt),
-        HumanMessage(content=f"请对「{state.brand_name}」所在「{state.category}」市场进行调研分析。"),
+        HumanMessage(content=f"请对「{state.category}」品类进行市场调研分析，以「{state.brand_name}」作为具体参考品牌。"),
     ]
     write_log("market_research", f"🚀 进入 ReAct 阶段（已有 {len(valid)} 个有效页面）")
     return {"messages": messages, "tool_call_count": 0}
