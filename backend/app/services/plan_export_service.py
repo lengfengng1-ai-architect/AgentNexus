@@ -69,7 +69,7 @@ async def export_plan_pdf(run_id: str) -> str:
     from reportlab.lib.styles import ParagraphStyle
     from reportlab.lib.enums import TA_CENTER
     from reportlab.platypus import (
-        PageBreak, Paragraph, SimpleDocTemplate, Spacer,
+        PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle,
     )
 
     # ponytail: 按平台探测中文字体路径，macOS/Linux/Windows 全覆盖
@@ -135,6 +135,68 @@ async def export_plan_pdf(run_id: str) -> str:
     styles['footer'] = _S('Footer', fontSize=8, leading=10, spaceBefore=0, spaceAfter=0,
                           textColor=colors.HexColor('#A0AEC0'), alignment=TA_CENTER)
 
+    _TABLE_STYLE = TableStyle([
+        ('FONTNAME', (0, 0), (-1, -1), _FONT_NAME),
+        ('FONTSIZE', (0, 0), (-1, -1), 9),
+        ('LEADING', (0, 0), (-1, -1), 13),
+        ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#1F4E79')),
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#F8FAFC')),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.HexColor('#F8FAFC'), colors.HexColor('#EDF2F7')]),
+        ('GRID', (0, 0), (-1, -1), 0.5, colors.HexColor('#CBD5E0')),
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+    ])
+
+    def _render_table(raw: str) -> Table:
+        """Parse Markdown table lines (\\n-separated) into a ReportLab Table."""
+        rows = raw.strip().split('\n')
+        # Filter out separator rows (|:---|---:| etc.)
+        data_rows = [ln for ln in rows if not re.match(r'^[\s|:\-]+$', ln.strip())]
+        if not data_rows:
+            return Spacer(1, 2 * mm)
+
+        # Parse each row — content already _escape'd in pass 1, don't re-escape
+        parsed: list[list[Paragraph]] = []
+        for row in data_rows:
+            cells = [c.strip() for c in row.strip().strip('|').split('|')]
+            cell_paras = []
+            for c in cells:
+                fmt = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', c)
+                fmt = re.sub(r'\*(.+?)\*', r'<i>\1</i>', fmt)
+                cell_paras.append(Paragraph(fmt, _S('_tc', fontSize=9, leading=13)))
+            parsed.append(cell_paras)
+
+        if not parsed:
+            return Spacer(1, 2 * mm)
+
+        col_count = max(len(r) for r in parsed)
+        # Normalize row lengths
+        for r in parsed:
+            while len(r) < col_count:
+                r.append(Paragraph('', _S('_tc', fontSize=9)))
+
+        nrows = len(parsed)
+        hdr = parsed[0]
+        body = parsed[1:]
+
+        # Calculate column widths proportionally
+        avail = A4[0] - 3 * cm  # page width minus margins
+        col_widths = [avail / col_count] * col_count
+        # First column wider when many columns (it's usually the label column)
+        if col_count >= 4:
+            col_widths[0] = avail * 0.16
+            rem = avail - col_widths[0]
+            for i in range(1, col_count):
+                col_widths[i] = rem / (col_count - 1)
+
+        tbl = Table(parsed, colWidths=col_widths, repeatRows=1)
+        tbl.setStyle(_TABLE_STYLE)
+        return tbl
+
     def _escape(s: str) -> str:
         """Escape XML special characters for ReportLab Paragraph."""
         return (s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
@@ -156,7 +218,7 @@ async def export_plan_pdf(run_id: str) -> str:
             stripped = line.strip()
             if not stripped:
                 # Empty line acts as paragraph separator
-                if blocks and blocks[-1][0] in ('body', 'bullet', 'table'):
+                if blocks and blocks[-1][0] in ('body', 'bullet', 'table_line'):
                     blocks.append(('sep', ''))
                 continue
 
@@ -191,14 +253,19 @@ async def export_plan_pdf(run_id: str) -> str:
             # Regular body text
             blocks.append(('body', safe))
 
-        # Second pass: merge consecutive body and bullet lines
+        # Second pass: merge consecutive body, bullet, and table lines
         merged: list[tuple[str, str]] = []
         for btype, content in blocks:
             if btype == 'sep':
                 merged.append(('sep', ''))
                 continue
+            if btype == 'table_line':
+                if merged and merged[-1][0] == 'table_line':
+                    merged[-1] = ('table_line', merged[-1][1] + '\n' + content)
+                else:
+                    merged.append(('table_line', content))
+                continue
             if btype in ('body', 'bullet'):
-                # Look back: if previous entry is same type and not sep, merge
                 if merged and merged[-1][0] == btype:
                     merged[-1] = (btype, merged[-1][1] + ' ' + content)
                 else:
@@ -230,7 +297,8 @@ async def export_plan_pdf(run_id: str) -> str:
                 elements.append(Paragraph(f"• {fmt}", styles['bullet']))
                 continue
             if btype == 'table_line':
-                elements.append(Paragraph(content, styles['body']))
+                # Parse and render a Markdown table as ReportLab Table
+                elements.append(_render_table(content))
                 continue
             if btype == 'body':
                 # Apply inline formatting (content already _escape'd in pass 1)
