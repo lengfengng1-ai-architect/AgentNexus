@@ -71,13 +71,26 @@ async def export_plan_pdf(run_id: str) -> str:
         PageBreak, Paragraph, SimpleDocTemplate, Spacer,
     )
 
-    # Chinese font registration
+    # ponytail: 按平台探测中文字体路径，macOS/Linux/Windows 全覆盖
     _FONT_NAME = 'Helvetica'
-    for _fp in [
-        'C:/Windows/Fonts/msyh.ttf',
-        'C:/Windows/Fonts/msyhbd.ttf',
+    _CANDIDATE_FONTS = [
+        # macOS 15 Sequoia — 华文黑体 / 苹方（路径随系统版本变）
+        '/System/Library/Fonts/PingFang.ttc',
+        '/System/Library/Fonts/STHeiti Light.ttc',
+        '/System/Library/Fonts/STHeiti Medium.ttc',
+        '/Library/Fonts/Arial Unicode.ttf',
+        '/System/Library/Fonts/Supplemental/Arial Unicode.ttf',
+        # Windows
+        'C:/Windows/Fonts/msyh.ttc',
+        'C:/Windows/Fonts/msyhbd.ttc',
         'C:/Windows/Fonts/simsun.ttc',
-    ]:
+        # Linux — 常见中文字体
+        '/usr/share/fonts/truetype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc',
+        '/usr/share/fonts/truetype/wqy/wqy-microhei.ttc',
+        '/usr/share/fonts/truetype/wqy/wqy-zenhei.ttc',
+    ]
+    for _fp in _CANDIDATE_FONTS:
         p = Path(_fp)
         if p.exists():
             try:
