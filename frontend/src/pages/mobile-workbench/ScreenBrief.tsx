@@ -16,6 +16,7 @@ export interface BriefFormData {
   target_audience: string
   marketing_goal: string
   period: string
+  budget: number
   selected_cities: string[]
   core_strategy: string
 }
@@ -42,7 +43,10 @@ function parseBriefInput(text: string): Partial<BriefFormData> {
   const mCity = text.match(/想在(.+?)做活动/)
   if (mCity) r.selected_cities = [mCity[1].trim()]
   const mBudget = text.match(/预算(\d+)/)
-  if (mBudget) r.marketing_goal = `认知度 ≥80% · 预算 ${mBudget[1]}万`
+  if (mBudget) {
+    r.budget = parseInt(mBudget[1], 10)
+    r.marketing_goal = `认知度 ≥80% · 预算 ${mBudget[1]}万`
+  }
   const mPeriod = text.match(/周期(\d+)个?月/)
   if (mPeriod) r.period = `${mPeriod[1]} 个月（${parseInt(mPeriod[1]) * 4} 周）`
   return r
@@ -58,6 +62,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData, isGene
       target_audience: parsed.target_audience ?? '',
       marketing_goal: initialBrandData?.budget != null ? `认知度 ≥80% · 预算 ${initialBrandData.budget}万` : parsed.marketing_goal ?? '',
       period: initialBrandData?.period != null ? `${initialBrandData.period} 个月（${initialBrandData.period * 4} 周）` : parsed.period ?? '',
+      budget: initialBrandData?.budget ?? parsed.budget ?? 0,
       selected_cities: initialBrandData?.city ? [initialBrandData.city] : parsed.selected_cities ?? [],
       core_strategy: parsed.core_strategy ?? '',
     }
@@ -69,6 +74,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData, isGene
   const [targetAudience, setTargetAudience] = useState(mergedDefaults.target_audience)
   const [marketingGoal, setMarketingGoal] = useState(mergedDefaults.marketing_goal)
   const [period, setPeriod] = useState(mergedDefaults.period)
+  const [budget, setBudget] = useState(mergedDefaults.budget)
   const [selectedCities, setSelectedCities] = useState<string[]>(mergedDefaults.selected_cities)
   const [coreStrategy, setCoreStrategy] = useState(mergedDefaults.core_strategy)
   const [optimizing, setOptimizing] = useState(false)
@@ -84,6 +90,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData, isGene
     setTargetAudience(mergedDefaults.target_audience)
     setMarketingGoal(mergedDefaults.marketing_goal)
     setPeriod(mergedDefaults.period)
+    setBudget(mergedDefaults.budget)
     setSelectedCities(mergedDefaults.selected_cities)
     setCoreStrategy(mergedDefaults.core_strategy)
   }, [mergedDefaults])
@@ -126,11 +133,12 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData, isGene
       target_audience: targetAudience,
       marketing_goal: marketingGoal,
       period,
+      budget,
       selected_cities: selectedCities,
       core_strategy: coreStrategy,
     }
     onNavigate('generate', data)
-  }, [brand, category, productMatrix, targetAudience, marketingGoal, period, selectedCities, coreStrategy, onNavigate, genBusy])
+  }, [brand, category, productMatrix, targetAudience, marketingGoal, period, budget, selectedCities, coreStrategy, onNavigate, genBusy])
 
   return (
     <>
