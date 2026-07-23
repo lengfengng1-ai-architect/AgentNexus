@@ -233,9 +233,14 @@ async def export_plan_pdf(run_id: str) -> str:
             if re.match(r'^[-*]{3,}$', safe):
                 blocks.append(('hr', ''))
                 continue
-            # Tables (rough detection: pipe-separated)
-            if '|' in stripped and re.match(r'^[\s|:\-0-9a-zA-Z一-鿿.%,≥≤\+\s]+$', stripped):
+            # Tables: line starts with `|` → new table row
+            if stripped.startswith('|'):
                 blocks.append(('table_line', safe))
+                continue
+            # Table continuation: previous is table_line and this line contains `|`
+            # (LLM wraps long table rows across source lines, e.g. "| ... |\n40% |")
+            if '|' in stripped and blocks and blocks[-1][0] == 'table_line':
+                blocks[-1] = ('table_line', blocks[-1][1] + ' ' + safe)
                 continue
             # Tables: alignment row (|:---:|)
             if re.match(r'^[\s|:\-]+$', stripped):
