@@ -19,7 +19,7 @@ from langgraph.graph import END, StateGraph, add_messages
 from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 
-from app.agents.llm_utils import build_chat_model, searxng_search, write_log
+from app.agents.llm_utils import build_chat_model, is_non_cn_url, searxng_search, write_log
 from app.agents.registry import register
 from app.agents.tools import web_fetch_tool, web_search_tool
 from app.config.cache_paths import AUDIENCE_DIR, persona_path
@@ -126,6 +126,8 @@ async def search_node(state: State) -> dict:
                 # Skip known 403 domains
                 from urllib.parse import urlparse as _urlparse
                 if _urlparse(url).hostname in BLOCKED_DOMAINS:
+                    continue
+                if is_non_cn_url(url):
                     continue
                 all_results.append(SearchResult(url=url, title=item.get("title", ""), snippet=item.get("body", "")))
 

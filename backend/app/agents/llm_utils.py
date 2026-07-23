@@ -6,6 +6,7 @@ Corresponding in_scope ID: workflow-orchestration
 import json
 import logging
 from typing import Any, AsyncGenerator
+from urllib.parse import urlparse
 
 from bs4 import BeautifulSoup
 from httpx import AsyncClient
@@ -19,6 +20,36 @@ logger = logging.getLogger(__name__)
 _log_buffer: list[dict[str, str]] = []
 # Cache for model instances keyed by provider name.
 _model_cache: dict[str, Any] = {}
+
+# 非中文顶级域名——搜索结果中这些 TLD 的页面大概率不是中文内容
+NON_CN_TLDS = {
+    ".jp", ".kr", ".ru", ".de", ".fr", ".uk", ".it", ".es", ".pt",
+    ".nl", ".pl", ".se", ".no", ".fi", ".dk", ".be", ".at", ".ch",
+    ".th", ".id", ".vn", ".ph", ".my", ".sg", ".in",
+    ".ir", ".il", ".sa", ".ae", ".tr",
+    ".br", ".ar", ".cl", ".mx",
+    ".za", ".eg", ".ng",
+    ".ua", ".ro", ".hu", ".cz", ".gr", ".sk", ".hr",
+}
+# 已知非中文站点域名（.com/.org/.info 等通用 TLD 下的非中文站）
+# 从复盘日志中发现，防止它们挤占中文内容的搜索槽位
+NON_CN_DOMAINS = {
+    # 英文问答
+    "stackexchange.com", "stackoverflow.com", "superuser.com",
+    "serverfault.com", "askubuntu.com", "mathoverflow.net",
+    # 英文站点
+    "usps.com", "ups.com", "fedex.com", "dhl.com",
+    "merchant.wish.com",
+    "github.com", "gitlab.com", "bitbucket.org",
+    "npmjs.com", "pypi.org", "crates.io",
+    "developer.mozilla.org",
+    # 日文站点
+    "dmm.com", "eikaiwa.dmm.com",
+    "tabelog.com", "hotpepper.jp",
+    "navitime.co.jp", "yahoo.co.jp",
+    "everytown.info",
+    # 台湾站点不处理（语言相通）
+}
 
 
 def write_log(node_id: str, message: str) -> None:
@@ -39,6 +70,29 @@ _USER_AGENT = (
     "AppleWebKit/537.36 (KHTML, like Gecko) "
     "Chrome/120.0.0.0 Safari/537.36"
 )
+
+
+def is_non_cn_url(url: str) -> bool:
+    """若 URL 指向非中文内容站点，返回 True。
+
+    用于搜索去重阶段过滤非中文页面，避免挤占有限抓取槽位。
+    判断依据：TLD 过滤 + 已知非中文域名黑名单。
+    """
+    hostname = urlparse(url).hostname or ""
+    lower = hostname.lower()
+    # 以 .cn 结尾的一定是国内站
+    if lower.endswith(".cn"):
+        return False
+    # .com.br / .com.au 等带国家二级域的通过主域名判断
+    # 1. TLD 黑名单
+    for tld in NON_CN_TLDS:
+        if lower.endswith(tld):
+            return True
+    # 2. 已知非中文站点黑名单
+    for domain in NON_CN_DOMAINS:
+        if lower == domain or lower.endswith("." + domain):
+            return True
+    return False
 
 
 async def duckduckgo_search(keyword: str, max_results: int = 10) -> list[dict[str, str]]:

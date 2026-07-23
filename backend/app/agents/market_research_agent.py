@@ -22,7 +22,7 @@ from langgraph.prebuilt import ToolNode
 from pydantic import BaseModel, Field
 from urllib.parse import urlparse
 
-from app.agents.llm_utils import build_chat_model, searxng_search, write_log
+from app.agents.llm_utils import build_chat_model, is_non_cn_url, searxng_search, write_log
 from app.agents.registry import register
 from app.agents.tools import web_fetch_tool, web_search_tool
 from app.schemas.plan_generation import MarketResearchOutput, MarketTrend
@@ -147,6 +147,8 @@ async def _search(category: str, brand_name: str = "") -> list[dict[str, str]]:
                     continue
                 hostname = urlparse(url).hostname or ""
                 if hostname in BLOCKED_DOMAINS:
+                    continue
+                if is_non_cn_url(url):
                     continue
                 deduped.append(item)
 

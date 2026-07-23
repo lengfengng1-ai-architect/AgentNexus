@@ -27,7 +27,7 @@ from langgraph.prebuilt import ToolNode
 from openai import BadRequestError
 from pydantic import BaseModel, Field
 
-from app.agents.llm_utils import build_chat_model, searxng_search, write_log
+from app.agents.llm_utils import build_chat_model, is_non_cn_url, searxng_search, write_log
 from app.agents.registry import register
 from app.agents.tools import web_fetch_tool, web_search_tool
 from app.schemas.product_info import (
@@ -194,6 +194,7 @@ async def search_node(state: ProductResearchState) -> dict:
         if not any(r.url.split('?')[0].lower().endswith(ext) for ext in SKIP_EXTENSIONS)
         and not any(kw in (r.title + r.snippet).lower() for kw in ['datasheet', '规格书', '数据手册', 'download', 'pdf'])
         and urlparse(r.url).hostname not in BLOCKED_DOMAINS
+        and not is_non_cn_url(r.url)
     ]
     top = filtered[:FETCH_TOP_N]
     write_log("product_research", f"📄 过滤非网页链接后取前 {len(top)} 条")

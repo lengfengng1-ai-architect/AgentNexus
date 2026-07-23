@@ -9,7 +9,7 @@ from urllib.parse import urlparse
 from langchain_core.tools import tool
 from pydantic import BaseModel, Field
 
-from app.agents.llm_utils import searxng_search, write_log
+from app.agents.llm_utils import is_non_cn_url, searxng_search, write_log
 
 # 已知 403 屏蔽爬虫的域名
 BLOCKED_DOMAINS = {"zhuanlan.zhihu.com", "baike.baidu.com", "wenku.baidu.com"}
@@ -45,7 +45,7 @@ async def web_search(query: str, max_results: int = 8) -> str:
         if not url or url in seen:
             continue
         host = urlparse(url).hostname or ""
-        if host in BLOCKED_DOMAINS:
+        if host in BLOCKED_DOMAINS or is_non_cn_url(url):
             continue
         path_part = url.split("?")[0].lower()
         if any(path_part.endswith(ext) for ext in SKIP_EXTENSIONS):
