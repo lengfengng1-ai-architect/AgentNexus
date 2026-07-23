@@ -154,7 +154,7 @@ async def searxng_search(keyword: str, max_results: int = 10) -> list[dict[str, 
     params = {
         "q": keyword,
         "format": "json",
-        "engines": "bing,baidu",
+        "engines": "google",
         "language": "zh-CN",
     }
     url = f"{settings.searxng_url.rstrip('/')}/search?{urlencode(params)}"

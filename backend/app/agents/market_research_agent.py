@@ -202,7 +202,6 @@ async def _fetch(pages: list[dict[str, str]]) -> list[dict[str, Any]]:
             write_log("market_research", f"⚠️ {url} 读取失败，跳过")
             return {"url": url, "title": None, "content": "", "fetched": False}
 
-    tasks = [fetch_one(url) for url in urls]
     sem = asyncio.Semaphore(FETCH_CONCURRENCY)
 
     async def wrapped(url: str) -> dict[str, Any]:
