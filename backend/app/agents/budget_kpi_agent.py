@@ -79,6 +79,23 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
     for alloc in result.get("allocations") or []:
         if isinstance(alloc, dict) and "amount" in alloc:
             alloc["amount"] = int(alloc["amount"])
+    # ponytail: LLM 给出的分配金额之和可能与 total_budget 不一致，
+    # 等比缩放所有 allocations[].amount 使其和等于 total_budget。
+    allocs = result.get("allocations", [])
+    total_alloc = sum(a.get("amount", 0) for a in allocs)
+    if total_alloc > 0 and total_alloc != budget:
+        ratio = budget / total_alloc
+        for a in allocs:
+            adjusted = round(a["amount"] * ratio)
+            a["amount"] = max(adjusted, 1)  # 每项至少 1 万
+        # 剩余补到占比最大的项
+        leftover = budget - sum(a["amount"] for a in allocs)
+        if leftover != 0 and allocs:
+            allocs.sort(key=lambda x: x["amount"], reverse=True)
+            allocs[0]["amount"] += leftover
+        # 更新 percentage
+        for a in allocs:
+            a["percentage"] = round(a["amount"] / budget * 100, 1)
     write_log("budget_kpi", "✓ 预算 KPI 测算完成")
     return BudgetKpiOutput.model_validate(result).model_dump()
 
