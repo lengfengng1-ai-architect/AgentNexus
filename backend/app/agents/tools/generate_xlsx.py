@@ -118,6 +118,64 @@ def _dedup_budget_detail_summary_rows(detail: "BudgetDetailSheet") -> None:
         detail.items = [i for i in detail.items if i not in to_remove]
 
 
+def _scale_detail_to_budget(data: "XlsxData") -> None:
+    """Force scale detail items amounts to match budget overview category amounts.
+
+    LLM often gets the sub-item amounts wrong — the sum within a category
+    doesn't match the budget allocation, causing the detail sheet total to
+    deviate from the actual budget. This function scales each category's
+    detail items proportionally to match the overview amount.
+
+    ponytail: simple proportional scaling + rounding correction on largest item.
+    Doesn't handle cross-category transfers — if a category has no matching
+    budget_overview row, its items are left untouched.
+    """
+    # Build category→target amount map from budget_overview
+    cat_budget: dict[str, float] = {}
+    for row in data.budget_overview.rows:
+        if row.amount_version_a > 0:
+            cat_budget[row.category] = row.amount_version_a
+
+    if not cat_budget:
+        return
+
+    # Group detail items by category
+    from collections import defaultdict
+    groups: dict[str, list[BudgetDetailItem]] = defaultdict(list)
+    for item in data.budget_detail.items:
+        groups[item.category].append(item)
+
+    for cat, items in groups.items():
+        target = cat_budget.get(cat)
+        if target is None:
+            continue
+
+        current_sum = sum(i.amount_a for i in items)
+        if current_sum <= 0 or abs(current_sum - target) < 0.01:
+            continue
+
+        ratio = target / current_sum
+        for i, item in enumerate(items):
+            scaled = round(item.amount_a * ratio, 1)
+            item.amount_a = max(scaled, 0.1)
+
+        # Fix rounding drift on largest item
+        after_sum = sum(i.amount_a for i in items)
+        if abs(after_sum - target) > 0.05:
+            diff = round(target - after_sum, 1)
+            # Apply to largest item
+            largest = max(items, key=lambda x: x.amount_a)
+            largest.amount_a = round(largest.amount_a + diff, 1)
+            if largest.amount_a < 0.1:
+                largest.amount_a = 0.1
+
+        logger.info(
+            "_scale_detail: cat=%s items=%d sum=%.1f→%.1f (target=%.1f, ratio=%.3f)",
+            cat, len(items), current_sum,
+            sum(i.amount_a for i in items), target, ratio,
+        )
+
+
 class GeneratePlanXlsxInput(BaseModel):
     """generate_plan_xlsx 工具输入。"""
 
@@ -828,6 +886,10 @@ async def generate_plan_xlsx(data: str, brand_name: str) -> str:
     # ponytail: 同品类内自动识别并剔除 LLM 输出的汇总行（金额≈同品类其他行之和的行）
     # 如果 LLM 学乖了不再输出，这段就是安全网，不影响正常数据。
     _dedup_budget_detail_summary_rows(xlsx_data.budget_detail)
+
+    # ponytail: 按预算总览的类别金额强制缩放细项，确保明细合计不虚高
+    # LLM 输出的细项金额总和经常与预算分配不一致，这里做兜底修正
+    _scale_detail_to_budget(xlsx_data)
 
     # ponytail: 如果明细汇总远超总预算，很可能 LLM 输出了重复的汇总行，需提示词修正
     detail_sum = sum(i.amount_a for i in xlsx_data.budget_detail.items)
