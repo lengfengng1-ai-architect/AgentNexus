@@ -3,6 +3,7 @@
 Corresponding in_scope ID: workflow-orchestration
 """
 
+import asyncio
 import json
 import logging
 from typing import Any, AsyncGenerator
@@ -20,6 +21,12 @@ logger = logging.getLogger(__name__)
 _log_buffer: list[dict[str, str]] = []
 # Cache for model instances keyed by provider name.
 _model_cache: dict[str, Any] = {}
+	# ── 全局 LLM 并发限流 ──────────────────────────
+# 三个调研 agent 并行启动时同时发送大量 LLM 请求，
+# 使用 Semaphore 限制同时进行中的 LLM 调用数量，
+# 避免瞬间打满 API 配额导致 429 RateLimitError。
+# ponytail: 固定上限 2，后续可根据 API 配额动态调整。
+_llm_semaphore = asyncio.Semaphore(2)
 
 # 非中文顶级域名——搜索结果中这些 TLD 的页面大概率不是中文内容
 NON_CN_TLDS = {
@@ -230,27 +237,31 @@ async def stream_chat(
 
     Uses cached model instance (see build_chat_model).
     Empty chunks (e.g. during model thinking) are skipped.
+    受全局 _llm_semaphore 限流避免 429。
     """
     model = build_chat_model()
-    async for chunk in model.astream([
-        SystemMessage(content=system_prompt),
-        HumanMessage(content=user_msg),
-    ]):
-        if isinstance(chunk.content, str) and chunk.content:
-            yield chunk.content
+    async with _llm_semaphore:
+        async for chunk in model.astream([
+            SystemMessage(content=system_prompt),
+            HumanMessage(content=user_msg),
+        ]):
+            if isinstance(chunk.content, str) and chunk.content:
+                yield chunk.content
 
 
 async def invoke_json(system_prompt: str, user_msg: str) -> dict[str, Any]:
     """Invoke LLM and parse JSON from markdown code fences if present.
 
     ponytail: 重试 1 次以应对 LLM 偶发的 JSON 格式溢出。
+    受全局 _llm_semaphore 限流避免 429。
     """
     for attempt in (1, 2):
         try:
-            msg = await build_chat_model().ainvoke([
-                SystemMessage(content=system_prompt),
-                HumanMessage(content=user_msg + ("\n\n注意：请只输出有效的 JSON，不要包含其他文字。" if attempt == 2 else "")),
-            ])
+            async with _llm_semaphore:
+                msg = await build_chat_model().ainvoke([
+                    SystemMessage(content=system_prompt),
+                    HumanMessage(content=user_msg + ("\n\n注意：请只输出有效的 JSON，不要包含其他文字。" if attempt == 2 else "")),
+                ])
             raw = (msg.content or "").strip()
             if raw.startswith("```"):
                 raw = raw.split("\n", 1)[1]

@@ -45,7 +45,6 @@ function parseBriefInput(text: string): Partial<BriefFormData> {
   const mBudget = text.match(/预算(\d+)/)
   if (mBudget) {
     r.budget = parseInt(mBudget[1], 10)
-    r.marketing_goal = `认知度 ≥80% · 预算 ${mBudget[1]}万`
   }
   const mPeriod = text.match(/周期(\d+)个?月/)
   if (mPeriod) r.period = `${mPeriod[1]} 个月（${parseInt(mPeriod[1]) * 4} 周）`
@@ -60,7 +59,7 @@ export function ScreenBrief({ onNavigate, initialInput, initialBrandData, isGene
       category: initialBrandData?.category ?? parsed.category ?? '',
       product_matrix: parsed.product_matrix ?? '',
       target_audience: parsed.target_audience ?? '',
-      marketing_goal: initialBrandData?.budget != null ? `认知度 ≥80% · 预算 ${initialBrandData.budget}万` : parsed.marketing_goal ?? '',
+      marketing_goal: initialBrandData?.budget != null ? `预算 ${initialBrandData.budget}万` : parsed.marketing_goal ?? '',
       period: initialBrandData?.period != null ? `${initialBrandData.period} 个月（${initialBrandData.period * 4} 周）` : parsed.period ?? '',
       budget: initialBrandData?.budget ?? parsed.budget ?? 0,
       selected_cities: initialBrandData?.city ? [initialBrandData.city] : parsed.selected_cities ?? [],
