@@ -36,7 +36,7 @@ async def test_research_product_returns_structured_output():
         result = await research_product("Test Product")
         assert isinstance(result, ProductResearchResult)
         assert result.identity.product_name.value == "Test Product"
-        mock.ainvoke.assert_awaited_once_with({"product_name": "Test Product", "exclude_urls": []})
+        mock.ainvoke.assert_awaited_once_with({"product_name": "Test Product", "category": "", "exclude_urls": []})
 
 
 @pytest.mark.asyncio

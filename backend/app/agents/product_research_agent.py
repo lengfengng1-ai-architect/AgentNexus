@@ -146,13 +146,13 @@ async def search_node(state: ProductResearchState) -> dict:
     product = state.product_name
     category = state.category or ""
     all_results: list[SearchResult] = []
-    # 品类优先搜索：品牌小众时品类词能兜底找到足够的市场参考
+    # 品类行业搜索：用限定词避免裸品类词搜到无关内容触发过滤
     if category:
         keywords = [
-            category,                                     # 品类宽搜，了解行业全貌
-            f"{product} {category}",                      # 品牌+品类精准匹配
-            f"{category} 品牌 推荐",                       # 同类品牌/产品参考
-            f"{product} 规格",                             # 品牌产品细节
+            f"{category} 行业 发展",                         # 品类行业全貌
+            f"{product} {category}",                          # 品牌+品类精准匹配
+            f"{category} 品牌 推荐 产品",                     # 同类产品参考
+            f"{product} 规格 参数",                           # 品牌产品细节
         ]
     else:
         keywords = [product, f"{product} 产品规格", product]
@@ -481,7 +481,8 @@ async def run_product_research(state: dict[str, Any]) -> dict[str, Any]:
             if attempt == 1 and "data_inspection_failed" in str(e):
                 logger.warning("product_research blocked (attempt 1/2), retrying with different sources…")
                 # Collect URLs used in this failed attempt and pass to next try
-                state["_exclude_urls"] = [p.url for p in _last_fetched_urls] if _last_fetched_urls else []
+                # _last_fetched_urls is list[str] (URL strings), not list[object]
+                state["_exclude_urls"] = list(_last_fetched_urls) if _last_fetched_urls else []
             else:
                 raise
 
