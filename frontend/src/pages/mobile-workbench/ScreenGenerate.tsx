@@ -99,7 +99,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
     if (briefData && status === 'idle' && !hasStartedRef.current) {
       hasStartedRef.current = true
       const budgetMatch = briefData.period.match(/\d+/)
-      const budget = parseInt(briefData.marketing_goal.match(/\d+/)?.[0] || '0', 10)
+      const budget = parseInt(briefData.marketing_goal.match(/预算\s*(\d+\.?\d*)/)?.[1] || '0', 10)
       const period = budgetMatch ? parseInt(budgetMatch[0], 10) : 3
       const brandInput: Record<string, unknown> = {
         brand_name: briefData.brand_name,
