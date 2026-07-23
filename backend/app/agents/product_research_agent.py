@@ -240,7 +240,6 @@ async def fetch_node(state: ProductResearchState) -> dict:
             write_log("product_research", f"⚠️ {url} 读取失败，跳过")
             return FetchedPage(url=url, title=None, content="", fetched=False)
 
-    tasks = [fetch_one(url) for url in urls]
     sem = asyncio.Semaphore(FETCH_CONCURRENCY)
 
     async def wrapped(url: str) -> FetchedPage:

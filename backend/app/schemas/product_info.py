@@ -25,6 +25,13 @@ class SourcedDict(BaseModel):
     sources: list[str] = Field(default_factory=list, description="信息来源 URL 列表")
     method: str = Field(default="extracted", description="quoted=原文摘录 / extracted=AI综合提取")
 
+    @field_validator("value", mode="before")
+    @classmethod
+    def coerce_none_to_dict(cls, v):
+        if v is None:
+            return {}
+        return v
+
 
 # ── 五大模块 ─────────────────────────────────────
 

@@ -70,8 +70,12 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
         prompt,
         f"请为 {brand_name} 生成预算与 KPI。",
     )
+    # ponytail: LLM 可能在 reject 场景忽略用户输入的预算/周期，
+    # 强制覆盖为 parse 后的用户输入值，确保与用户意图一致。
+    result["total_budget"] = budget
+    result["period_months"] = period
     # 防御：LLM 可能输出浮点数 amount（如 2.5），转为整数
-    # 注意：这里不覆盖 total_budget / period_months，让 prompt 约束生效
+    # 注意：这里只覆盖 allocations 内的 amount，total_budget/period_months 已强制覆盖
     for alloc in result.get("allocations") or []:
         if isinstance(alloc, dict) and "amount" in alloc:
             alloc["amount"] = int(alloc["amount"])
