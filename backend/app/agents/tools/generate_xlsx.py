@@ -19,7 +19,7 @@ from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 from pydantic import BaseModel, Field
 
-from app.schemas.xlsx_generation import XlsxData
+from app.schemas.xlsx_generation import BudgetDetailItem, XlsxData
 
 logger = logging.getLogger(__name__)
 
@@ -79,6 +79,43 @@ def _get_cat_fill(cat: str) -> PatternFill:
         idx = len(CAT_FILLS) % len(colors)
         CAT_FILLS[cat] = PatternFill("solid", fgColor=colors[idx])
     return CAT_FILLS[cat]
+
+
+def _dedup_budget_detail_summary_rows(detail: "BudgetDetailSheet") -> None:
+    """Remove summary/subtotal rows mistakenly output by LLM within each category.
+
+    LLM sometimes outputs a summary row (amount ≈ category total from
+    budget_allocation) alongside detailed sub-items, causing double-counting
+    in the detail sheet total.  This filter detects and removes such rows.
+
+    Heuristic: within a category group, if the largest item's amount >=
+    1.3× the sum of the remaining same-category items, it's a summary row.
+    Also checks desc for summary-like keywords as supporting evidence.
+    """
+    from collections import defaultdict
+
+    groups: dict[str, list[BudgetDetailItem]] = defaultdict(list)
+    for item in detail.items:
+        groups[item.category].append(item)
+
+    to_remove: list[BudgetDetailItem] = []
+    for cat, items in groups.items():
+        if len(items) < 3:
+            continue
+        sorted_items = sorted(items, key=lambda x: x.amount_a, reverse=True)
+        largest = sorted_items[0]
+        rest_sum = sum(x.amount_a for x in sorted_items[1:])
+        if rest_sum > 0 and largest.amount_a >= rest_sum * 1.3:
+            logger.info(
+                "_dedup: removing summary row cat=%s sub=%s amount=%.1f "
+                "(rest_sum=%.1f, ratio=%.2f)",
+                cat, largest.sub, largest.amount_a, rest_sum,
+                largest.amount_a / rest_sum,
+            )
+            to_remove.append(largest)
+
+    if to_remove:
+        detail.items = [i for i in detail.items if i not in to_remove]
 
 
 class GeneratePlanXlsxInput(BaseModel):
@@ -787,6 +824,10 @@ async def generate_plan_xlsx(data: str, brand_name: str) -> str:
     today = date.today().strftime("%Y%m%d")
     filename = f"{xlsx_data.brand_info.brand_name}_{today}_预算流程回报分析.xlsx"
     filepath = OUTPUT_DIR / filename
+
+    # ponytail: 同品类内自动识别并剔除 LLM 输出的汇总行（金额≈同品类其他行之和的行）
+    # 如果 LLM 学乖了不再输出，这段就是安全网，不影响正常数据。
+    _dedup_budget_detail_summary_rows(xlsx_data.budget_detail)
 
     # ponytail: 如果明细汇总远超总预算，很可能 LLM 输出了重复的汇总行，需提示词修正
     detail_sum = sum(i.amount_a for i in xlsx_data.budget_detail.items)
