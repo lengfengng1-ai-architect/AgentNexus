@@ -67,6 +67,7 @@ async def export_plan_pdf(run_id: str) -> str:
     from reportlab.lib.pagesizes import A4
     from reportlab.lib.units import cm, mm
     from reportlab.lib.styles import ParagraphStyle
+    from reportlab.lib.enums import TA_CENTER
     from reportlab.platypus import (
         PageBreak, Paragraph, SimpleDocTemplate, Spacer,
     )
@@ -108,124 +109,187 @@ async def export_plan_pdf(run_id: str) -> str:
     filename = f"{brand_name}_{today}_营销方案.pdf"
     filepath = _OUTPUT_DIR / filename
 
-    styles = {}
-    styles['cover_title'] = ParagraphStyle(
-        'CoverTitle', fontName=_FONT_NAME, fontSize=22, leading=28,
-        spaceAfter=10, textColor=colors.HexColor('#1F4E79'),
-    )
-    styles['cover_meta'] = ParagraphStyle(
-        'CoverMeta', fontName=_FONT_NAME, fontSize=10, leading=14,
-        spaceAfter=4, textColor=colors.HexColor('#4A5568'),
-    )
-    styles['ch_title'] = ParagraphStyle(
-        'ChTitle', fontName=_FONT_NAME, fontSize=15, leading=20,
-        spaceBefore=18, spaceAfter=2, textColor=colors.HexColor('#1F4E79'),
-    )
-    styles['ch_subtitle'] = ParagraphStyle(
-        'ChSubtitle', fontName=_FONT_NAME, fontSize=10, leading=13,
-        spaceAfter=10, textColor=colors.HexColor('#718096'),
-    )
-    styles['h2'] = ParagraphStyle(
-        'ChH2', fontName=_FONT_NAME, fontSize=12, leading=16,
-        spaceBefore=10, spaceAfter=4, textColor=colors.HexColor('#1A202C'),
-    )
-    styles['h3'] = ParagraphStyle(
-        'ChH3', fontName=_FONT_NAME, fontSize=11, leading=15,
-        spaceBefore=8, spaceAfter=3, textColor=colors.HexColor('#2D3748'),
-    )
-    styles['bold_lead'] = ParagraphStyle(
-        'ChBoldLead', fontName=_FONT_NAME, fontSize=9.5, leading=14.5,
-        spaceBefore=6, spaceAfter=4,
-    )
-    styles['body'] = ParagraphStyle(
-        'ChBody', fontName=_FONT_NAME, fontSize=9.5, leading=14.5,
-        spaceAfter=4,
-    )
-    styles['bullet'] = ParagraphStyle(
-        'ChBullet', fontName=_FONT_NAME, fontSize=9.5, leading=14,
-        spaceAfter=2,
-    )
-    styles['sep'] = ParagraphStyle(
-        'ChSep', fontName=_FONT_NAME, fontSize=6, leading=8,
-        spaceAfter=2, textColor=colors.HexColor('#CBD5E0'),
-    )
+    # ── Styles ──
+    styles: dict[str, ParagraphStyle] = {}
+    _S = lambda name, **kw: ParagraphStyle(name, fontName=_FONT_NAME, **kw)
+
+    styles['cover_title'] = _S('CoverTitle', fontSize=24, leading=32,
+                               spaceAfter=6, textColor=colors.HexColor('#1F4E79'),
+                               alignment=TA_CENTER)
+    styles['cover_sub'] = _S('CoverSub', fontSize=11, leading=15, spaceAfter=3,
+                             textColor=colors.HexColor('#4A5568'), alignment=TA_CENTER)
+    styles['cover_date'] = _S('CoverDate', fontSize=9, leading=12, spaceBefore=30,
+                              textColor=colors.HexColor('#718096'), alignment=TA_CENTER)
+    styles['ch_title'] = _S('ChTitle', fontSize=16, leading=22, spaceBefore=6,
+                            spaceAfter=8, textColor=colors.HexColor('#1F4E79'))
+    styles['ch_subtitle'] = _S('ChSubtitle', fontSize=10, leading=13, spaceAfter=10,
+                               textColor=colors.HexColor('#718096'))
+    styles['h2'] = _S('H2', fontSize=12, leading=17, spaceBefore=12, spaceAfter=4,
+                      textColor=colors.HexColor('#1A202C'))
+    styles['h3'] = _S('H3', fontSize=11, leading=15, spaceBefore=10, spaceAfter=3,
+                      textColor=colors.HexColor('#2D3748'))
+    styles['body'] = _S('Body', fontSize=10, leading=17, spaceAfter=3)
+    styles['bullet'] = _S('Bullet', fontSize=10, leading=16, spaceAfter=2, leftIndent=14)
+    styles['toc_h1'] = _S('TOC_H1', fontSize=11, leading=15, spaceAfter=3,
+                          textColor=colors.HexColor('#1F4E79'))
+    styles['footer'] = _S('Footer', fontSize=8, leading=10, spaceBefore=0, spaceAfter=0,
+                          textColor=colors.HexColor('#A0AEC0'), alignment=TA_CENTER)
+
+    def _escape(s: str) -> str:
+        """Escape XML special characters for ReportLab Paragraph."""
+        return (s.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
+                 .replace('"', '&quot;').replace("'", '&#39;'))
 
     def _render_md(text: str) -> list:
-        """将一段 Markdown 文本转为 PDF story 元素列表。"""
-        elements = []
-        for line in text.split('\n'):
-            line = line.strip()
-            if not line:
+        """Render a Markdown text block into PDF story elements.
+
+        Merges consecutive non-special lines into a single Paragraph so
+        wrapped paragraphs read naturally — the big fix over the old version.
+        """
+        elements: list = []
+        lines = text.split('\n')
+
+        # First pass: classify lines and merge consecutive body/bullet lines
+        # so a paragraph split across source lines becomes one Paragraph.
+        blocks: list[tuple[str, str]] = []  # (type, content)
+        for line in lines:
+            stripped = line.strip()
+            if not stripped:
+                # Empty line acts as paragraph separator
+                if blocks and blocks[-1][0] in ('body', 'bullet', 'table'):
+                    blocks.append(('sep', ''))
                 continue
-            # escape XML
-            safe = line.replace('&', '&amp;').replace('<', '&lt;').replace('>', '&gt;')
-            safe = safe.replace('"', '&quot;').replace("'", '&#39;')
+
+            safe = _escape(stripped)
+
             # ATX headings
             m = re.match(r'^(#{1,6})\s+(.+)$', safe)
             if m:
-                level = len(m.group(1))
-                content = m.group(2)
-                if level <= 2:
-                    elements.append(Paragraph(content, styles['h2']))
-                else:
-                    elements.append(Paragraph(content, styles['h3']))
+                blocks.append(('h' + str(len(m.group(1))), m.group(2)))
                 continue
-            # bullet lists
-            if re.match(r'^[\-\*]\s+', safe):
-                text_bullet = re.sub(r'^[\-\*]\s+', '', safe)
-                elements.append(Paragraph(f"• {text_bullet}", styles['bullet']))
+            # Horizontal rules
+            if re.match(r'^[-*]{3,}$', safe):
+                blocks.append(('hr', ''))
                 continue
-            # numbered lists
-            if re.match(r'^\d+[\.\)]\s+', safe):
+            # Tables (rough detection: pipe-separated)
+            if '|' in stripped and re.match(r'^[\s|:\-0-9a-zA-Z一-鿿.%,≥≤\+\s]+$', stripped):
+                blocks.append(('table_line', safe))
+                continue
+            # Tables: alignment row (|:---:|)
+            if re.match(r'^[\s|:\-]+$', stripped):
+                blocks.append(('sep', ''))
+                continue
+            # Bullet and numbered lists → merge consecutive
+            if re.match(r'^[\-\*]\s+', stripped):
+                text_bullet = re.sub(r'^[\-\*\s]+\s*', '', safe)
+                blocks.append(('bullet', text_bullet))
+                continue
+            if re.match(r'^\d+[\.\)]\s+', stripped):
                 text_num = re.sub(r'^\d+[\.\)]\s+', '', safe)
-                elements.append(Paragraph(f"• {text_num}", styles['bullet']))
+                blocks.append(('bullet', text_num))
                 continue
-            # horizontal rule
-            if re.match(r'^[-]{3,}$', safe) or re.match(r'^[*]{3,}$', safe):
-                elements.append(Paragraph('—' * 20, styles['sep']))
+            # Regular body text
+            blocks.append(('body', safe))
+
+        # Second pass: merge consecutive body and bullet lines
+        merged: list[tuple[str, str]] = []
+        for btype, content in blocks:
+            if btype == 'sep':
+                merged.append(('sep', ''))
                 continue
-            # bold / italic
-            safe = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', safe)
-            safe = re.sub(r'\*(.+?)\*', r'<i>\1</i>', safe)
-            # inline code
-            safe = re.sub(r'`(.+?)`', r'<font face="Courier" size="8">\1</font>', safe)
-            # 行首粗体 → 加上方间距
-            style = styles['bold_lead'] if safe.startswith('<b>') else styles['body']
-            elements.append(Paragraph(safe, style))
+            if btype in ('body', 'bullet'):
+                # Look back: if previous entry is same type and not sep, merge
+                if merged and merged[-1][0] == btype:
+                    merged[-1] = (btype, merged[-1][1] + ' ' + content)
+                else:
+                    merged.append((btype, content))
+            else:
+                merged.append((btype, content))
+
+        # Third pass: emit PDF elements
+        for btype, content in merged:
+            if btype == 'sep':
+                elements.append(Spacer(1, 2 * mm))
+                continue
+            if btype == 'hr':
+                elements.append(Spacer(1, 4 * mm))
+                elements.append(Paragraph('—' * 40, _S('_hr', fontSize=6, leading=8,
+                                                       textColor=colors.HexColor('#CBD5E0'))))
+                elements.append(Spacer(1, 4 * mm))
+                continue
+            if btype in ('h1', 'h2'):
+                elements.append(Paragraph(content, styles['h2']))
+                continue
+            if btype in ('h3', 'h4', 'h5', 'h6'):
+                elements.append(Paragraph(content, styles['h3']))
+                continue
+            if btype == 'bullet':
+                fmt = content
+                fmt = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', fmt)
+                fmt = re.sub(r'\*(.+?)\*', r'<i>\1</i>', fmt)
+                elements.append(Paragraph(f"• {fmt}", styles['bullet']))
+                continue
+            if btype == 'table_line':
+                elements.append(Paragraph(content, styles['body']))
+                continue
+            if btype == 'body':
+                # Apply inline formatting (content already _escape'd in pass 1)
+                fmt = content
+                fmt = re.sub(r'\*\*(.+?)\*\*', r'<b>\1</b>', fmt)
+                fmt = re.sub(r'\*(.+?)\*', r'<i>\1</i>', fmt)
+                fmt = re.sub(r'`(.+?)`', r'<font face="Courier" size="8">\1</font>', fmt)
+                elements.append(Paragraph(fmt, styles['body']))
+                continue
+
         return elements
 
     story = []
 
     # ── Cover page ──
-    story.append(Spacer(1, 50 * mm))
+    story.append(Spacer(1, 60 * mm))
     story.append(Paragraph("营销方案报告", styles['cover_title']))
+    story.append(Spacer(1, 3 * mm))
+    story.append(Paragraph(brand_name, styles['cover_sub']))
     story.append(Spacer(1, 15 * mm))
-    story.append(Paragraph(f"品牌名称：{brand_name}", styles['cover_meta']))
     if category:
-        story.append(Paragraph(f"所属品类：{category}", styles['cover_meta']))
-    story.append(Paragraph(f"预算规模：{budget} 万元", styles['cover_meta']))
-    story.append(Paragraph(f"执行周期：{period} 个月", styles['cover_meta']))
+        story.append(Paragraph(f"品类：{category}", styles['cover_sub']))
+    story.append(Paragraph(f"预算：{budget} 万元　周期：{period} 个月", styles['cover_sub']))
     if marketing_goal:
-        story.append(Paragraph(f"营销目标：{marketing_goal}", styles['cover_meta']))
-    story.append(Spacer(1, 10 * mm))
-    story.append(Paragraph(f"生成日期：{date.today().strftime('%Y年%m月%d日')}", styles['cover_meta']))
+        story.append(Paragraph(f"营销目标：{marketing_goal}", styles['cover_sub']))
+    story.append(Paragraph(f"生成日期：{today[:4]}年{int(today[4:6])}月{int(today[6:])}日", styles['cover_date']))
     story.append(PageBreak())
 
-    # ── Chapter pages (连续排版，不分页) ──
+    # ── Table of contents ──
+    story.append(Spacer(1, 15 * mm))
+    story.append(Paragraph("目录", styles['cover_title']))
+    story.append(Spacer(1, 8 * mm))
     for idx, chapter in enumerate(chapters):
-        if idx > 0:
-            story.append(Spacer(1, 4 * mm))
-        story.append(Paragraph(f"第{idx+1}章 {chapter['title']}", styles['ch_title']))
+        story.append(Paragraph(f"第{idx+1}章　{chapter['title']}", styles['toc_h1']))
+    story.append(PageBreak())
+
+    # ── Chapters ──
+    for idx, chapter in enumerate(chapters):
+        story.append(Paragraph(f"第{idx+1}章　{chapter['title']}", styles['ch_title']))
         if chapter.get('subtitle'):
             story.append(Paragraph(chapter['subtitle'], styles['ch_subtitle']))
         story.append(Spacer(1, 2 * mm))
         story.extend(_render_md(chapter.get('content', '')))
+        story.append(PageBreak())
+
+    # ── Page template with footer ──
+    def _footer(canvas, doc):
+        canvas.saveState()
+        canvas.setFont(_FONT_NAME, 8)
+        canvas.setFillColor(colors.HexColor('#A0AEC0'))
+        canvas.drawCentredString(A4[0] / 2, 1.2 * cm,
+                                 f"— {brand_name} 营销方案 — 第 {doc.page} 页 —")
+        canvas.restoreState()
 
     doc = SimpleDocTemplate(
         str(filepath), pagesize=A4,
-        topMargin=2 * cm, bottomMargin=2 * cm,
-        leftMargin=0.5 * cm, rightMargin=0.5 * cm,
+        topMargin=1.5 * cm, bottomMargin=2.5 * cm,
+        leftMargin=1.5 * cm, rightMargin=1.5 * cm,
     )
-    doc.build(story)
+    doc.build(story, onFirstPage=_footer, onLaterPages=_footer)
     logger.info("PDF exported to %s", filepath)
     return str(filepath)
