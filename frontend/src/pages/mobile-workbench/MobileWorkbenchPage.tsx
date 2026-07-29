@@ -75,6 +75,7 @@ export function MobileWorkbenchPage() {
     allocations: BudgetAllocation[]
     kpis: Record<string, string>
     timeline: string[]
+    cityWeights?: Array<{ city: string; weight: number }>
   } | null>(null)
 
   // 预算预览滑动动画状态：关闭弹窗后抑制 checkpoint 弹窗再次弹出
@@ -407,6 +408,7 @@ export function MobileWorkbenchPage() {
       allocations: allocs,
       kpis,
       timeline,
+      cityWeights: (bk.city_weights as Array<{ city: string; weight: number }>) || undefined,
     })
     setBudgetPreviewLoading(false)
   }, [budgetPreviewLoading, planRun.pausedSnapshot])
@@ -790,6 +792,7 @@ export function MobileWorkbenchPage() {
                 initialAllocations={budgetPreviewData.allocations}
                 initialKpis={budgetPreviewData.kpis}
                 initialTimeline={budgetPreviewData.timeline}
+                cityWeights={budgetPreviewData.cityWeights}
                 onBack={handleBudgetPreviewBack}
                 loading={budgetPreviewLoading}
                 onRegenerate={budgetPreviewReadonly ? undefined : handleBudgetRegen}

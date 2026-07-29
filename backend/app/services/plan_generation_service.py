@@ -440,9 +440,16 @@ def _node_inputs(node_id: str, state: PlanState) -> dict[str, Any]:
             "brand_name": state["brand_input"].get("brand_name"),
             "category": state["brand_input"].get("category"),
         }
-    if node_id in ("audience_insight", "plan_data_query"):
+    if node_id == "audience_insight":
         return {
             "city": state["brand_input"].get("city"),
+            "product_name": state["brand_input"].get("brand_name"),
+            "category": state["brand_input"].get("category"),
+        }
+    if node_id == "plan_data_query":
+        return {
+            "city": state["brand_input"].get("city"),
+            "selected_cities": state["brand_input"].get("selected_cities"),
             "product_name": state["brand_input"].get("brand_name"),
             "category": state["brand_input"].get("category"),
         }

@@ -302,7 +302,7 @@ components:
           type: array
           items:
             type: string
-          description: "首批城市列表，如['北京','上海','广州']"
+          description: "多城联动方案的城市列表，如['北京','上海','广州']。首元素为主城（与 city 字段一致），驱动 plan_data_query 多城遍历与差异化编排"
 
     StrategyOptimizeRequest:
       type: object

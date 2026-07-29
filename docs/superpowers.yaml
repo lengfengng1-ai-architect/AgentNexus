@@ -49,10 +49,11 @@ capabilities:
       description: "基于品类/预算/周期/城市，结合 mock 平台数据给出预算分配建议（达人/内容/活动/投放/运营）、KPI 预估、时间线和一句话建议，多轮澄清收集需求，结果在聊天入口卡 + 独立详情页展示"
       constraints: |
         SSE 流式推送评估进度，结果持久化到 mock_data/budget_analysis/results/（ba-<uuid8>.json），按 ID 拉取。
-        allocations 数据（百分比/金额）必须来自 mock 预算模板（plan_budget_kpi.json），LLM 不可编造分配数值。
+        类目 allocations（达人/内容/活动/投放/运营）的百分比/金额必须来自 mock 预算模板（plan_budget_kpi.json），LLM 不可编造。
         KPI 预估按 mock base KPI × 预算比例缩放，不可编造数值。
         一句话建议由 LLM 基于已有 allocations/KPI 数据推理生成，不可编造厂商/赛事/达人名称。
-        MVP 阶段 allocations 用固定模板百分比，不按品类/城市调权（预留升级）。
+        城市间预算权重（多城联动方案）：允许 LLM 基于各城市 mock 数据与品牌策略推理分配，但必须满足护栏——各城权重之和=100%、单城权重限定 10%–70%、输出须引用各城数据作为分配依据；代码层强制校验，校验失败回退到 mock 默认城市权重模板（mock_data/multi_city_budget_weight.json）。
+        类目级 allocations 仍用固定模板百分比，不按品类调权（预留升级）。
         仅输出规划建议，不自动花钱/下单/执行。
 
     - id: "activity-planning"

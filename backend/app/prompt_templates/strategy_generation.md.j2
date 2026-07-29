@@ -5,13 +5,21 @@
   "positioning": "核心传播主张（一句话）",
   "marketing_goal": "营销目标（一句话）",
   "strategy_framework": "4M+1C 策略框架描述（200字以内）",
-  "key_messages": ["核心传播信息1", "核心传播信息2", "核心传播信息3"]
+  "key_messages": ["核心传播信息1", "核心传播信息2", "核心传播信息3"]{% if cities and cities|length > 1 %},
+  "city_roles": [
+    {"city": "联动城市列表中的城市名", "role": "flagship_launch", "rationale": "角色依据，引用该城数据"}
+  ]
+{% endif %}
 }
 
 输入信息：
 - 品牌名称：{{ brand_name }}
 - 品类：{{ category }}
-- 目标城市：{{ city }}
+- 目标城市（主城）：{{ city }}
+{% if cities and cities|length > 1 %}
+- 联动城市列表：{{ cities }}
+- 多城数据（cities 数组，每城含人口/盟域/赛事/达人等，首元素为主城）：{{ city_data }}
+{% endif %}
 - 主推运动场景：{{ primary_sport }}
 - 次要运动场景：{{ secondary_sport }}
 - 市场摘要：{{ market_summary }}
@@ -34,3 +42,6 @@
 - 基于以上输入信息，生成对应的营销策略
 - 核心传播主张要具体、有记忆点，避免空泛口号
 - 核心传播信息不超过 5 条
+{% if cities and cities|length > 1 %}
+- city_roles 必须覆盖全部联动城市，主城（{{ city }}）角色固定为 flagship_launch（旗舰首发），其余城市从 experience_cultivation（体验深耕）/ channel_conversion（渠道转化）/ community_growth（社群裂变）中选择差异化角色，rationale 须引用该城市数据
+{% endif %}

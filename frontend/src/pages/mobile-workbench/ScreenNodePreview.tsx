@@ -377,35 +377,44 @@ function AudienceInsightView({ data }: { data: Record<string, unknown> }) {
   )
 }
 
-/** 数据查询 */
+/** 数据查询（多城联动：plan_data_query 输出 { cities: [CityDataOutput] }） */
 function PlanDataQueryView({ data }: { data: Record<string, unknown> }) {
-  const leagues = data.leagues as Record<string, unknown> | undefined
-  const events = data.events as Record<string, unknown> | undefined
-  const influencers = data.influencers as Record<string, unknown> | undefined
-  const stores = data.stores as Record<string, unknown> | undefined
-  const venues = data.venues as Record<string, unknown> | undefined
+  const citiesList = (data.cities as Array<Record<string, unknown>> | undefined) ?? []
+  // 向后兼容旧的单城扁平结构（cities 不存在时 data 本身即单城）
+  const cities = citiesList.length > 0 ? citiesList : [data]
+  const primary = cities[0] ?? {}
 
   return (
     <>
       <SectionTitle icon="📍" title="数据查询" />
-      <Card title="城市概况" icon="📍" accent>
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
-          <StatTile value={String(data.population || '-')} label="常住人口" />
-          <StatTile value={String(data.sport_index ?? '-')} label="运动指数" />
-          <StatTile value={data.consumption as string || '-'} label="消费力" />
-          <StatTile value={data.weekend_active as string || '-'} label="周末活跃" />
-        </div>
-        <Row label="城市" value={data.city as string} />
-      </Card>
-
-      {leagues && <SimpleStatCard icon="🏟️" title="盟域" rows={[['数量', String(leagues.count ?? '')], ['平均成员', String(leagues.avg_members ?? '')]]} />}
-      {events && <SimpleStatCard icon="🏆" title="赛事活动" rows={[['月均活动', String(events.monthly ?? '')], ['平均参与', String(events.avg_participants ?? '')]]} />}
-      {influencers && <SimpleStatCard icon="⭐" title="达人" rows={[['总数', String(influencers.count ?? '')], ['平均报价', influencers.avg_quote as string]]} />}
-      {stores && <SimpleStatCard icon="🏪" title="经营社" rows={[['数量', String(stores.count ?? '')]]} />}
-      {venues && <SimpleStatCard icon="🏛️" title="场馆" rows={[['数量', String(venues.count ?? '')], ['容量', venues.capacity as string]]} />}
-
-      {data.tournament && renderSubCard('赛事资源', '🏆', data.tournament as Record<string, unknown>, ['available_tournaments'])}
-      {data.trophy && renderSubCard('奖杯定制', '🥇', data.trophy as Record<string, unknown>, ['trophy_types', 'avg_lead_time_days'])}
+      {cities.map((c, i) => {
+        const leagues = c.leagues as Record<string, unknown> | undefined
+        const events = c.events as Record<string, unknown> | undefined
+        const influencers = c.influencers as Record<string, unknown> | undefined
+        const stores = c.stores as Record<string, unknown> | undefined
+        const venues = c.venues as Record<string, unknown> | undefined
+        const isPrimary = i === 0
+        const cityLabel = `${c.city ?? '城市'}${isPrimary ? ' · 主城' : ''}`
+        return (
+          <div key={cityLabel + i} style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Card title={cityLabel} icon="📍" accent={isPrimary}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 8 }}>
+                <StatTile value={String(c.population || '-')} label="常住人口" />
+                <StatTile value={String(c.sport_index ?? '-')} label="运动指数" />
+                <StatTile value={(c.consumption as string) || '-'} label="消费力" />
+                <StatTile value={(c.weekend_active as string) || '-'} label="周末活跃" />
+              </div>
+            </Card>
+            {leagues && <SimpleStatCard icon="🏟️" title={`盟域·${c.city}`} rows={[['数量', String(leagues.count ?? '')], ['平均成员', String(leagues.avg_members ?? '')]]} />}
+            {events && <SimpleStatCard icon="🏆" title={`赛事活动·${c.city}`} rows={[['月均活动', String(events.monthly ?? '')], ['平均参与', String(events.avg_participants ?? '')]]} />}
+            {influencers && <SimpleStatCard icon="⭐" title={`达人·${c.city}`} rows={[['总数', String(influencers.count ?? '')], ['平均报价', influencers.avg_quote as string]]} />}
+            {stores && <SimpleStatCard icon="🏪" title={`经营社·${c.city}`} rows={[['数量', String(stores.count ?? '')]]} />}
+            {venues && <SimpleStatCard icon="🏛️" title={`场馆·${c.city}`} rows={[['数量', String(venues.count ?? '')], ['容量', venues.capacity as string]]} />}
+          </div>
+        )
+      })}
+      {primary.tournament && renderSubCard('赛事资源', '🏆', primary.tournament as Record<string, unknown>, ['available_tournaments'])}
+      {primary.trophy && renderSubCard('奖杯定制', '🥇', primary.trophy as Record<string, unknown>, ['trophy_types', 'avg_lead_time_days'])}
     </>
   )
 }

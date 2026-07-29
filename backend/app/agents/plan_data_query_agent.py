@@ -9,6 +9,7 @@ from typing import Any
 from app.agents.registry import register
 from app.schemas.plan_generation import (
     CityDataOutput,
+    MultiCityDataOutput,
     CooperationCenterData,
     CooperationCenterItem,
     EventData,
@@ -163,17 +164,34 @@ def _build_sale(raw: dict[str, Any]) -> SaleData:
 
 
 async def run_plan_data_query(state: dict[str, Any]) -> dict[str, Any]:
-    """Query city-level AllyGo data for plan generation."""
-    city = state.get("city") or state.get("brand_input", {}).get("city")
-    if not city:
-        raise ValueError("Missing required input: city")
+    """Query city-level AllyGo data for plan generation (multi-city).
 
-    city_data = get_data_provider().get_city_data(city)
-    if city_data is None:
-        available = get_data_provider().list_cities()
-        raise ValueError(f"No data for city {city}. Available: {', '.join(available)}")
+    多城联动：优先读 selected_cities 数组；为空时退化为主城 city 单城，
+    保持向后兼容。各城按输入顺序聚合为 MultiCityDataOutput，主城在首位。
+    """
+    brand_input = state.get("brand_input") or {}
+    cities = state.get("selected_cities") or brand_input.get("selected_cities") or []
+    cities = [c for c in cities if c]
+    if not cities:
+        # ponytail: 单城回退——旧调用方仅传 city，保持等价行为
+        city = state.get("city") or brand_input.get("city")
+        if city:
+            cities = [city]
+    if not cities:
+        raise ValueError("Missing required input: selected_cities or city")
 
-    return _build_output(city, city_data).model_dump()
+    provider = get_data_provider()
+    available = provider.list_cities()
+    city_outputs: list[CityDataOutput] = []
+    for c in cities:
+        city_data = provider.get_city_data(c)
+        if city_data is None:
+            raise ValueError(
+                f"No data for city {c}. Available: {', '.join(available)}"
+            )
+        city_outputs.append(_build_output(c, city_data))
+
+    return MultiCityDataOutput(cities=city_outputs).model_dump()
 
 
 register("plan_data_query", run_plan_data_query)

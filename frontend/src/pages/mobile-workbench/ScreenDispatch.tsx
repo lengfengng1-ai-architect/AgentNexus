@@ -10,30 +10,32 @@ interface ScreenDispatchProps {
 }
 
 export function ScreenDispatch({ outputs, briefData }: ScreenDispatchProps) {
-  const dataQuery = outputs.plan_data_query as Record<string, unknown> | undefined
-  const leagues = dataQuery?.leagues as Record<string, unknown> | undefined
-  const topLeagues = (leagues?.top_leagues as string[]) ?? []
-  const leagueCount = (leagues?.count as number) ?? 0
-  const avgMembers = (leagues?.avg_members as number) ?? 0
-  const city = (dataQuery?.city as string) ?? '上海'
-  const cities = briefData?.selected_cities ?? [city]
+  const dataQuery = outputs.plan_data_query as
+    | { cities?: Array<{ city?: string; leagues?: { count?: number; top_leagues?: string[]; avg_members?: number } }> }
+    | undefined
+  const cityEntries = dataQuery?.cities ?? []
+  // 真实多城汇总：盟域数求和、头部盟域按城聚合（取代旧的 leagueCount × cities.length 假倍数）
+  const leagueCount = cityEntries.reduce((s, c) => s + (c.leagues?.count ?? 0), 0)
+  const avgMembers = cityEntries[0]?.leagues?.avg_members ?? 0
+  const topLeagues = cityEntries.flatMap(c =>
+    (c.leagues?.top_leagues ?? []).map(n => ({ name: n, city: c.city ?? '' }))
+  )
+  const cityCount = cityEntries.length || briefData?.selected_cities?.length || 1
   const brandLabel = briefData?.brand_name ?? '品牌'
   const productLabel = briefData?.product_matrix?.split(/[（(]/)[0]?.trim() ?? '产品'
 
-  // 用真实数据组装盟域列表
+  // 用真实数据组装盟域列表（按城展开，标注所属城市）
   const rows = useMemo(() => {
-    // topLeagues 通常是字符串列表，没有曝光数据
-    // 用联盟数量和平均人数虚拟曝光数据，显得更真实
-    return topLeagues.map((name, i) => ({
+    return topLeagues.map((l, i) => ({
       id: `league_${i}`,
-      av: name.slice(0, 1),
-      name: `${name} · ${city}`,
-      meta: `成员 ${(avgMembers * (0.8 + i * 0.1)).toFixed(0)} 人${i < 2 ? ` · 活跃 ${(85 - i * 5)}%` : ' · 已发提醒'}`,
+      av: l.name.slice(0, 1),
+      name: `${l.name} · ${l.city}`,
+      meta: `成员 ${(avgMembers * (0.8 + (i % 3) * 0.1)).toFixed(0)} 人${i < 2 ? ` · 活跃 ${85 - (i % 3) * 5}%` : ' · 已发提醒'}`,
       done: i < 2,
     }))
-  }, [topLeagues, city, avgMembers])
+  }, [topLeagues, avgMembers])
 
-  const totalLeagues = leagueCount * cities.length
+  const totalLeagues = leagueCount
   const doneCount = rows.filter(r => r.done).length
   const totalExposure = (avgMembers * leagueCount * 0.03 / 10000).toFixed(1)
 
@@ -47,7 +49,7 @@ export function ScreenDispatch({ outputs, briefData }: ScreenDispatchProps) {
       <div className="dp-hero">
         <div className="k">已下发方案</div>
         <div className="v">{productLabel}集群营销</div>
-        <div className="tagline">下发至 {cities.length} 城 × {leagueCount} 个运动盟域 · 共 {totalLeagues} 个盟域</div>
+        <div className="tagline">下发至 {cityCount} 城 · 共 {totalLeagues} 个运动盟域</div>
         <div className="dp-stats">
           <div><b>{doneCount}/{rows.length}</b>已转发盟</div>
           <div><b>{totalExposure}w</b>预估曝光</div>

@@ -123,6 +123,7 @@ async def run_plan_generator(
         brand_name=brand_name,
         category=category,
         city=city,
+        cities=brand_input.get("selected_cities") or [city],
         budget=brand_input.get("budget", ""),
         period=brand_input.get("period", ""),
         reject_reason=reject_reason or "",
@@ -201,7 +202,7 @@ async def _generate_xlsx_from_chapters(
         content_preview = ch.content[:200].replace("\n", " ").replace("#*`", " ")
         chapters_summary += f"\n【{ch.title}】{ch.subtitle}\n{content_preview}\n"
 
-    cities = brand_input.get("cities", [])
+    cities = brand_input.get("selected_cities", [])
     is_multi_city = isinstance(cities, list) and len(cities) > 1
 
     try:

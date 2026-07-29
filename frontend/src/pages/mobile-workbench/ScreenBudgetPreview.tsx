@@ -11,6 +11,11 @@ interface BudgetAllocation {
   amount: number
 }
 
+export interface CityWeight {
+  city: string
+  weight: number
+}
+
 interface ScreenBudgetPreviewProps {
   onNavigate: (s: MobileScreen) => void
   totalBudget: number
@@ -18,6 +23,8 @@ interface ScreenBudgetPreviewProps {
   initialAllocations: BudgetAllocation[]
   initialKpis: Record<string, string>
   initialTimeline: string[]
+  /** 多城预算权重（LLM 分配 + 护栏，只读展示；单城为空） */
+  cityWeights?: CityWeight[]
   onBack: (allocations: BudgetAllocation[]) => void
   /** 是否正在重新生成（后端执行中，显示转圈） */
   loading?: boolean
@@ -81,6 +88,7 @@ export function ScreenBudgetPreview({
   initialAllocations,
   initialKpis,
   initialTimeline,
+  cityWeights,
   onBack,
   loading = false,
   onRegenerate,
@@ -453,6 +461,19 @@ export function ScreenBudgetPreview({
           }} />
           <div style={{ fontSize: 13, fontWeight: 600, color: 'var(--fg-soft)' }}>正在根据反馈重新生成…</div>
           <style>{`@keyframes mw-spin{to{transform:rotate(360deg)}}`}</style>
+        </div>
+      )}
+      {/* 多城预算权重（LLM 分配 + 护栏，只读展示） */}
+      {cityWeights && cityWeights.length > 1 && (
+        <div style={{ padding: '8px 14px', background: 'var(--accent-soft)', borderBottom: '1px solid var(--line)', flexShrink: 0 }}>
+          <div style={{ fontSize: 10, fontWeight: 600, color: 'var(--muted)', marginBottom: 4 }}>🏙️ 多城预算权重（LLM 分配 · 护栏校验）</div>
+          <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+            {cityWeights.map((w, i) => (
+              <span key={i} style={{ fontSize: 12, fontWeight: 700, color: 'var(--accent)' }}>
+                {w.city} {w.weight}%
+              </span>
+            ))}
+          </div>
         </div>
       )}
       {/* Top bar */}

@@ -12,16 +12,20 @@
 输入信息：
 - 品牌名称：{{ brand_name }}
 - 品类：{{ category }}
-- 目标城市：{{ city }}
+- 目标城市（主城）：{{ city }}
+{% if cities and cities|length > 1 %}
+- 联动城市列表：{{ cities }}
+- 各城数据摘要：{{ city_data_summary }}
+{% endif %}
 - 核心传播主张：{{ positioning }}
 - 营销目标：{{ marketing_goal }}
 - 4M+1C 策略框架：{{ strategy_framework }}
 - 核心传播信息：{{ key_messages }}
-- 城市盟域数量：{{ leagues_count }}
-- 月均赛事活动数：{{ events_monthly }}
-- 达人数量：{{ influencers_count }}
-- 经营社数量：{{ stores_count }}
-- 场馆数量：{{ venues_count }}
+- 城市盟域数量（多城汇总）：{{ leagues_count }}
+- 主城月均赛事活动数：{{ events_monthly }}
+- 达人数量（多城汇总）：{{ influencers_count }}
+- 经营社数量（多城汇总）：{{ stores_count }}
+- 场馆数量（多城汇总）：{{ venues_count }}
 
 {% if reject_history and reject_history|length > 1 %}
 用户修改记录：
@@ -40,3 +44,6 @@
 - 达人计划需说明分层合作策略
 - 内容计划需说明内容形式和发布节奏
 - 经营社计划需说明联动机制
+{% if cities and cities|length > 1 %}
+- 多城联动：盟域/赛事/达人/经营社计划需按联动城市分别给出落地要点（引用各城数据摘要），并体现跨城协同节奏（如主城首发、辅城接力）
+{% endif %}

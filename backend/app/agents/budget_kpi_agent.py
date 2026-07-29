@@ -4,6 +4,7 @@ Corresponding OpenSpec: openspec/changes/add-plan-generation-workbench/specs/pla
 Corresponding in_scope ID: plan-generation
 """
 
+import json
 import logging
 from pathlib import Path
 from typing import Any
@@ -23,6 +24,55 @@ _PROMPT_DIR = Path(__file__).parent.parent / "prompt_templates"
 def _render(name: str, **kw) -> str:
     env = Environment(loader=FileSystemLoader(str(_PROMPT_DIR)))
     return env.get_template(f"{name}.md.j2").render(**kw)
+
+
+_DEFAULT_WEIGHTS_PATH = (
+    Path(__file__).parent.parent.parent / "mock_data" / "multi_city_budget_weight.json"
+)
+
+
+def _min_weight(cities_count: int) -> float:
+    """单城权重下限：≤4 城 10%，5 城放宽至 8%（容纳多城必然的分散）。"""
+    return 8.0 if cities_count >= 5 else 10.0
+
+
+def _load_default_city_weights(cities: list[str]) -> list[dict[str, Any]]:
+    """LLM 校验失败时，从 mock 模板按城市数取默认权重，映射到具体城市名。"""
+    count = len(cities)
+    with _DEFAULT_WEIGHTS_PATH.open("r", encoding="utf-8") as f:
+        table = json.load(f).get("weights_by_count", {})
+    key = str(count) if str(count) in table else str(min(count, 5))
+    weights = table.get(key) or []
+    return [
+        {
+            "city": cities[i],
+            "weight": float(w),
+            "rationale": "mock 默认权重（LLM 输出校验失败回退）",
+        }
+        for i, w in enumerate(weights[:count])
+    ]
+
+
+def _validate_city_weights(weights: list[dict[str, Any]], cities: list[str]) -> bool:
+    """护栏：覆盖全部城市、和 = 100 ±0.5、每城 ∈ [下限, 70]。"""
+    if not weights or len(weights) != len(cities):
+        return False
+    lo = _min_weight(len(cities))
+    total = 0.0
+    cities_set = set(cities)
+    seen: set[str] = set()
+    for w in weights:
+        c = w.get("city")
+        if not isinstance(c, str) or c not in cities_set or c in seen:
+            return False
+        seen.add(c)
+        pct = w.get("weight")
+        if not isinstance(pct, (int, float)):
+            return False
+        if pct < lo or pct > 70:
+            return False
+        total += pct
+    return abs(total - 100) <= 0.5
 
 
 async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
@@ -48,11 +98,15 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
     write_log("budget_kpi", f"📊 正在为 {brand_name} 测算预算分配和 KPI…")
     if reject_reason_all:
         write_log("budget_kpi", f"📝 用户修改历史：{'; '.join(reject_history_notes) if reject_history_notes else reject_reason}")
+    cities = [c for c in (brand_input.get("selected_cities") or []) if c] or (
+        [city] if city else []
+    )
     prompt = _render(
         "budget_kpi",
         brand_name=brand_name,
         category=category,
         city=city,
+        cities=cities,
         budget=budget,
         period=period,
         reject_reason=reject_reason_all,
@@ -70,6 +124,18 @@ async def run_budget_kpi(state: dict[str, Any]) -> dict[str, Any]:
         prompt,
         f"请为 {brand_name} 生成预算与 KPI。",
     )
+    # 多城联动：校验 LLM 城市权重（和 = 100、单城护栏），失败回退 mock 默认模板
+    if len(cities) > 1:
+        llm_weights = result.get("city_weights") or []
+        if _validate_city_weights(llm_weights, cities):
+            write_log(
+                "budget_kpi",
+                "🏙️ 多城预算权重：" + "、".join(f"{w['city']}{w['weight']}%" for w in llm_weights),
+            )
+        else:
+            result["city_weights"] = _load_default_city_weights(cities)
+            write_log("budget_kpi", "🏙️ 城市权重校验失败，已回退默认权重")
+            logger.warning("[budget_kpi] city weights validation failed, fell back to mock default")
     # ponytail: LLM 可能在 reject 场景忽略用户输入的预算/周期，
     # 强制覆盖为 parse 后的用户输入值，确保与用户意图一致。
     result["total_budget"] = budget

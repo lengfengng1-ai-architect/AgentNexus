@@ -22,6 +22,7 @@ interface ScreenGenerateProps {
     allocations: BudgetAllocation[]
     kpis: Record<string, string>
     timeline: string[]
+    cityWeights?: Array<{ city: string; weight: number }>
     readonly?: boolean
   }) => void
   onOpenActionPreview: () => void
@@ -246,6 +247,7 @@ export function ScreenGenerate({ onNavigate, briefData, planRun, suppressCheckpo
                                   allocations: (bk.allocations as Array<{category: string; percentage: number; amount: number}> | undefined) || [],
                                   kpis: (bk.kpis as Record<string, string>) || {},
                                   timeline: (bk.timeline as string[]) || [],
+                                  cityWeights: (bk.city_weights as Array<{ city: string; weight: number }> | undefined) || undefined,
                                   readonly: true,
                                 })
                               }

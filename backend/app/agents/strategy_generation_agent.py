@@ -35,6 +35,7 @@ async def run_strategy_generation(state: dict[str, Any]) -> dict[str, Any]:
     market = state.get("market_research") or {}
     audience = state.get("audience_insight") or {}
     fitness = state.get("fitness_analysis") or {}
+    city_data = state.get("plan_data_query") or {}
 
     brand_name = brand_input.get("brand_name")
     category = brand_input.get("category")
@@ -52,6 +53,8 @@ async def run_strategy_generation(state: dict[str, Any]) -> dict[str, Any]:
             brand_name=brand_name,
             category=category,
             city=city,
+            cities=brand_input.get("selected_cities") or [city],
+            city_data=city_data,
             primary_sport=fitness.get("primary_sport", ""),
             secondary_sport=fitness.get("secondary_sport", ""),
             market_summary=market.get("market_summary", ""),

@@ -7,7 +7,7 @@ import { optimizeStrategy } from '../../api/plan'
 import type { MobileScreen } from './ScreenChat'
 import type { BrandInput } from '../../types/chat'
 
-const CITIES = ['北京', '上海', '广州', '深圳', '成都']
+const CITIES = ['北京', '上海', '广州', '深圳', '成都', '杭州']
 
 export interface BriefFormData {
   brand_name: string

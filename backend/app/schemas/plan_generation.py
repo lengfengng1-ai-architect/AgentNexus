@@ -207,6 +207,19 @@ class CityDataOutput(BaseModel):
     )
 
 
+class MultiCityDataOutput(BaseModel):
+    """多城数据查询节点输出（多城联动方案）。
+
+    各城 CityDataOutput 按 brand_input 城市输入顺序聚合，主城在首位。
+    单城场景下 cities 长度为 1，行为等价旧的单城 CityDataOutput。
+    """
+
+    cities: list[CityDataOutput] = Field(
+        default_factory=list,
+        description="多城数据列表，顺序与输入城市一致，主城首位",
+    )
+
+
 class SportFitnessScore(BaseModel):
     """运动场景适配度评分。"""
 
@@ -225,6 +238,17 @@ class FitnessAnalysisOutput(BaseModel):
     secondary_sport: str = Field(..., description="次要运动场景")
 
 
+class CityRole(BaseModel):
+    """城市差异化角色定位（多城联动）。"""
+
+    city: str = Field(..., description="城市")
+    role: str = Field(
+        ...,
+        description="角色枚举：flagship_launch 旗舰首发 / experience_cultivation 体验深耕 / channel_conversion 渠道转化 / community_growth 社群裂变",
+    )
+    rationale: str = Field(..., description="角色分配依据，须引用该城市数据")
+
+
 class StrategyOutput(BaseModel):
     """策略生成节点输出。"""
 
@@ -232,6 +256,10 @@ class StrategyOutput(BaseModel):
     marketing_goal: str = Field(..., description="营销目标")
     strategy_framework: str = Field(..., description="4M+1C 策略框架描述")
     key_messages: list[str] = Field(default_factory=list, description="核心传播信息")
+    city_roles: list[CityRole] = Field(
+        default_factory=list,
+        description="多城差异化角色定位，主城 flagship_launch；单城可空",
+    )
 
 
 class ExecutionOutput(BaseModel):
@@ -252,6 +280,14 @@ class BudgetAllocation(BaseModel):
     percentage: float = Field(..., description="占比")
 
 
+class CityBudgetWeight(BaseModel):
+    """城市预算权重（多城联动）。"""
+
+    city: str = Field(..., description="城市")
+    weight: float = Field(..., description="权重百分比 0-100，各城之和 100")
+    rationale: str = Field(..., description="分配依据，须引用该城市数据")
+
+
 class BudgetKpiOutput(BaseModel):
     """预算与 KPI 节点输出。"""
 
@@ -260,6 +296,10 @@ class BudgetKpiOutput(BaseModel):
     allocations: list[BudgetAllocation] = Field(default_factory=list, description="预算分配")
     kpis: dict[str, str] = Field(default_factory=dict, description="KPI 指标")
     timeline: list[str] = Field(default_factory=list, description="关键里程碑")
+    city_weights: list[CityBudgetWeight] = Field(
+        default_factory=list,
+        description="多城预算权重（和=100，单城下限 10%、5 城放宽至 8%，上限 70%）；单城可空",
+    )
 
 
 class ActionRecommendation(BaseModel):
