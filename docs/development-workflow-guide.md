@@ -168,7 +168,7 @@ OpenAPI YAML (契约)
   - 固定签名 `async def run_<name>(state: dict) -> dict`，返回可序列化 dict。
   - 末尾调 `register()`；在 `__init__.py` import 触发注册。
   - **禁止函数体内 import**（全放顶部）；**禁止 for 循环建图**（add_node/edge 逐条显式）。
-  - 节点本身可独立运行测试，拼进主流程不需改代码（主流程通过注册表取用）。
+  - 节点本身可独立运行测试；进 pipeline 由主流程负责人显式接入（`get_handler` 取用 + `_node_inputs` 定义输入 + `add_node`/`add_edge` 加入图），节点代码不需改。
 - **改节点只写自己文件 + 注册，不改主流程**；不在节点里 import 接口/业务层（防循环依赖）。
 - **人工审核机制**：checkpoint 持久化 + `interrupt_before` 审核点 + approve/reject/resume/cancel + 流式事件（`workflow.start`/`node.start`/`node.complete`/`workflow.paused`/`workflow.complete`）。
 - **真实/mock 分离**：真实节点文件**禁含任何 mock 代码**；mock 放独立 `mock_<name>.py` 用 `register_mock`（前缀 `mock_`）。
@@ -970,7 +970,9 @@ register("market_research", run_market_research)
 
 ## 2. 主流程怎么调度你
 
-主流程运行时从 registry 查找 Agent 名称，不需你改编排代码。register/get_handler 机制自动让 handler 被 pipeline 发现。
+主流程通过 `_build_node(node_id)` 用 `get_handler(node_id)` 从 registry 取出 handler，包装成 LangGraph 节点执行。
+
+但节点**不会自动进 pipeline**——主流程是**显式编排**：`_node_inputs()` 按节点 id 用 if 分支定义该节点输入，`graph.add_node` / `add_edge` 逐条显式把节点加进图。新 Agent 要进 pipeline，**由主流程负责人显式接入**（加 `_node_inputs` 分支 + `add_node` / `add_edge`）；节点开发者只写自己的 agent 文件 + `register`，不改编排代码。
 
 ## 3. 禁止事项
 
