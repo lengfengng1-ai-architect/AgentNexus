@@ -125,7 +125,7 @@ OpenAPI YAML (契约)
 
 ### 7.3 Mock 数据
 
-- **统一根结构** `{data, meta}`：`meta.total` 必须等于数组长度，`meta.source` 标 `manual`/`synthetic`/`api_snapshot`。
+- **列表型文件统一 `{data, meta}`**（`meta.total`=数组长度、`meta.source` 标 `manual`/`synthetic`/`api_snapshot`）；配置/映射/字典型文件（如按城市 key 的城市数据、规则映射、预算模板）按需结构，建议标来源/版本。
 - **字段 snake_case**，必须与 Schema 字段名**完全一致**；跨文件 ID 必须可关联（不一致会静默返回空，极难排查）。
 - **命名字段强制真实数据**（真实实体名/城市/品类），**LLM 不可编造**；数值可合理虚构但须内部一致。
 - **通过抽象层访问**（如 `get_data_provider()`），换真实 API 只改抽象层内部，调用方零改动。
@@ -161,7 +161,7 @@ OpenAPI YAML (契约)
 > 适用于含 LLM agent 编排的项目。非 agent 项目跳过本节。
 
 - **框架固定**：编排框架 + 能力增强层 + 依赖管理器由人定，**禁止其他框架或手写 ReAct/Plan-Execute 循环**。
-- **模型构建唯一入口**（如 `build_chat_model()`）：多 provider 在此一处分支，**禁止各节点自建模型**。
+- **模型构建唯一入口**（如 `build_chat_model()`）：多 provider 在此一处分支；允许节点用 `_build_model()` 作 `@cache` 包装缓存实例，**禁止绕过它自建 provider**。
 - **分层架构**：编排（状态图/Service）→ 注册表（可插拔 `register`/`get_handler`）→ 节点（`async run_xxx(state)->dict`）→ 工具层。
 - **节点开发规范**：
   - 文件头注释：注册名 + 对应 spec + 能力边界 id + 用途 + 输入/输出。
@@ -598,7 +598,7 @@ test_{function}__{scenario}__{outcome}
 
 ## JSON 格式约定
 
-根结构必须是包含 `data` 和 `meta` 的对象：
+**列表型文件**必须是 `{data, meta}`；配置/字典型按需结构（建议标 source/版本）：
 
 ```json
 {
@@ -693,7 +693,7 @@ prompt = f"品牌名称：{brand_name}\n运动品类：{sport_type}..."
 
 - Agent 编排：[固定编排框架，如 LangGraph ≥1.0]——所有状态流转、节点编排、持久化/流式/人机协同的载体
 - Agent 能力增强：[可选增强层，如 DeepAgents ≥0.6]——在编排框架之上按需使用
-- 模型初始化：**统一通过 `build_chat_model()`，禁止每个 agent 自己写 `_build_model`**
+- 模型初始化：**统一通过 `build_chat_model()`**；`_build_model()` 作 `@cache` 包装允许，禁止绕过它自建 provider
 - 依赖管理：[固定工具，如 uv]
 
 **禁止引入其他 Agent 框架，或在编排框架之外手写完整的 ReAct/Plan-and-Execute 等循环。**
@@ -862,7 +862,7 @@ register("<agent>", run_<agent>)
 | schema 文件 | `schemas/<domain>.py`，PascalCase |
 | prompt 文件 | `prompt_templates/<agent_name>.md.j2` |
 | 入口函数 | `async def run_<agent_name>(state: dict) -> dict` |
-| 模型构建 | **必须用 build_chat_model()**，禁止自己写 _build_model() |
+| 模型构建 | **必须基于 build_chat_model()**（_build_model() @cache 包装允许，禁绕过自建 provider） |
 | import 规则 | **禁止函数体内 import**，全部放顶部 |
 | 图构建 | **禁止 for 循环建图**，add_node/add_edge 逐条显式 |
 

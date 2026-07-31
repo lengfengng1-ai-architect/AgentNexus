@@ -7,7 +7,7 @@
 
 - **Agent 编排：LangGraph**（`langgraph>=1.0`）——所有状态流转、节点编排、持久化/流式/人机协同的载体
 - **Agent 能力增强：DeepAgents**（`deepagents>=0.6`）——在 LangGraph 之上按需使用
-- **模型初始化：统一通过 `app.agents.llm_utils.build_chat_model()`，禁止每个 agent 自己写 `_build_model`**
+- **模型初始化：统一通过 `app.agents.llm_utils.build_chat_model()`；允许 `_build_model()` 作为 `@cache` 包装以缓存模型实例，禁止绕过 `build_chat_model()` 自建 provider**
 - **依赖管理：uv**
 
 禁止引入其他 Agent 框架，或在 LangGraph 之外手写完整的 ReAct/Plan-and-Execute 等循环。
@@ -43,7 +43,7 @@
 - Agent 通过 `registry.register()` 注册到系统，不依赖硬编码的路由。
 - 方案生成 pipeline 用 `StateGraph` 在代码中直接定义，不经过 YAML 配置层。
 - 真实 Agent 文件**禁止包含任何 mock 代码**（`use_mock_data`、`_MOCK_PATH`、`_load_mock`）。
-- `llm_utils.build_chat_model()` 是唯一的模型构建入口，所有 agent 禁止自己写 `_build_model()`。
+- `llm_utils.build_chat_model()` 是唯一的模型构建入口；`_build_model()` 作为 `@cache` 包装 `build_chat_model()` 以缓存实例是允许的，禁止的是绕过 `build_chat_model()` 自建 provider。
 
 ### Mock Agent
 

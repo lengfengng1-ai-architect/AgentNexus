@@ -20,7 +20,7 @@
 ### 你不负责
 
 - FastAPI 路由（`routers/`）
-- 调用 `_build_model()` —— 统一用 `from app.agents.llm_utils import build_chat_model`
+- 绕过 `build_chat_model()` 自建 provider —— 统一用 `from app.agents.llm_utils import build_chat_model`（`@cache` 包装的 `_build_model()` 允许）
 - 主流程 LangGraph 编排（由 `plan_generation_service.py` 通过 `get_handler()` 构建 StateGraph）
 - 架构决策、技术选型、新增依赖审批
 
@@ -105,7 +105,7 @@ async def mock_run_<agent>(state: dict) -> dict:
 | schema 文件 | `backend/app/schemas/<domain>.py`，Pydantic model 用 PascalCase |
 | prompt 文件 | `backend/app/prompt_templates/<agent_name>.md.j2` |
 | 入口函数 | `async def run_<agent_name>(state: dict) -> dict` |
-| 模型构建 | **必须用 `build_chat_model()`**，禁止自己写 `_build_model()` |
+| 模型构建 | **必须基于 `build_chat_model()`**（`_build_model()` 作 `@cache` 包装允许，禁绕过自建 provider） |
 | import 规则 | **禁止在方法/函数内部 import**。所有 import 必须放在文件顶部。违反者在 Code Review 打回 |
 | 图构建 | **禁止 for 循环建图**。所有 `add_node`/`add_edge` 必须逐条显式写出。顺序一目了然，不需要读者跳到变量定义确认拓扑 |
 
@@ -274,7 +274,7 @@ uv run python -m scripts.debug_<agent>
 | `from langchain_community.chat_models import ChatTongyi` | 社区版已过时 | `init_chat_model` + `langchain-openai` |
 | `StateGraph(TypedDict, total=False)` | 状态松散 | Pydantic `BaseModel` |
 | 手写 markdown code block 剥离 | 不可靠 | `with_structured_output(Schema)` |
-| 自己读 `.env` 或 `os.environ` 构建 model | 配置分散、难测试 | 使用 `_build_model()` |
+| 自己读 `.env` 或 `os.environ` 自建 provider | 配置分散、难测试 | 使用 `build_chat_model()`（`_build_model()` @cache 包装允许） |
 | 字符串拼接 prompt | 难维护 | Jinja2 模板 |
 | 直接 `create_deep_agent` 包整个 Agent | 丢失 LangGraph 编排能力 | LangGraph 图 + DeepAgents 作为节点 |
 | 没有测试就提交 | 无法保证回归 | 覆盖率 ≥80% |
@@ -293,7 +293,7 @@ uv run python -m scripts.debug_<agent>
 - [ ] 我的 prompt 放在 `backend/app/prompt_templates/<agent_name>.md.j2`
 - [ ] 我实现了 `async def run_<agent_name>(...) -> OutputSchema`
 - [ ] 我的图是 `StateGraph(...).compile()` 编译出来的
-- [ ] 我用了 `_build_model()` 而不是自己读 env
+- [ ] 我用了 `build_chat_model()`（或其 `@cache` 包装 `_build_model()`）而不是自建 provider
 - [ ] 我的输出是 Pydantic model，不是裸字符串/dict
 - [ ] 我有对应的 OpenAPI spec 文件
 - [ ] 我在 `superpowers.yaml` 的 `in_scope` 内

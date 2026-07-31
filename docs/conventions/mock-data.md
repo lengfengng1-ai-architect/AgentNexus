@@ -27,7 +27,7 @@ backend/mock_data/
 
 ### 根结构
 
-每个文件必须是包含 `data` 和 `meta` 的对象：
+**列表型文件**（如盟域/达人/经营社列表）必须是包含 `data` 和 `meta` 的对象：
 
 ```json
 {
@@ -40,6 +40,8 @@ backend/mock_data/
   }
 }
 ```
+
+**配置/映射/字典型文件**（如按城市 key 组织的城市数据、意图提取规则、品类适配映射、预算模板）按需结构，不必套 `{data,meta}`，但建议在顶层或文件名体现 `source`/`version`，便于追溯。
 
 - `data` — 数组，每条记录是一个完整对象
 - `meta.total` — 必须等于 `data.length`
